@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>DOCK — Phase 05 톤 결정 (프로토타입 v4 — 음성 입력 추가)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@1.3.9/dist/web/variable/pretendardvariable.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/noto-serif-kr@5.1.0/index.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/d2coding@5.0.13/index.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/d2coding@5.0.13/700.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; font-family: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, sans-serif; }
+  body { display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; min-height: 100vh; background: #efefef; transition: background 0.4s; }
+  body.themed { background: var(--bg-outer, #efefef); }
+  .dock-frame {
+    width: 100%;
+    max-width: 420px;
+    background: var(--bg, #FCE7F3);
+    color: var(--text, #C2185B);
+    padding: 18px;
+    border-radius: 14px;
+    transition: background 0.4s, color 0.4s;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+  }
+  .dock-header {
+    display: flex; justify-content: space-between;
+    font-size: 11px; letter-spacing: 0.15em;
+    margin-bottom: 12px; opacity: 0.7;
+  }
+  .preview-box {
+    background: white;
+    border: 1px solid currentColor;
+    border-radius: 6px;
+    min-height: 260px;
+    position: relative; overflow: hidden;
+    margin-bottom: 18px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 18px;
+  }
+  .graphic-layer {
+    position: absolute; inset: 0; pointer-events: none;
+    opacity: 0; transition: opacity 0.5s;
+  }
+  .graphic-layer.active { opacity: 1; }
+  .graphic-layer svg {
+    width: 100%; height: 100%;
+    color: var(--graphic, #8B9A1B);
+    display: block;
+  }
+  .preview-text {
+    position: relative; z-index: 2;
+    transition: transform 0.25s, font-size 0.25s;
+    line-height: 1.25;
+    word-break: keep-all;
+    color: var(--text, #C2185B);
+    text-align: center;
+    transform-origin: center;
+    outline: none;
+    user-select: text;
+    font-weight: var(--wght-base, 400);
+    font-variation-settings: "wght" var(--wght-base, 400);
+  }
+  .preview-text .word {
+    display: inline-block;
+    transition: font-weight 0.9s ease-in-out, font-variation-settings 0.9s ease-in-out;
+    font-weight: inherit;
+  }
+  .preview-text .word.active {
+    font-weight: var(--wght-active, 400);
+    font-variation-settings: "wght" var(--wght-active, 400);
+  }
+  .preview-text:focus { outline: 1px dashed currentColor; outline-offset: 8px; }
+  .ctrl { margin-bottom: 14px; }
+  .ctrl-label {
+    font-size: 11px; letter-spacing: 0.15em;
+    margin-bottom: 6px; opacity: 0.65;
+  }
+  .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pill {
+    padding: 9px 12px;
+    background: transparent;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    color: inherit;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    flex: 1; min-width: 0;
+    line-height: 1;
+  }
+  .pill span { color: inherit; }
+  .pill.on { background: currentColor; }
+  .pill.on span { color: var(--bg, #FCE7F3); }
+  .slider-row { display: flex; align-items: center; gap: 12px; }
+  .slider-row input[type=range] {
+    flex: 1;
+    -webkit-appearance: none; appearance: none;
+    background: transparent;
+    height: 20px;
+  }
+  .slider-row input[type=range]::-webkit-slider-runnable-track {
+    height: 1px; background: currentColor; opacity: 0.4;
+  }
+  .slider-row input[type=range]::-moz-range-track {
+    height: 1px; background: currentColor; opacity: 0.4;
+  }
+  .slider-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    background: var(--text, #C2185B);
+    border-radius: 50%;
+    margin-top: -8px;
+    cursor: pointer; border: none;
+  }
+  .slider-row input[type=range]::-moz-range-thumb {
+    width: 16px; height: 16px;
+    background: var(--text, #C2185B);
+    border-radius: 50%;
+    cursor: pointer; border: none;
+  }
+  .slider-row .num { font-size: 11px; letter-spacing: 0.1em; min-width: 32px; text-align: right; }
+  .actions {
+    display: flex; gap: 8px;
+    margin-top: 16px; padding-top: 14px;
+    border-top: 1px solid currentColor;
+  }
+  .actions .pill { padding: 14px 8px; font-size: 12px; }
+  .char-counter { font-size: 10px; opacity: 0.5; margin-top: 4px; text-align: right; letter-spacing: 0.1em; }
+  .star-glyph { display: inline-block; }
+  .voice-btn { padding: 13px 14px; font-size: 12px; border-width: 1.5px; }
+  .voice-btn.rec { background: #E84545; border-color: #E84545; color: white !important; }
+  .voice-btn.rec span { color: white; }
+  .vu-bar { position: absolute; bottom: 0; left: 0; height: 4px; background: #E84545; width: 0%; transition: width 0.05s; opacity: 0; pointer-events: none; z-index: 3; }
+  .vu-bar.show { opacity: 1; }
+  .rec-dot { display: inline-block; width: 8px; height: 8px; background: #fff; border-radius: 50%; margin-right: 6px; animation: blink 0.8s ease-in-out infinite; vertical-align: middle; }
+  @keyframes blink { 0%, 100% { opacity: 1 } 50% { opacity: 0.3 } }
+  .voice-hint { font-size: 9px; opacity: 0.5; margin-left: 4px; }
+  @keyframes dockRot { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+  @keyframes dockPulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+  @keyframes dockDash { from{stroke-dashoffset:0} to{stroke-dashoffset:20} }
+  @keyframes dockExp { 0%,100%{opacity:.3; transform:scale(.92)} 50%{opacity:1; transform:scale(1.06)} }
+  @keyframes dockSlide { from{transform:translateX(0)} to{transform:translateX(-100px)} }
+</style>
+</head>
+<body>
+
+<div class="dock-frame" id="dockApp">
+  <div class="dock-header">
+    <span>DOCK</span>
+    <span>PHASE 05 / 톤 결정</span>
+  </div>
+
+  <div class="preview-box">
+    <div class="graphic-layer" id="gfx"></div>
+    <div class="preview-text" id="ptxt" contenteditable="true" spellcheck="false">저는 과기대를 사랑하는데 총장님은 아니신가봐요</div>
+    <div class="vu-bar" id="vuBar"></div>
+  </div>
+  <div class="char-counter"><span id="charN">22</span> / 60</div>
+
+  <div class="ctrl" style="margin-top: 14px;">
+    <button class="pill voice-btn" id="voiceBtn"><span>🎤 음성으로 톤 결정 (최대 12초)</span></button>
+  </div>
+
+  <div class="ctrl">
+    <div class="ctrl-label">FONT — 폰트</div>
+    <div class="btn-row" data-axis="font">
+      <button class="pill" data-val="mono"><span>모노</span></button>
+      <button class="pill on" data-val="gothic"><span>고딕</span></button>
+      <button class="pill" data-val="myeongjo"><span>명조</span></button>
+    </div>
+  </div>
+
+  <div class="ctrl">
+    <div class="ctrl-label">TONE — 장체 ↔ 평체 <span class="voice-hint">← 음성: 음역 폭</span></div>
+    <div class="btn-row" data-axis="tone">
+      <button class="pill" data-val="0.7"><span>장체</span></button>
+      <button class="pill on" data-val="1.0"><span>평</span></button>
+      <button class="pill" data-val="1.3"><span>평체</span></button>
+    </div>
+  </div>
+
+  <div class="ctrl">
+    <div class="ctrl-label">WGHT — 굵기 <span class="voice-hint">← 음성: 볼륨</span></div>
+    <div class="btn-row" data-axis="wght">
+      <button class="pill" data-val="100"><span>THIN</span></button>
+      <button class="pill" data-val="300"><span>LGHT</span></button>
+      <button class="pill on" data-val="400"><span>RGLR</span></button>
+      <button class="pill" data-val="600"><span>SEMI</span></button>
+      <button class="pill" data-val="800"><span>BOLD</span></button>
+      <button class="pill" data-val="900"><span>BLAK</span></button>
+    </div>
+  </div>
+
+  <div class="ctrl">
+    <div class="ctrl-label">SLNT — 기울기 <span class="voice-hint">← 음성: 음 높이</span></div>
+    <div class="btn-row" data-axis="slnt">
+      <button class="pill on" data-val="0"><span>UPRT</span></button>
+      <button class="pill" data-val="-8"><span>OBLQ</span></button>
+    </div>
+  </div>
+
+  <div class="ctrl">
+    <div class="ctrl-label">SIZE — 크기</div>
+    <div class="slider-row">
+      <input type="range" id="sz" min="18" max="72" value="40" step="1">
+      <span class="num" id="szN">40</span>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="pill" id="starBtn"><span><span class="star-glyph">&#9733;</span> STAR</span></button>
+    <button class="pill" id="colorBtn"><span>COLOR</span></button>
+    <button class="pill" id="resetBtn"><span>RESET</span></button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const app = document.getElementById('dockApp');
+  const txt = document.getElementById('ptxt');
+  const gfx = document.getElementById('gfx');
+  const sz = document.getElementById('sz');
+  const szN = document.getElementById('szN');
+  const charN = document.getElementById('charN');
+  const voiceBtn = document.getElementById('voiceBtn');
+  const vuBar = document.getElementById('vuBar');
+  const body = document.body;
+
+  const fontMap = {
+    mono: '"D2Coding", "Courier New", monospace',
+    gothic: '"Pretendard Variable", -apple-system, sans-serif',
+    myeongjo: '"Noto Serif KR Variable", "Noto Serif KR", serif'
+  };
+
+  const st = { font: 'gothic', tone: 1.0, wght: 400, slnt: 0, size: 40, gi: -1, pi: 0 };
+
+  const palettes = [
+    { bg: '#FCE7F3', text: '#FF1493', graphic: '#8B9A1B' },
+    { bg: '#1A1A2E', text: '#F39C12', graphic: '#E74C3C' },
+    { bg: '#F5F5DC', text: '#0B3D3B', graphic: '#FF6347' },
+    { bg: '#0A0A0A', text: '#FFD93D', graphic: '#00CED1' },
+    { bg: '#FFF0F5', text: '#8B008B', graphic: '#FF6B9D' },
+    { bg: '#E8F8F5', text: '#0E6251', graphic: '#7D6608' },
+    { bg: '#2C3E50', text: '#ECF0F1', graphic: '#E67E22' },
+    { bg: '#F8F4E3', text: '#264653', graphic: '#E76F51' },
+    { bg: '#1F1F1F', text: '#FF6EC7', graphic: '#7FDBDA' },
+    { bg: '#FFFAE3', text: '#D9381E', graphic: '#1B4965' }
+  ];
+
+  const graphics = [
+    // sphere with rotating grid
+    '<svg viewBox="0 0 380 260" preserveAspectRatio="xMidYMid slice"><g style="animation:dockRot 14s linear infinite;transform-origin:190px 130px"><ellipse cx="190" cy="130" rx="170" ry="115" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="7,5"/><ellipse cx="190" cy="130" rx="130" ry="115" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="7,5"/><ellipse cx="190" cy="130" rx="70" ry="115" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="7,5"/><ellipse cx="190" cy="130" rx="170" ry="75" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="7,5"/><ellipse cx="190" cy="130" rx="170" ry="35" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="7,5"/></g></svg>',
+    // pulsing polka dots
+    '<svg viewBox="0 0 380 260" preserveAspectRatio="xMidYMid slice"><defs><pattern id="dp" x="0" y="0" width="55" height="55" patternUnits="userSpaceOnUse"><circle cx="27" cy="27" r="17" fill="currentColor" style="animation:dockPulse 3.2s ease-in-out infinite"/></pattern></defs><rect width="380" height="260" fill="url(#dp)"/></svg>',
+    // scrolling grid
+    '<svg viewBox="0 0 380 260" preserveAspectRatio="xMidYMid slice"><g stroke="currentColor" stroke-width="1.8" fill="none" stroke-dasharray="5,5">' + Array.from({length:11},(_,i)=>'<line x1="'+(i*40)+'" y1="0" x2="'+(i*40)+'" y2="260" style="animation:dockDash '+(3.5+i*0.18)+'s linear infinite"/>').join('') + Array.from({length:8},(_,i)=>'<line x1="0" y1="'+(i*40)+'" x2="380" y2="'+(i*40)+'"/>').join('') + '</g></svg>',
+    // concentric expansion
+    '<svg viewBox="0 0 380 260" preserveAspectRatio="xMidYMid slice">' + [25,55,85,115,145,175].map((r,i)=>'<circle cx="190" cy="130" r="'+r+'" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:dockExp 4.5s ease-in-out '+(i*0.45)+'s infinite;transform-origin:190px 130px"/>').join('') + '</svg>',
+    // sliding waves
+    '<svg viewBox="0 0 380 260" preserveAspectRatio="xMidYMid slice"><g fill="none" stroke="currentColor" stroke-width="2.5">' + [40,80,120,160,200,240].map((y,i)=>'<path d="M -50 '+y+' Q 45 '+(y-22)+',140 '+y+' T 330 '+y+' T 520 '+y+'" style="animation:dockSlide '+(6+i*0.4)+'s linear infinite"/>').join('') + '</g></svg>'
+  ];
+
+  let pulseTimer = null;
+  let pulseLineIdx = 0;
+  let lineCount = 0;
+  let isEditing = false;
+
+  function buildSpans(){
+    const text = txt.innerText.trim();
+    if (!text) return;
+    const words = text.split(/\s+/);
+    txt.innerHTML = words.map(w => '<span class="word">' + w + '</span>').join(' ');
+  }
+
+  function detectLines(){
+    const spans = txt.querySelectorAll('.word');
+    if (!spans.length){ lineCount = 0; return; }
+    let curTop = null;
+    let curLine = -1;
+    spans.forEach(s => {
+      const top = Math.round(s.getBoundingClientRect().top);
+      if (curTop === null || Math.abs(top - curTop) > 5){
+        curLine++;
+        curTop = top;
+      }
+      s.dataset.line = curLine;
+    });
+    lineCount = curLine + 1;
+  }
+
+  function pulseTick(){
+    if (lineCount === 0) return;
+    const spans = txt.querySelectorAll('.word');
+    spans.forEach(s => {
+      s.classList.toggle('active', parseInt(s.dataset.line) === pulseLineIdx);
+    });
+    pulseLineIdx = (pulseLineIdx + 1) % lineCount;
+  }
+
+  function startPulse(){
+    if (isEditing) return;
+    if (pulseTimer){ clearInterval(pulseTimer); pulseTimer = null; }
+    buildSpans();
+    requestAnimationFrame(() => {
+      detectLines();
+      pulseLineIdx = 0;
+      pulseTick();
+      pulseTimer = setInterval(pulseTick, 2400);
+    });
+  }
+
+  function stopPulse(){
+    if (pulseTimer){ clearInterval(pulseTimer); pulseTimer = null; }
+    txt.innerHTML = txt.innerText;
+  }
+
+  function applyStyle(){
+    txt.style.fontFamily = fontMap[st.font];
+    txt.style.fontSize = st.size + 'px';
+    txt.style.transform = 'scaleX(' + st.tone + ') skewX(' + st.slnt + 'deg)';
+    if (isEditing){
+      txt.style.setProperty('--wght-base', st.wght);
+      txt.style.setProperty('--wght-active', st.wght);
+    } else {
+      const low = Math.max(100, Math.round(st.wght * 0.5));
+      txt.style.setProperty('--wght-base', low);
+      txt.style.setProperty('--wght-active', st.wght);
+    }
+    if (!isEditing && pulseTimer){
+      requestAnimationFrame(() => detectLines());
+    }
+  }
+
+  function applyPalette(i){
+    const p = palettes[i];
+    app.style.setProperty('--bg', p.bg);
+    app.style.setProperty('--text', p.text);
+    app.style.setProperty('--graphic', p.graphic);
+    body.style.setProperty('--bg-outer', p.bg);
+    body.classList.add('themed');
+    st.pi = i;
+  }
+
+  function updateCharCount(){
+    const len = txt.innerText.length;
+    charN.textContent = len;
+    if (len > 60) {
+      txt.innerText = txt.innerText.slice(0, 60);
+      const range = document.createRange();
+      range.selectNodeContents(txt);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      charN.textContent = 60;
+    }
+  }
+
+  document.querySelectorAll('.btn-row').forEach(g => {
+    const ax = g.dataset.axis;
+    g.querySelectorAll('.pill').forEach(b => {
+      b.addEventListener('click', () => {
+        g.querySelectorAll('.pill').forEach(x => x.classList.remove('on'));
+        b.classList.add('on');
+        const v = b.dataset.val;
+        st[ax] = (ax === 'font') ? v : parseFloat(v);
+        applyStyle();
+      });
+    });
+  });
+
+  sz.addEventListener('input', e => {
+    st.size = parseInt(e.target.value);
+    szN.textContent = st.size;
+    applyStyle();
+  });
+
+  // === VOICE INTEGRATION ===
+  let audioCtx = null, mediaStream = null, analyser = null, isRecording = false;
+  let recStart = 0, recDuration = 12000, samples = [];
+
+  function updateUIFromState(){
+    document.querySelectorAll('.btn-row').forEach(g => {
+      const ax = g.dataset.axis;
+      g.querySelectorAll('.pill').forEach(b => {
+        const val = ax === 'font' ? b.dataset.val : parseFloat(b.dataset.val);
+        b.classList.toggle('on', val === st[ax]);
+      });
+    });
+  }
+
+  async function startVoice(){
+    if (isRecording) return;
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioCtx.createMediaStreamSource(mediaStream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.6;
+      source.connect(analyser);
+
+      isRecording = true;
+      samples = [];
+      recStart = performance.now();
+      voiceBtn.classList.add('rec');
+      voiceBtn.querySelector('span').innerHTML = '<span class="rec-dot"></span>녹음 중... 다시 누르면 즉시 완료';
+      vuBar.classList.add('show');
+      stopPulse();
+      analyzeLoop();
+    } catch (err) {
+      alert('마이크 권한이 필요해요: ' + err.message);
+    }
+  }
+
+  function analyzeLoop(){
+    if (!isRecording) return;
+    const freqData = new Uint8Array(analyser.frequencyBinCount);
+    const timeData = new Float32Array(analyser.fftSize);
+    analyser.getByteFrequencyData(freqData);
+    analyser.getFloatTimeDomainData(timeData);
+
+    let rms = 0;
+    for (let i = 0; i < timeData.length; i++) rms += timeData[i] * timeData[i];
+    rms = Math.sqrt(rms / timeData.length);
+    const volume = Math.min(1, rms * 6);
+
+    let cSum = 0, aSum = 0;
+    for (let i = 0; i < freqData.length; i++){
+      cSum += i * freqData[i];
+      aSum += freqData[i];
+    }
+    const centroid = aSum > 100 ? (cSum / aSum) / freqData.length : 0;
+
+    let bw = 0;
+    if (aSum > 100){
+      for (let i = 0; i < freqData.length; i++){
+        bw += Math.pow(i - centroid * freqData.length, 2) * freqData[i];
+      }
+      bw = Math.sqrt(bw / aSum) / freqData.length;
+    }
+
+    if (volume > 0.02){
+      samples.push({ volume, centroid, bandwidth: bw });
+    }
+    vuBar.style.width = (volume * 100) + '%';
+    applyVoiceMapping(volume, centroid, bw);
+
+    const elapsed = performance.now() - recStart;
+    if (elapsed < recDuration){
+      requestAnimationFrame(analyzeLoop);
+    } else {
+      finalizeVoice();
+    }
+  }
+
+  function applyVoiceMapping(volume, centroid, bw){
+    const wghts = [200, 300, 400, 600, 800, 900];
+    const wIdx = Math.min(5, Math.floor(volume * 6));
+    st.wght = wghts[wIdx];
+    st.slnt = centroid > 0.13 ? -8 : 0;
+    if (bw < 0.05) st.tone = 0.7;
+    else if (bw > 0.10) st.tone = 1.3;
+    else st.tone = 1.0;
+    updateUIFromState();
+    applyStyle();
+  }
+
+  function finalizeVoice(){
+    if (!isRecording) return;
+    isRecording = false;
+    // === IMMEDIATELY DISCARD AUDIO ===
+    if (mediaStream){
+      mediaStream.getTracks().forEach(t => t.stop());
+      mediaStream = null;
+    }
+    if (audioCtx){
+      audioCtx.close().catch(()=>{});
+      audioCtx = null;
+    }
+    analyser = null;
+
+    if (samples.length > 5){
+      const avg = samples.reduce((a, s) => ({
+        volume: a.volume + s.volume,
+        centroid: a.centroid + s.centroid,
+        bandwidth: a.bandwidth + s.bandwidth
+      }), { volume: 0, centroid: 0, bandwidth: 0 });
+      avg.volume /= samples.length;
+      avg.centroid /= samples.length;
+      avg.bandwidth /= samples.length;
+      applyVoiceMapping(avg.volume, avg.centroid, avg.bandwidth);
+    }
+    samples = [];
+
+    voiceBtn.classList.remove('rec');
+    voiceBtn.querySelector('span').innerHTML = '🎤 다시 녹음';
+    vuBar.classList.remove('show');
+    vuBar.style.width = '0%';
+    setTimeout(() => startPulse(), 200);
+  }
+
+  voiceBtn.addEventListener('click', () => {
+    if (isRecording) {
+      finalizeVoice();
+    } else {
+      startVoice();
+    }
+  });
+
+  txt.addEventListener('focus', () => {
+    isEditing = true;
+    stopPulse();
+    applyStyle();
+  });
+  txt.addEventListener('blur', () => {
+    isEditing = false;
+    updateCharCount();
+    setTimeout(() => { applyStyle(); startPulse(); }, 100);
+  });
+  txt.addEventListener('input', updateCharCount);
+
+  document.getElementById('starBtn').addEventListener('click', () => {
+    let n;
+    do { n = Math.floor(Math.random() * graphics.length); } while (n === st.gi && graphics.length > 1);
+    if (st.gi !== -1 && Math.random() < 0.15) {
+      gfx.classList.remove('active');
+      setTimeout(() => { gfx.innerHTML = ''; }, 500);
+      st.gi = -1;
+    } else {
+      st.gi = n;
+      gfx.innerHTML = graphics[n];
+      gfx.classList.add('active');
+    }
+  });
+
+  document.getElementById('colorBtn').addEventListener('click', () => {
+    let n;
+    do { n = Math.floor(Math.random() * palettes.length); } while (n === st.pi && palettes.length > 1);
+    applyPalette(n);
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    st.font = 'gothic'; st.tone = 1.0; st.wght = 400; st.slnt = 0; st.size = 40;
+    sz.value = 40; szN.textContent = 40;
+    document.querySelectorAll('.btn-row').forEach(g => {
+      const ax = g.dataset.axis;
+      const dv = { font: 'gothic', tone: '1.0', wght: '400', slnt: '0' }[ax];
+      g.querySelectorAll('.pill').forEach(b => b.classList.toggle('on', b.dataset.val === dv));
+    });
+    gfx.classList.remove('active');
+    setTimeout(() => { gfx.innerHTML = ''; }, 500);
+    st.gi = -1;
+    applyPalette(0);
+    applyStyle();
+    voiceBtn.querySelector('span').innerHTML = '🎤 음성으로 톤 결정 (최대 12초)';
+  });
+
+  applyPalette(0);
+  applyStyle();
+  updateCharCount();
+  startPulse();
+
+  window.addEventListener('resize', () => {
+    if (!isEditing && pulseTimer){
+      requestAnimationFrame(() => detectLines());
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -11,6 +11,15 @@
 - **Firebase Web SDK** (Firestore, 선택)
 - 배포: **Vercel 무료 플랜** (자동 감지)
 
+## 경로
+
+| 경로                          | 화면                                                         |
+| ----------------------------- | ------------------------------------------------------------ |
+| `/?stage=enter`               | NFC 첫 태깅 — Phase 04 작성 진입 (또는 진행중 draft 이어 받기) |
+| `/?stage=submit`              | NFC 재태깅 — draft 전송 후 Phase 06 화면                       |
+| `/admin`                      | 외벽 미리보기 — 저장된 메시지를 각자의 톤으로 그리드 렌더링    |
+| `/` (파라미터 없음)           | 개발용 — Phase 04로 시작                                       |
+
 ## NFC 플로우
 
 폰을 R2 거치대에 태깅하면 NFC URL의 `?stage=` 파라미터로 진입 지점이 결정됩니다:
@@ -42,6 +51,9 @@ npm run build
 
 # 빌드 결과 미리보기
 npm run preview
+
+# PWA 아이콘 재생성 (public/icon.svg → PNG 5종)
+npm run icons
 ```
 
 ### URL로 단계 점프 (개발 중)

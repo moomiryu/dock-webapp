@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import AdminWall from './admin/AdminWall';
 import Phase04Write from './phases/Phase04Write';
 import Phase05Tone from './phases/Phase05Tone';
 import Phase05bDock from './phases/Phase05bDock';
@@ -30,8 +31,13 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>(() => pickInitialScreen(getStageFromUrl(), loadDraft()));
 
   useEffect(() => {
+    if (window.location.pathname.startsWith('/admin')) return;
     clearStageFromUrl();
   }, []);
+
+  if (window.location.pathname.startsWith('/admin')) {
+    return <AdminWall />;
+  }
 
   function handleNextFromWrite(text: string) {
     const updated = updateDraftText(text);

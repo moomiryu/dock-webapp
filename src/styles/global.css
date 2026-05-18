@@ -1544,6 +1544,56 @@ body.wall-mode {
   padding-bottom: 2px;
 }
 
+.wall-error-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.wall-error-actions .wall-cta {
+  text-decoration: none;
+  text-align: center;
+}
+
+.wall-error-help {
+  margin-top: 24px;
+  max-width: 440px;
+  color: #888;
+  font-family: 'D2Coding', monospace;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-align: left;
+  border-top: 1px dashed #444;
+  padding-top: 16px;
+}
+
+.wall-error-help-title {
+  margin-bottom: 8px;
+  letter-spacing: 0.15em;
+  font-weight: 700;
+  color: #aaa;
+}
+
+.wall-error-help-list {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.7;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wall-error-help-list strong {
+  color: #ccc;
+}
+
+.wall-error-help-link {
+  color: #6cf;
+  text-decoration: underline;
+}
+
 .wall-error {
   position: absolute;
   top: 20px;

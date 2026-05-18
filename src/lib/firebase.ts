@@ -12,7 +12,13 @@ interface FirestoreLike {
   listMessages(limit: number): Promise<StoredMessage[]>;
 }
 
+function isMockForcedByUrl(): boolean {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).get('mock') === '1';
+}
+
 function hasFirebaseEnv(): boolean {
+  if (isMockForcedByUrl()) return false;
   return Boolean(
     import.meta.env.VITE_FIREBASE_API_KEY &&
       import.meta.env.VITE_FIREBASE_PROJECT_ID &&

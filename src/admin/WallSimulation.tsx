@@ -137,10 +137,40 @@ export default function WallSimulation() {
           {error && (
             <>
               <div className="wall-empty-glyph" style={{ color: '#f55' }}>!</div>
-              <div className="wall-empty-text" style={{ color: '#f55', maxWidth: 400, textAlign: 'center', lineHeight: 1.6 }}>
+              <div className="wall-empty-text" style={{ color: '#f55', maxWidth: 420, textAlign: 'center', lineHeight: 1.6 }}>
                 {error}
               </div>
-              <button className="wall-cta" onClick={load}>다시 시도</button>
+
+              <div className="wall-error-actions">
+                <button className="wall-cta" onClick={load}>다시 시도</button>
+                <a className="wall-cta" href="/wall?mock=1">
+                  데모 모드로 보기 →
+                </a>
+              </div>
+
+              <div className="wall-error-help">
+                <div className="wall-error-help-title">대부분 원인:</div>
+                <ol className="wall-error-help-list">
+                  <li>
+                    Firestore Database가 아직 생성 안 됐을 수 있어요. {' '}
+                    <a
+                      href="https://console.firebase.google.com/project/dock-webapp/firestore"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="wall-error-help-link"
+                    >
+                      콘솔에서 확인 →
+                    </a>
+                    {' '}— "데이터베이스 만들기" 버튼이 보이면 미완료.
+                  </li>
+                  <li>
+                    이미 생성됐다면 <strong>Rules</strong> 탭에서 읽기 허용 확인. 테스트 모드는 30일 후 닫힙니다.
+                  </li>
+                  <li>
+                    네트워크 차단 (학교 와이파이가 *.googleapis.com 막는 경우 있음).
+                  </li>
+                </ol>
+              </div>
             </>
           )}
 

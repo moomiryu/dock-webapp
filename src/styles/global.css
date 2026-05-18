@@ -465,6 +465,21 @@ body.themed {
   transform-origin: center;
 }
 
+.dock-sim-btn {
+  opacity: 0.7;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+}
+
+.dock-sim-note {
+  font-size: 10px;
+  opacity: 0.5;
+  text-align: center;
+  margin-top: 6px;
+  line-height: 1.5;
+  letter-spacing: 0.05em;
+}
+
 .error-banner {
   margin-top: 12px;
   padding: 10px 12px;
@@ -1493,6 +1508,40 @@ body.wall-mode {
   font-family: 'D2Coding', monospace;
   font-size: 11px;
   letter-spacing: 0.25em;
+}
+
+.wall-cta {
+  margin-top: 8px;
+  background: transparent;
+  border: 1px solid #888;
+  color: #ccc;
+  padding: 12px 20px;
+  font-family: 'D2Coding', monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+  border-radius: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.wall-cta:hover:not(:disabled) {
+  background: #ccc;
+  color: #000;
+}
+
+.wall-cta:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.wall-link-secondary {
+  font-family: 'D2Coding', monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: #888;
+  text-decoration: none;
+  border-bottom: 1px dashed #555;
+  padding-bottom: 2px;
 }
 
 .wall-error {

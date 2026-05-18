@@ -1,6 +1,21 @@
 import DockFrame from '../components/DockFrame';
 
-export default function Phase05bDock() {
+interface Props {
+  onSimulateTap?: () => void;
+}
+
+export default function Phase05bDock({ onSimulateTap }: Props) {
+  function simulateSecondTap() {
+    if (onSimulateTap) {
+      onSimulateTap();
+    } else {
+      // Fallback: just navigate to ?stage=submit which the router handles
+      const url = new URL(window.location.href);
+      url.searchParams.set('stage', 'submit');
+      window.location.assign(url.toString());
+    }
+  }
+
   return (
     <DockFrame phaseLabel="PHASE 05b / 도킹 안내">
       <div className="guide-hero">
@@ -12,6 +27,18 @@ export default function Phase05bDock() {
           메시지가 외벽으로 전송됩니다.
         </p>
       </div>
+
+      <button
+        className="primary-action dock-sim-btn"
+        onClick={simulateSecondTap}
+        style={{ marginTop: 16 }}
+      >
+        <span>(개발) 재태깅 시뮬 — 바로 전송</span>
+      </button>
+      <p className="dock-sim-note">
+        실제 NFC 태그 없이 흐름을 끝까지 보기 위한 임시 버튼이에요.
+        프로덕션에선 가려집니다.
+      </p>
     </DockFrame>
   );
 }

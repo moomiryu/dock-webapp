@@ -7,13 +7,14 @@
 //
 // For development this loops faster than 7 days — full cycle ~90s per message.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fontMap } from '../lib/palettes';
 import { graphics as graphicsV2 } from '../lib/graphics-v2';
 import { palettes as legacyPalettes } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
-import { isFirebaseConfigured, listMessages } from '../lib/firebase';
+import { isFirebaseConfigured, listMessages, submitMessage } from '../lib/firebase';
 import type { StoredMessage } from '../lib/firebase';
+import type { ToneState } from '../types';
 
 const SLOT_COUNT = 11;
 const CYCLE_S = 90; // full bottom→top traversal in seconds
@@ -26,9 +27,31 @@ interface WallSlot {
   xOffset: number;
 }
 
+const LOAD_TIMEOUT_MS = 8000;
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(
+      () => reject(new Error(`Firestore가 ${ms / 1000}초 안에 응답하지 않았어요. Firestore Database가 생성됐는지, 보안 규칙이 읽기를 허용하는지 확인해주세요.`)),
+      ms
+    );
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      }
+    );
+  });
+}
+
 export default function WallSimulation() {
   const [messages, setMessages] = useState<StoredMessage[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
 
   useEffect(() => {
@@ -40,24 +63,44 @@ export default function WallSimulation() {
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const m = await listMessages(50);
-        if (!cancelled) setMessages(m);
-      } catch (err) {
-        if (!cancelled) setError((err as Error).message);
-      }
+  const load = useCallback(async () => {
+    setError(null);
+    try {
+      const m = await withTimeout(listMessages(50), LOAD_TIMEOUT_MS);
+      setMessages(m);
+    } catch (err) {
+      setError((err as Error).message);
+      setMessages([]);  // stop spinner — show error state
     }
-    load();
-    // Re-poll every 30s for new messages
-    const interval = window.setInterval(load, 30_000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
   }, []);
+
+  useEffect(() => {
+    load();
+    const interval = window.setInterval(load, 30_000);
+    return () => clearInterval(interval);
+  }, [load]);
+
+  async function seedSamples() {
+    if (seeding) return;
+    setSeeding(true);
+    const samples: Array<{ text: string; tone: ToneState }> = [
+      { text: '저는 과기대를 사랑하는데 총장님은 아니신가봐요', tone: { font: 'gothic', tone: 1.0, wght: 900, slnt: 0, size: 56, paletteIdx: 0, graphicIdx: 0 } },
+      { text: '등록금 어디 쓰는지 알려줘', tone: { font: 'myeongjo', tone: 0.7, wght: 700, slnt: -8, size: 48, paletteIdx: 1, graphicIdx: 3 } },
+      { text: '내일 비 온대', tone: { font: 'mono', tone: 1.3, wght: 400, slnt: 0, size: 44, paletteIdx: 2, graphicIdx: 1 } },
+      { text: '오늘 못 한 말', tone: { font: 'gothic', tone: 1.0, wght: 700, slnt: 0, size: 52, paletteIdx: 4, graphicIdx: 4 } },
+      { text: '여기에 누가 있다', tone: { font: 'myeongjo', tone: 1.0, wght: 400, slnt: 0, size: 48, paletteIdx: 3, graphicIdx: -1 } }
+    ];
+    try {
+      for (const s of samples) {
+        await submitMessage({ text: s.text, tone: s.tone, startedAt: Date.now() });
+      }
+      await load();
+    } catch (err) {
+      setError('샘플 추가 실패: ' + (err as Error).message);
+    } finally {
+      setSeeding(false);
+    }
+  }
 
   // Build 11 slots from available messages
   const slots = useMemo<WallSlot[]>(() => {
@@ -74,16 +117,49 @@ export default function WallSimulation() {
     return slots;
   }, [messages]);
 
-  return (
-    <div className="wall" onClick={() => setShowOverlay((v) => !v)}>
-      {error && <div className="wall-error">{error}</div>}
+  const isEmpty = messages !== null && messages.length === 0;
 
-      {(!messages || messages.length === 0) && !error && (
+  return (
+    <div className="wall" onClick={(e) => {
+      // Ignore clicks on action buttons inside empty/error states
+      if ((e.target as HTMLElement).closest('button, a')) return;
+      setShowOverlay((v) => !v);
+    }}>
+      {(messages === null || isEmpty || error) && (
         <div className="wall-empty">
-          <div className="wall-empty-glyph">···</div>
-          <div className="wall-empty-text">
-            {messages === null ? '풍경 불러오는 중' : '아직 풍경에 발화가 없습니다'}
-          </div>
+          {messages === null && !error && (
+            <>
+              <div className="wall-empty-glyph">···</div>
+              <div className="wall-empty-text">풍경 불러오는 중</div>
+            </>
+          )}
+
+          {error && (
+            <>
+              <div className="wall-empty-glyph" style={{ color: '#f55' }}>!</div>
+              <div className="wall-empty-text" style={{ color: '#f55', maxWidth: 400, textAlign: 'center', lineHeight: 1.6 }}>
+                {error}
+              </div>
+              <button className="wall-cta" onClick={load}>다시 시도</button>
+            </>
+          )}
+
+          {isEmpty && !error && (
+            <>
+              <div className="wall-empty-glyph">···</div>
+              <div className="wall-empty-text">아직 풍경에 발화가 없습니다</div>
+              <button
+                className="wall-cta"
+                onClick={seedSamples}
+                disabled={seeding}
+              >
+                {seeding ? '추가 중…' : '샘플 5개 추가하여 미리보기'}
+              </button>
+              <a href="/?stage=enter&mode=z" className="wall-link-secondary">
+                또는 직접 메시지 쓰기 →
+              </a>
+            </>
+          )}
         </div>
       )}
 

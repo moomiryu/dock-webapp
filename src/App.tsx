@@ -157,7 +157,7 @@ export default function App() {
       );
 
     case 'dock':
-      return <Phase05bDock />;
+      return <Phase05bDock onSimulateTap={() => setScreen('submit')} />;
 
     case 'submit':
       return <Phase06Submit draft={draft} onRestart={handleRestart} />;

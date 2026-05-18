@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { fontMap, graphics } from '../lib/palettes';
+import { fontMap } from '../lib/palettes';
+import { graphics as graphicsV2 } from '../lib/graphics-v2';
 import { moods, nextMoodIndex } from '../lib/palettes-v2';
 import type { ToneState } from '../types';
 
@@ -114,8 +115,8 @@ export default function PhaseZUnified({ initialText, initialTone, onSubmit }: Pr
   // Graphic layer
   useEffect(() => {
     if (!gfxRef.current) return;
-    if (graphicIdx >= 0 && graphicIdx < graphics.length) {
-      gfxRef.current.innerHTML = graphics[graphicIdx];
+    if (graphicIdx >= 0 && graphicIdx < graphicsV2.length) {
+      gfxRef.current.innerHTML = graphicsV2[graphicIdx];
       gfxRef.current.classList.add('active');
     } else {
       gfxRef.current.classList.remove('active');
@@ -132,8 +133,8 @@ export default function PhaseZUnified({ initialText, initialTone, onSubmit }: Pr
   function cycleGraphic() {
     let n = graphicIdx;
     do {
-      n = Math.floor(Math.random() * graphics.length);
-    } while (n === graphicIdx && graphics.length > 1);
+      n = Math.floor(Math.random() * graphicsV2.length);
+    } while (n === graphicIdx && graphicsV2.length > 1);
     if (graphicIdx !== -1 && Math.random() < 0.15) {
       setGraphicIdx(-1);
     } else {
@@ -160,6 +161,7 @@ export default function PhaseZUnified({ initialText, initialTone, onSubmit }: Pr
         ['--bg' as string]: mood.bg,
         ['--text' as string]: mood.text,
         ['--graphic' as string]: mood.graphic,
+        ['--blend' as string]: mood.blend,
         background: mood.bg,
         color: mood.text
       }}
@@ -196,6 +198,7 @@ export default function PhaseZUnified({ initialText, initialTone, onSubmit }: Pr
         <div className="graphic-layer" ref={gfxRef} />
         <div
           className="z-glyph"
+          data-glyph={lastChar}
           style={{
             fontFamily: fontMap[tone.font],
             fontWeight: tone.wght,

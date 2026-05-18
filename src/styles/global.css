@@ -349,6 +349,44 @@ body.themed {
   to { transform: translateX(-100px); }
 }
 
+/* === v1 자모 골격 animations === */
+@keyframes dockOBreath {
+  0%, 100% { transform: scale(0.94); opacity: 0.8; }
+  50%      { transform: scale(1.04); opacity: 1.0; }
+}
+@keyframes dockORot {
+  from { transform: rotate(0); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes dockGQuarter {
+  0%   { transform: rotate(0); }
+  25%  { transform: rotate(90deg); }
+  50%  { transform: rotate(180deg); }
+  75%  { transform: rotate(270deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes dockSRise {
+  0%, 100% { transform: translateY(0); opacity: 0.55; }
+  50%      { transform: translateY(-14px); opacity: 1.0; }
+}
+@keyframes dockLineDrift {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+@keyframes dockLineJitter {
+  0%, 100% { transform: translateX(0); }
+  10%      { transform: translateX(-2px); }
+  20%      { transform: translateX(1.5px); }
+  35%      { transform: translateX(-1px); }
+  50%      { transform: translateX(2px); }
+  70%      { transform: translateX(-1.5px); }
+  85%      { transform: translateX(1px); }
+}
+@keyframes dockAsterRot {
+  from { transform: rotate(0); }
+  to   { transform: rotate(360deg); }
+}
+
 /* === Write/Guide/Done shared === */
 .write-textarea {
   width: 100%;
@@ -424,6 +462,8 @@ body.themed {
 }
 
 /* === Option Z — unified write + tone (?mode=z) === */
+/* v1: bold palettes + Riso grain + registration offset + Z-depth */
+
 .z-frame {
   width: 100%;
   max-width: 480px;
@@ -434,7 +474,25 @@ body.themed {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  transition: background 0.5s, color 0.5s;
+  transition: background 0.15s cubic-bezier(0.2, 0, 0, 1),
+              color 0.15s cubic-bezier(0.2, 0, 0, 1);
+  position: relative;
+  overflow: hidden;
+  perspective: 1200px;
+  perspective-origin: center 40%;
+}
+
+/* Riso grain — SVG feTurbulence as background overlay */
+.z-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+  opacity: 0.12;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 200px 200px;
 }
 
 .z-header {
@@ -481,33 +539,53 @@ body.themed {
 .z-glyph-stage {
   position: relative;
   flex: 1;
-  min-height: 40vh;
+  min-height: 44vh;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   margin: 4px 0;
+  transform-style: preserve-3d;
 }
 
 .z-glyph-stage .graphic-layer {
   position: absolute;
   inset: 0;
   z-index: 1;
+  mix-blend-mode: var(--blend, multiply);
 }
 
 .z-glyph {
   position: relative;
   z-index: 2;
-  font-size: clamp(160px, 50vw, 320px);
+  font-size: clamp(200px, 64vw, 380px);
   line-height: 0.85;
   letter-spacing: -0.04em;
-  transition: font-variation-settings 0.4s ease-out,
-              transform 0.4s ease-out,
-              color 0.5s,
-              font-family 0.3s;
+  transition: font-variation-settings 0.2s cubic-bezier(0.2, 0, 0, 1),
+              transform 0.2s cubic-bezier(0.2, 0, 0, 1),
+              color 0.15s,
+              font-family 0.2s;
   user-select: none;
   pointer-events: none;
   text-align: center;
+}
+
+/* Registration offset — duplicate glyph in graphic color, 2px offset */
+.z-glyph::before {
+  content: attr(data-glyph);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--graphic);
+  transform: translate(2.5px, 2.5px);
+  mix-blend-mode: var(--blend, multiply);
+  z-index: -1;
+  font-weight: inherit;
+  font-variation-settings: inherit;
+  font-family: inherit;
+  pointer-events: none;
 }
 
 .z-preview-wrap {
@@ -516,6 +594,8 @@ body.themed {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  perspective: 600px;
+  transform-style: preserve-3d;
 }
 
 .z-preview {
@@ -530,14 +610,23 @@ body.themed {
 
 .z-preview .word {
   display: inline-block;
-  transition: font-weight 0.9s ease-in-out, font-variation-settings 0.9s ease-in-out;
+  transition: font-weight 0.4s cubic-bezier(0.2, 0, 0, 1),
+              font-variation-settings 0.4s cubic-bezier(0.2, 0, 0, 1),
+              transform 0.4s cubic-bezier(0.2, 0, 0, 1);
   font-weight: inherit;
   margin-right: 0.25em;
+  transform: translateZ(-12px);
 }
 
 .z-preview .word.active {
   font-weight: var(--wght-active, 400);
   font-variation-settings: 'wght' var(--wght-active, 400);
+  transform: translateZ(24px);
+}
+
+/* mini preview registration offset */
+.z-preview {
+  text-shadow: 1.5px 1.5px 0 var(--graphic);
 }
 
 .z-counter {

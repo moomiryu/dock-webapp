@@ -1,17 +1,17 @@
-// Curated palette system for Option Z (and future main flow).
-// 4 moods, each with intent. Replaces the 10-random-palette system from palettes.ts
-// when ?mode=z is active.
+// v1 — bold palette system. Full saturation, no pastels, no safe corporate tones.
+// 5 moods, each a tight 3-color triad designed for strong contrast and optical mixing.
 
-export type MoodId = 'night' | 'print' | 'day' | 'classic';
+export type MoodId = 'night' | 'print' | 'day' | 'classic' | 'electric';
 
 export interface Mood {
   id: MoodId;
-  name: string;        // Korean label
-  nameLatin: string;   // shown in header (UPPERCASE small)
+  name: string;
+  nameLatin: string;
   bg: string;
   text: string;
   graphic: string;
-  intent: string;      // designer-facing description
+  blend: 'multiply' | 'screen';  // optical mixing mode for graphic layer
+  intent: string;
 }
 
 export const moods: Mood[] = [
@@ -19,28 +19,31 @@ export const moods: Mood[] = [
     id: 'night',
     name: '밤',
     nameLatin: 'NIGHT',
-    bg: '#0A0A0A',
-    text: '#F2F2F2',
-    graphic: '#FFB800',
-    intent: '집중과 의례. 톤을 발견하는 순간. 외벽이 밤에 켜진 모습.'
+    bg: '#000000',
+    text: '#00FF88',          // neon green
+    graphic: '#FF00AA',       // magenta
+    blend: 'screen',          // additive on dark
+    intent: '한밤 외벽, 새벽 간판. 네온의 명상.'
   },
   {
     id: 'print',
     name: '인쇄',
     nameLatin: 'PRINT',
-    bg: '#F5F4ED',
-    text: '#1A3A8C',
-    graphic: '#E84545',
-    intent: '리소 듀오톤의 무게. 선언적, 진지함, "찍힘"의 흔적.'
+    bg: '#FF6B6B',            // Riso coral / fluorescent red
+    text: '#1E2A52',          // Riso midnight blue
+    graphic: '#FFD93D',       // Riso yellow
+    blend: 'multiply',        // subtractive on light
+    intent: '리소 인쇄소 견본. 듀오톤의 무게.'
   },
   {
     id: 'day',
     name: '낮',
     nameLatin: 'DAY',
-    bg: '#FFFAE3',
-    text: '#0A0A0A',
-    graphic: '#FF1493',
-    intent: '활기와 합창. 풍경에 합류하는 메시지. 카렐 마르턴스의 자신감.'
+    bg: '#FFFF00',            // fluorescent yellow
+    text: '#000000',
+    graphic: '#FF0080',       // hot pink
+    blend: 'multiply',
+    intent: '거리 광고지, 마음스튜디오. 자신감의 형광.'
   },
   {
     id: 'classic',
@@ -49,7 +52,18 @@ export const moods: Mood[] = [
     bg: '#FCE7F3',
     text: '#C2185B',
     graphic: '#8B9A1B',
-    intent: 'GT Mechanik 헌정. 익숙한 출발점. 기본값.'
+    blend: 'multiply',
+    intent: 'GT Mechanik 헌정. 출발점.'
+  },
+  {
+    id: 'electric',
+    name: '전기',
+    nameLatin: 'ELECTRIC',
+    bg: '#0033FF',            // electric ultramarine
+    text: '#FFEE00',          // yellow
+    graphic: '#FF00FF',       // magenta
+    blend: 'screen',
+    intent: 'Bauhaus + 야간 신호등. 가장 정치적.'
   }
 ];
 

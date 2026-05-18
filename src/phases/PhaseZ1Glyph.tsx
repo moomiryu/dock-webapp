@@ -89,20 +89,23 @@ export default function PhaseZ1Glyph({ initialText, initialTone, onNext }: Props
 
       <div className="z-glyph-stage">
         {hasContent ? (
-          <div
-            className="z-glyph"
-            data-glyph={firstChar}
-            style={{
-              fontFamily: fontMap[tone.font],
-              fontWeight: tone.wght,
-              fontVariationSettings: `"wght" ${tone.wght}`,
-              transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)`,
-              fontSize: tone.size * 3 + 'px',
-              color: Z1_MOOD.text
-            }}
-          >
-            {firstChar}
-          </div>
+          <>
+            <div
+              className="z-glyph"
+              data-glyph={firstChar}
+              style={{
+                fontFamily: fontMap[tone.font],
+                fontWeight: tone.wght,
+                fontVariationSettings: `"wght" ${tone.wght}`,
+                transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)`,
+                fontSize: tone.size * 3 + 'px',
+                color: Z1_MOOD.text
+              }}
+            >
+              {firstChar}
+            </div>
+            <div className="z-glyph-caption">첫 자 — 발화의 voice</div>
+          </>
         ) : (
           <div className="z-glyph-hint">
             <div className="z-glyph-hint-line">메시지를</div>
@@ -110,6 +113,21 @@ export default function PhaseZ1Glyph({ initialText, initialTone, onNext }: Props
           </div>
         )}
       </div>
+
+      {hasContent && text.trim().length > 1 && (
+        <div
+          className="z-message-preview"
+          style={{
+            fontFamily: fontMap[tone.font],
+            fontWeight: tone.wght,
+            fontVariationSettings: `"wght" ${tone.wght}`,
+            transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)`,
+            color: Z1_MOOD.text
+          }}
+        >
+          {text.trim().slice(0, MAX)}
+        </div>
+      )}
 
       <div className="z-axes">
         <CompactRow

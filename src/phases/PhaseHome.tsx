@@ -5,12 +5,10 @@ interface Props {
   onStartWrite: () => void;
 }
 
-// Home cycles through moods slowly as a "breathing" identity.
-// Each mood lingers ~6s before crossfading to the next.
-const MOOD_CYCLE_MS = 6000;
-
 export default function PhaseHome({ onStartWrite }: Props) {
-  const [moodIdx, setMoodIdx] = useState(0);
+  // First-time visitor sees a random mood — but it stays fixed once chosen
+  // (no auto-cycling: accessibility + brand consistency + screenshot stability)
+  const [moodIdx, setMoodIdx] = useState(() => Math.floor(Math.random() * moods.length));
   const mood = moods[moodIdx];
 
   useEffect(() => {
@@ -18,12 +16,9 @@ export default function PhaseHome({ onStartWrite }: Props) {
     document.body.style.setProperty('--bg-outer', mood.bg);
   }, [mood.bg]);
 
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      setMoodIdx((i) => (i + 1) % moods.length);
-    }, MOOD_CYCLE_MS);
-    return () => clearInterval(interval);
-  }, []);
+  function cycleMood() {
+    setMoodIdx((i) => (i + 1) % moods.length);
+  }
 
   return (
     <div
@@ -42,9 +37,15 @@ export default function PhaseHome({ onStartWrite }: Props) {
           캠퍼스 공공 발화 시스템
         </div>
 
-        <h1 className="home-wordmark" data-glyph="DOCK">
+        <button
+          className="home-wordmark"
+          data-glyph="DOCK"
+          onClick={cycleMood}
+          aria-label="톤 바꾸기"
+          title="탭하여 톤 바꾸기"
+        >
           DOCK
-        </h1>
+        </button>
 
         <div className="home-tagline">
           한 줄을 외벽으로 보낸다.<br />
@@ -52,9 +53,10 @@ export default function PhaseHome({ onStartWrite }: Props) {
           7일간 풍경의 일부.
         </div>
 
-        <div className="home-mood-tag">
+        <button className="home-mood-tag" onClick={cycleMood}>
           현재 톤 · {mood.nameLatin}
-        </div>
+          <span className="home-mood-hint">탭하여 변경</span>
+        </button>
 
         <div className="home-actions">
           <button className="home-cta" onClick={onStartWrite}>

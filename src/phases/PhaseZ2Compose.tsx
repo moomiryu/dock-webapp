@@ -160,15 +160,16 @@ export default function PhaseZ2Compose({
       </div>
 
       <div className="z-picker">
-        <div className="z-picker-label">STAR</div>
-        <div className="z-graphic-row">
+        <div className="z-picker-header">
+          <span className="z-picker-label">STAR</span>
           <button
-            className={'z-graphic-tile off ' + (graphicIdx === -1 ? 'on' : '')}
+            className={'z-off-btn ' + (graphicIdx === -1 ? 'on' : '')}
             onClick={() => setGraphicIdx(-1)}
-            aria-label="그래픽 끄기"
           >
-            <span>OFF</span>
+            OFF
           </button>
+        </div>
+        <div className="z-graphic-row">
           {graphicsV2.map((svg, i) => (
             <button
               key={i}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import AdminWall from './admin/AdminWall';
+import WallSimulation from './admin/WallSimulation';
 import PhaseHome from './phases/PhaseHome';
 import Phase04Write from './phases/Phase04Write';
 import Phase05Tone from './phases/Phase05Tone';
@@ -58,6 +59,10 @@ export default function App() {
     if (window.location.pathname.startsWith('/admin')) return;
     clearStageFromUrl();
   }, []);
+
+  if (window.location.pathname.startsWith('/wall')) {
+    return <WallSimulation />;
+  }
 
   if (window.location.pathname.startsWith('/admin')) {
     return <AdminWall />;

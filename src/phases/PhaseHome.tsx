@@ -62,8 +62,11 @@ export default function PhaseHome({ onStartWrite }: Props) {
           <button className="home-cta" onClick={onStartWrite}>
             <span>메시지 쓰기 시작 →</span>
           </button>
-          <a className="home-link" href="/admin">
-            외벽 미리보기
+          <a className="home-link" href="/wall">
+            외벽 풍경 보기 →
+          </a>
+          <a className="home-link home-link-secondary" href="/admin">
+            관리자 목록
           </a>
         </div>
       </div>

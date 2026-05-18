@@ -213,6 +213,30 @@ export default function WallSimulation() {
   );
 }
 
+// Relative luminance per WCAG (simplified). Higher = brighter on black canvas.
+function luminance(hex: string): number {
+  const h = hex.replace('#', '');
+  if (h.length !== 6) return 0;
+  const r = parseInt(h.slice(0, 2), 16) / 255;
+  const g = parseInt(h.slice(2, 4), 16) / 255;
+  const b = parseInt(h.slice(4, 6), 16) / 255;
+  // Quick perceptual brightness (Rec. 709 weights, sRGB approximation)
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** On the black wall, the message must be visible. Each palette has 3 colors
+ *  (bg/text/graphic) but the wall canvas is always black, so neither the
+ *  designed bg nor a too-dark text color works. Pick the brightest of the
+ *  3 for the text, and use the next-brightest for the graphic. */
+function wallColorsFor(p: { bg: string; text: string; graphic: string }): { text: string; graphic: string } {
+  const ranked = [
+    { c: p.bg, l: luminance(p.bg) },
+    { c: p.text, l: luminance(p.text) },
+    { c: p.graphic, l: luminance(p.graphic) }
+  ].sort((a, b) => b.l - a.l);
+  return { text: ranked[0].c, graphic: ranked[1].c };
+}
+
 function WallMessage({ slot, index }: { slot: WallSlot; index: number }) {
   const { msg, phase, xOffset } = slot;
   const tone = msg.tone;
@@ -228,6 +252,9 @@ function WallMessage({ slot, index }: { slot: WallSlot; index: number }) {
     return moods[3];
   }, [tone]);
 
+  // Remap to wall-readable colors (brightest → text, second → graphic)
+  const wallColors = useMemo(() => wallColorsFor(pal), [pal]);
+
   const fontFamily = tone ? fontMap[tone.font] : fontMap.gothic;
   const wght = tone?.wght ?? 400;
   const lowWght = Math.max(100, Math.round(wght * 0.5));
@@ -235,7 +262,6 @@ function WallMessage({ slot, index }: { slot: WallSlot; index: number }) {
   const skew = tone?.slnt ?? 0;
   const size = tone?.size ?? 40;
 
-  // CSS animation delay so each starts at its own phase
   const animDelay = -(phase * CYCLE_S);
 
   return (
@@ -248,13 +274,13 @@ function WallMessage({ slot, index }: { slot: WallSlot; index: number }) {
         ['--wght-base' as string]: String(lowWght),
         ['--wght-active' as string]: String(wght),
         ['--pulse-delay' as string]: `${index * 0.4}s`,
-        color: pal.text
+        color: wallColors.text
       }}
     >
       {tone && tone.graphicIdx >= 0 && tone.graphicIdx < graphicsV2.length && (
         <div
           className="wall-msg-graphic"
-          style={{ color: pal.graphic }}
+          style={{ color: wallColors.graphic }}
           dangerouslySetInnerHTML={{ __html: graphicsV2[tone.graphicIdx] }}
         />
       )}

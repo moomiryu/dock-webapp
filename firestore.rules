@@ -34,7 +34,7 @@ service cloud.firestore {
 
     function isValidTone(tone) {
       return tone.keys().hasOnly(['font', 'tone', 'wght', 'slnt', 'size', 'paletteIdx', 'graphicIdx'])
-        && tone.font in ['mono', 'gothic', 'myeongjo']
+        && tone.font in ['mono', 'gothic', 'myeongjo', 'song']
         && tone.tone is number && tone.tone >= 0.5 && tone.tone <= 2.0
         && tone.wght is int && tone.wght >= 100 && tone.wght <= 900
         && tone.slnt is int && tone.slnt >= -20 && tone.slnt <= 20

@@ -1,4 +1,12 @@
-export type FontFamily = 'mono' | 'gothic' | 'myeongjo';
+// Font family keys are *internal* identifiers tied to typographic categories.
+// Display labels in the UI use voice-mode names (외침/선언/속삭임/노래) — see
+// VOICE_LABEL in PhaseZ1Glyph. Keeping these keys stable preserves Firestore
+// schema compatibility.
+//   mono     → 선언 STATE   (measured, systematic — Orbit)
+//   gothic   → 외침 CRY     (loud, direct — Pretendard)
+//   myeongjo → 속삭임 HUSH  (intimate, slow — Noto Serif KR)
+//   song     → 노래 SONG    (free, kinetic 탈네모틀 — Sunflower)
+export type FontFamily = 'mono' | 'gothic' | 'myeongjo' | 'song';
 
 export interface ToneState {
   font: FontFamily;

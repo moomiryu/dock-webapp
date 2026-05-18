@@ -1,5 +1,39 @@
 @import './tokens.css';
 
+/* === Local fonts (Pretendard & Noto Serif KR come from CDN in index.html) === */
+
+/* Orbit — geometric display, used for 선언 STATE */
+@font-face {
+  font-family: 'Orbit';
+  src: url('/fonts/Orbit-Regular.ttf') format('truetype');
+  font-weight: 100 900;  /* single weight — browser uses Regular, faux-bolds the rest */
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Sunflower — Korean 탈네모틀(de-grid), used for 노래 SONG */
+@font-face {
+  font-family: 'Sunflower';
+  src: url('/fonts/Sunflower-Light.ttf') format('truetype');
+  font-weight: 100 349;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Sunflower';
+  src: url('/fonts/Sunflower-Medium.ttf') format('truetype');
+  font-weight: 350 649;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Sunflower';
+  src: url('/fonts/Sunflower-Bold.ttf') format('truetype');
+  font-weight: 650 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;

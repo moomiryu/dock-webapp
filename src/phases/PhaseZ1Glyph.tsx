@@ -18,10 +18,13 @@ const DEFAULT = {
   size: 80
 };
 
+// FONT options labeled by *mode of utterance* — DOCK's voice-first framing.
+// The internal key ('gothic', 'mono', ...) stays for data compatibility.
 const FONT_OPTIONS: Array<{ val: ToneState['font']; label: string }> = [
-  { val: 'mono', label: '모노' },
-  { val: 'gothic', label: '고딕' },
-  { val: 'myeongjo', label: '명조' }
+  { val: 'gothic', label: '외침' },   // CRY — Pretendard
+  { val: 'mono', label: '선언' },     // STATE — Orbit
+  { val: 'myeongjo', label: '속삭임' }, // HUSH — Noto Serif KR
+  { val: 'song', label: '노래' }       // SONG — Sunflower (탈네모틀)
 ];
 const TONE_OPTIONS = [
   { val: 0.7, label: '장체' },
@@ -40,9 +43,10 @@ const SLNT_OPTIONS = [
 ];
 
 // Korean-English label pairing (Sulki-and-Min idea-pairing).
-// Each axis label is shown as: 한글 / ENG
+// VOICE replaces FONT as the axis name — the *choice* is what kind of voice,
+// not which typographic family.
 const AXIS_LABELS: Record<string, { kr: string; en: string }> = {
-  FONT: { kr: '활자', en: 'FONT' },
+  FONT: { kr: '발화', en: 'VOICE' },
   WGHT: { kr: '무게', en: 'WGHT' },
   TONE: { kr: '결', en: 'TONE' },
   SLNT: { kr: '기울기', en: 'SLNT' },

@@ -18,9 +18,14 @@ export const palettes: Palette[] = [
 ];
 
 export const fontMap: Record<string, string> = {
-  mono: '"D2Coding", "Courier New", monospace',
+  // 선언 STATE — measured, geometric display
+  mono: '"Orbit", "D2Coding", monospace',
+  // 외침 CRY — direct, weighty sans-serif
   gothic: '"Pretendard Variable", -apple-system, sans-serif',
-  myeongjo: '"Noto Serif KR Variable", "Noto Serif KR", serif'
+  // 속삭임 HUSH — intimate, literary serif
+  myeongjo: '"Noto Serif KR Variable", "Noto Serif KR", serif',
+  // 노래 SONG — 탈네모틀, kinetic Korean
+  song: '"Sunflower", "Pretendard Variable", sans-serif'
 };
 
 export const graphics: string[] = [

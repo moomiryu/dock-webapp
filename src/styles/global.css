@@ -690,76 +690,211 @@ body.themed {
   opacity: 0.3;
 }
 
-/* === Z1 specifics === */
-.z-size-row {
-  display: flex;
-  align-items: center;
+/* === Z1 specifics (rebuilt — progressive reveal + compact axes) === */
+
+.z-frame.z1 {
   gap: 10px;
-  margin: -2px 0 4px;
 }
 
-.z-size-row input[type='range'] {
+/* Empty state hint — where glyph will appear */
+.z-glyph-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  opacity: 0.4;
+  font-family: inherit;
+  font-size: 24px;
+  font-weight: 300;
+  font-variation-settings: 'wght' 300;
+  letter-spacing: -0.01em;
+  text-align: center;
+  transition: opacity 0.4s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.z-glyph-hint-line {
+  line-height: 1.3;
+}
+
+.z-frame.z1.has-content .z-glyph-hint {
+  opacity: 0;
+}
+
+/* Axes block — hidden in empty, fades in when typing */
+.z-axes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transform: translateY(-8px);
+  transition: opacity 0.4s cubic-bezier(0.2, 0, 0, 1),
+              max-height 0.4s cubic-bezier(0.2, 0, 0, 1),
+              transform 0.4s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.z-frame.z1.has-content .z-axes {
+  opacity: 1;
+  max-height: 280px;
+  transform: translateY(0);
+}
+
+/* Compact inline axis row: label + options inline */
+.z-axis-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+}
+
+.z-axis-label {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  font-family: 'D2Coding', monospace;
+  font-weight: 700;
+  opacity: 0.6;
+  min-width: 38px;
+}
+
+.z-axis-options {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+}
+
+.z-axis-opt {
+  flex: 1;
+  background: transparent;
+  border: 1px solid currentColor;
+  color: inherit;
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 5px 4px;
+  cursor: pointer;
+  line-height: 1;
+  border-radius: 0;
+  transition: background 0.12s, color 0.12s;
+}
+
+.z-axis-opt.on {
+  background: currentColor;
+  color: var(--bg);
+}
+
+.z-axis-val {
+  font-size: 9px;
+  font-family: 'D2Coding', monospace;
+  opacity: 0.55;
+  min-width: 28px;
+  text-align: right;
+}
+
+.z-axis-line input[type='range'] {
   flex: 1;
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
-  height: 18px;
+  height: 22px;
 }
 
-.z-size-row input[type='range']::-webkit-slider-runnable-track {
+.z-axis-line input[type='range']::-webkit-slider-runnable-track {
   height: 1px;
   background: currentColor;
   opacity: 0.4;
 }
 
-.z-size-row input[type='range']::-moz-range-track {
+.z-axis-line input[type='range']::-moz-range-track {
   height: 1px;
   background: currentColor;
   opacity: 0.4;
 }
 
-.z-size-row input[type='range']::-webkit-slider-thumb {
+.z-axis-line input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   background: currentColor;
   border-radius: 50%;
-  margin-top: -7px;
+  margin-top: -6px;
   cursor: pointer;
   border: none;
 }
 
-.z-size-row input[type='range']::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+.z-axis-line input[type='range']::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
   background: currentColor;
   border-radius: 50%;
   cursor: pointer;
   border: none;
 }
 
-.z-axis-mini-label,
-.z-axis-mini-val {
-  font-size: 9px;
-  letter-spacing: 0.15em;
+/* Write row: textarea + inline counter */
+.z-write-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.z-write-row .z-input {
+  flex: 1;
+  min-height: 56px;
+  margin: 0;
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 15px;
+}
+
+.z-counter-inline {
   font-family: 'D2Coding', monospace;
-  opacity: 0.6;
-  min-width: 28px;
-}
-
-.z-axis-mini-val {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  opacity: 0.55;
+  align-self: flex-end;
+  padding-bottom: 8px;
+  min-width: 42px;
   text-align: right;
 }
 
-.z-input-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  opacity: 0.45;
-  font-family: 'D2Coding', monospace;
-  margin-top: -8px;
+.z-counter-inline span {
+  opacity: 0.5;
 }
+
+/* Progress dots */
+.z-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.z-progress .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  background: transparent;
+  opacity: 0.45;
+}
+
+.z-progress .dot.on {
+  background: currentColor;
+  opacity: 1;
+}
+
+.z-progress-label {
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  opacity: 0.45;
+  margin-left: 4px;
+  font-family: 'D2Coding', monospace;
+}
+
 
 /* === Home === */
 .home-frame {
@@ -1007,6 +1142,117 @@ body.themed {
   padding: 12px 8px;
   font-size: 10px;
   letter-spacing: 0.12em;
+}
+
+/* === Z2 picker (swatches) === */
+.z-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.z-picker-label {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  opacity: 0.55;
+  font-family: 'D2Coding', monospace;
+}
+
+.z-swatch-row,
+.z-graphic-row {
+  display: flex;
+  gap: 5px;
+}
+
+.z-swatch {
+  flex: 1;
+  aspect-ratio: 1 / 1.1;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  padding: 4px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1),
+              border-color 0.15s;
+}
+
+.z-swatch.on {
+  transform: scale(1.04);
+  border-width: 2px;
+  box-shadow: 0 0 0 2px currentColor inset;
+}
+
+.z-swatch-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  font-family: 'D2Coding', monospace;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.z-swatch-dot {
+  width: 100%;
+  height: 12px;
+  border-radius: 0;
+  margin-bottom: 0;
+}
+
+.z-graphic-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+}
+
+.z-graphic-tile {
+  aspect-ratio: 1;
+  background: transparent;
+  border: 1.5px solid currentColor;
+  border-radius: 4px;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1),
+              background 0.15s;
+  opacity: 0.55;
+}
+
+.z-graphic-tile.on {
+  opacity: 1;
+  background: currentColor;
+  transform: scale(1.05);
+}
+
+.z-graphic-tile.on svg {
+  color: var(--bg);
+}
+
+.z-graphic-tile.off {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.z-graphic-tile.off span {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  font-family: 'D2Coding', monospace;
+}
+
+.z-graphic-tile.off.on span {
+  color: var(--bg);
+}
+
+.z-graphic-tile svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 /* === Admin wall === */

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { fontMap } from '../lib/palettes';
 import { graphics as graphicsV2 } from '../lib/graphics-v2';
-import { moods, nextMoodIndex } from '../lib/palettes-v2';
+import { moods } from '../lib/palettes-v2';
 import type { ToneState } from '../types';
 
 interface Props {
@@ -86,21 +86,7 @@ export default function PhaseZ2Compose({
     }
   }, [graphicIdx]);
 
-  function cycleMood() {
-    setMoodIdx((i) => nextMoodIndex(i));
-  }
-
-  function cycleGraphic() {
-    let n = graphicIdx;
-    do {
-      n = Math.floor(Math.random() * graphicsV2.length);
-    } while (n === graphicIdx && graphicsV2.length > 1);
-    if (graphicIdx !== -1 && Math.random() < 0.15) {
-      setGraphicIdx(-1);
-    } else {
-      setGraphicIdx(n);
-    }
-  }
+  // Swatch direct-select replaces cycle: user sees all options + taps one.
 
   function handleSubmit() {
     onSubmit(text, {
@@ -151,13 +137,48 @@ export default function PhaseZ2Compose({
         <span className="z-mood-intent">"{mood.intent}"</span>
       </div>
 
-      <div className="z2-actions">
-        <button className="pill" onClick={cycleGraphic}>
-          <span>★ STAR {graphicIdx === -1 ? '· OFF' : `· ${graphicIdx + 1}`}</span>
-        </button>
-        <button className="pill" onClick={cycleMood}>
-          <span>COLOR · {mood.nameLatin}</span>
-        </button>
+      <div className="z-picker">
+        <div className="z-picker-label">COLOR</div>
+        <div className="z-swatch-row">
+          {moods.map((m, i) => (
+            <button
+              key={m.id}
+              className={'z-swatch ' + (i === moodIdx ? 'on' : '')}
+              onClick={() => setMoodIdx(i)}
+              aria-label={m.nameLatin}
+              style={{
+                background: m.bg,
+                color: m.text,
+                borderColor: i === moodIdx ? m.graphic : 'transparent'
+              }}
+            >
+              <span className="z-swatch-label">{m.nameLatin}</span>
+              <span className="z-swatch-dot" style={{ background: m.graphic }} />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="z-picker">
+        <div className="z-picker-label">STAR</div>
+        <div className="z-graphic-row">
+          <button
+            className={'z-graphic-tile off ' + (graphicIdx === -1 ? 'on' : '')}
+            onClick={() => setGraphicIdx(-1)}
+            aria-label="그래픽 끄기"
+          >
+            <span>OFF</span>
+          </button>
+          {graphicsV2.map((svg, i) => (
+            <button
+              key={i}
+              className={'z-graphic-tile ' + (graphicIdx === i ? 'on' : '')}
+              onClick={() => setGraphicIdx(i)}
+              aria-label={`그래픽 ${i + 1}`}
+              dangerouslySetInnerHTML={{ __html: svg }}
+            />
+          ))}
+        </div>
       </div>
 
       <button className="primary-action" onClick={handleSubmit}>

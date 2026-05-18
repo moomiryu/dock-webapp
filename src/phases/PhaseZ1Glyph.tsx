@@ -15,7 +15,7 @@ const DEFAULT = {
   tone: 1.0,
   wght: 400,
   slnt: 0,
-  size: 80   // larger default — Z1 is about big type
+  size: 80
 };
 
 const FONT_OPTIONS: Array<{ val: ToneState['font']; label: string }> = [
@@ -39,8 +39,6 @@ const SLNT_OPTIONS = [
   { val: -8, label: 'OBLQ' }
 ];
 
-// Z1 always uses NIGHT mood as canvas — the discovery state.
-// User picks final palette in Z2.
 const Z1_MOOD = moods.find((m) => m.id === 'night')!;
 
 export default function PhaseZ1Glyph({ initialText, initialTone, onNext }: Props) {
@@ -60,15 +58,21 @@ export default function PhaseZ1Glyph({ initialText, initialTone, onNext }: Props
     document.body.style.setProperty('--bg-outer', Z1_MOOD.bg);
   }, []);
 
-  // First character — not last. Skip leading whitespace.
+  useEffect(() => {
+    // Auto-focus textarea on mount so the user can just start typing
+    textareaRef.current?.focus();
+  }, []);
+
   const firstChar = useMemo(() => {
     const trimmed = text.replace(/^\s+/u, '');
-    return trimmed.length > 0 ? trimmed[0] : '말';
+    return trimmed.length > 0 ? trimmed[0] : null;
   }, [text]);
+
+  const hasContent = firstChar !== null;
 
   return (
     <div
-      className="z-frame"
+      className={'z-frame z1 ' + (hasContent ? 'has-content' : 'empty')}
       style={{
         ['--bg' as string]: Z1_MOOD.bg,
         ['--text' as string]: Z1_MOOD.text,
@@ -83,71 +87,75 @@ export default function PhaseZ1Glyph({ initialText, initialTone, onNext }: Props
         <span>Z1 · 자형 발견</span>
       </div>
 
-      <div className="z-controls">
-        <ControlRow
+      <div className="z-glyph-stage">
+        {hasContent ? (
+          <div
+            className="z-glyph"
+            data-glyph={firstChar}
+            style={{
+              fontFamily: fontMap[tone.font],
+              fontWeight: tone.wght,
+              fontVariationSettings: `"wght" ${tone.wght}`,
+              transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)`,
+              fontSize: tone.size * 3 + 'px',
+              color: Z1_MOOD.text
+            }}
+          >
+            {firstChar}
+          </div>
+        ) : (
+          <div className="z-glyph-hint">
+            <div className="z-glyph-hint-line">메시지를</div>
+            <div className="z-glyph-hint-line">적어주세요</div>
+          </div>
+        )}
+      </div>
+
+      <div className="z-axes">
+        <CompactRow
           label="FONT"
           options={FONT_OPTIONS.map((o) => ({ val: o.val as unknown as number, label: o.label, active: tone.font === o.val }))}
           onPick={(_v, i) => setTone((t) => ({ ...t, font: FONT_OPTIONS[i].val }))}
         />
-        <ControlRow
+        <CompactRow
           label="WGHT"
           options={WGHT_OPTIONS.map((o) => ({ val: o.val, label: o.label, active: tone.wght === o.val }))}
           onPick={(v) => setTone((t) => ({ ...t, wght: v }))}
         />
-        <ControlRow
+        <CompactRow
           label="TONE"
           options={TONE_OPTIONS.map((o) => ({ val: o.val, label: o.label, active: tone.tone === o.val }))}
           onPick={(v) => setTone((t) => ({ ...t, tone: v }))}
         />
-        <ControlRow
+        <CompactRow
           label="SLNT"
           options={SLNT_OPTIONS.map((o) => ({ val: o.val, label: o.label, active: tone.slnt === o.val }))}
           onPick={(v) => setTone((t) => ({ ...t, slnt: v }))}
         />
-      </div>
-
-      <div className="z-glyph-stage">
-        <div
-          className="z-glyph"
-          data-glyph={firstChar}
-          style={{
-            fontFamily: fontMap[tone.font],
-            fontWeight: tone.wght,
-            fontVariationSettings: `"wght" ${tone.wght}`,
-            transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)`,
-            color: Z1_MOOD.text
-          }}
-        >
-          {firstChar}
+        <div className="z-axis-line">
+          <span className="z-axis-label">SIZE</span>
+          <input
+            type="range"
+            min={40}
+            max={180}
+            step={2}
+            value={tone.size}
+            onChange={(e) => setTone((t) => ({ ...t, size: parseInt(e.target.value, 10) }))}
+          />
+          <span className="z-axis-val">{tone.size}</span>
         </div>
       </div>
 
-      <div className="z-size-row">
-        <span className="z-axis-mini-label">SIZE</span>
-        <input
-          type="range"
-          min={40}
-          max={180}
-          step={2}
-          value={tone.size}
-          onChange={(e) => setTone((t) => ({ ...t, size: parseInt(e.target.value, 10) }))}
+      <div className="z-write-row">
+        <textarea
+          ref={textareaRef}
+          className="z-input"
+          value={text}
+          maxLength={MAX}
+          placeholder="여기에 적어주세요"
+          onChange={(e) => setText(e.target.value.slice(0, MAX))}
         />
-        <span className="z-axis-mini-val">{tone.size}</span>
-      </div>
-
-      <textarea
-        ref={textareaRef}
-        className="z-input"
-        value={text}
-        maxLength={MAX}
-        placeholder="여기에 적어주세요 — 첫 글자가 위에 떠올라요"
-        onChange={(e) => setText(e.target.value.slice(0, MAX))}
-        autoFocus
-      />
-
-      <div className="z-input-meta">
-        <span>{text.length} / {MAX}</span>
-        <span>첫 글자만 미리보기 · 색·그래픽은 다음 화면</span>
+        <div className="z-counter-inline">{text.length}<span>/{MAX}</span></div>
       </div>
 
       <button
@@ -157,11 +165,16 @@ export default function PhaseZ1Glyph({ initialText, initialTone, onNext }: Props
       >
         <span>다음 — 톤·구성</span>
       </button>
+
+      <div className="z-progress">
+        <span className="dot on" /><span className="dot" />
+        <span className="z-progress-label">자형 → 구성</span>
+      </div>
     </div>
   );
 }
 
-function ControlRow({
+function CompactRow({
   label,
   options,
   onPick
@@ -171,16 +184,16 @@ function ControlRow({
   onPick: (v: number, i: number) => void;
 }) {
   return (
-    <div className="z-ctrl">
-      <div className="z-ctrl-label">{label}</div>
-      <div className="z-ctrl-row">
+    <div className="z-axis-line">
+      <span className="z-axis-label">{label}</span>
+      <div className="z-axis-options">
         {options.map((o, i) => (
           <button
             key={i}
-            className={'pill ' + (o.active ? 'on' : '')}
+            className={'z-axis-opt ' + (o.active ? 'on' : '')}
             onClick={() => onPick(o.val, i)}
           >
-            <span>{o.label}</span>
+            {o.label}
           </button>
         ))}
       </div>

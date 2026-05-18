@@ -4,7 +4,8 @@ import Phase04Write from './phases/Phase04Write';
 import Phase05Tone from './phases/Phase05Tone';
 import Phase05bDock from './phases/Phase05bDock';
 import Phase06Submit from './phases/Phase06Submit';
-import PhaseZUnified from './phases/PhaseZUnified';
+import PhaseZ1Glyph from './phases/PhaseZ1Glyph';
+import PhaseZ2Compose from './phases/PhaseZ2Compose';
 import {
   clearDraft,
   loadDraft,
@@ -15,7 +16,9 @@ import {
 import { clearStageFromUrl, getStageFromUrl } from './lib/stage';
 import type { Draft, ToneState } from './types';
 
-type Screen = 'write' | 'tone' | 'z-unified' | 'dock' | 'submit';
+type Screen = 'write' | 'tone' | 'z-1' | 'z-2' | 'dock' | 'submit';
+
+type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
 
 function isZMode(): boolean {
   const params = new URLSearchParams(window.location.search);
@@ -26,17 +29,28 @@ function pickInitialScreen(stage: ReturnType<typeof getStageFromUrl>, draft: Dra
   if (stage === 'submit') return 'submit';
   const z = isZMode();
   if (stage === 'enter') {
-    if (z) return 'z-unified';
-    if (draft && draft.tone && draft.text) return 'tone'; // resume mid-flow
+    if (z) {
+      // Resume at Z2 if we already have text + tone from previous session
+      if (draft && draft.tone && draft.text) return 'z-2';
+      return 'z-1';
+    }
+    if (draft && draft.tone && draft.text) return 'tone';
     return 'write';
   }
-  // No stage param — dev default
-  return z ? 'z-unified' : 'write';
+  return z ? 'z-1' : 'write';
 }
 
 export default function App() {
   const [draft, setDraft] = useState<Draft | null>(() => loadDraft());
   const [screen, setScreen] = useState<Screen>(() => pickInitialScreen(getStageFromUrl(), loadDraft()));
+  const [zPartialTone, setZPartialTone] = useState<PartialTone | null>(() => {
+    const d = loadDraft();
+    if (!d?.tone) return null;
+    const { paletteIdx, graphicIdx, ...rest } = d.tone;
+    void paletteIdx;
+    void graphicIdx;
+    return rest;
+  });
 
   useEffect(() => {
     if (window.location.pathname.startsWith('/admin')) return;
@@ -63,7 +77,18 @@ export default function App() {
     setScreen('dock');
   }
 
-  function handleSubmitFromZ(text: string, tone: ToneState) {
+  function handleZ1Next(text: string, partial: PartialTone) {
+    const updated = updateDraftText(text);
+    setDraft(updated);
+    setZPartialTone(partial);
+    setScreen('z-2');
+  }
+
+  function handleZ2Back() {
+    setScreen('z-1');
+  }
+
+  function handleZ2Submit(text: string, tone: ToneState) {
     handleSubmitFromTone(text, tone);
   }
 
@@ -86,12 +111,34 @@ export default function App() {
         />
       );
 
-    case 'z-unified':
+    case 'z-1':
       return (
-        <PhaseZUnified
+        <PhaseZ1Glyph
           initialText={draft?.text ?? ''}
           initialTone={draft?.tone ?? null}
-          onSubmit={handleSubmitFromZ}
+          onNext={handleZ1Next}
+        />
+      );
+
+    case 'z-2':
+      if (!zPartialTone || !draft?.text) {
+        // Shouldn't happen — fall back to z-1 if state is missing
+        return (
+          <PhaseZ1Glyph
+            initialText={draft?.text ?? ''}
+            initialTone={draft?.tone ?? null}
+            onNext={handleZ1Next}
+          />
+        );
+      }
+      return (
+        <PhaseZ2Compose
+          text={draft.text}
+          partialTone={zPartialTone}
+          initialPaletteIdx={draft.tone?.paletteIdx}
+          initialGraphicIdx={draft.tone?.graphicIdx}
+          onBack={handleZ2Back}
+          onSubmit={handleZ2Submit}
         />
       );
 

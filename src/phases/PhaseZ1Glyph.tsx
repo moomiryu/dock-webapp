@@ -24,7 +24,7 @@ const FONT_OPTIONS: Array<{ val: ToneState['font']; label: string }> = [
   { val: 'myeongjo', label: '명조' }
 ];
 const TONE_OPTIONS = [
-  { val: 0.7, label: '장' },
+  { val: 0.7, label: '장체' },
   { val: 1.0, label: '평' },
   { val: 1.3, label: '평체' }
 ];
@@ -35,9 +35,19 @@ const WGHT_OPTIONS = [
   { val: 900, label: 'BLAK' }
 ];
 const SLNT_OPTIONS = [
-  { val: 0, label: 'UPRT' },
-  { val: -8, label: 'OBLQ' }
+  { val: 0, label: '정' },
+  { val: -8, label: '경사' }
 ];
+
+// Korean-English label pairing (Sulki-and-Min idea-pairing).
+// Each axis label is shown as: 한글 / ENG
+const AXIS_LABELS: Record<string, { kr: string; en: string }> = {
+  FONT: { kr: '활자', en: 'FONT' },
+  WGHT: { kr: '무게', en: 'WGHT' },
+  TONE: { kr: '결', en: 'TONE' },
+  SLNT: { kr: '기울기', en: 'SLNT' },
+  SIZE: { kr: '크기', en: 'SIZE' }
+};
 
 const Z1_MOOD = moods.find((m) => m.id === 'night')!;
 
@@ -131,27 +141,30 @@ export default function PhaseZ1Glyph({ initialText, initialTone, onNext }: Props
 
       <div className="z-axes">
         <CompactRow
-          label="FONT"
+          axisKey="FONT"
           options={FONT_OPTIONS.map((o) => ({ val: o.val as unknown as number, label: o.label, active: tone.font === o.val }))}
           onPick={(_v, i) => setTone((t) => ({ ...t, font: FONT_OPTIONS[i].val }))}
         />
         <CompactRow
-          label="WGHT"
+          axisKey="WGHT"
           options={WGHT_OPTIONS.map((o) => ({ val: o.val, label: o.label, active: tone.wght === o.val }))}
           onPick={(v) => setTone((t) => ({ ...t, wght: v }))}
         />
         <CompactRow
-          label="TONE"
+          axisKey="TONE"
           options={TONE_OPTIONS.map((o) => ({ val: o.val, label: o.label, active: tone.tone === o.val }))}
           onPick={(v) => setTone((t) => ({ ...t, tone: v }))}
         />
         <CompactRow
-          label="SLNT"
+          axisKey="SLNT"
           options={SLNT_OPTIONS.map((o) => ({ val: o.val, label: o.label, active: tone.slnt === o.val }))}
           onPick={(v) => setTone((t) => ({ ...t, slnt: v }))}
         />
         <div className="z-axis-line">
-          <span className="z-axis-label">SIZE</span>
+          <span className="z-axis-label">
+            <span className="z-axis-label-kr">{AXIS_LABELS.SIZE.kr}</span>
+            <span className="z-axis-label-en">{AXIS_LABELS.SIZE.en}</span>
+          </span>
           <input
             type="range"
             min={40}
@@ -193,17 +206,21 @@ export default function PhaseZ1Glyph({ initialText, initialTone, onNext }: Props
 }
 
 function CompactRow({
-  label,
+  axisKey,
   options,
   onPick
 }: {
-  label: string;
+  axisKey: keyof typeof AXIS_LABELS;
   options: Array<{ val: number; label: string; active: boolean }>;
   onPick: (v: number, i: number) => void;
 }) {
+  const { kr, en } = AXIS_LABELS[axisKey];
   return (
     <div className="z-axis-line">
-      <span className="z-axis-label">{label}</span>
+      <span className="z-axis-label">
+        <span className="z-axis-label-kr">{kr}</span>
+        <span className="z-axis-label-en">{en}</span>
+      </span>
       <div className="z-axis-options">
         {options.map((o, i) => (
           <button

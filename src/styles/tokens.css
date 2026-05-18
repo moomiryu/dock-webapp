@@ -1,0 +1,109 @@
+/* === DOCK Design Tokens ==========================================
+   v2 토대 — 모든 스케일이 여기서 시작.
+   화면별 CSS는 이 토큰만 참조. 하드코드된 px/ms는 안 됨.
+
+   설계 원칙:
+   - 간격: 4px 베이스 (한글의 정밀도에 맞춰 fine-grained)
+   - 타입: 1.25 모듈러 스케일 (작은 변화로 위계 만듦)
+   - 모션: 5단계 (instant / fast / base / slow / long), 통일된 easing
+   - 색: 팔레트는 palettes-v2.ts에서 동적으로, 중립 톤만 여기서
+   ================================================================ */
+
+:root {
+  /* ─── Space (4px base) ───────────────────────────────── */
+  --sp-0: 0;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+  --sp-20: 80px;
+
+  /* ─── Type scale (1.25 ratio, base 14) ──────────────── */
+  --fs-xs: 10px;     /* tiny labels, system text */
+  --fs-sm: 12px;     /* controls, captions */
+  --fs-base: 14px;   /* body */
+  --fs-md: 16px;     /* interactive body */
+  --fs-lg: 20px;     /* small heading */
+  --fs-xl: 28px;     /* heading */
+  --fs-2xl: 40px;    /* display heading */
+  --fs-3xl: 64px;    /* hero text */
+  --fs-mega: 240px;  /* giant glyph anchor (overridden per viewport) */
+
+  /* ─── Type weights ───────────────────────────────────── */
+  --fw-thin: 100;
+  --fw-light: 300;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-bold: 700;
+  --fw-black: 900;
+
+  /* ─── Line height ────────────────────────────────────── */
+  --lh-tight: 0.9;    /* large display */
+  --lh-snug: 1.15;    /* headings */
+  --lh-base: 1.4;     /* body */
+  --lh-loose: 1.7;    /* legible paragraph */
+
+  /* ─── Letter spacing ─────────────────────────────────── */
+  --ls-tight: -0.04em;  /* display */
+  --ls-base: -0.01em;   /* body */
+  --ls-mono: 0.08em;    /* mono labels */
+  --ls-mono-loose: 0.18em; /* spaced caps */
+
+  /* ─── Motion ─────────────────────────────────────────── */
+  --t-instant: 100ms;   /* no perceived delay */
+  --t-fast: 150ms;      /* button feedback */
+  --t-base: 250ms;      /* transitions, color */
+  --t-slow: 400ms;      /* reveal animations */
+  --t-long: 600ms;      /* orchestrated transitions */
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+
+  /* ─── Border / radius ────────────────────────────────── */
+  --bw-hair: 1px;
+  --bw-thin: 1.5px;
+  --bw-base: 2px;
+  --bw-thick: 4px;
+
+  --radius-none: 0;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-pill: 999px;
+
+  /* ─── Z-index ────────────────────────────────────────── */
+  --z-base: 0;
+  --z-content: 1;
+  --z-elevated: 2;
+  --z-overlay: 100;
+  --z-modal: 200;
+  --z-toast: 300;
+
+  /* ─── Neutral tones (palettes-v2 has the color triads) ─ */
+  --c-black: #000000;
+  --c-white: #ffffff;
+  --c-paper: #f5f4ed;  /* PRINT bg, also a "paper" neutral */
+
+  /* ─── Texture / noise opacity ────────────────────────── */
+  --o-grain: 0.05;       /* Riso grain — much subtler than v1's 0.12 */
+  --o-grain-strong: 0.10;
+
+  /* ─── Layout ─────────────────────────────────────────── */
+  --frame-max: 480px;    /* phone column max-width */
+}
+
+/* === Korean-English label pairing reference =========================
+   Sulki-and-Min style idea-pairing:
+     활자  FONT
+     무게  WGHT
+     결    TONE
+     기울기 SLNT
+     크기  SIZE
+   See component CSS for usage.
+   ===================================================================== */

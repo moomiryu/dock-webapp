@@ -1,3 +1,5 @@
+@import './tokens.css';
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -495,31 +497,31 @@ body.themed {
 
 .z-frame {
   width: 100%;
-  max-width: 480px;
+  max-width: var(--frame-max);
   min-height: 100vh;
-  min-height: 100dvh; /* dvh = viewport height MINUS keyboard area when keyboard is up */
+  min-height: 100dvh;
   background: var(--bg);
   color: var(--text);
-  padding: 14px 16px 20px;
+  padding: var(--sp-3) var(--sp-4) var(--sp-5);
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  transition: background 0.15s cubic-bezier(0.2, 0, 0, 1),
-              color 0.15s cubic-bezier(0.2, 0, 0, 1);
+  gap: var(--sp-3);
+  transition: background var(--t-fast) var(--ease-standard),
+              color var(--t-fast) var(--ease-standard);
   position: relative;
   overflow: hidden;
   perspective: 1200px;
   perspective-origin: center 40%;
 }
 
-/* Riso grain — SVG feTurbulence as background overlay */
+/* Riso grain — much subtler than v1 (12% → 5%) per v2 direction */
 .z-frame::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 999;
-  opacity: 0.12;
+  z-index: var(--z-overlay);
+  opacity: var(--o-grain);
   mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
   background-size: 200px 200px;
@@ -766,15 +768,17 @@ body.themed {
 
 .z-message-preview {
   text-align: center;
-  font-size: 14px;
-  line-height: 1.35;
+  font-size: var(--fs-base);
+  line-height: var(--lh-snug);
   word-break: keep-all;
   opacity: 0.55;
-  border-top: 1px dashed currentColor;
-  padding-top: 8px;
+  border-top: var(--bw-hair) dashed currentColor;
+  padding-top: var(--sp-2);
   margin-top: -2px;
-  transition: opacity 0.3s, font-family 0.2s, transform 0.2s, font-variation-settings 0.2s;
-  text-shadow: 1px 1px 0 var(--graphic);
+  transition: opacity var(--t-base), font-family var(--t-fast),
+              transform var(--t-fast), font-variation-settings var(--t-fast);
+  /* No text-shadow registration offset — kept the giant glyph offset,
+     small text gets muddy with offset (v2 reduction) */
 }
 
 /* Axes block — hidden in empty, fades in when typing */
@@ -801,38 +805,55 @@ body.themed {
 .z-axis-line {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 26px;
+  gap: var(--sp-2);
+  min-height: 28px;
 }
 
+/* Korean-English label pair (Sulki-and-Min idea-pairing) */
 .z-axis-label {
-  font-size: 9px;
-  letter-spacing: 0.18em;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  min-width: 48px;
+  line-height: 1.1;
+}
+
+.z-axis-label-kr {
+  font-size: var(--fs-xs);
+  font-family: 'Pretendard Variable', -apple-system, sans-serif;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0;
+  opacity: 0.85;
+}
+
+.z-axis-label-en {
+  font-size: 8px;
   font-family: 'D2Coding', monospace;
-  font-weight: 700;
-  opacity: 0.6;
-  min-width: 38px;
+  letter-spacing: var(--ls-mono-loose);
+  font-weight: var(--fw-regular);
+  opacity: 0.45;
 }
 
 .z-axis-options {
   display: flex;
-  gap: 3px;
+  gap: var(--sp-1);
   flex: 1;
 }
 
 .z-axis-opt {
   flex: 1;
   background: transparent;
-  border: 1px solid currentColor;
+  border: var(--bw-hair) solid currentColor;
   color: inherit;
   font-family: inherit;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  padding: 5px 4px;
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-mono);
+  padding: 6px var(--sp-1);
   cursor: pointer;
   line-height: 1;
-  border-radius: 0;
-  transition: background 0.12s, color 0.12s;
+  border-radius: var(--radius-none);
+  transition: background var(--t-instant), color var(--t-instant);
 }
 
 .z-axis-opt.on {
@@ -841,7 +862,7 @@ body.themed {
 }
 
 .z-axis-val {
-  font-size: 9px;
+  font-size: var(--fs-xs);
   font-family: 'D2Coding', monospace;
   opacity: 0.55;
   min-width: 28px;
@@ -976,8 +997,8 @@ body.themed {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 999;
-  opacity: 0.10;
+  z-index: var(--z-overlay);
+  opacity: var(--o-grain);
   mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
   background-size: 200px 200px;
@@ -1185,15 +1206,16 @@ body.themed {
 
 .z-full-text {
   position: relative;
-  z-index: 2;
+  z-index: var(--z-elevated);
   text-align: center;
   word-break: keep-all;
-  line-height: 1.2;
+  line-height: var(--lh-snug);
   font-weight: var(--wght-base, 400);
   font-variation-settings: 'wght' var(--wght-base, 400);
-  transition: transform 0.3s, font-size 0.3s, font-family 0.3s;
-  padding: 0 4px;
-  text-shadow: 2px 2px 0 var(--graphic);
+  transition: transform var(--t-base), font-size var(--t-base), font-family var(--t-base);
+  padding: 0 var(--sp-1);
+  /* Z2 full-text drops the registration shadow per v2 — too muddy at
+     paragraph sizes. Giant glyph (Z1) keeps its ::before offset. */
 }
 
 .z-full-text .word {

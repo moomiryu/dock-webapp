@@ -960,13 +960,42 @@ body.themed {
   font-size: 15px;
 }
 
+.z-write-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-1);
+  padding-bottom: var(--sp-1);
+  min-width: 56px;
+}
+
+.z-clear-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-family: 'D2Coding', monospace;
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-mono-loose);
+  opacity: 0.45;
+  cursor: pointer;
+  padding: 0;
+}
+
+.z-clear-btn:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.z-clear-btn:disabled {
+  opacity: 0.18;
+  cursor: not-allowed;
+}
+
 .z-counter-inline {
   font-family: 'D2Coding', monospace;
-  font-size: 12px;
-  letter-spacing: 0.1em;
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-mono);
   opacity: 0.55;
-  align-self: flex-end;
-  padding-bottom: 8px;
   min-width: 42px;
   text-align: right;
 }
@@ -1268,19 +1297,6 @@ body.themed {
   transform: translateZ(32px);
 }
 
-.z-mood-tag {
-  border-top: 1px dashed currentColor;
-  padding-top: 8px;
-  text-align: center;
-}
-
-.z-mood-intent {
-  font-size: 10px;
-  letter-spacing: 0.05em;
-  opacity: 0.55;
-  font-style: italic;
-}
-
 .z2-actions {
   display: flex;
   gap: 6px;
@@ -1564,6 +1580,14 @@ body.wall-mode {
   font-family: 'D2Coding', monospace;
   font-size: 11px;
   letter-spacing: 0.25em;
+}
+
+.wall-empty-mode {
+  font-family: 'D2Coding', monospace;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  opacity: 0.5;
+  margin-top: -8px;
 }
 
 .wall-cta {

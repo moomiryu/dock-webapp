@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { clearDraft } from '../lib/draft';
 import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import type { ToneState } from '../types';
@@ -190,7 +191,22 @@ export default function PhaseZ1Glyph({ initialText, initialTone, onNext }: Props
           placeholder="여기에 적어주세요"
           onChange={(e) => setText(e.target.value.slice(0, MAX))}
         />
-        <div className="z-counter-inline">{text.length}<span>/{MAX}</span></div>
+        <div className="z-write-meta">
+          <button
+            type="button"
+            className="z-clear-btn"
+            onClick={() => {
+              setText('');
+              clearDraft();
+              textareaRef.current?.focus();
+            }}
+            aria-label="지우기"
+            disabled={!text}
+          >
+            지우기
+          </button>
+          <div className="z-counter-inline">{text.length}<span>/{MAX}</span></div>
+        </div>
       </div>
 
       <button

@@ -133,10 +133,6 @@ export default function PhaseZ2Compose({
         />
       </div>
 
-      <div className="z-mood-tag">
-        <span className="z-mood-intent">"{mood.intent}"</span>
-      </div>
-
       <div className="z-picker">
         <div className="z-picker-label">COLOR</div>
         <div className="z-swatch-row">

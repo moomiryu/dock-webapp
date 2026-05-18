@@ -177,13 +177,24 @@ export default function WallSimulation() {
           {isEmpty && !error && (
             <>
               <div className="wall-empty-glyph">···</div>
-              <div className="wall-empty-text">아직 풍경에 발화가 없습니다</div>
+              <div className="wall-empty-text">
+                아직 풍경에 발화가 없습니다
+              </div>
+              <div className="wall-empty-mode">
+                {isFirebaseConfigured()
+                  ? '저장소: Firestore (라이브)'
+                  : '저장소: 로컬 mock (?mock=1)'}
+              </div>
               <button
                 className="wall-cta"
                 onClick={seedSamples}
                 disabled={seeding}
               >
-                {seeding ? '추가 중…' : '샘플 5개 추가하여 미리보기'}
+                {seeding
+                  ? '추가 중…'
+                  : isFirebaseConfigured()
+                    ? 'Firestore에 샘플 5개 추가'
+                    : 'mock에 샘플 5개 추가'}
               </button>
               <a href="/?stage=enter&mode=z" className="wall-link-secondary">
                 또는 직접 메시지 쓰기 →

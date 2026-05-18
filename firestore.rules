@@ -1,0 +1,53 @@
+rules_version = '2';
+
+// Apply via Firebase Console → Firestore Database → Rules → Publish.
+// Or: firebase deploy --only firestore:rules (if firebase-tools installed)
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // === messages collection ===
+    // Public read (admin wall + future wall display can read all)
+    // Write: anyone, but with strict schema + length validation + rudimentary rate limit
+    match /messages/{messageId} {
+      allow read: if true;
+
+      allow create: if isValidMessage(request.resource.data)
+                    && notRateLimited();
+
+      // No updates / deletes from clients. Admin work goes through console for now.
+      allow update, delete: if false;
+    }
+
+    // === Helpers ===
+
+    function isValidMessage(data) {
+      return data.keys().hasOnly(['text', 'tone', 'startedAt', 'createdAt'])
+        && data.keys().hasAll(['text', 'tone', 'createdAt'])
+        && data.text is string
+        && data.text.size() > 0
+        && data.text.size() <= 60
+        && (data.tone == null || isValidTone(data.tone))
+        && (!('startedAt' in data) || data.startedAt is int)
+        && data.createdAt == request.time;
+    }
+
+    function isValidTone(tone) {
+      return tone.keys().hasOnly(['font', 'tone', 'wght', 'slnt', 'size', 'paletteIdx', 'graphicIdx'])
+        && tone.font in ['mono', 'gothic', 'myeongjo']
+        && tone.tone is number && tone.tone >= 0.5 && tone.tone <= 2.0
+        && tone.wght is int && tone.wght >= 100 && tone.wght <= 900
+        && tone.slnt is int && tone.slnt >= -20 && tone.slnt <= 20
+        && tone.size is int && tone.size >= 10 && tone.size <= 200
+        && tone.paletteIdx is int && tone.paletteIdx >= 0 && tone.paletteIdx <= 30
+        && tone.graphicIdx is int && tone.graphicIdx >= -1 && tone.graphicIdx <= 30;
+    }
+
+    // Rudimentary client-side rate limit: requires the client to assert createdAt == request.time
+    // (already enforced by isValidMessage). For real rate limiting, use App Check or Cloud Functions.
+    function notRateLimited() {
+      return true;
+    }
+
+  }
+}

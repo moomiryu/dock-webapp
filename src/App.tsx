@@ -4,6 +4,7 @@ import Phase04Write from './phases/Phase04Write';
 import Phase05Tone from './phases/Phase05Tone';
 import Phase05bDock from './phases/Phase05bDock';
 import Phase06Submit from './phases/Phase06Submit';
+import PhaseZUnified from './phases/PhaseZUnified';
 import {
   clearDraft,
   loadDraft,
@@ -14,16 +15,23 @@ import {
 import { clearStageFromUrl, getStageFromUrl } from './lib/stage';
 import type { Draft, ToneState } from './types';
 
-type Screen = 'write' | 'tone' | 'dock' | 'submit';
+type Screen = 'write' | 'tone' | 'z-unified' | 'dock' | 'submit';
+
+function isZMode(): boolean {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('mode') === 'z';
+}
 
 function pickInitialScreen(stage: ReturnType<typeof getStageFromUrl>, draft: Draft | null): Screen {
   if (stage === 'submit') return 'submit';
+  const z = isZMode();
   if (stage === 'enter') {
+    if (z) return 'z-unified';
     if (draft && draft.tone && draft.text) return 'tone'; // resume mid-flow
     return 'write';
   }
   // No stage param — dev default
-  return 'write';
+  return z ? 'z-unified' : 'write';
 }
 
 export default function App() {
@@ -55,6 +63,10 @@ export default function App() {
     setScreen('dock');
   }
 
+  function handleSubmitFromZ(text: string, tone: ToneState) {
+    handleSubmitFromTone(text, tone);
+  }
+
   function handleRestart() {
     clearDraft();
     setDraft(null);
@@ -71,6 +83,15 @@ export default function App() {
           initialText={draft?.text ?? ''}
           initialTone={draft?.tone ?? null}
           onSubmit={handleSubmitFromTone}
+        />
+      );
+
+    case 'z-unified':
+      return (
+        <PhaseZUnified
+          initialText={draft?.text ?? ''}
+          initialTone={draft?.tone ?? null}
+          onSubmit={handleSubmitFromZ}
         />
       );
 

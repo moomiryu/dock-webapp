@@ -31,7 +31,16 @@ async function buildRealClient(): Promise<FirestoreLike> {
     import('firebase/app'),
     import('firebase/firestore')
   ]);
-  const { getFirestore, addDoc, collection, serverTimestamp, getDocs, orderBy, query, limit: fsLimit } = firestore;
+  const {
+    initializeFirestore,
+    addDoc,
+    collection,
+    serverTimestamp,
+    getDocs,
+    orderBy,
+    query,
+    limit: fsLimit
+  } = firestore;
 
   const app = initializeApp({
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -42,7 +51,14 @@ async function buildRealClient(): Promise<FirestoreLike> {
     appId: import.meta.env.VITE_FIREBASE_APP_ID
   });
 
-  const db = getFirestore(app);
+  // Force long-polling transport instead of default gRPC/WebChannel streams.
+  // Default transport hangs on some Korean university/corporate networks where
+  // long-lived connections are blocked or throttled. Long-polling falls back
+  // to regular HTTPS requests which firewalls leave alone. Slightly more
+  // overhead but reliable. autoDetect can be flaky so we just force it.
+  const db = initializeFirestore(app, {
+    experimentalForceLongPolling: true
+  });
 
   return {
     async addMessage(d: Draft) {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import AdminWall from './admin/AdminWall';
+import PhaseHome from './phases/PhaseHome';
 import Phase04Write from './phases/Phase04Write';
 import Phase05Tone from './phases/Phase05Tone';
 import Phase05bDock from './phases/Phase05bDock';
@@ -16,7 +17,7 @@ import {
 import { clearStageFromUrl, getStageFromUrl } from './lib/stage';
 import type { Draft, ToneState } from './types';
 
-type Screen = 'write' | 'tone' | 'z-1' | 'z-2' | 'dock' | 'submit';
+type Screen = 'home' | 'write' | 'tone' | 'z-1' | 'z-2' | 'dock' | 'submit';
 
 type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
 
@@ -29,15 +30,16 @@ function pickInitialScreen(stage: ReturnType<typeof getStageFromUrl>, draft: Dra
   if (stage === 'submit') return 'submit';
   const z = isZMode();
   if (stage === 'enter') {
+    // NFC arrival — bypass home, go straight to writing
     if (z) {
-      // Resume at Z2 if we already have text + tone from previous session
       if (draft && draft.tone && draft.text) return 'z-2';
       return 'z-1';
     }
     if (draft && draft.tone && draft.text) return 'tone';
     return 'write';
   }
-  return z ? 'z-1' : 'write';
+  // No stage param — direct URL visit. Show home page.
+  return 'home';
 }
 
 export default function App() {
@@ -77,6 +79,10 @@ export default function App() {
     setScreen('dock');
   }
 
+  function handleHomeStart() {
+    setScreen(isZMode() ? 'z-1' : 'write');
+  }
+
   function handleZ1Next(text: string, partial: PartialTone) {
     const updated = updateDraftText(text);
     setDraft(updated);
@@ -99,6 +105,9 @@ export default function App() {
   }
 
   switch (screen) {
+    case 'home':
+      return <PhaseHome onStartWrite={handleHomeStart} />;
+
     case 'write':
       return <Phase04Write initialText={draft?.text ?? ''} onNext={handleNextFromWrite} />;
 

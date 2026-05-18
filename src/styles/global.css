@@ -1637,10 +1637,14 @@ body.wall-mode {
 
 .wall-msg-graphic {
   position: absolute;
-  inset: -40px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 280px;
+  height: 200px;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.45;
+  opacity: 0.22;
   mix-blend-mode: screen;
 }
 
@@ -1654,16 +1658,22 @@ body.wall-mode {
   position: relative;
   z-index: 1;
   text-align: center;
-  line-height: 1.2;
+  line-height: 1.25;
   word-break: keep-all;
   letter-spacing: -0.01em;
-  padding: 0 16px;
+  padding: 0 20px;
   font-weight: var(--wght-base, 400);
   font-variation-settings: 'wght' var(--wght-base, 400);
+  max-width: 100%;
+}
+
+.wall-text-inner {
+  display: inline-block;
+  white-space: normal;
 }
 
 .wall-msg-text .word {
-  display: inline-block;
+  display: inline;
   transition: font-weight 0.9s ease-in-out, font-variation-settings 0.9s ease-in-out;
   font-weight: inherit;
 }

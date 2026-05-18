@@ -7,7 +7,7 @@
 //
 // For development this loops faster than 7 days — full cycle ~90s per message.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fontMap } from '../lib/palettes';
 import { graphics as graphicsV2 } from '../lib/graphics-v2';
 import { palettes as legacyPalettes } from '../lib/palettes';
@@ -273,43 +273,55 @@ function WallMessage({ slot, index }: { slot: WallSlot; index: number }) {
 }
 
 function WallText({ text }: { text: string }) {
-  // Same line-pulse pattern as Z2 / MessageTile — split into word spans
-  // and toggle .active per line on a 2.4s interval.
-  const [activeLine, setActiveLine] = useState(0);
-  const words = text.split(/\s+/);
-  const [lineMap, setLineMap] = useState<number[]>([]);
+  // Port the line-detection pattern from MessageTile: render word spans with
+  // real whitespace between them so the browser can wrap on long messages,
+  // then measure visual lines via getBoundingClientRect.
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Recompute lineMap by querying DOM bounds after render
-    const id = window.setTimeout(() => {
-      const container = document.getElementById('wall-text-probe-' + text.slice(0, 8));
-      void container;
-      // We just toggle by index instead — simpler for the simulation
-      setLineMap(words.map((_, i) => i % 3));
-    }, 16);
-    return () => clearTimeout(id);
+    const el = containerRef.current;
+    if (!el) return;
+    const visible = text.trim();
+    if (!visible) {
+      el.innerHTML = '';
+      return;
+    }
+    const words = visible.split(/\s+/);
+    // CRITICAL: join with literal space so the browser has a wrap opportunity
+    el.innerHTML = words.map((w) => `<span class="word">${escapeHtml(w)}</span>`).join(' ');
+    const spans = el.querySelectorAll<HTMLSpanElement>('.word');
+
+    // Detect visual lines based on each span's top coordinate
+    let curTop: number | null = null;
+    let curLine = -1;
+    spans.forEach((s) => {
+      const top = Math.round(s.getBoundingClientRect().top);
+      if (curTop === null || Math.abs(top - curTop) > 5) {
+        curLine++;
+        curTop = top;
+      }
+      s.dataset.line = String(curLine);
+    });
+    const lineCount = curLine + 1;
+    if (lineCount === 0) return;
+
+    let idx = 0;
+    function tick() {
+      spans.forEach((s) => {
+        s.classList.toggle('active', parseInt(s.dataset.line ?? '-1', 10) === idx);
+      });
+      idx = (idx + 1) % lineCount;
+    }
+    tick();
+    const interval = window.setInterval(tick, 2400);
+    return () => clearInterval(interval);
   }, [text]);
 
-  useEffect(() => {
-    const lineCount = Math.max(1, Math.max(...(lineMap.length ? lineMap : [0])) + 1);
-    const interval = window.setInterval(() => {
-      setActiveLine((l) => (l + 1) % lineCount);
-    }, 2400);
-    return () => clearInterval(interval);
-  }, [lineMap]);
+  return <div ref={containerRef} className="wall-text-inner" />;
+}
 
-  return (
-    <>
-      {words.map((w, i) => (
-        <span
-          key={i}
-          className={'word ' + ((lineMap[i] ?? 0) === activeLine ? 'active' : '')}
-        >
-          {w}{' '}
-        </span>
-      ))}
-    </>
-  );
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function hashStr(s: string): number {

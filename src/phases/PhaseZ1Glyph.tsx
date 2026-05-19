@@ -99,11 +99,11 @@ export default function PhaseZ1Glyph({ initialText, initialTone, onNext }: Props
     >
       <div className="z-header">
         <span>DOCK</span>
-        <span>Z1 · 자형 발견</span>
+        <span>1 / 2 · 음성 정하기</span>
       </div>
 
       <div className="z-glyph-stage">
-        {hasContent ? (
+        {hasContent && firstChar ? (
           <>
             <div
               className="z-glyph"
@@ -119,12 +119,12 @@ export default function PhaseZ1Glyph({ initialText, initialTone, onNext }: Props
             >
               {firstChar}
             </div>
-            <div className="z-glyph-caption">첫 자 — 발화의 voice</div>
+            <div className="z-glyph-caption">첫 글자로 음성의 모양을 정해요</div>
           </>
         ) : (
           <div className="z-glyph-hint">
-            <div className="z-glyph-hint-line">메시지를</div>
-            <div className="z-glyph-hint-line">적어주세요</div>
+            <div className="z-glyph-hint-line">한 줄을</div>
+            <div className="z-glyph-hint-line">적어보세요</div>
           </div>
         )}
       </div>
@@ -188,7 +188,7 @@ export default function PhaseZ1Glyph({ initialText, initialTone, onNext }: Props
           className="z-input"
           value={text}
           maxLength={MAX}
-          placeholder="여기에 적어주세요"
+          placeholder="60자 안에서 한 줄"
           onChange={(e) => setText(e.target.value.slice(0, MAX))}
         />
         <div className="z-write-meta">
@@ -214,12 +214,12 @@ export default function PhaseZ1Glyph({ initialText, initialTone, onNext }: Props
         disabled={!text.trim()}
         onClick={() => onNext(text.trim().slice(0, MAX), tone)}
       >
-        <span>다음 — 톤·구성</span>
+        <span>이 음성으로, 다음 →</span>
       </button>
 
       <div className="z-progress">
         <span className="dot on" /><span className="dot" />
-        <span className="z-progress-label">자형 → 구성</span>
+        <span className="z-progress-label">음성 → 색·그래픽</span>
       </div>
     </div>
   );

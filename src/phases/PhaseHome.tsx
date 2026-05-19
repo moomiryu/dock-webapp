@@ -48,9 +48,9 @@ export default function PhaseHome({ onStartWrite }: Props) {
         </button>
 
         <div className="home-tagline">
-          한 줄을 외벽으로 보낸다.<br />
-          60자, 당신이 결정하는 형식.<br />
-          7일간 풍경의 일부.
+          한 줄을 풍경에 둡니다.<br />
+          형식은 당신이 정해요.<br />
+          7일간 머무릅니다.
         </div>
 
         <button className="home-mood-tag" onClick={cycleMood}>
@@ -60,7 +60,7 @@ export default function PhaseHome({ onStartWrite }: Props) {
 
         <div className="home-actions">
           <button className="home-cta" onClick={onStartWrite}>
-            <span>메시지 쓰기 시작 →</span>
+            <span>메시지 쓰러 가기 →</span>
           </button>
           <a className="home-link" href="/wall">
             외벽 풍경 보기 →
@@ -74,7 +74,7 @@ export default function PhaseHome({ onStartWrite }: Props) {
       <div className="home-footer">
         <span>DOCK v0.1</span>
         <span>· · ·</span>
-        <span>모르겠다면 R2 거치대에 폰을 올리세요</span>
+        <span>R2 거치대에 폰을 올려도 시작돼요</span>
       </div>
     </div>
   );

@@ -17,14 +17,14 @@ export default function Phase05bDock({ onSimulateTap }: Props) {
   }
 
   return (
-    <DockFrame phaseLabel="PHASE 05b / 도킹 안내">
+    <DockFrame phaseLabel="다시 한 번 거치대에 올려주세요">
       <div className="guide-hero">
         <div className="glyph" aria-hidden>📡</div>
-        <h1>이제 폰을 다시<br />NFC에 태깅해주세요</h1>
+        <h1>다시 한 번<br />거치대에 올려주세요</h1>
         <p>
           폰을 R2 거치대 후면에<br />
           한 번 더 안착시키면<br />
-          메시지가 외벽으로 전송됩니다.
+          메시지가 외벽으로 떠나요.
         </p>
       </div>
 
@@ -33,11 +33,10 @@ export default function Phase05bDock({ onSimulateTap }: Props) {
         onClick={simulateSecondTap}
         style={{ marginTop: 16 }}
       >
-        <span>(개발) 재태깅 시뮬 — 바로 전송</span>
+        <span>(개발) 바로 보내기</span>
       </button>
       <p className="dock-sim-note">
-        실제 NFC 태그 없이 흐름을 끝까지 보기 위한 임시 버튼이에요.
-        프로덕션에선 가려집니다.
+        NFC 태그 없이 흐름을 끝까지 보기 위한 임시 버튼이에요.
       </p>
     </DockFrame>
   );

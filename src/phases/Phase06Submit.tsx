@@ -42,23 +42,27 @@ export default function Phase06Submit({ draft, onRestart }: Props) {
   }, [draft]);
 
   return (
-    <DockFrame phaseLabel="PHASE 06 / 도킹 완료">
+    <DockFrame phaseLabel="풍경에 합류했어요">
       <div className="guide-hero">
         {status.kind === 'sending' && (
           <>
             <div className="glyph" aria-hidden>↑</div>
-            <h1>외벽으로 보내는 중…</h1>
-            <p>잠시만 기다려주세요.</p>
+            <h1>풍경으로 보내는 중…</h1>
+            <p>잠시만요.</p>
           </>
         )}
 
         {status.kind === 'sent' && (
           <>
             <div className="glyph" aria-hidden>✶</div>
-            <h1>메시지가 외벽에 떠올랐어요</h1>
+            <h1>풍경에 합류했어요</h1>
             <p>
-              7일 동안 풍경의 일부가 됩니다.<br />
-              이제 폰을 거치대에서 떼셔도 좋아요.
+              12초간 풍경의 중심에 머무르고,<br />
+              7일간 풍경의 일부가 됩니다.
+            </p>
+            <p className="phase06-promise">
+              한 번 떠난 말은 수정할 수 없어요.<br />
+              이대로 두면 됩니다.
             </p>
             {!isFirebaseConfigured() && (
               <p style={{ fontSize: 10, opacity: 0.55 }}>
@@ -73,10 +77,10 @@ export default function Phase06Submit({ draft, onRestart }: Props) {
         {status.kind === 'error' && (
           <>
             <div className="glyph" aria-hidden>!</div>
-            <h1>전송에 실패했어요</h1>
+            <h1>보내지 못했어요</h1>
             <p>{status.message}</p>
             <button className="primary-action" onClick={onRestart} style={{ marginTop: 8 }}>
-              <span>처음으로</span>
+              <span>다시 쓰기</span>
             </button>
           </>
         )}

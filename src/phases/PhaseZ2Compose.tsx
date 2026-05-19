@@ -111,10 +111,10 @@ export default function PhaseZ2Compose({
       }}
     >
       <div className="z-header">
-        <button className="z-back" onClick={onBack} aria-label="자형으로 돌아가기">
-          ← 자형
+        <button className="z-back" onClick={onBack} aria-label="음성 다시 정하기">
+          ← 음성 다시
         </button>
-        <span>{mood.nameLatin} · 톤·구성 · Z2</span>
+        <span>2 / 2 · 색·그래픽 · {mood.nameLatin}</span>
       </div>
 
       <div className="z-full-stage">
@@ -179,7 +179,7 @@ export default function PhaseZ2Compose({
       </div>
 
       <button className="primary-action" onClick={handleSubmit}>
-        <span>맡 기 기</span>
+        <span>풍경에 맡기기</span>
       </button>
     </div>
   );

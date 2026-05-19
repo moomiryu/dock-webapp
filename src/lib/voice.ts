@@ -96,6 +96,14 @@ export function modeToTone(m: VoiceMode): Pick<ToneState, 'font' | 'wght' | 'ton
 const LOUD_THRESHOLD = 0.12;     // RMS above this = loud
 const FAST_THRESHOLD = 3.5;      // peaks/sec above this = fast
 
+/** Below this, treat as silence — don't classify, ask user to retry. */
+export const SILENCE_THRESHOLD = 0.018;
+
+/** Voice was too quiet to analyze meaningfully. */
+export function isSilent(v: VoiceAnalysis): boolean {
+  return v.volume < SILENCE_THRESHOLD;
+}
+
 interface RecorderHandle {
   stop: () => Promise<VoiceAnalysis>;
   /** Subscribe to live envelope samples (for waveform UI). Called ~30fps. */

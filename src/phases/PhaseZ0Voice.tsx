@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { classify, modeToTone, startRecording } from '../lib/voice';
+import { classify, isSilent, modeToTone, startRecording } from '../lib/voice';
 import type { VoiceMode } from '../lib/voice';
 import type { ToneState } from '../types';
 
@@ -9,7 +9,7 @@ interface Props {
   onDone: (partialTone: PartialTone | null) => void;
 }
 
-type Stage = 'intro' | 'recording' | 'result' | 'error';
+type Stage = 'intro' | 'recording' | 'result' | 'silent' | 'error';
 
 const RECORD_MS = 5500;
 
@@ -49,7 +49,12 @@ export default function PhaseZ0Voice({ onDone }: Props) {
 
       const analysis = await rec.stop();
       if (tickRef.current) clearInterval(tickRef.current);
-      const m = classify(analysis as Parameters<typeof classify>[0]);
+      const a = analysis as Parameters<typeof classify>[0];
+      if (isSilent(a)) {
+        setStage('silent');
+        return;
+      }
+      const m = classify(a);
       setMode(m);
       setStage('result');
     } catch (err) {
@@ -150,6 +155,27 @@ export default function PhaseZ0Voice({ onDone }: Props) {
             </button>
             <button className="voice-skip" onClick={skip}>
               직접 정하기 →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {stage === 'silent' && (
+        <div className="voice-stage">
+          <div className="voice-mic" aria-hidden>
+            <span>···</span>
+          </div>
+          <h1 className="voice-h1">소리가 너무 작아요</h1>
+          <p className="voice-body">
+            마이크가 목소리를 못 들었어요.<br />
+            조금만 더 크게, 가까이서 다시 해볼까요?
+          </p>
+          <div className="voice-actions">
+            <button className="primary-action" onClick={retry}>
+              <span>다시 녹음 →</span>
+            </button>
+            <button className="voice-skip" onClick={skip}>
+              건너뛰고 직접 정하기 →
             </button>
           </div>
         </div>

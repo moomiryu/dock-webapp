@@ -1430,6 +1430,78 @@ body.themed {
   z-index: 2;
 }
 
+/* === Z1 Write (text-only) ============================== */
+.z-write-stage {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: stretch;
+  margin: var(--sp-3) 0;
+}
+
+.z-input-big {
+  width: 100%;
+  min-height: 30vh;
+  font-size: var(--fs-lg);
+  text-align: left;
+  padding: var(--sp-4) var(--sp-4);
+  line-height: var(--lh-loose);
+  background: transparent;
+  border: var(--bw-hair) solid currentColor;
+  border-radius: var(--radius-md);
+  color: inherit;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+}
+
+.z-input-big::placeholder {
+  color: currentColor;
+  opacity: 0.35;
+}
+
+.z-input-big:focus {
+  outline: var(--bw-hair) dashed currentColor;
+  outline-offset: 4px;
+}
+
+.z-write-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--sp-1);
+}
+
+.z-voice-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: var(--bw-hair) dashed currentColor;
+  border-radius: var(--radius-md);
+  align-self: flex-start;
+  opacity: 0.7;
+}
+
+.z-voice-badge-label {
+  font-family: 'D2Coding', monospace;
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-mono);
+  opacity: 0.65;
+}
+
+.z-voice-badge-value {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-medium);
+}
+
+.z-voice-badge-en {
+  font-family: 'D2Coding', monospace;
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-mono-loose);
+  opacity: 0.6;
+  margin-left: var(--sp-1);
+}
+
 /* === Z2 specifics === */
 .z-frame.z2 {
   gap: 12px;

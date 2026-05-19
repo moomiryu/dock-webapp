@@ -7,8 +7,9 @@ import Phase05Tone from './phases/Phase05Tone';
 import Phase05bDock from './phases/Phase05bDock';
 import Phase06Submit from './phases/Phase06Submit';
 import PhaseZ0Voice from './phases/PhaseZ0Voice';
-import PhaseZ1Glyph from './phases/PhaseZ1Glyph';
-import PhaseZ2Compose from './phases/PhaseZ2Compose';
+import PhaseZ1Write from './phases/PhaseZ1Write';
+import PhaseZ2Glyph from './phases/PhaseZ2Glyph';
+import PhaseZ3Compose from './phases/PhaseZ3Compose';
 import {
   clearDraft,
   loadDraft,
@@ -19,7 +20,16 @@ import {
 import { clearStageFromUrl, getStageFromUrl } from './lib/stage';
 import type { Draft, ToneState } from './types';
 
-type Screen = 'home' | 'write' | 'tone' | 'z-0' | 'z-1' | 'z-2' | 'dock' | 'submit';
+type Screen =
+  | 'home'
+  | 'write'   // main flow (legacy) — Phase 04
+  | 'tone'    // main flow (legacy) — Phase 05
+  | 'z-0'     // Z mode — voice intro
+  | 'z-1'     // Z mode — write text
+  | 'z-2'     // Z mode — tune glyph (자형)
+  | 'z-3'     // Z mode — compose color+graphic
+  | 'dock'
+  | 'submit';
 
 type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
 
@@ -33,16 +43,14 @@ function pickInitialScreen(stage: ReturnType<typeof getStageFromUrl>, draft: Dra
   const z = isZMode();
   if (stage === 'enter') {
     // NFC arrival — bypass home, go straight to writing.
-    // Z mode: voice intro first (skippable) → Z1 → Z2.
-    // If there's already a draft with tone, jump directly into Z2 (resume).
+    // Z mode: voice intro → write → glyph → compose. If draft+tone exists, resume at z-3.
     if (z) {
-      if (draft && draft.tone && draft.text) return 'z-2';
+      if (draft && draft.tone && draft.text) return 'z-3';
       return 'z-0';
     }
     if (draft && draft.tone && draft.text) return 'tone';
     return 'write';
   }
-  // No stage param — direct URL visit. Show home page.
   return 'home';
 }
 
@@ -80,7 +88,6 @@ export default function App() {
   function handleSubmitFromTone(text: string, tone: ToneState) {
     const cur = loadDraft() ?? newDraft(text);
     const updated: Draft = { ...cur, text, tone };
-    // persist both at once
     updateDraftText(text);
     const final = updateDraftTone(tone);
     setDraft(final ?? updated);
@@ -93,7 +100,6 @@ export default function App() {
 
   function handleVoiceDone(voicePartial: PartialTone | null) {
     if (voicePartial) {
-      // Voice analysis preset → seeds Z1's tone
       setZPartialTone({
         font: voicePartial.font,
         wght: voicePartial.wght,
@@ -105,10 +111,9 @@ export default function App() {
     setScreen('z-1');
   }
 
-  function handleZ1Next(text: string, partial: PartialTone) {
+  function handleZ1Next(text: string) {
     const updated = updateDraftText(text);
     setDraft(updated);
-    setZPartialTone(partial);
     setScreen('z-2');
   }
 
@@ -116,7 +121,16 @@ export default function App() {
     setScreen('z-1');
   }
 
-  function handleZ2Submit(text: string, tone: ToneState) {
+  function handleZ2Next(partial: PartialTone) {
+    setZPartialTone(partial);
+    setScreen('z-3');
+  }
+
+  function handleZ3Back() {
+    setScreen('z-2');
+  }
+
+  function handleZ3Submit(text: string, tone: ToneState) {
     handleSubmitFromTone(text, tone);
   }
 
@@ -147,37 +161,54 @@ export default function App() {
 
     case 'z-1':
       return (
-        <PhaseZ1Glyph
+        <PhaseZ1Write
           initialText={draft?.text ?? ''}
-          initialTone={
-            draft?.tone ??
-            (zPartialTone
-              ? { ...zPartialTone, paletteIdx: 0, graphicIdx: -1 }
-              : null)
-          }
+          voicePreset={zPartialTone ? { font: zPartialTone.font, wght: zPartialTone.wght } : null}
           onNext={handleZ1Next}
         />
       );
 
     case 'z-2':
-      if (!zPartialTone || !draft?.text) {
-        // Shouldn't happen — fall back to z-1 if state is missing
+      if (!draft?.text) {
+        // Shouldn't happen — fall back to z-1 if no text yet
         return (
-          <PhaseZ1Glyph
+          <PhaseZ1Write
             initialText={draft?.text ?? ''}
-            initialTone={draft?.tone ?? null}
+            voicePreset={zPartialTone ? { font: zPartialTone.font, wght: zPartialTone.wght } : null}
             onNext={handleZ1Next}
           />
         );
       }
       return (
-        <PhaseZ2Compose
+        <PhaseZ2Glyph
+          text={draft.text}
+          initialTone={
+            draft.tone ??
+            (zPartialTone ? { ...zPartialTone, paletteIdx: 0, graphicIdx: -1 } : null)
+          }
+          onBack={handleZ2Back}
+          onNext={handleZ2Next}
+        />
+      );
+
+    case 'z-3':
+      if (!zPartialTone || !draft?.text) {
+        return (
+          <PhaseZ1Write
+            initialText={draft?.text ?? ''}
+            voicePreset={zPartialTone ? { font: zPartialTone.font, wght: zPartialTone.wght } : null}
+            onNext={handleZ1Next}
+          />
+        );
+      }
+      return (
+        <PhaseZ3Compose
           text={draft.text}
           partialTone={zPartialTone}
           initialPaletteIdx={draft.tone?.paletteIdx}
           initialGraphicIdx={draft.tone?.graphicIdx}
-          onBack={handleZ2Back}
-          onSubmit={handleZ2Submit}
+          onBack={handleZ3Back}
+          onSubmit={handleZ3Submit}
         />
       );
 

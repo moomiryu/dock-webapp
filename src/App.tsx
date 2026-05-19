@@ -6,6 +6,7 @@ import Phase04Write from './phases/Phase04Write';
 import Phase05Tone from './phases/Phase05Tone';
 import Phase05bDock from './phases/Phase05bDock';
 import Phase06Submit from './phases/Phase06Submit';
+import PhaseZ0Voice from './phases/PhaseZ0Voice';
 import PhaseZ1Glyph from './phases/PhaseZ1Glyph';
 import PhaseZ2Compose from './phases/PhaseZ2Compose';
 import {
@@ -18,7 +19,7 @@ import {
 import { clearStageFromUrl, getStageFromUrl } from './lib/stage';
 import type { Draft, ToneState } from './types';
 
-type Screen = 'home' | 'write' | 'tone' | 'z-1' | 'z-2' | 'dock' | 'submit';
+type Screen = 'home' | 'write' | 'tone' | 'z-0' | 'z-1' | 'z-2' | 'dock' | 'submit';
 
 type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
 
@@ -31,10 +32,12 @@ function pickInitialScreen(stage: ReturnType<typeof getStageFromUrl>, draft: Dra
   if (stage === 'submit') return 'submit';
   const z = isZMode();
   if (stage === 'enter') {
-    // NFC arrival — bypass home, go straight to writing
+    // NFC arrival — bypass home, go straight to writing.
+    // Z mode: voice intro first (skippable) → Z1 → Z2.
+    // If there's already a draft with tone, jump directly into Z2 (resume).
     if (z) {
       if (draft && draft.tone && draft.text) return 'z-2';
-      return 'z-1';
+      return 'z-0';
     }
     if (draft && draft.tone && draft.text) return 'tone';
     return 'write';
@@ -85,7 +88,21 @@ export default function App() {
   }
 
   function handleHomeStart() {
-    setScreen(isZMode() ? 'z-1' : 'write');
+    setScreen(isZMode() ? 'z-0' : 'write');
+  }
+
+  function handleVoiceDone(voicePartial: PartialTone | null) {
+    if (voicePartial) {
+      // Voice analysis preset → seeds Z1's tone
+      setZPartialTone({
+        font: voicePartial.font,
+        wght: voicePartial.wght,
+        tone: voicePartial.tone,
+        slnt: voicePartial.slnt,
+        size: voicePartial.size
+      });
+    }
+    setScreen('z-1');
   }
 
   function handleZ1Next(text: string, partial: PartialTone) {
@@ -125,11 +142,19 @@ export default function App() {
         />
       );
 
+    case 'z-0':
+      return <PhaseZ0Voice onDone={handleVoiceDone} />;
+
     case 'z-1':
       return (
         <PhaseZ1Glyph
           initialText={draft?.text ?? ''}
-          initialTone={draft?.tone ?? null}
+          initialTone={
+            draft?.tone ??
+            (zPartialTone
+              ? { ...zPartialTone, paletteIdx: 0, graphicIdx: -1 }
+              : null)
+          }
           onNext={handleZ1Next}
         />
       );

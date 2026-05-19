@@ -1271,21 +1271,51 @@ body.themed {
 .z-full-stage {
   position: relative;
   flex: 1 1 auto;
-  min-height: 200px;
+  min-height: 240px;
   max-height: 60dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  margin: 4px 0;
+  margin: var(--sp-1) 0;
   transform-style: preserve-3d;
+}
+
+/* Subtle horizontal track lines (echoes /wall projector grid) */
+.z-stage-tracks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.z-stage-tracks span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.06;
 }
 
 .z-full-stage .graphic-layer {
   position: absolute;
-  inset: 0;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 75%;
+  max-width: 320px;
+  aspect-ratio: 380 / 260;
   z-index: 1;
+  pointer-events: none;
+  opacity: 0.55;
   mix-blend-mode: var(--blend, multiply);
+}
+
+.z-full-stage .graphic-layer svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .z-full-text {
@@ -1297,25 +1327,43 @@ body.themed {
   font-weight: var(--wght-base, 400);
   font-variation-settings: 'wght' var(--wght-base, 400);
   transition: transform var(--t-base), font-size var(--t-base), font-family var(--t-base);
-  padding: 0 var(--sp-1);
-  /* Z2 full-text drops the registration shadow per v2 — too muddy at
-     paragraph sizes. Giant glyph (Z1) keeps its ::before offset. */
+  padding: 0 var(--sp-3);
+  /* Force the message to wrap so 줄바꿈 shows in preview — wall messages
+     are often long enough to break across lines. */
+  max-width: 88%;
+}
+
+.z-stage-caption {
+  position: absolute;
+  bottom: var(--sp-2);
+  left: 0;
+  right: 0;
+  font-family: 'D2Coding', monospace;
+  font-size: 9px;
+  letter-spacing: var(--ls-mono-loose);
+  opacity: 0.4;
+  text-align: center;
+  z-index: var(--z-elevated);
+  pointer-events: none;
 }
 
 .z-full-text .word {
   display: inline-block;
-  transition: font-weight 0.4s cubic-bezier(0.2, 0, 0, 1),
-              font-variation-settings 0.4s cubic-bezier(0.2, 0, 0, 1),
-              transform 0.4s cubic-bezier(0.2, 0, 0, 1);
+  transition: font-weight var(--t-slow) var(--ease-standard),
+              font-variation-settings var(--t-slow) var(--ease-standard),
+              transform var(--t-slow) var(--ease-standard),
+              opacity var(--t-slow) var(--ease-standard);
   font-weight: inherit;
   margin-right: 0.2em;
   transform: translateZ(-16px);
+  opacity: 0.5;
 }
 
 .z-full-text .word.active {
   font-weight: var(--wght-active, 400);
   font-variation-settings: 'wght' var(--wght-active, 400);
   transform: translateZ(32px);
+  opacity: 1;
 }
 
 .z2-actions {

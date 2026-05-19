@@ -118,6 +118,12 @@ export default function PhaseZ2Compose({
       </div>
 
       <div className="z-full-stage">
+        {/* Faint horizontal track lines — echoes /wall projector grid */}
+        <div className="z-stage-tracks" aria-hidden>
+          <span style={{ top: '20%' }} />
+          <span style={{ top: '50%' }} />
+          <span style={{ top: '80%' }} />
+        </div>
         <div className="graphic-layer" ref={gfxRef} />
         <div
           className="z-full-text"
@@ -131,6 +137,7 @@ export default function PhaseZ2Compose({
             color: mood.text
           }}
         />
+        <div className="z-stage-caption">외벽에서 이렇게 보여요</div>
       </div>
 
       <div className="z-picker">

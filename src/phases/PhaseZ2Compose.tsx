@@ -179,7 +179,7 @@ export default function PhaseZ2Compose({
       </div>
 
       <button className="primary-action" onClick={handleSubmit}>
-        <span>풍경에 맡기기</span>
+        <span>외벽에 맡기기</span>
       </button>
     </div>
   );

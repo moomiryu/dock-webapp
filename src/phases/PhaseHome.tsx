@@ -47,9 +47,13 @@ export default function PhaseHome({ onStartWrite }: Props) {
           DOCK
         </button>
 
+        <div className="home-headline">
+          공공의 한 줄,<br />
+          당신의 형식
+        </div>
+
         <div className="home-tagline">
-          한 줄을 풍경에 둡니다.<br />
-          형식은 당신이 정해요.<br />
+          캠퍼스 외벽에 한 줄을 둡니다.<br />
           7일간 머무릅니다.
         </div>
 
@@ -63,7 +67,7 @@ export default function PhaseHome({ onStartWrite }: Props) {
             <span>메시지 쓰러 가기 →</span>
           </button>
           <a className="home-link" href="/wall">
-            외벽 풍경 보기 →
+            외벽 미리보기 →
           </a>
           <a className="home-link home-link-secondary" href="/admin">
             관리자 목록

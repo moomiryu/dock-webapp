@@ -516,6 +516,17 @@ body.themed {
   letter-spacing: 0.05em;
 }
 
+.phase06-promise {
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-3);
+  border-top: var(--bw-hair) dashed currentColor;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-loose);
+  opacity: 0.6;
+  letter-spacing: 0.02em;
+  max-width: 320px;
+}
+
 .error-banner {
   margin-top: 12px;
   padding: 10px 12px;
@@ -1125,11 +1136,21 @@ body.themed {
   letter-spacing: inherit;
 }
 
+.home-headline {
+  font-family: 'Pretendard Variable', -apple-system, sans-serif;
+  font-size: clamp(20px, 6vw, 32px);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  font-variation-settings: 'wght' 700;
+  margin-top: -4px;
+}
+
 .home-tagline {
   font-size: 13px;
   line-height: 1.7;
   letter-spacing: 0.02em;
-  opacity: 0.78;
+  opacity: 0.65;
   font-weight: 400;
   font-variation-settings: 'wght' 400;
 }

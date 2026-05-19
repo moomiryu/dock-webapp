@@ -207,7 +207,7 @@ export default function WallSimulation() {
           {isLoading && (
             <>
               <div className="wall-empty-glyph">···</div>
-              <div className="wall-empty-text">풍경을 불러오고 있어요</div>
+              <div className="wall-empty-text">외벽을 불러오고 있어요</div>
             </>
           )}
           {error && (
@@ -225,7 +225,7 @@ export default function WallSimulation() {
           {isEmpty && !error && (
             <>
               <div className="wall-empty-glyph">···</div>
-              <div className="wall-empty-text">아직 풍경이 비어있어요</div>
+              <div className="wall-empty-text">아직 외벽이 비어있어요</div>
               <div className="wall-empty-mode">
                 {isFirebaseConfigured()
                   ? '저장소: Firestore (라이브)'
@@ -335,7 +335,7 @@ function WallEmphasisMessage({ msg, ageMs }: { msg: StoredMessage; ageMs: number
         {msg.text}
       </div>
       <div className="wall-emphasis-meta">
-        방금 풍경에 합류
+        방금 외벽에 도착
       </div>
     </div>
   );

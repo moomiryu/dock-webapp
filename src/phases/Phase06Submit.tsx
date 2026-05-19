@@ -42,12 +42,12 @@ export default function Phase06Submit({ draft, onRestart }: Props) {
   }, [draft]);
 
   return (
-    <DockFrame phaseLabel="풍경에 합류했어요">
+    <DockFrame phaseLabel="외벽에 합류했어요">
       <div className="guide-hero">
         {status.kind === 'sending' && (
           <>
             <div className="glyph" aria-hidden>↑</div>
-            <h1>풍경으로 보내는 중…</h1>
+            <h1>외벽으로 보내는 중…</h1>
             <p>잠시만요.</p>
           </>
         )}
@@ -55,14 +55,14 @@ export default function Phase06Submit({ draft, onRestart }: Props) {
         {status.kind === 'sent' && (
           <>
             <div className="glyph" aria-hidden>✶</div>
-            <h1>풍경에 합류했어요</h1>
+            <h1>외벽에 합류했어요</h1>
             <p>
-              12초간 풍경의 중심에 머무르고,<br />
-              7일간 풍경의 일부가 됩니다.
+              12초간 외벽의 한가운데 머무르고,<br />
+              7일간 외벽에 머무릅니다.
             </p>
             <p className="phase06-promise">
               한 번 떠난 말은 수정할 수 없어요.<br />
-              이대로 두면 됩니다.
+              지우고 싶다면 관리자에게 알려주세요.
             </p>
             {!isFirebaseConfigured() && (
               <p style={{ fontSize: 10, opacity: 0.55 }}>

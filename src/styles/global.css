@@ -912,9 +912,10 @@ body.themed {
 .z-frame .primary-action {
   background: currentColor;
   border-color: currentColor;
-  padding: 16px;
-  letter-spacing: 0.25em;
-  font-size: 13px;
+  padding: var(--sp-3) var(--sp-4);
+  letter-spacing: 0.18em;
+  font-size: var(--fs-sm);
+  margin-top: var(--sp-1);
 }
 
 .z-frame .primary-action span {

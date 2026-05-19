@@ -129,20 +129,9 @@ export default function PhaseZ1Glyph({ initialText, initialTone, onNext }: Props
         )}
       </div>
 
-      {hasContent && text.trim().length > 1 && (
-        <div
-          className="z-message-preview"
-          style={{
-            fontFamily: fontMap[tone.font],
-            fontWeight: tone.wght,
-            fontVariationSettings: `"wght" ${tone.wght}`,
-            transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)`,
-            color: Z1_MOOD.text
-          }}
-        >
-          {text.trim().slice(0, MAX)}
-        </div>
-      )}
+      {/* Full-message preview removed — was redundant with textarea.
+          Giant glyph shows typography on the first char (the protagonist);
+          textarea below is the input itself. */}
 
       <div className="z-axes">
         <CompactRow

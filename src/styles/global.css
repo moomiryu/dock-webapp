@@ -1684,83 +1684,109 @@ body.wall-mode {
   z-index: 110;
 }
 
-.wall-msg {
+/* === Track lines (faint horizontal projector grid — museum reference) === */
+.wall-tracks-bg {
   position: absolute;
-  left: 50%;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: min(70vw, 600px);
-  /* Each message rises slowly from off-screen below to off-screen above */
-  animation: wallRise var(--cycle, 90s) linear infinite;
-  animation-delay: var(--anim-delay, 0s);
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wall-track-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+/* === Crowd messages — horizontal scroll on assigned tracks === */
+.wall-crowd {
+  position: absolute;
+  left: 0;
+  white-space: nowrap;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+  transform-origin: center;
   will-change: transform;
+  z-index: var(--z-content);
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  padding: 0 var(--sp-3);
 }
 
-@keyframes wallRise {
-  0% {
-    transform: translate(calc(-50% + var(--x-offset, 0px)), 110vh);
-    opacity: 0;
-  }
-  6% {
-    opacity: 1;
-  }
-  94% {
-    opacity: 1;
-  }
-  100% {
-    transform: translate(calc(-50% + var(--x-offset, 0px)), -110vh);
-    opacity: 0;
-  }
+.wall-crowd.track-left {
+  animation-name: wallSlideLeft;
 }
 
-.wall-msg-graphic {
+.wall-crowd.track-right {
+  animation-name: wallSlideRight;
+}
+
+@keyframes wallSlideLeft {
+  0%   { transform: translateX(100vw); }
+  100% { transform: translateX(-100%); }
+}
+
+@keyframes wallSlideRight {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100vw); }
+}
+
+/* === Emphasis message — newest, solo at center for EMPHASIS_MS === */
+.wall-emphasis {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 280px;
-  height: 200px;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.22;
-  mix-blend-mode: screen;
-}
-
-.wall-msg-graphic svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.wall-msg-text {
-  position: relative;
-  z-index: 1;
+  width: 90vw;
+  max-width: 1100px;
+  z-index: var(--z-elevated);
   text-align: center;
-  line-height: 1.25;
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+
+.wall-emphasis-text {
+  font-size: clamp(48px, 9vw, 130px);
+  line-height: 1.1;
   word-break: keep-all;
-  letter-spacing: -0.01em;
-  padding: 0 20px;
-  font-weight: var(--wght-base, 400);
-  font-variation-settings: 'wght' var(--wght-base, 400);
-  max-width: 100%;
-}
-
-.wall-text-inner {
-  display: inline-block;
-  white-space: normal;
-}
-
-.wall-msg-text .word {
-  display: inline;
-  transition: font-weight 0.9s ease-in-out, font-variation-settings 0.9s ease-in-out;
+  letter-spacing: -0.02em;
+  transition: transform var(--t-slow) var(--ease-standard);
   font-weight: inherit;
+  font-variation-settings: inherit;
 }
 
-.wall-msg-text .word.active {
-  font-weight: var(--wght-active, 700);
-  font-variation-settings: 'wght' var(--wght-active, 700);
+.wall-emphasis-meta {
+  margin-top: var(--sp-4);
+  font-family: 'D2Coding', monospace;
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-mono-loose);
+  opacity: 0.4;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.wall-emphasis.stage-enter {
+  animation: wallEmphasisEnter 1.5s var(--ease-emphasized) both;
+}
+
+.wall-emphasis.stage-hold {
+  opacity: 1;
+}
+
+.wall-emphasis.stage-settle {
+  animation: wallEmphasisSettle 2s var(--ease-standard) both;
+}
+
+@keyframes wallEmphasisEnter {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
+  55%  { opacity: 1; }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes wallEmphasisSettle {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.55); }
 }
 
 .wall-overlay {

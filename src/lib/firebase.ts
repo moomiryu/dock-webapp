@@ -10,6 +10,7 @@ export interface StoredMessage {
 interface FirestoreLike {
   addMessage(d: Draft): Promise<string>;
   listMessages(limit: number): Promise<StoredMessage[]>;
+  subscribeMessages(limit: number, cb: (msgs: StoredMessage[]) => void, onError: (e: Error) => void): () => void;
 }
 
 function isMockForcedByUrl(): boolean {
@@ -37,6 +38,7 @@ async function buildRealClient(): Promise<FirestoreLike> {
     collection,
     serverTimestamp,
     getDocs,
+    onSnapshot,
     orderBy,
     query,
     limit: fsLimit
@@ -73,19 +75,32 @@ async function buildRealClient(): Promise<FirestoreLike> {
     async listMessages(lim: number) {
       const q = query(collection(db, 'messages'), orderBy('createdAt', 'desc'), fsLimit(lim));
       const snap = await getDocs(q);
-      return snap.docs.map((doc) => {
-        const data = doc.data();
-        const ts = data.createdAt;
-        const createdAt =
-          ts && typeof ts.toMillis === 'function' ? ts.toMillis() : data.startedAt ?? Date.now();
-        return {
-          id: doc.id,
-          text: String(data.text ?? ''),
-          tone: (data.tone ?? null) as ToneState | null,
-          createdAt
-        };
-      });
+      return snap.docs.map(toStoredMessage);
+    },
+    subscribeMessages(lim: number, cb, onError) {
+      const q = query(collection(db, 'messages'), orderBy('createdAt', 'desc'), fsLimit(lim));
+      const unsub = onSnapshot(
+        q,
+        (snap) => cb(snap.docs.map(toStoredMessage)),
+        (err) => onError(err as Error)
+      );
+      return unsub;
     }
+  };
+}
+
+function toStoredMessage(doc: { id: string; data: () => Record<string, unknown> }): StoredMessage {
+  const data = doc.data();
+  const ts = data.createdAt as { toMillis?: () => number } | number | null | undefined;
+  const createdAt =
+    ts && typeof ts === 'object' && typeof ts.toMillis === 'function'
+      ? ts.toMillis()
+      : (data.startedAt as number) ?? Date.now();
+  return {
+    id: doc.id,
+    text: String(data.text ?? ''),
+    tone: (data.tone ?? null) as ToneState | null,
+    createdAt
   };
 }
 
@@ -150,6 +165,20 @@ function buildMockClient(): FirestoreLike {
       return readMockStore()
         .sort((a, b) => b.createdAt - a.createdAt)
         .slice(0, lim);
+    },
+    subscribeMessages(lim, cb) {
+      // Mock 'subscription' — fires once with current store, then re-polls every 5s.
+      let cancelled = false;
+      const tick = () => {
+        if (cancelled) return;
+        cb(readMockStore().sort((a, b) => b.createdAt - a.createdAt).slice(0, lim));
+      };
+      tick();
+      const id = window.setInterval(tick, 5000);
+      return () => {
+        cancelled = true;
+        clearInterval(id);
+      };
     }
   };
 }
@@ -171,6 +200,29 @@ export async function submitMessage(d: Draft): Promise<string> {
 export async function listMessages(limit = 30): Promise<StoredMessage[]> {
   const c = await client();
   return c.listMessages(limit);
+}
+
+/** Real-time subscription. Returns a cleanup function. */
+export function subscribeMessages(
+  limit: number,
+  cb: (msgs: StoredMessage[]) => void,
+  onError: (e: Error) => void
+): () => void {
+  let unsub: (() => void) | null = null;
+  let cancelled = false;
+  client().then(
+    (c) => {
+      if (cancelled) return;
+      unsub = c.subscribeMessages(limit, cb, onError);
+    },
+    (err) => {
+      if (!cancelled) onError(err as Error);
+    }
+  );
+  return () => {
+    cancelled = true;
+    if (unsub) unsub();
+  };
 }
 
 export function isFirebaseConfigured(): boolean {

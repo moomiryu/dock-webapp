@@ -1,51 +1,31 @@
-import { useEffect, useState } from 'react';
-import { moods } from '../lib/palettes-v2';
+import { useEffect } from 'react';
 
 interface Props {
   onStartWrite: () => void;
 }
 
+// Home uses the warm brand palette (NOT the user-choice moods).
+// DOCK가 사용자에게 말하는 자리 — 따뜻한 액자.
 export default function PhaseHome({ onStartWrite }: Props) {
-  // First-time visitor sees a random mood — but it stays fixed once chosen
-  // (no auto-cycling: accessibility + brand consistency + screenshot stability)
-  const [moodIdx, setMoodIdx] = useState(() => Math.floor(Math.random() * moods.length));
-  const mood = moods[moodIdx];
-
   useEffect(() => {
     document.body.classList.add('themed');
-    document.body.style.setProperty('--bg-outer', mood.bg);
-  }, [mood.bg]);
-
-  function cycleMood() {
-    setMoodIdx((i) => (i + 1) % moods.length);
-  }
+    document.body.style.setProperty('--bg-outer', '#F5E1B5');
+    return () => {
+      document.body.classList.remove('themed');
+      document.body.style.removeProperty('--bg-outer');
+    };
+  }, []);
 
   return (
-    <div
-      className="home-frame"
-      style={{
-        ['--bg' as string]: mood.bg,
-        ['--text' as string]: mood.text,
-        ['--graphic' as string]: mood.graphic,
-        ['--blend' as string]: mood.blend,
-        background: mood.bg,
-        color: mood.text
-      }}
-    >
+    <div className="home-frame brand">
       <div className="home-stage">
         <div className="home-eyebrow">
           캠퍼스 공공 발화 시스템
         </div>
 
-        <button
-          className="home-wordmark"
-          data-glyph="DOCK"
-          onClick={cycleMood}
-          aria-label="톤 바꾸기"
-          title="탭하여 톤 바꾸기"
-        >
+        <h1 className="home-wordmark-static" data-glyph="DOCK">
           DOCK
-        </button>
+        </h1>
 
         <div className="home-headline">
           공공의 한 줄,<br />
@@ -56,11 +36,6 @@ export default function PhaseHome({ onStartWrite }: Props) {
           캠퍼스 외벽에 한 줄을 둡니다.<br />
           7일간 머무릅니다.
         </div>
-
-        <button className="home-mood-tag" onClick={cycleMood}>
-          현재 톤 · {mood.nameLatin}
-          <span className="home-mood-hint">탭하여 변경</span>
-        </button>
 
         <div className="home-actions">
           <button className="home-cta" onClick={onStartWrite}>

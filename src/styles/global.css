@@ -83,15 +83,32 @@ body.themed {
   justify-content: center;
 }
 
+/* DockFrame — used by Phase 05b / Phase 06 (brand 액자) */
 .dock-frame {
   width: 100%;
-  max-width: 420px;
-  background: var(--bg, #FCE7F3);
-  color: var(--text, #C2185B);
-  padding: 18px;
-  border-radius: 14px;
-  transition: background 0.4s, color 0.4s;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  max-width: 480px;
+  min-height: 100dvh;
+  background: var(--c-brand-bg);
+  color: var(--c-brand-text);
+  padding: var(--sp-6) var(--sp-5);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* Grain texture on warm brand surfaces */
+.dock-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--z-overlay);
+  opacity: 0.18;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch' seed='3'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 220px 220px;
 }
 
 .dock-header {
@@ -182,7 +199,7 @@ body.themed {
 }
 
 .primary-action span {
-  color: var(--bg, #FCE7F3);
+  color: var(--bg, var(--c-brand-bg, #FCE7F3));
 }
 
 .primary-action:disabled {
@@ -1047,23 +1064,27 @@ body.themed {
 }
 
 
-/* === Home === */
+/* === Brand frame (Home / Phase 05b / Phase 06) ===
+   따뜻한 한국적 액자. 사용자에게 DOCK가 말 거는 자리. */
 .home-frame {
   width: 100%;
   max-width: 480px;
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--bg);
-  color: var(--text);
-  padding: 32px 20px;
+  background: var(--c-brand-bg);
+  color: var(--c-brand-text);
+  padding: var(--sp-8) var(--sp-5);
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  transition: background 0.8s cubic-bezier(0.2, 0, 0, 1),
-              color 0.8s cubic-bezier(0.2, 0, 0, 1);
+  gap: var(--sp-4);
   position: relative;
   overflow: hidden;
-  perspective: 1200px;
+}
+
+.home-frame.brand {
+  /* Warm wrapper — no cycling, no mood-bg override */
+  background: var(--c-brand-bg);
+  color: var(--c-brand-text);
 }
 
 .home-frame::after {
@@ -1072,10 +1093,10 @@ body.themed {
   inset: 0;
   pointer-events: none;
   z-index: var(--z-overlay);
-  opacity: var(--o-grain);
+  opacity: 0.18;
   mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  background-size: 200px 200px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch' seed='3'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 220px 220px;
 }
 
 .home-stage {
@@ -1097,7 +1118,8 @@ body.themed {
   opacity: 0.65;
 }
 
-.home-wordmark {
+.home-wordmark,
+.home-wordmark-static {
   position: relative;
   font-family: 'Pretendard Variable', -apple-system, sans-serif;
   font-size: clamp(80px, 22vw, 140px);
@@ -1110,14 +1132,33 @@ body.themed {
   text-align: center;
   background: transparent;
   border: none;
-  color: inherit;
-  cursor: pointer;
+  color: var(--c-brand-text);
   padding: 6px 0;
+}
+
+.home-wordmark {
+  cursor: pointer;
   transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .home-wordmark:active {
   transform: scale(0.98);
+}
+
+.home-wordmark-static::before {
+  content: attr(data-glyph);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-brand-accent);
+  transform: translate(3px, 3px);
+  mix-blend-mode: multiply;
+  z-index: -1;
+  font-weight: inherit;
+  font-variation-settings: inherit;
+  letter-spacing: inherit;
 }
 
 .home-wordmark::before {
@@ -1194,20 +1235,21 @@ body.themed {
 }
 
 .home-cta {
-  background: currentColor;
-  border: 1px solid currentColor;
-  padding: 18px;
+  background: var(--c-brand-text);
+  border: 1px solid var(--c-brand-text);
+  color: var(--c-brand-bg);
+  padding: var(--sp-4);
   font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  font-variation-settings: 'wght' 600;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-medium);
+  font-variation-settings: 'wght' 500;
   letter-spacing: 0.2em;
   cursor: pointer;
-  transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1);
+  transition: transform var(--t-fast) var(--ease-standard);
 }
 
 .home-cta span {
-  color: var(--bg);
+  color: var(--c-brand-bg);
 }
 
 .home-cta:active {

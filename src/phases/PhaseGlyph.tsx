@@ -3,12 +3,19 @@ import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import type { ToneState } from '../types';
 
+type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
+
 interface Props {
-  text: string;                                   // already typed in Z1
-  initialTone?: ToneState | null;
+  initialTone?: PartialTone | null;
+  /** Tone preset from the voice intro (or null if skipped). Shows a small badge. */
+  voicePreset?: Pick<ToneState, 'font' | 'wght'> | null;
   onBack: () => void;
-  onNext: (partialTone: Omit<ToneState, 'paletteIdx' | 'graphicIdx'>) => void;
+  onNext: (partialTone: PartialTone) => void;
 }
+
+// Glyph tuning happens before the message is written, so we shape a single
+// representative sample character. The full sentence is composed in the next step.
+const SAMPLE_CHAR = '가';
 
 const DEFAULT = {
   font: 'gothic' as const,
@@ -40,6 +47,13 @@ const SLNT_OPTIONS = [
   { val: -8, label: '경사' }
 ];
 
+const VOICE_LABELS: Record<ToneState['font'], { kr: string; en: string }> = {
+  gothic: { kr: '외침', en: 'CRY' },
+  mono: { kr: '선언', en: 'STATE' },
+  myeongjo: { kr: '속삭임', en: 'HUSH' },
+  song: { kr: '노래', en: 'SONG' }
+};
+
 const AXIS_LABELS: Record<string, { kr: string; en: string }> = {
   FONT: { kr: '발화', en: 'VOICE' },
   WGHT: { kr: '무게', en: 'WGHT' },
@@ -50,7 +64,7 @@ const AXIS_LABELS: Record<string, { kr: string; en: string }> = {
 
 const Z_MOOD = moods.find((m) => m.id === 'night')!;
 
-export default function PhaseZ2Glyph({ text, initialTone, onBack, onNext }: Props) {
+export default function PhaseGlyph({ initialTone, voicePreset, onBack, onNext }: Props) {
   const [tone, setTone] = useState({
     font: initialTone?.font ?? DEFAULT.font,
     tone: initialTone?.tone ?? DEFAULT.tone,
@@ -64,11 +78,7 @@ export default function PhaseZ2Glyph({ text, initialTone, onBack, onNext }: Prop
     document.body.style.setProperty('--bg-outer', Z_MOOD.bg);
   }, []);
 
-  // First character of the (Z1-typed) message — the protagonist for axes tuning.
-  const firstChar = (() => {
-    const trimmed = text.replace(/^\s+/u, '');
-    return trimmed.length > 0 ? trimmed[0] : '음';
-  })();
+  const voiceLabel = voicePreset ? VOICE_LABELS[voicePreset.font] : null;
 
   return (
     <div
@@ -83,16 +93,28 @@ export default function PhaseZ2Glyph({ text, initialTone, onBack, onNext }: Prop
       }}
     >
       <div className="z-header">
-        <button className="z-back" onClick={onBack} aria-label="글로 돌아가기">
-          ← 글 다시
+        <button className="z-back" onClick={onBack} aria-label="음성으로 돌아가기">
+          ← 음성 다시
         </button>
-        <span>2 / 3 · 자형 정하기</span>
+        <span>1 / 3 · 자형 정하기</span>
       </div>
+
+      {voiceLabel && (
+        <div className="z-voice-badge">
+          <span className="z-voice-badge-label">지금 음성</span>
+          <span
+            className="z-voice-badge-value"
+            style={{ fontFamily: fontMap[voicePreset!.font] }}
+          >
+            {voiceLabel.kr} <span className="z-voice-badge-en">{voiceLabel.en}</span>
+          </span>
+        </div>
+      )}
 
       <div className="z-glyph-stage">
         <div
           className="z-glyph"
-          data-glyph={firstChar}
+          data-glyph={SAMPLE_CHAR}
           style={{
             fontFamily: fontMap[tone.font],
             fontWeight: tone.wght,
@@ -102,9 +124,9 @@ export default function PhaseZ2Glyph({ text, initialTone, onBack, onNext }: Prop
             color: Z_MOOD.text
           }}
         >
-          {firstChar}
+          {SAMPLE_CHAR}
         </div>
-        <div className="z-glyph-caption">첫 글자로 자형을 정해요</div>
+        <div className="z-glyph-caption">한 글자로 형태를 정해요</div>
       </div>
 
       <div className="z-axes">
@@ -167,9 +189,9 @@ export default function PhaseZ2Glyph({ text, initialTone, onBack, onNext }: Prop
 
       <div className="z-progress">
         <span className="dot on" />
-        <span className="dot on" />
         <span className="dot" />
-        <span className="z-progress-label">자형 → 색·그래픽</span>
+        <span className="dot" />
+        <span className="z-progress-label">자형 → 효과 → 미리보기</span>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import DockFrame from '../components/DockFrame';
+import MegafontFrame from '../components/MegafontFrame';
 import { clearDraft } from '../lib/draft';
 import { isFirebaseConfigured, submitMessage } from '../lib/firebase';
 import type { Draft } from '../types';
@@ -14,7 +14,7 @@ interface Props {
   onRestart: () => void;
 }
 
-export default function Phase06Submit({ draft, onRestart }: Props) {
+export default function PhaseSubmit({ draft, onRestart }: Props) {
   const [status, setStatus] = useState<Status>({ kind: 'sending' });
 
   useEffect(() => {
@@ -42,7 +42,7 @@ export default function Phase06Submit({ draft, onRestart }: Props) {
   }, [draft]);
 
   return (
-    <DockFrame phaseLabel="외벽에 합류했어요">
+    <MegafontFrame phaseLabel="외벽에 합류했어요">
       <div className="guide-hero">
         {status.kind === 'sending' && (
           <>
@@ -57,12 +57,7 @@ export default function Phase06Submit({ draft, onRestart }: Props) {
             <div className="glyph" aria-hidden>✶</div>
             <h1>외벽에 합류했어요</h1>
             <p>
-              12초간 외벽의 한가운데 머무르고,<br />
               7일간 외벽에 머무릅니다.
-            </p>
-            <p className="phase06-promise">
-              한 번 떠난 말은 수정할 수 없어요.<br />
-              지우고 싶다면 관리자에게 알려주세요.
             </p>
             {!isFirebaseConfigured() && (
               <p style={{ fontSize: 10, opacity: 0.55 }}>
@@ -71,6 +66,14 @@ export default function Phase06Submit({ draft, onRestart }: Props) {
                 id: {status.id}
               </p>
             )}
+            <div className="done-actions">
+              <a className="primary-action" href="/archive">
+                <span>아카이브 보기 →</span>
+              </a>
+              <button className="done-home-link" onClick={onRestart}>
+                처음으로
+              </button>
+            </div>
           </>
         )}
 
@@ -85,6 +88,6 @@ export default function Phase06Submit({ draft, onRestart }: Props) {
           </>
         )}
       </div>
-    </DockFrame>
+    </MegafontFrame>
   );
 }

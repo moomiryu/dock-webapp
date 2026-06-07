@@ -5,7 +5,7 @@ interface Props {
 }
 
 // Home uses the warm brand palette (NOT the user-choice moods).
-// DOCK가 사용자에게 말하는 자리 — 따뜻한 액자.
+// MEGAFONT가 사용자에게 말하는 자리 — 따뜻한 액자.
 export default function PhaseHome({ onStartWrite }: Props) {
   useEffect(() => {
     document.body.classList.add('themed');
@@ -23,8 +23,8 @@ export default function PhaseHome({ onStartWrite }: Props) {
           캠퍼스 공공 발화 시스템
         </div>
 
-        <h1 className="home-wordmark-static" data-glyph="DOCK">
-          DOCK
+        <h1 className="home-wordmark-static" data-glyph="MEGAFONT">
+          MEGAFONT
         </h1>
 
         <div className="home-headline">
@@ -39,8 +39,11 @@ export default function PhaseHome({ onStartWrite }: Props) {
 
         <div className="home-actions">
           <button className="home-cta" onClick={onStartWrite}>
-            <span>메시지 쓰러 가기 →</span>
+            <span>START →</span>
           </button>
+          <a className="home-link" href="/archive">
+            아카이브 보기 →
+          </a>
           <a className="home-link" href="/wall">
             외벽 미리보기 →
           </a>
@@ -51,7 +54,7 @@ export default function PhaseHome({ onStartWrite }: Props) {
       </div>
 
       <div className="home-footer">
-        <span>DOCK v0.1</span>
+        <span>MEGAFONT v0.1</span>
         <span>· · ·</span>
         <span>R2 거치대에 폰을 올려도 시작돼요</span>
       </div>

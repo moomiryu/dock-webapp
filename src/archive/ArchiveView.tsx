@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import MessageTile from '../components/MessageTile';
-import { isFirebaseConfigured, listMessages } from '../lib/firebase';
+import { listMessages } from '../lib/firebase';
 import type { StoredMessage } from '../lib/firebase';
 
-export default function AdminWall() {
+// Public archive — every utterance posted so far, separate from the /wall
+// projection. Reuses the admin grid styling but with a friendlier framing
+// and no internal message ids.
+export default function ArchiveView() {
   const [messages, setMessages] = useState<StoredMessage[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -14,7 +17,7 @@ export default function AdminWall() {
     let cancelled = false;
     (async () => {
       try {
-        const m = await listMessages(50);
+        const m = await listMessages(100);
         if (!cancelled) setMessages(m);
       } catch (err) {
         if (!cancelled) setError((err as Error).message);
@@ -26,16 +29,13 @@ export default function AdminWall() {
   }, []);
 
   return (
-    <div className="admin-wall">
+    <div className="admin-wall archive">
       <header className="admin-wall__header">
-        <div className="admin-wall__title">MEGAFONT · 외벽 미리보기</div>
+        <div className="admin-wall__title">MEGAFONT · 아카이브</div>
         <div className="admin-wall__meta">
-          {isFirebaseConfigured() ? (
-            <span>Firebase 연결됨</span>
-          ) : (
-            <span>로컬 mock 데이터 (Firebase 미설정)</span>
-          )}
+          <span>지금까지의 발화</span>
           {messages && <span> · {messages.length}개</span>}
+          <a className="archive__home-link" href="/"> · 처음으로 →</a>
         </div>
       </header>
 
@@ -45,8 +45,8 @@ export default function AdminWall() {
 
       {messages && messages.length === 0 && (
         <div className="admin-wall__empty">
-          아직 메시지가 없어요.<br />
-          <a href="/?stage=enter">새 메시지 쓰기</a>
+          아직 올라온 발화가 없어요.<br />
+          <a href="/?stage=enter">첫 한 줄 남기기</a>
         </div>
       )}
 
@@ -57,7 +57,6 @@ export default function AdminWall() {
               <MessageTile text={m.text} tone={m.tone} />
               <footer className="admin-wall__cell-meta">
                 <time>{formatTime(m.createdAt)}</time>
-                <span className="admin-wall__cell-id">{m.id}</span>
               </footer>
             </article>
           ))}

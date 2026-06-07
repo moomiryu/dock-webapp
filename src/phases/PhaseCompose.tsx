@@ -4,23 +4,28 @@ import { graphics as graphicsV2 } from '../lib/graphics-v2';
 import { moods } from '../lib/palettes-v2';
 import type { ToneState } from '../types';
 
+type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
+
 interface Props {
-  text: string;
-  partialTone: Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
+  initialText: string;
+  partialTone: PartialTone;
   initialPaletteIdx?: number;
   initialGraphicIdx?: number;
   onBack: () => void;
   onSubmit: (text: string, tone: ToneState) => void;
 }
 
-export default function PhaseZ2Compose({
-  text,
+const MAX = 60;
+
+export default function PhaseCompose({
+  initialText,
   partialTone,
   initialPaletteIdx,
   initialGraphicIdx,
   onBack,
   onSubmit
 }: Props) {
+  const [text, setText] = useState(initialText);
   const [moodIdx, setMoodIdx] = useState(initialPaletteIdx ?? 0);
   const [graphicIdx, setGraphicIdx] = useState(initialGraphicIdx ?? -1);
 
@@ -86,10 +91,8 @@ export default function PhaseZ2Compose({
     }
   }, [graphicIdx]);
 
-  // Swatch direct-select replaces cycle: user sees all options + taps one.
-
   function handleSubmit() {
-    onSubmit(text, {
+    onSubmit(text.trim().slice(0, MAX), {
       ...partialTone,
       paletteIdx: moodIdx,
       graphicIdx
@@ -114,7 +117,21 @@ export default function PhaseZ2Compose({
         <button className="z-back" onClick={onBack} aria-label="자형 다시 정하기">
           ← 자형 다시
         </button>
-        <span>3 / 3 · 색·그래픽 · {mood.nameLatin}</span>
+        <span>2 / 3 · 효과·색 · {mood.nameLatin}</span>
+      </div>
+
+      <div className="z-compose-input">
+        <textarea
+          className="z-input"
+          value={text}
+          maxLength={MAX}
+          placeholder="한 줄 적어보세요"
+          onChange={(e) => setText(e.target.value.slice(0, MAX))}
+        />
+        <div className="z-counter-inline">
+          {text.length}
+          <span>/{MAX}</span>
+        </div>
       </div>
 
       <div className="z-full-stage">
@@ -185,9 +202,16 @@ export default function PhaseZ2Compose({
         </div>
       </div>
 
-      <button className="primary-action" onClick={handleSubmit}>
-        <span>외벽에 맡기기</span>
+      <button className="primary-action" disabled={!text.trim()} onClick={handleSubmit}>
+        <span>미리보기 →</span>
       </button>
+
+      <div className="z-progress">
+        <span className="dot on" />
+        <span className="dot on" />
+        <span className="dot" />
+        <span className="z-progress-label">효과 → 미리보기</span>
+      </div>
     </div>
   );
 }

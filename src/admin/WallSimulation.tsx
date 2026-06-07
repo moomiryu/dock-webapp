@@ -1,4 +1,4 @@
-// Wall projection simulator — DOCK's output side.
+// Wall projection simulator — MEGAFONT's output side.
 // v2: 국립중앙박물관 식 — horizontal multi-track scrolling, emphasis mode
 // for newly arrived messages, max-age + recent-N filtering, real-time
 // Firestore onSnapshot updates.
@@ -258,7 +258,7 @@ export default function WallSimulation() {
 
       {showOverlay && (
         <div className="wall-overlay">
-          <div className="wall-overlay-line">DOCK · WALL</div>
+          <div className="wall-overlay-line">MEGAFONT · WALL</div>
           <div className="wall-overlay-line">
             {visible.length}개 · 최대 {RECENT_N}개 · {Math.round(MAX_AGE_MS / 86_400_000)}일 안
           </div>

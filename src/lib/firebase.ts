@@ -104,7 +104,7 @@ function toStoredMessage(doc: { id: string; data: () => Record<string, unknown> 
   };
 }
 
-const MOCK_KEY = 'dock.mock.messages.v1';
+const MOCK_KEY = 'megafont.mock.messages.v1';
 
 function readMockStore(): StoredMessage[] {
   try {
@@ -157,7 +157,7 @@ function buildMockClient(): FirestoreLike {
         createdAt: Date.now()
       };
       writeMockStore([message, ...readMockStore()]);
-      console.info('[DOCK] (mock) submitted message:', id, d);
+      console.info('[MEGAFONT] (mock) submitted message:', id, d);
       return id;
     },
     async listMessages(lim: number) {

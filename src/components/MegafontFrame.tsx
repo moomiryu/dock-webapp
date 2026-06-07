@@ -6,11 +6,11 @@ interface Props {
   style?: CSSProperties;
 }
 
-export default function DockFrame({ phaseLabel, children, style }: Props) {
+export default function MegafontFrame({ phaseLabel, children, style }: Props) {
   return (
-    <div className="dock-frame" style={style}>
-      <div className="dock-header">
-        <span>DOCK</span>
+    <div className="mf-frame" style={style}>
+      <div className="mf-header">
+        <span>MEGAFONT</span>
         <span>{phaseLabel}</span>
       </div>
       {children}

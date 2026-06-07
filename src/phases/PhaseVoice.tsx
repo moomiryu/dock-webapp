@@ -13,7 +13,7 @@ type Stage = 'intro' | 'recording' | 'result' | 'silent' | 'error';
 
 const RECORD_MS = 5500;
 
-export default function PhaseZ0Voice({ onDone }: Props) {
+export default function PhaseVoice({ onDone }: Props) {
   const [stage, setStage] = useState<Stage>('intro');
   const [level, setLevel] = useState(0);
   const [remainingMs, setRemainingMs] = useState(RECORD_MS);
@@ -78,9 +78,9 @@ export default function PhaseZ0Voice({ onDone }: Props) {
   }
 
   return (
-    <div className="dock-frame brand voice-frame">
-      <div className="dock-header">
-        <span>DOCK</span>
+    <div className="mf-frame brand voice-frame">
+      <div className="mf-header">
+        <span>MEGAFONT</span>
         <span>음성으로 시작</span>
       </div>
 

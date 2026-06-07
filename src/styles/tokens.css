@@ -1,4 +1,4 @@
-/* === DOCK Design Tokens ==========================================
+/* === MEGAFONT Design Tokens ======================================
    v2 토대 — 모든 스케일이 여기서 시작.
    화면별 CSS는 이 토큰만 참조. 하드코드된 px/ms는 안 됨.
 
@@ -93,13 +93,13 @@
   /* ─── Brand palette (warm Korean earth — used in 액자/frame screens:
          Home, Phase 05b, Phase 06. The /wall + Z1/Z2 message content
          keeps its own user-chosen moods. Layered model:
-            DOCK가 사용자에게 말하는 톤    → warm (these tokens)
+            MEGAFONT가 사용자에게 말하는 톤 → warm (these tokens)
             사용자가 외벽으로 보내는 톤   → loud (palettes-v2.ts moods)
          Source: 단청·한지·캠퍼스 벽돌 / 70-20-10 시스템 */
   --c-honey: #E8A53A;       /* 꿀 노랑 — base 70% (옵션 A) */
   --c-tangerine: #E5612E;   /* 선명한 귤 — accent (참조용) */
   --c-persimmon: #C8392E;   /* 감빛 빨강 — base 70% (옵션 C) */
-  --c-cream: #F5E1B5;       /* 크림 버터 — base 70% (옵션 B) ★ DOCK 기본 bg */
+  --c-cream: #F5E1B5;       /* 크림 버터 — base 70% (옵션 B) ★ MEGAFONT 기본 bg */
   --c-brick: #8B2419;       /* 깊은 벽돌 — main 20% ★ 텍스트·강조 */
   --c-ink: #1F3E5C;         /* 잉크 네이비 — accent 10% */
 

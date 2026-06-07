@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { fontMap, graphics, palettes } from '../lib/palettes';
+import { fontMap } from '../lib/palettes';
+import { graphics as graphicsV2 } from '../lib/graphics-v2';
+import { moodAt } from '../lib/palettes-v2';
 import type { ToneState } from '../types';
 
 interface Props {
@@ -19,13 +21,13 @@ const FALLBACK_TONE: ToneState = {
 
 export default function MessageTile({ text, tone }: Props) {
   const t = tone ?? FALLBACK_TONE;
-  const p = palettes[t.paletteIdx] ?? palettes[0];
+  const m = moodAt(t.paletteIdx);
   const gfxRef = useRef<HTMLDivElement>(null);
   const txtRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (gfxRef.current && t.graphicIdx >= 0 && t.graphicIdx < graphics.length) {
-      gfxRef.current.innerHTML = graphics[t.graphicIdx];
+    if (gfxRef.current && t.graphicIdx >= 0 && t.graphicIdx < graphicsV2.length) {
+      gfxRef.current.innerHTML = graphicsV2[t.graphicIdx];
       gfxRef.current.classList.add('active');
     }
     // Pulse animation per tile — start a small interval to highlight one word at a time
@@ -77,11 +79,12 @@ export default function MessageTile({ text, tone }: Props) {
     <div
       className="msg-tile"
       style={{
-        ['--bg' as string]: p.bg,
-        ['--text' as string]: p.text,
-        ['--graphic' as string]: p.graphic,
-        background: p.bg,
-        color: p.text
+        ['--bg' as string]: m.bg,
+        ['--text' as string]: m.text,
+        ['--graphic' as string]: m.graphic,
+        ['--blend' as string]: m.blend,
+        background: m.bg,
+        color: m.text
       }}
     >
       <div className="msg-tile__preview">

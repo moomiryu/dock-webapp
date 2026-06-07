@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react';
 import AdminWall from './admin/AdminWall';
 import WallSimulation from './admin/WallSimulation';
+import ArchiveView from './archive/ArchiveView';
 import PhaseHome from './phases/PhaseHome';
-import Phase04Write from './phases/Phase04Write';
-import Phase05Tone from './phases/Phase05Tone';
-import Phase05bDock from './phases/Phase05bDock';
-import Phase06Submit from './phases/Phase06Submit';
-import PhaseZ0Voice from './phases/PhaseZ0Voice';
-import PhaseZ1Write from './phases/PhaseZ1Write';
-import PhaseZ2Glyph from './phases/PhaseZ2Glyph';
-import PhaseZ3Compose from './phases/PhaseZ3Compose';
+import PhaseVoice from './phases/PhaseVoice';
+import PhaseGlyph from './phases/PhaseGlyph';
+import PhaseCompose from './phases/PhaseCompose';
+import PhasePreview from './phases/PhasePreview';
+import PhaseSubmit from './phases/PhaseSubmit';
 import {
   clearDraft,
   loadDraft,
@@ -21,35 +19,28 @@ import { clearStageFromUrl, getStageFromUrl } from './lib/stage';
 import type { Draft, ToneState } from './types';
 
 type Screen =
-  | 'home'
-  | 'write'   // main flow (legacy) — Phase 04
-  | 'tone'    // main flow (legacy) — Phase 05
-  | 'z-0'     // Z mode — voice intro
-  | 'z-1'     // Z mode — write text
-  | 'z-2'     // Z mode — tune glyph (자형)
-  | 'z-3'     // Z mode — compose color+graphic
-  | 'dock'
-  | 'submit';
+  | 'home'     // START
+  | 'voice'    // 음성으로 시작 (skip 가능)
+  | 'glyph'    // 자형 — 한 글자와 형태
+  | 'compose'  // 효과 — 풀 문장 작성 + 색·그래픽
+  | 'preview'  // 미리보기 — 확인 / 다시
+  | 'submit';  // 로딩 → 완료
 
 type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
 
-function isZMode(): boolean {
-  const params = new URLSearchParams(window.location.search);
-  return params.get('mode') === 'z';
+function toPartial(tone: ToneState): PartialTone {
+  const { paletteIdx, graphicIdx, ...rest } = tone;
+  void paletteIdx;
+  void graphicIdx;
+  return rest;
 }
 
 function pickInitialScreen(stage: ReturnType<typeof getStageFromUrl>, draft: Draft | null): Screen {
   if (stage === 'submit') return 'submit';
-  const z = isZMode();
   if (stage === 'enter') {
-    // NFC arrival — bypass home, go straight to writing.
-    // Z mode: voice intro → write → glyph → compose. If draft+tone exists, resume at z-3.
-    if (z) {
-      if (draft && draft.tone && draft.text) return 'z-3';
-      return 'z-0';
-    }
-    if (draft && draft.tone && draft.text) return 'tone';
-    return 'write';
+    // NFC arrival — bypass home. Resume at preview if a full draft exists.
+    if (draft && draft.tone && draft.text) return 'preview';
+    return 'voice';
   }
   return 'home';
 }
@@ -57,14 +48,11 @@ function pickInitialScreen(stage: ReturnType<typeof getStageFromUrl>, draft: Dra
 export default function App() {
   const [draft, setDraft] = useState<Draft | null>(() => loadDraft());
   const [screen, setScreen] = useState<Screen>(() => pickInitialScreen(getStageFromUrl(), loadDraft()));
-  const [zPartialTone, setZPartialTone] = useState<PartialTone | null>(() => {
+  const [glyphTone, setGlyphTone] = useState<PartialTone | null>(() => {
     const d = loadDraft();
-    if (!d?.tone) return null;
-    const { paletteIdx, graphicIdx, ...rest } = d.tone;
-    void paletteIdx;
-    void graphicIdx;
-    return rest;
+    return d?.tone ? toPartial(d.tone) : null;
   });
+  const [voicePreset, setVoicePreset] = useState<Pick<ToneState, 'font' | 'wght'> | null>(null);
 
   useEffect(() => {
     if (window.location.pathname.startsWith('/admin')) return;
@@ -79,143 +67,118 @@ export default function App() {
     return <AdminWall />;
   }
 
-  function handleNextFromWrite(text: string) {
-    const updated = updateDraftText(text);
-    setDraft(updated);
-    setScreen('tone');
+  if (window.location.pathname.startsWith('/archive')) {
+    return <ArchiveView />;
   }
 
-  function handleSubmitFromTone(text: string, tone: ToneState) {
+  function handleStart() {
+    setScreen('voice');
+  }
+
+  function handleVoiceDone(voicePartial: PartialTone | null) {
+    if (voicePartial) {
+      setVoicePreset({ font: voicePartial.font, wght: voicePartial.wght });
+      setGlyphTone(voicePartial);
+    } else {
+      setVoicePreset(null);
+    }
+    setScreen('glyph');
+  }
+
+  function handleGlyphBack() {
+    setScreen('voice');
+  }
+
+  function handleGlyphNext(partial: PartialTone) {
+    setGlyphTone(partial);
+    setScreen('compose');
+  }
+
+  function handleComposeBack() {
+    setScreen('glyph');
+  }
+
+  function handleComposeSubmit(text: string, tone: ToneState) {
     const cur = loadDraft() ?? newDraft(text);
     const updated: Draft = { ...cur, text, tone };
     updateDraftText(text);
     const final = updateDraftTone(tone);
     setDraft(final ?? updated);
-    setScreen('dock');
+    setScreen('preview');
   }
 
-  function handleHomeStart() {
-    setScreen(isZMode() ? 'z-0' : 'write');
+  function handlePreviewConfirm() {
+    setScreen('submit');
   }
 
-  function handleVoiceDone(voicePartial: PartialTone | null) {
-    if (voicePartial) {
-      setZPartialTone({
-        font: voicePartial.font,
-        wght: voicePartial.wght,
-        tone: voicePartial.tone,
-        slnt: voicePartial.slnt,
-        size: voicePartial.size
-      });
-    }
-    setScreen('z-1');
-  }
-
-  function handleZ1Next(text: string) {
-    const updated = updateDraftText(text);
-    setDraft(updated);
-    setScreen('z-2');
-  }
-
-  function handleZ2Back() {
-    setScreen('z-1');
-  }
-
-  function handleZ2Next(partial: PartialTone) {
-    setZPartialTone(partial);
-    setScreen('z-3');
-  }
-
-  function handleZ3Back() {
-    setScreen('z-2');
-  }
-
-  function handleZ3Submit(text: string, tone: ToneState) {
-    handleSubmitFromTone(text, tone);
+  function handlePreviewBack() {
+    setScreen('compose');
   }
 
   function handleRestart() {
     clearDraft();
     setDraft(null);
-    setScreen('write');
+    setGlyphTone(null);
+    setVoicePreset(null);
+    setScreen('home');
   }
 
   switch (screen) {
     case 'home':
-      return <PhaseHome onStartWrite={handleHomeStart} />;
+      return <PhaseHome onStartWrite={handleStart} />;
 
-    case 'write':
-      return <Phase04Write initialText={draft?.text ?? ''} onNext={handleNextFromWrite} />;
+    case 'voice':
+      return <PhaseVoice onDone={handleVoiceDone} />;
 
-    case 'tone':
+    case 'glyph':
       return (
-        <Phase05Tone
-          initialText={draft?.text ?? ''}
-          initialTone={draft?.tone ?? null}
-          onSubmit={handleSubmitFromTone}
+        <PhaseGlyph
+          initialTone={draft?.tone ? toPartial(draft.tone) : glyphTone}
+          voicePreset={voicePreset}
+          onBack={handleGlyphBack}
+          onNext={handleGlyphNext}
         />
       );
 
-    case 'z-0':
-      return <PhaseZ0Voice onDone={handleVoiceDone} />;
-
-    case 'z-1':
-      return (
-        <PhaseZ1Write
-          initialText={draft?.text ?? ''}
-          voicePreset={zPartialTone ? { font: zPartialTone.font, wght: zPartialTone.wght } : null}
-          onNext={handleZ1Next}
-        />
-      );
-
-    case 'z-2':
-      if (!draft?.text) {
-        // Shouldn't happen — fall back to z-1 if no text yet
+    case 'compose': {
+      const partial = glyphTone ?? (draft?.tone ? toPartial(draft.tone) : null);
+      if (!partial) {
+        // No glyph tone yet — fall back to the glyph step.
         return (
-          <PhaseZ1Write
-            initialText={draft?.text ?? ''}
-            voicePreset={zPartialTone ? { font: zPartialTone.font, wght: zPartialTone.wght } : null}
-            onNext={handleZ1Next}
+          <PhaseGlyph
+            initialTone={null}
+            voicePreset={voicePreset}
+            onBack={handleGlyphBack}
+            onNext={handleGlyphNext}
           />
         );
       }
       return (
-        <PhaseZ2Glyph
-          text={draft.text}
-          initialTone={
-            draft.tone ??
-            (zPartialTone ? { ...zPartialTone, paletteIdx: 0, graphicIdx: -1 } : null)
-          }
-          onBack={handleZ2Back}
-          onNext={handleZ2Next}
+        <PhaseCompose
+          initialText={draft?.text ?? ''}
+          partialTone={partial}
+          initialPaletteIdx={draft?.tone?.paletteIdx}
+          initialGraphicIdx={draft?.tone?.graphicIdx}
+          onBack={handleComposeBack}
+          onSubmit={handleComposeSubmit}
         />
       );
+    }
 
-    case 'z-3':
-      if (!zPartialTone || !draft?.text) {
-        return (
-          <PhaseZ1Write
-            initialText={draft?.text ?? ''}
-            voicePreset={zPartialTone ? { font: zPartialTone.font, wght: zPartialTone.wght } : null}
-            onNext={handleZ1Next}
-          />
-        );
+    case 'preview':
+      if (!draft?.text || !draft.tone) {
+        return <PhaseVoice onDone={handleVoiceDone} />;
       }
       return (
-        <PhaseZ3Compose
+        <PhasePreview
           text={draft.text}
-          partialTone={zPartialTone}
-          initialPaletteIdx={draft.tone?.paletteIdx}
-          initialGraphicIdx={draft.tone?.graphicIdx}
-          onBack={handleZ3Back}
-          onSubmit={handleZ3Submit}
+          tone={draft.tone}
+          onConfirm={handlePreviewConfirm}
+          onBack={handlePreviewBack}
         />
       );
-
-    case 'dock':
-      return <Phase05bDock onSimulateTap={() => setScreen('submit')} />;
 
     case 'submit':
-      return <Phase06Submit draft={draft} onRestart={handleRestart} />;
+      return <PhaseSubmit draft={draft} onRestart={handleRestart} />;
   }
 }

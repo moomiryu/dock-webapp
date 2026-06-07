@@ -1,6 +1,6 @@
 import type { Draft, ToneState } from '../types';
 
-const KEY = 'dock.draft.v1';
+const KEY = 'megafont.draft.v1';
 
 export function loadDraft(): Draft | null {
   try {

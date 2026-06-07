@@ -1,5 +1,5 @@
 // Voice analysis — records mic for N seconds and returns a 4-quadrant
-// classification that maps to DOCK's voice modes (외침/선언/속삭임/노래).
+// classification that maps to MEGAFONT's voice modes (외침/선언/속삭임/노래).
 //
 // Privacy: all analysis happens on-device. The MediaStream is torn down
 // immediately after recording. No audio buffer is retained or transmitted.

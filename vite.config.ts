@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'apple-touch-icon.png', 'pwa-64x64.png'],
       manifest: {
-        name: 'DOCK',
-        short_name: 'DOCK',
+        name: 'MEGAFONT',
+        short_name: 'MEGAFONT',
         description: '캠퍼스 공공 발화 시스템',
         lang: 'ko',
         start_url: '/?stage=enter',

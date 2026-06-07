@@ -7,13 +7,14 @@ type PartialTone = Pick<ToneState, 'font' | 'wght' | 'tone' | 'slnt' | 'size'>;
 
 interface Props {
   onDone: (partialTone: PartialTone | null) => void;
+  onHome?: () => void;
 }
 
 type Stage = 'intro' | 'recording' | 'result' | 'silent' | 'error';
 
 const RECORD_MS = 5500;
 
-export default function PhaseVoice({ onDone }: Props) {
+export default function PhaseVoice({ onDone, onHome }: Props) {
   const [stage, setStage] = useState<Stage>('intro');
   const [level, setLevel] = useState(0);
   const [remainingMs, setRemainingMs] = useState(RECORD_MS);
@@ -80,7 +81,13 @@ export default function PhaseVoice({ onDone }: Props) {
   return (
     <div className="mf-frame brand voice-frame">
       <div className="mf-header">
-        <span>MEGAFONT</span>
+        {onHome ? (
+          <button type="button" className="mf-home-btn" onClick={onHome}>
+            MEGAFONT
+          </button>
+        ) : (
+          <span>MEGAFONT</span>
+        )}
         <span>음성으로 시작</span>
       </div>
 

@@ -128,7 +128,7 @@ export default function App() {
       return <PhaseHome onStartWrite={handleStart} />;
 
     case 'voice':
-      return <PhaseVoice onDone={handleVoiceDone} />;
+      return <PhaseVoice onDone={handleVoiceDone} onHome={() => setScreen('home')} />;
 
     case 'glyph':
       return (

@@ -44,12 +44,6 @@ export default function PhaseHome({ onStartWrite }: Props) {
           <a className="home-link" href="/archive">
             아카이브 보기 →
           </a>
-          <a className="home-link" href="/wall">
-            외벽 미리보기 →
-          </a>
-          <a className="home-link home-link-secondary" href="/admin">
-            관리자 목록
-          </a>
         </div>
       </div>
 

@@ -31,11 +31,11 @@ export default function ArchiveView() {
   return (
     <div className="admin-wall archive">
       <header className="admin-wall__header">
+        <a className="archive__home-link" href="/">← 처음으로</a>
         <div className="admin-wall__title">MEGAFONT · 아카이브</div>
         <div className="admin-wall__meta">
           <span>지금까지의 발화</span>
           {messages && <span> · {messages.length}개</span>}
-          <a className="archive__home-link" href="/"> · 처음으로 →</a>
         </div>
       </header>
 

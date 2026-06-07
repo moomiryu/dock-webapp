@@ -34,7 +34,8 @@ async function buildRealClient(): Promise<FirestoreLike> {
   ]);
   const {
     initializeFirestore,
-    addDoc,
+    doc,
+    setDoc,
     collection,
     serverTimestamp,
     getDocs,
@@ -64,12 +65,19 @@ async function buildRealClient(): Promise<FirestoreLike> {
 
   return {
     async addMessage(d: Draft) {
-      const ref = await addDoc(collection(db, 'messages'), {
+      // Fire-and-forget write. Firestore's setDoc/addDoc promise only resolves
+      // once the server commits the write — on blocked or slow networks (the
+      // reason we force long-polling) that can hang indefinitely, leaving the
+      // UI stuck on "보내는 중…". For this best-effort public wall we generate
+      // the id client-side, kick off the write, and return immediately. The
+      // write is persisted to the local cache and syncs when the network allows.
+      const ref = doc(collection(db, 'messages'));
+      setDoc(ref, {
         text: d.text,
         tone: d.tone,
         startedAt: d.startedAt,
         createdAt: serverTimestamp()
-      });
+      }).catch((e) => console.warn('[MEGAFONT] message write will retry when online:', e));
       return ref.id;
     },
     async listMessages(lim: number) {

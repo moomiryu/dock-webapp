@@ -13,6 +13,13 @@ interface FirestoreLike {
   subscribeMessages(limit: number, cb: (msgs: StoredMessage[]) => void, onError: (e: Error) => void): () => void;
 }
 
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+  ]);
+}
+
 function isMockForcedByUrl(): boolean {
   if (typeof window === 'undefined') return false;
   return new URLSearchParams(window.location.search).get('mock') === '1';
@@ -39,6 +46,7 @@ async function buildRealClient(): Promise<FirestoreLike> {
     collection,
     serverTimestamp,
     getDocs,
+    getDocsFromCache,
     onSnapshot,
     orderBy,
     query,
@@ -82,8 +90,20 @@ async function buildRealClient(): Promise<FirestoreLike> {
     },
     async listMessages(lim: number) {
       const q = query(collection(db, 'messages'), orderBy('createdAt', 'desc'), fsLimit(lim));
-      const snap = await getDocs(q);
-      return snap.docs.map(toStoredMessage);
+      // Reads can stall indefinitely on blocked/slow networks (same reason we
+      // force long-polling). Cap the server read; on timeout/failure fall back
+      // to whatever is in the local cache so the archive never hangs.
+      try {
+        const snap = await withTimeout(getDocs(q), 6000);
+        return snap.docs.map(toStoredMessage);
+      } catch (e) {
+        try {
+          const cached = await getDocsFromCache(q);
+          return cached.docs.map(toStoredMessage);
+        } catch {
+          throw e instanceof Error ? e : new Error('목록을 불러오지 못했어요.');
+        }
+      }
     },
     subscribeMessages(lim: number, cb, onError) {
       const q = query(collection(db, 'messages'), orderBy('createdAt', 'desc'), fsLimit(lim));

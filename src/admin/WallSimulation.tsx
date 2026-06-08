@@ -24,24 +24,6 @@ const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;   // 7 days
 const DISPLAY_MS = 6000;                       // how long a triggered message stays
 const LOAD_TIMEOUT_MS = 20000;
 
-// ─── Helpers ──────────────────────────────────────────────────────────
-
-function luminance(hex: string): number {
-  const h = hex.replace('#', '');
-  if (h.length !== 6) return 0;
-  const r = parseInt(h.slice(0, 2), 16) / 255;
-  const g = parseInt(h.slice(2, 4), 16) / 255;
-  const b = parseInt(h.slice(4, 6), 16) / 255;
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-function wallColorsFor(p: { bg: string; text: string; graphic: string }) {
-  const ranked = [p.bg, p.text, p.graphic]
-    .map((c) => ({ c, l: luminance(c) }))
-    .sort((a, b) => b.l - a.l);
-  return { text: ranked[0].c, graphic: ranked[1].c };
-}
-
 // ─── Component ────────────────────────────────────────────────────────
 
 export default function WallSimulation() {
@@ -265,41 +247,48 @@ export default function WallSimulation() {
 // ─── Revealed message (typewriter, solo center) ──────────────────────
 
 function WallShowMessage({ msg, closing }: { msg: StoredMessage; closing: boolean }) {
-  const { color, graphic, graphicIdx, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
-  const chars = useMemo(() => Array.from(msg.text), [msg.text]);
+  const { bg, text, graphic, blend, graphicIdx, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
+  const lines = useMemo(() => msg.text.split('\n'), [msg.text]);
   const hasGraphic = graphicIdx >= 0 && graphicIdx < wallGraphics.length;
+
+  // Stagger char animation across the whole message (continues across lines)
+  let charIdx = 0;
 
   return (
     <div
-      className={`wall-emphasis ${closing ? 'is-closing' : ''}`}
-      style={{
-        color,
-        fontFamily,
-        fontWeight: wght,
-        fontVariationSettings: `"wght" ${wght}`
-      }}
+      className={`wall-show ${closing ? 'is-closing' : ''}`}
+      style={{ background: bg, color: text }}
     >
       {hasGraphic && (
         <div
           className="wall-emphasis-graphic"
-          style={{ color: graphic }}
+          style={{ color: graphic, mixBlendMode: blend }}
           aria-hidden
           dangerouslySetInnerHTML={{ __html: wallGraphics[graphicIdx] }}
         />
       )}
       <div
         className="wall-emphasis-text"
-        style={{ transform: `scaleX(${scaleX}) skewX(${skew}deg)` }}
+        style={{
+          transform: `scaleX(${scaleX}) skewX(${skew}deg)`,
+          fontFamily,
+          fontWeight: wght,
+          fontVariationSettings: `"wght" ${wght}`
+        }}
       >
-        {chars.map((ch, i) =>
-          ch === '\n' ? (
-            <br key={i} />
-          ) : (
-            <span key={i} className="wall-char" style={{ animationDelay: `${i * 0.07}s` }}>
-              {ch === ' ' ? ' ' : ch}
-            </span>
-          )
-        )}
+        {lines.map((line, li) => (
+          <div className="wall-line" key={li}>
+            {Array.from(line).map((ch, ci) => {
+              const delay = charIdx * 0.07;
+              charIdx += 1;
+              return (
+                <span key={ci} className="wall-char" style={{ animationDelay: `${delay}s` }}>
+                  {ch === ' ' ? ' ' : ch}
+                </span>
+              );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -321,11 +310,13 @@ function useDerivedStyle(msg: StoredMessage) {
         pal = legacy ? { bg: legacy.bg, text: legacy.text, graphic: legacy.graphic } : moods[3];
       }
     }
-    const wallColors = wallColorsFor(pal);
+    const blend = (pal as { blend?: 'multiply' | 'screen' }).blend ?? 'multiply';
     const fontFamily = tone ? fontMap[tone.font] : fontMap.botong;
     return {
-      color: wallColors.text,
-      graphic: wallColors.graphic,
+      bg: pal.bg,
+      text: pal.text,
+      graphic: pal.graphic,
+      blend,
       graphicIdx: tone?.graphicIdx ?? -1,
       fontFamily,
       wght: tone?.wght ?? 400,

@@ -2391,13 +2391,27 @@ body.wall-mode {
   display: block;
 }
 
-/* Triggered message fade-out (last 0.4s before it's removed) */
-.wall-emphasis {
+/* Triggered message — full-bleed in the message's own mood colors */
+.wall-show {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 6vw;
+  overflow: hidden;
+  z-index: var(--z-elevated);
   transition: opacity 0.4s ease;
 }
 
-.wall-emphasis.is-closing {
+.wall-show.is-closing {
   opacity: 0;
+}
+
+.wall-line {
+  display: block;
 }
 
 .wall-emphasis-meta {

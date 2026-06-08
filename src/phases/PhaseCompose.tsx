@@ -17,6 +17,15 @@ interface Props {
 
 const MAX = 60;
 
+// 효과(겹침) — off + 4 graphics. ㄱ 모서리(graphic idx 1) is intentionally dropped.
+const EFFECT_OPTIONS: Array<{ idx: number; label: string }> = [
+  { idx: -1, label: '효과X' },
+  { idx: 3, label: '받치기' }, // ─ 단선
+  { idx: 0, label: '감싸기' }, // ㅇ 원음
+  { idx: 4, label: '콕찍기' }, // ※ 별표
+  { idx: 2, label: '흔들기' } // ㅅ 산형
+];
+
 export default function PhaseCompose({
   initialText,
   partialTone,
@@ -101,6 +110,12 @@ export default function PhaseCompose({
 
   const lowWght = Math.max(100, Math.round(partialTone.wght * 0.5));
 
+  const currentEffect = EFFECT_OPTIONS.find((e) => e.idx === graphicIdx) ?? EFFECT_OPTIONS[0];
+  function cycleEffect() {
+    const pos = EFFECT_OPTIONS.findIndex((e) => e.idx === graphicIdx);
+    setGraphicIdx(EFFECT_OPTIONS[(pos + 1) % EFFECT_OPTIONS.length].idx);
+  }
+
   return (
     <div
       className="z-frame z2"
@@ -157,49 +172,13 @@ export default function PhaseCompose({
         <div className="z-stage-caption">외벽에서 이렇게 보여요</div>
       </div>
 
-      <div className="z-picker">
-        <div className="z-picker-label">COLOR</div>
-        <div className="z-swatch-row">
-          {moods.map((m, i) => (
-            <button
-              key={m.id}
-              className={'z-swatch ' + (i === moodIdx ? 'on' : '')}
-              onClick={() => setMoodIdx(i)}
-              aria-label={m.nameLatin}
-              style={{
-                background: m.bg,
-                color: m.text,
-                borderColor: i === moodIdx ? m.graphic : 'transparent'
-              }}
-            >
-              <span className="z-swatch-label">{m.nameLatin}</span>
-              <span className="z-swatch-dot" style={{ background: m.graphic }} />
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="z-picker">
-        <div className="z-picker-header">
-          <span className="z-picker-label">STAR</span>
-          <button
-            className={'z-off-btn ' + (graphicIdx === -1 ? 'on' : '')}
-            onClick={() => setGraphicIdx(-1)}
-          >
-            OFF
-          </button>
-        </div>
-        <div className="z-graphic-row">
-          {graphicsV2.map((svg, i) => (
-            <button
-              key={i}
-              className={'z-graphic-tile ' + (graphicIdx === i ? 'on' : '')}
-              onClick={() => setGraphicIdx(i)}
-              aria-label={`그래픽 ${i + 1}`}
-              dangerouslySetInnerHTML={{ __html: svg }}
-            />
-          ))}
-        </div>
+      <div className="z-cycles">
+        <CycleButton
+          label="색"
+          value={mood.nameLatin}
+          onClick={() => setMoodIdx((i) => (i + 1) % moods.length)}
+        />
+        <CycleButton label="효과" value={currentEffect.label} onClick={cycleEffect} />
       </div>
 
       <button className="primary-action" disabled={!text.trim()} onClick={handleSubmit}>
@@ -213,6 +192,26 @@ export default function PhaseCompose({
         <span className="z-progress-label">효과 → 미리보기</span>
       </div>
     </div>
+  );
+}
+
+function CycleButton({
+  label,
+  value,
+  onClick
+}: {
+  label: string;
+  value: string;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" className="z-cycle" onClick={onClick}>
+      <span className="z-cycle-label">{label}</span>
+      <span className="z-cycle-value">{value}</span>
+      <span className="z-cycle-arrow" aria-hidden>
+        ↻
+      </span>
+    </button>
   );
 }
 

@@ -1276,6 +1276,48 @@ a.primary-action {
   letter-spacing: -0.01em;
 }
 
+/* Minimal cycle buttons (효과 단계의 색/효과) */
+.z-cycles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.z-cycle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-md);
+  color: inherit;
+  font-family: inherit;
+  padding: 12px 16px;
+  cursor: pointer;
+}
+
+.z-cycle-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  opacity: 0.55;
+  min-width: 32px;
+  text-align: left;
+}
+
+.z-cycle-value {
+  flex: 1;
+  text-align: center;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.06em;
+}
+
+.z-cycle-arrow {
+  font-size: 14px;
+  opacity: 0.5;
+}
+
 .z-axis-line input[type='range'] {
   flex: 1;
   -webkit-appearance: none;

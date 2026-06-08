@@ -28,7 +28,7 @@ export const moods: Mood[] = [
   {
     id: 'print',
     name: '인쇄',
-    nameLatin: 'PRINT',
+    nameLatin: 'RETRO',
     bg: '#FF6B6B',            // Riso coral / fluorescent red
     text: '#1E2A52',          // Riso midnight blue
     graphic: '#FFD93D',       // Riso yellow
@@ -38,7 +38,7 @@ export const moods: Mood[] = [
   {
     id: 'day',
     name: '낮',
-    nameLatin: 'DAY',
+    nameLatin: 'POP',
     bg: '#FFFF00',            // fluorescent yellow
     text: '#000000',
     graphic: '#FF0080',       // hot pink
@@ -48,7 +48,7 @@ export const moods: Mood[] = [
   {
     id: 'classic',
     name: '기본',
-    nameLatin: 'CLASSIC',
+    nameLatin: 'MUTE',
     bg: '#FCE7F3',
     text: '#C2185B',
     graphic: '#8B9A1B',
@@ -58,7 +58,7 @@ export const moods: Mood[] = [
   {
     id: 'electric',
     name: '전기',
-    nameLatin: 'ELECTRIC',
+    nameLatin: 'VIVID',
     bg: '#0033FF',            // electric ultramarine
     text: '#FFEE00',          // yellow
     graphic: '#FF00FF',       // magenta

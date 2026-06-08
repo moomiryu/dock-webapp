@@ -162,19 +162,19 @@ function seedMockIfEmpty() {
     {
       id: 'seed-1',
       text: '저는 과기대를 사랑하는데 총장님은 아니신가봐요',
-      tone: { font: 'gothic', tone: 1.0, wght: 800, slnt: 0, size: 40, paletteIdx: 0, graphicIdx: -1 },
+      tone: { font: 'ttoryeot', tone: 1.0, wght: 700, slnt: 0, size: 40, paletteIdx: 0, graphicIdx: -1 },
       createdAt: now - 1000 * 60 * 5
     },
     {
       id: 'seed-2',
       text: '등록금 어디 쓰는지 알려줘',
-      tone: { font: 'myeongjo', tone: 0.7, wght: 600, slnt: -8, size: 44, paletteIdx: 2, graphicIdx: 3 },
+      tone: { font: 'chabun', tone: 0.7, wght: 300, slnt: -8, size: 44, paletteIdx: 2, graphicIdx: 3 },
       createdAt: now - 1000 * 60 * 12
     },
     {
       id: 'seed-3',
       text: '내일 비 온대',
-      tone: { font: 'mono', tone: 1.3, wght: 400, slnt: 0, size: 36, paletteIdx: 5, graphicIdx: 1 },
+      tone: { font: 'botong', tone: 1.3, wght: 400, slnt: 0, size: 36, paletteIdx: 5, graphicIdx: 1 },
       createdAt: now - 1000 * 60 * 33
     }
   ];

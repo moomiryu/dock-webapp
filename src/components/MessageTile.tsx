@@ -10,7 +10,7 @@ interface Props {
 }
 
 const FALLBACK_TONE: ToneState = {
-  font: 'gothic',
+  font: 'botong',
   tone: 1.0,
   wght: 400,
   slnt: 0,

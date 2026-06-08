@@ -18,18 +18,20 @@ interface Props {
 const SAMPLE_TEXT = '발화';
 
 const DEFAULT = {
-  font: 'gothic' as const,
+  font: 'botong' as const,
   tone: 1.0,
   wght: 500,
   slnt: 0,
   size: 80
 };
 
-const FONT_OPTIONS: Array<{ val: ToneState['font']; label: string }> = [
-  { val: 'gothic', label: '외침' },
-  { val: 'mono', label: '선언' },
-  { val: 'myeongjo', label: '속삭임' },
-  { val: 'song', label: '노래' }
+// 형태 5단계 — calm → lively. Each maps to a font key (→ Adobe Fonts in fontMap).
+const FONT_STOPS: Array<{ val: ToneState['font']; label: string }> = [
+  { val: 'doran', label: '도란도란' },
+  { val: 'chabun', label: '차분히' },
+  { val: 'botong', label: '보통' },
+  { val: 'ttoryeot', label: '또렷이' },
+  { val: 'deulseok', label: '들썩들썩' }
 ];
 // Slider stops — left → right. Each maps to a discrete tone value.
 const WGHT_STOPS = [
@@ -48,11 +50,12 @@ const SLNT_STOPS = [
   { val: -8, label: '툭툭' }
 ];
 
-const VOICE_LABELS: Record<ToneState['font'], { kr: string; en: string }> = {
-  gothic: { kr: '외침', en: 'CRY' },
-  mono: { kr: '선언', en: 'STATE' },
-  myeongjo: { kr: '속삭임', en: 'HUSH' },
-  song: { kr: '노래', en: 'SONG' }
+const FONT_LABELS: Record<ToneState['font'], string> = {
+  doran: '도란도란',
+  chabun: '차분히',
+  botong: '보통',
+  ttoryeot: '또렷이',
+  deulseok: '들썩들썩'
 };
 
 const AXIS_LABELS: Record<string, { kr: string; en: string }> = {
@@ -79,7 +82,7 @@ export default function PhaseGlyph({ initialTone, voicePreset, onBack, onNext }:
     document.body.style.setProperty('--bg-outer', Z_MOOD.bg);
   }, []);
 
-  const voiceLabel = voicePreset ? VOICE_LABELS[voicePreset.font] : null;
+  const presetLabel = voicePreset ? FONT_LABELS[voicePreset.font] : null;
 
   return (
     <div
@@ -100,14 +103,14 @@ export default function PhaseGlyph({ initialTone, voicePreset, onBack, onNext }:
         <span>1 / 3 · 자형 정하기</span>
       </div>
 
-      {voiceLabel && (
+      {presetLabel && (
         <div className="z-voice-badge">
-          <span className="z-voice-badge-label">지금 음성</span>
+          <span className="z-voice-badge-label">음성 추천</span>
           <span
             className="z-voice-badge-value"
             style={{ fontFamily: fontMap[voicePreset!.font] }}
           >
-            {voiceLabel.kr} <span className="z-voice-badge-en">{voiceLabel.en}</span>
+            {presetLabel}
           </span>
         </div>
       )}
@@ -131,15 +134,7 @@ export default function PhaseGlyph({ initialTone, voicePreset, onBack, onNext }:
       </div>
 
       <div className="z-axes">
-        <CompactRow
-          axisKey="FONT"
-          options={FONT_OPTIONS.map((o) => ({
-            val: o.val as unknown as number,
-            label: o.label,
-            active: tone.font === o.val
-          }))}
-          onPick={(_v, i) => setTone((t) => ({ ...t, font: FONT_OPTIONS[i].val }))}
-        />
+        <FontSlider stops={FONT_STOPS} value={tone.font} onPick={(v) => setTone((t) => ({ ...t, font: v }))} />
         <StepSlider axisKey="WGHT" stops={WGHT_STOPS} value={tone.wght} onPick={(v) => setTone((t) => ({ ...t, wght: v }))} />
         <StepSlider axisKey="TONE" stops={TONE_STOPS} value={tone.tone} onPick={(v) => setTone((t) => ({ ...t, tone: v }))} />
         <StepSlider axisKey="SLNT" stops={SLNT_STOPS} value={tone.slnt} onPick={(v) => setTone((t) => ({ ...t, slnt: v }))} />
@@ -225,32 +220,45 @@ function StepSlider({
   );
 }
 
-function CompactRow({
-  axisKey,
-  options,
+function FontSlider({
+  stops,
+  value,
   onPick
 }: {
-  axisKey: keyof typeof AXIS_LABELS;
-  options: Array<{ val: number; label: string; active: boolean }>;
-  onPick: (v: number, i: number) => void;
+  stops: Array<{ val: ToneState['font']; label: string }>;
+  value: ToneState['font'];
+  onPick: (v: ToneState['font']) => void;
 }) {
-  const { kr, en } = AXIS_LABELS[axisKey];
+  const { kr, en } = AXIS_LABELS.FONT;
+  let idx = stops.findIndex((s) => s.val === value);
+  if (idx < 0) idx = 2;
   return (
-    <div className="z-axis-line">
+    <div className="z-axis-line z-slider-line">
       <span className="z-axis-label">
         <span className="z-axis-label-kr">{kr}</span>
         <span className="z-axis-label-en">{en}</span>
       </span>
-      <div className="z-axis-options">
-        {options.map((o, i) => (
-          <button
-            key={i}
-            className={'z-axis-opt ' + (o.active ? 'on' : '')}
-            onClick={() => onPick(o.val, i)}
-          >
-            {o.label}
-          </button>
-        ))}
+      <div className="z-slider-wrap">
+        <input
+          type="range"
+          min={0}
+          max={stops.length - 1}
+          step={1}
+          value={idx}
+          onChange={(e) => onPick(stops[parseInt(e.target.value, 10)].val)}
+        />
+        <div className="z-slider-stops z-slider-stops-font">
+          {stops.map((s, i) => (
+            <button
+              key={i}
+              type="button"
+              className={'z-slider-stop ' + (i === idx ? 'on' : '')}
+              onClick={() => onPick(s.val)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

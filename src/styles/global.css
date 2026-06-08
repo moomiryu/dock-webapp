@@ -1270,6 +1270,12 @@ a.primary-action {
   font-weight: var(--fw-bold);
 }
 
+/* 형태 has 5 stops — smaller labels so they fit on narrow screens */
+.z-slider-stops-font .z-slider-stop {
+  font-size: 10px;
+  letter-spacing: -0.01em;
+}
+
 .z-axis-line input[type='range'] {
   flex: 1;
   -webkit-appearance: none;

@@ -17,15 +17,19 @@ export const palettes: Palette[] = [
   { bg: '#FFFAE3', text: '#D9381E', graphic: '#1B4965' }
 ];
 
+// 형태 5단계 → Adobe Fonts (kit zhl0ile). Korean fallbacks added because some
+// faces (e.g. orbit) may not cover all Hangul.
 export const fontMap: Record<string, string> = {
-  // 선언 STATE — measured, geometric display
-  mono: '"Orbit", "D2Coding", monospace',
-  // 외침 CRY — direct, weighty sans-serif
-  gothic: '"Pretendard Variable", -apple-system, sans-serif',
-  // 속삭임 HUSH — intimate, literary serif
-  myeongjo: '"Noto Serif KR Variable", "Noto Serif KR", serif',
-  // 노래 SONG — 탈네모틀 안상수체 2012 (Adobe Fonts kit zhl0ile)
-  song: '"agahnsangsoo2012", "Sunflower", sans-serif'
+  doran: '"jjgulwol", "Noto Serif KR Variable", serif',
+  chabun: '"kim-jung-chul-myungjo", "Noto Serif KR Variable", serif',
+  botong: '"orbit", "Pretendard Variable", sans-serif',
+  ttoryeot: '"seoul-namsan", "Pretendard Variable", sans-serif',
+  deulseok: '"agahnsangsoo2012", "Pretendard Variable", sans-serif',
+  // legacy keys — keep so older Firestore docs still render
+  gothic: '"seoul-namsan", "Pretendard Variable", sans-serif',
+  mono: '"orbit", "Pretendard Variable", sans-serif',
+  myeongjo: '"kim-jung-chul-myungjo", "Noto Serif KR Variable", serif',
+  song: '"agahnsangsoo2012", "Pretendard Variable", sans-serif'
 };
 
 export const graphics: string[] = [

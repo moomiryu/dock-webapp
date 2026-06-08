@@ -1,12 +1,13 @@
-// Font family keys are *internal* identifiers tied to typographic categories.
-// Display labels in the UI use voice-mode names (외침/선언/속삭임/노래) — see
-// VOICE_LABELS in PhaseGlyph. Keeping these keys stable preserves Firestore
-// schema compatibility.
-//   mono     → 선언 STATE   (measured, systematic — Orbit)
-//   gothic   → 외침 CRY     (loud, direct — Pretendard)
-//   myeongjo → 속삭임 HUSH  (intimate, slow — Noto Serif KR)
-//   song     → 노래 SONG    (free, kinetic 탈네모틀 — Sunflower)
-export type FontFamily = 'mono' | 'gothic' | 'myeongjo' | 'song';
+// Font family keys = the 5 형태(speech-form) levels, mapped to Adobe Fonts in
+// fontMap (palettes.ts). Ordered calm → lively:
+//   doran    도란도란  (jjgulwol)
+//   chabun   차분히    (kim-jung-chul-myungjo)
+//   botong   보통      (orbit)
+//   ttoryeot 또렷이    (seoul-namsan)
+//   deulseok 들썩들썩  (agahnsangsoo2012)
+// Older Firestore docs may still carry legacy keys (mono/gothic/myeongjo/song);
+// fontMap keeps those for back-compat rendering.
+export type FontFamily = 'doran' | 'chabun' | 'botong' | 'ttoryeot' | 'deulseok';
 
 export interface ToneState {
   font: FontFamily;

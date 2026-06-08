@@ -166,11 +166,11 @@ export default function WallSimulation() {
     if (seeding) return;
     setSeeding(true);
     const samples: Array<{ text: string; tone: ToneState }> = [
-      { text: '저는 과기대를 사랑하는데 총장님은 아니신가봐요', tone: { font: 'gothic', tone: 1.0, wght: 900, slnt: 0, size: 56, paletteIdx: 0, graphicIdx: 0 } },
-      { text: '등록금 어디 쓰는지 알려줘', tone: { font: 'myeongjo', tone: 0.7, wght: 700, slnt: -8, size: 48, paletteIdx: 1, graphicIdx: 3 } },
-      { text: '내일 비 온대', tone: { font: 'mono', tone: 1.3, wght: 400, slnt: 0, size: 44, paletteIdx: 2, graphicIdx: 1 } },
-      { text: '오늘 못 한 말', tone: { font: 'gothic', tone: 1.0, wght: 700, slnt: 0, size: 52, paletteIdx: 4, graphicIdx: 4 } },
-      { text: '여기에 누가 있다', tone: { font: 'song', tone: 1.0, wght: 400, slnt: 0, size: 48, paletteIdx: 3, graphicIdx: -1 } }
+      { text: '저는 과기대를 사랑하는데 총장님은 아니신가봐요', tone: { font: 'ttoryeot', tone: 1.0, wght: 700, slnt: 0, size: 56, paletteIdx: 0, graphicIdx: 0 } },
+      { text: '등록금 어디 쓰는지 알려줘', tone: { font: 'chabun', tone: 0.7, wght: 700, slnt: -8, size: 48, paletteIdx: 1, graphicIdx: 3 } },
+      { text: '내일 비 온대', tone: { font: 'botong', tone: 1.3, wght: 400, slnt: 0, size: 44, paletteIdx: 2, graphicIdx: 1 } },
+      { text: '오늘 못 한 말', tone: { font: 'ttoryeot', tone: 1.0, wght: 700, slnt: 0, size: 52, paletteIdx: 4, graphicIdx: 4 } },
+      { text: '여기에 누가 있다', tone: { font: 'deulseok', tone: 1.0, wght: 500, slnt: 0, size: 48, paletteIdx: 3, graphicIdx: -1 } }
     ];
     try {
       for (const s of samples) {

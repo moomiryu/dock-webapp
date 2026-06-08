@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { classify, isSilent, modeToTone, startRecording } from '../lib/voice';
+import { classify, isSilent, modeToTone, startRecording, SILENCE_THRESHOLD, VOICE_MODES } from '../lib/voice';
 import type { VoiceMode } from '../lib/voice';
 import type { ToneState } from '../types';
 
@@ -13,12 +13,15 @@ interface Props {
 type Stage = 'intro' | 'recording' | 'result' | 'silent' | 'error';
 
 const RECORD_MS = 5500;
+const WAVE_BARS = 40;
+const MODE_ORDER: VoiceMode['id'][] = ['cry', 'state', 'hush', 'song'];
 
 export default function PhaseVoice({ onDone, onHome }: Props) {
   const [stage, setStage] = useState<Stage>('intro');
-  const [level, setLevel] = useState(0);
+  const [levels, setLevels] = useState<number[]>([]);
   const [remainingMs, setRemainingMs] = useState(RECORD_MS);
-  const [mode, setMode] = useState<VoiceMode | null>(null);
+  const [detected, setDetected] = useState<VoiceMode | null>(null);
+  const [selectedId, setSelectedId] = useState<VoiceMode['id'] | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
   const recorderRef = useRef<{ stop: () => Promise<unknown> } | null>(null);
   const tickRef = useRef<number | null>(null);
@@ -37,10 +40,11 @@ export default function PhaseVoice({ onDone, onHome }: Props) {
   async function beginRecording() {
     setStage('recording');
     setRemainingMs(RECORD_MS);
+    setLevels([]);
     try {
       const rec = await startRecording(RECORD_MS);
       recorderRef.current = rec;
-      rec.onLevel((l) => setLevel(l));
+      rec.onLevel((l) => setLevels((prev) => [...prev.slice(-(WAVE_BARS - 1)), l]));
 
       const startedAt = Date.now();
       tickRef.current = window.setInterval(() => {
@@ -56,7 +60,8 @@ export default function PhaseVoice({ onDone, onHome }: Props) {
         return;
       }
       const m = classify(a);
-      setMode(m);
+      setDetected(m);
+      setSelectedId(m.id);
       setStage('result');
     } catch (err) {
       setErrorMsg((err as Error).message || '음성 입력에 실패했어요.');
@@ -65,8 +70,9 @@ export default function PhaseVoice({ onDone, onHome }: Props) {
   }
 
   function accept() {
-    if (!mode) return;
-    onDone(modeToTone(mode));
+    const id = selectedId ?? detected?.id;
+    if (!id) return;
+    onDone(modeToTone(VOICE_MODES[id]));
   }
 
   function skip() {
@@ -74,9 +80,15 @@ export default function PhaseVoice({ onDone, onHome }: Props) {
   }
 
   function retry() {
-    setMode(null);
+    setDetected(null);
+    setSelectedId(null);
+    setLevels([]);
     setStage('intro');
   }
+
+  // Live "is the mic hearing me" feedback during recording.
+  const recentPeak = levels.length ? Math.max(...levels.slice(-10)) : 0;
+  const hearing = recentPeak > SILENCE_THRESHOLD;
 
   return (
     <div className="mf-frame brand voice-frame">
@@ -118,22 +130,19 @@ export default function PhaseVoice({ onDone, onHome }: Props) {
 
       {stage === 'recording' && (
         <div className="voice-stage">
-          <div className="voice-wave" aria-hidden>
-            <span style={{ transform: `scaleY(${0.2 + Math.min(level * 5, 1) * 0.8})` }} />
-            <span style={{ transform: `scaleY(${0.2 + Math.min(level * 4.5, 1) * 0.85})` }} />
-            <span style={{ transform: `scaleY(${0.2 + Math.min(level * 5.5, 1) * 0.75})` }} />
-            <span style={{ transform: `scaleY(${0.2 + Math.min(level * 4.8, 1) * 0.9})` }} />
-            <span style={{ transform: `scaleY(${0.2 + Math.min(level * 5.2, 1) * 0.8})` }} />
-            <span style={{ transform: `scaleY(${0.2 + Math.min(level * 4.5, 1) * 0.85})` }} />
-            <span style={{ transform: `scaleY(${0.2 + Math.min(level * 5.5, 1) * 0.75})` }} />
+          <div className="voice-wave-live" aria-hidden>
+            {Array.from({ length: WAVE_BARS }).map((_, i) => {
+              const l = levels[levels.length - WAVE_BARS + i] ?? 0;
+              const hgt = Math.max(0.06, Math.min(1, l * 6));
+              return <span key={i} style={{ transform: `scaleY(${hgt})` }} />;
+            })}
+          </div>
+          <div className={'voice-meter ' + (hearing ? 'on' : '')}>
+            {hearing ? '잘 들려요' : '더 크게 말해보세요'}
           </div>
           <h1 className="voice-h1">듣고 있어요</h1>
-          <p className="voice-body">
-            아무 말이나, 자유롭게.
-          </p>
-          <div className="voice-countdown">
-            {Math.ceil(remainingMs / 1000)}초
-          </div>
+          <p className="voice-body">아무 말이나, 자유롭게.</p>
+          <div className="voice-countdown">{Math.ceil(remainingMs / 1000)}초</div>
           <button
             className="voice-skip"
             onClick={async () => {
@@ -145,14 +154,35 @@ export default function PhaseVoice({ onDone, onHome }: Props) {
         </div>
       )}
 
-      {stage === 'result' && mode && (
+      {stage === 'result' && detected && (
         <div className="voice-stage">
-          <div className="voice-result-label">{mode.labelEn}</div>
-          <h1 className="voice-h1 voice-mode-name">{mode.labelKr}</h1>
+          <div className="voice-result-label">고른 음성</div>
+          <h1 className="voice-h1 voice-mode-name">
+            {selectedId ? VOICE_MODES[selectedId].labelKr : detected.labelKr}
+          </h1>
           <p className="voice-body">
-            {mode.description}이네요.<br />
-            이 음성으로 시작할게요.
+            목소리는 <b>{detected.labelKr}</b>으로 들렸어요.<br />
+            맞으면 그대로, 아니면 아래에서 바꿔주세요.
           </p>
+
+          <div className="voice-mode-grid">
+            {MODE_ORDER.map((id) => {
+              const m = VOICE_MODES[id];
+              const on = (selectedId ?? detected.id) === id;
+              return (
+                <button
+                  key={id}
+                  className={'voice-mode-card ' + (on ? 'on' : '')}
+                  onClick={() => setSelectedId(id)}
+                >
+                  <span className="voice-mode-card-kr">{m.labelKr}</span>
+                  <span className="voice-mode-card-desc">{m.description}</span>
+                  {detected.id === id && <span className="voice-mode-card-tag">추천</span>}
+                </button>
+              );
+            })}
+          </div>
+
           <div className="voice-actions">
             <button className="primary-action" onClick={accept}>
               <span>이대로 시작 →</span>
@@ -161,7 +191,7 @@ export default function PhaseVoice({ onDone, onHome }: Props) {
               다시 녹음
             </button>
             <button className="voice-skip" onClick={skip}>
-              직접 정하기 →
+              음성 없이 직접 정하기 →
             </button>
           </div>
         </div>

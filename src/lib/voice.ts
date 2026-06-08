@@ -19,8 +19,10 @@ import type { ToneState } from '../types';
 export interface VoiceAnalysis {
   loud: boolean;
   fast: boolean;
-  /** Normalized 0..1, average RMS over recording */
+  /** Normalized 0..1, average RMS over recording (used for silence detection) */
   volume: number;
+  /** Loudness measure — 75th percentile of the envelope (how loud they actually got, ignoring pauses) */
+  loudness: number;
   /** Peaks per second */
   tempo: number;
   /** Actual recording duration (ms) */
@@ -92,9 +94,11 @@ export function modeToTone(m: VoiceMode): Pick<ToneState, 'font' | 'wght' | 'ton
   };
 }
 
-/** Thresholds — calibrated for a typical phone mic at normal listening distance. */
-const LOUD_THRESHOLD = 0.12;     // RMS above this = loud
-const FAST_THRESHOLD = 3.5;      // peaks/sec above this = fast
+/** Thresholds — calibrated for a typical phone mic at normal listening distance.
+ *  `loudness` is a 75th-percentile measure (higher than the old mean), so the
+ *  loud threshold sits a bit higher than the previous mean-based 0.12. */
+const LOUD_THRESHOLD = 0.16;     // loudness above this = loud
+const FAST_THRESHOLD = 3.0;      // peaks/sec above this = fast
 
 /** Below this, treat as silence — don't classify, ask user to retry. */
 export const SILENCE_THRESHOLD = 0.018;
@@ -170,6 +174,13 @@ export async function startRecording(maxDurationMs = 6000): Promise<RecorderHand
 
     const durationMs = Date.now() - startedAt;
     const volume = average(samples);
+    // Loudness = 75th percentile of the envelope. Using a high percentile
+    // instead of the mean keeps quiet pauses from dragging a genuinely loud
+    // voice down into the "soft" bucket.
+    const sorted = [...samples].sort((a, b) => a - b);
+    const loudness = sorted.length
+      ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.75))]
+      : 0;
 
     // Tempo estimation: count peaks in the smoothed envelope.
     // 'peak' = local max above the running average by some delta.
@@ -195,9 +206,10 @@ export async function startRecording(maxDurationMs = 6000): Promise<RecorderHand
     const tempo = peaks / (durationMs / 1000);
 
     return {
-      loud: volume > LOUD_THRESHOLD,
+      loud: loudness > LOUD_THRESHOLD,
       fast: tempo > FAST_THRESHOLD,
       volume,
+      loudness,
       tempo,
       durationMs,
       envelope: samples

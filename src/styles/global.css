@@ -231,6 +231,93 @@ body.themed {
   font-weight: var(--fw-bold);
 }
 
+/* Live rolling waveform (mic test feel) */
+.voice-wave-live {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 96px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.voice-wave-live span {
+  flex: 1;
+  height: 88px;
+  min-width: 3px;
+  background: var(--c-brand-text);
+  transform-origin: center;
+  transition: transform 80ms ease-out;
+  border-radius: 2px;
+}
+
+.voice-meter {
+  font-family: 'D2Coding', monospace;
+  font-size: var(--fs-sm);
+  letter-spacing: 0.12em;
+  opacity: 0.45;
+  transition: opacity var(--t-fast) ease, color var(--t-fast) ease;
+}
+
+.voice-meter.on {
+  opacity: 1;
+  color: var(--c-brand-accent);
+}
+
+/* Result — 4-way manual mode picker */
+.voice-mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+  max-width: 340px;
+  margin: 8px 0 4px;
+}
+
+.voice-mode-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 14px;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-md);
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity var(--t-fast) ease, background var(--t-fast) ease;
+}
+
+.voice-mode-card.on {
+  opacity: 1;
+  background: var(--c-brand-text);
+  color: var(--c-brand-bg);
+}
+
+.voice-mode-card-kr {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-bold);
+}
+
+.voice-mode-card-desc {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.voice-mode-card-tag {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-family: 'D2Coding', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  opacity: 0.6;
+}
+
 .voice-result-label {
   font-family: 'D2Coding', monospace;
   font-size: var(--fs-xs);

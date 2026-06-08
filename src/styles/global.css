@@ -2334,33 +2334,34 @@ body.wall-mode {
   100% { transform: translateX(100vw); }
 }
 
-/* === Landscape blocks — drifting multi-line messages (line breaks + effect) === */
+/* === Landscape blocks — fixed slots, gently floating (no overlap) === */
 .wall-block {
   position: absolute;
-  left: 0;
   z-index: var(--z-content);
   will-change: transform;
-  animation-timing-function: linear;
+  animation-name: wallFloat;
+  animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
 }
 
-.wall-block.track-left {
-  animation-name: wallSlideLeft;
-}
-
-.wall-block.track-right {
-  animation-name: wallSlideRight;
+@keyframes wallFloat {
+  0%   { transform: translate(-50%, -50%); }
+  25%  { transform: translate(calc(-50% + 7px), calc(-50% - 9px)); }
+  50%  { transform: translate(calc(-50% - 6px), calc(-50% + 5px)); }
+  75%  { transform: translate(calc(-50% + 4px), calc(-50% + 8px)); }
+  100% { transform: translate(-50%, -50%); }
 }
 
 .wall-block-inner {
   position: relative;
   display: inline-block;
+  max-width: 30vw;
   padding: 0.45em 0.7em;            /* each block keeps its own margin */
-  font-size: clamp(26px, 3.2vw, 46px);
-  line-height: 1.18;
+  font-size: clamp(22px, 2.8vw, 40px);
+  line-height: 1.2;
   letter-spacing: -0.01em;
   text-align: center;
-  white-space: nowrap;
+  word-break: keep-all;
 }
 
 .wall-block-graphic {

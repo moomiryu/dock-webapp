@@ -25,14 +25,19 @@ const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const EMPHASIS_MS = 10_000; // how long a triggered message stays solo at center
 const LOAD_TIMEOUT_MS = 20000;
 
-// Fewer, slower, well-spaced tracks — each carries multi-line blocks that need
-// vertical room and drift gently.
-const TRACKS: ReadonlyArray<{ y: number; duration: number; dir: 'left' | 'right' }> = [
-  { y: 12, duration: 130, dir: 'left' },
-  { y: 38, duration: 165, dir: 'right' },
-  { y: 62, duration: 145, dir: 'left' },
-  { y: 86, duration: 180, dir: 'right' }
+// Fixed, well-separated slots (block CENTER, % of viewport). Each block sits in
+// its own slot and only gently floats in place — so blocks never overlap.
+const SLOTS: ReadonlyArray<{ x: number; y: number }> = [
+  { x: 20, y: 22 },
+  { x: 52, y: 18 },
+  { x: 82, y: 28 },
+  { x: 30, y: 52 },
+  { x: 70, y: 50 },
+  { x: 18, y: 80 },
+  { x: 52, y: 82 },
+  { x: 84, y: 76 }
 ];
+const LANDSCAPE_N = SLOTS.length; // how many recent messages drift as the landscape
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 
@@ -48,15 +53,6 @@ function luminance(hex: string): number {
 // Brightest of the mood's three colors — readable on the black landscape.
 function brightestColor(p: { bg: string; text: string; graphic: string }): string {
   return [p.bg, p.text, p.graphic].sort((a, b) => luminance(b) - luminance(a))[0];
-}
-
-function hashStr(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) {
-    h = (h << 5) - h + s.charCodeAt(i);
-    h |= 0;
-  }
-  return Math.abs(h);
 }
 
 // ─── Component ────────────────────────────────────────────────────────
@@ -215,13 +211,6 @@ export default function WallSimulation() {
         setShowOverlay((v) => !v);
       }}
     >
-      {/* Faint horizontal track lines */}
-      <div className="wall-tracks-bg" aria-hidden>
-        {TRACKS.map((t, i) => (
-          <div key={i} className="wall-track-line" style={{ top: `${t.y}%` }} />
-        ))}
-      </div>
-
       {/* Empty/error/loading panel */}
       {(isLoading || isEmpty || error) && (
         <div className="wall-empty">
@@ -259,10 +248,10 @@ export default function WallSimulation() {
         </div>
       )}
 
-      {/* Landscape — multi-line blocks drifting gently, each keeping its own
-          line breaks + effect + margin */}
-      {visible.map((msg) => (
-        <WallBlock key={msg.id} msg={msg} />
+      {/* Landscape — multi-line blocks in fixed slots, gently floating, each
+          keeping its own line breaks + effect + margin (no overlap) */}
+      {visible.slice(0, LANDSCAPE_N).map((msg, i) => (
+        <WallBlock key={msg.id} msg={msg} index={i} />
       ))}
 
       {/* Triggered emphasis on top */}
@@ -286,19 +275,17 @@ export default function WallSimulation() {
 
 // ─── Landscape block (drifting multi-line message) ──────────────────
 
-const WallBlock = memo(function WallBlock({ msg }: { msg: StoredMessage }) {
-  const trackIdx = hashStr(msg.id) % TRACKS.length;
-  const track = TRACKS[trackIdx];
-  const phaseSeed = (hashStr(msg.id + '#x') % 1000) / 1000;
-  const animDelay = -phaseSeed * track.duration;
+const WallBlock = memo(function WallBlock({ msg, index }: { msg: StoredMessage; index: number }) {
+  const slot = SLOTS[index % SLOTS.length];
   const { crowdColor, graphicIdx, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
   const lines = useMemo(() => msg.text.split('\n'), [msg.text]);
   const hasGraphic = graphicIdx >= 0 && graphicIdx < wallGraphics.length;
+  const dur = 11 + (index % 5) * 2; // gentle float, desynced per slot
 
   return (
     <div
-      className={`wall-block track-${track.dir}`}
-      style={{ top: `${track.y}%`, animationDuration: `${track.duration}s`, animationDelay: `${animDelay}s` }}
+      className="wall-block"
+      style={{ left: `${slot.x}%`, top: `${slot.y}%`, animationDuration: `${dur}s`, animationDelay: `${-index * 1.7}s` }}
     >
       <div
         className="wall-block-inner"

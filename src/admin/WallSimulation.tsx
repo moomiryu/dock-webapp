@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fontMap } from '../lib/palettes';
 import { palettes as legacyPalettes } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
+import { graphics as wallGraphics } from '../lib/graphics-v2';
 import { isFirebaseConfigured, submitMessage, subscribeMessages } from '../lib/firebase';
 import type { StoredMessage } from '../lib/firebase';
 import type { ToneState } from '../types';
@@ -20,7 +21,7 @@ import type { ToneState } from '../types';
 // ─── Tunables ─────────────────────────────────────────────────────────
 const RECENT_N = 24;                   // how many most-recent messages to display
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-const EMPHASIS_MS = 12_000;            // newly arrived message stays solo at center (12s)
+const EMPHASIS_MS = 15_000;            // newly arrived message stays solo at center
 const LOAD_TIMEOUT_MS = 20000;
 
 // Horizontal tracks — each is a fixed band on the wall.
@@ -37,7 +38,8 @@ const TRACKS: ReadonlyArray<{ y: number; size: 'sm' | 'md' | 'lg'; duration: num
   { y: 86, size: 'lg', duration: 60,  dir: 'right' }
 ];
 
-const SIZE_PX: Record<'sm' | 'md' | 'lg', number> = { sm: 22, md: 34, lg: 52 };
+// ~2x the previous sizes — text was reading too small on the wall.
+const SIZE_PX: Record<'sm' | 'md' | 'lg', number> = { sm: 44, md: 68, lg: 104 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 
@@ -298,7 +300,7 @@ function WallCrowdMessage({ msg }: { msg: StoredMessage }) {
         transform: `scaleX(${scaleX}) skewX(${skew}deg)`
       }}
     >
-      {msg.text}
+      {msg.text.replace(/\n/g, ' ')}
     </div>
   );
 }
@@ -306,17 +308,16 @@ function WallCrowdMessage({ msg }: { msg: StoredMessage }) {
 // ─── Emphasis message (solo center, fades into crowd) ──────────────
 
 function WallEmphasisMessage({ msg, ageMs }: { msg: StoredMessage; ageMs: number }) {
-  const { color, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
+  const { color, graphic, graphicIdx, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
 
-  // Three sub-phases inside emphasis window:
-  //   0..1500ms      → entering (slight zoom in)
-  //   1500..EMPH-2s  → held solo at full size
-  //   last 2s        → shrinking down toward crowd
-  const enterMs = 1500;
+  //   typing → chars fade in one by one (handled by per-char animation-delay)
+  //   hold   → stays solo at full size
+  //   settle → last 2s, shrinks down toward the crowd
   const settleMs = 2000;
-  let stage: 'enter' | 'hold' | 'settle' = 'hold';
-  if (ageMs < enterMs) stage = 'enter';
-  else if (ageMs > EMPHASIS_MS - settleMs) stage = 'settle';
+  const stage: 'hold' | 'settle' = ageMs > EMPHASIS_MS - settleMs ? 'settle' : 'hold';
+
+  const chars = useMemo(() => Array.from(msg.text), [msg.text]);
+  const hasGraphic = graphicIdx >= 0 && graphicIdx < wallGraphics.length;
 
   return (
     <div
@@ -328,15 +329,29 @@ function WallEmphasisMessage({ msg, ageMs }: { msg: StoredMessage; ageMs: number
         fontVariationSettings: `"wght" ${wght}`
       }}
     >
+      {hasGraphic && (
+        <div
+          className="wall-emphasis-graphic"
+          style={{ color: graphic }}
+          aria-hidden
+          dangerouslySetInnerHTML={{ __html: wallGraphics[graphicIdx] }}
+        />
+      )}
       <div
         className="wall-emphasis-text"
         style={{ transform: `scaleX(${scaleX}) skewX(${skew}deg)` }}
       >
-        {msg.text}
+        {chars.map((ch, i) =>
+          ch === '\n' ? (
+            <br key={i} />
+          ) : (
+            <span key={i} className="wall-char" style={{ animationDelay: `${i * 0.07}s` }}>
+              {ch === ' ' ? ' ' : ch}
+            </span>
+          )
+        )}
       </div>
-      <div className="wall-emphasis-meta">
-        방금 외벽에 도착
-      </div>
+      <div className="wall-emphasis-meta">방금 외벽에 도착</div>
     </div>
   );
 }
@@ -358,9 +373,11 @@ function useDerivedStyle(msg: StoredMessage) {
       }
     }
     const wallColors = wallColorsFor(pal);
-    const fontFamily = tone ? fontMap[tone.font] : fontMap.gothic;
+    const fontFamily = tone ? fontMap[tone.font] : fontMap.botong;
     return {
       color: wallColors.text,
+      graphic: wallColors.graphic,
+      graphicIdx: tone?.graphicIdx ?? -1,
       fontFamily,
       wght: tone?.wght ?? 400,
       scaleX: tone?.tone ?? 1.0,

@@ -31,8 +31,16 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
       el.innerHTML = '';
       return;
     }
-    const words = visible.split(/\s+/);
-    el.innerHTML = words.map((w) => `<span class="word">${escapeHtml(w)}</span>`).join(' ');
+    el.innerHTML = visible
+      .split('\n')
+      .map((line) =>
+        line
+          .split(/\s+/)
+          .filter(Boolean)
+          .map((w) => `<span class="word">${escapeHtml(w)}</span>`)
+          .join(' ')
+      )
+      .join('<br>');
     const spans = el.querySelectorAll<HTMLSpanElement>('.word');
 
     let curTop: number | null = null;

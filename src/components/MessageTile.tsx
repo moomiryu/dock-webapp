@@ -33,8 +33,17 @@ export default function MessageTile({ text, tone }: Props) {
     // Pulse animation per tile — start a small interval to highlight one word at a time
     if (!txtRef.current) return;
     const el = txtRef.current;
-    const words = text.trim().split(/\s+/);
-    el.innerHTML = words.map((w) => `<span class="word">${escapeHtml(w)}</span>`).join(' ');
+    el.innerHTML = text
+      .trim()
+      .split('\n')
+      .map((line) =>
+        line
+          .split(/\s+/)
+          .filter(Boolean)
+          .map((w) => `<span class="word">${escapeHtml(w)}</span>`)
+          .join(' ')
+      )
+      .join('<br>');
     let idx = 0;
     const spans = el.querySelectorAll<HTMLSpanElement>('.word');
 

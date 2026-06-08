@@ -24,8 +24,8 @@ export const fontMap: Record<string, string> = {
   gothic: '"Pretendard Variable", -apple-system, sans-serif',
   // 속삭임 HUSH — intimate, literary serif
   myeongjo: '"Noto Serif KR Variable", "Noto Serif KR", serif',
-  // 노래 SONG — 탈네모틀, kinetic Korean
-  song: '"Sunflower", "Pretendard Variable", sans-serif'
+  // 노래 SONG — 탈네모틀 안상수체 2012 (Adobe Fonts kit zhl0ile)
+  song: '"agahnsangsoo2012", "Sunflower", sans-serif'
 };
 
 export const graphics: string[] = [

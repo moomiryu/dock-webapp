@@ -1210,8 +1210,10 @@ a.primary-action {
 }
 
 .z-axis-opt.on {
-  background: currentColor;
-  color: var(--bg);
+  background: color-mix(in srgb, currentColor 22%, transparent);
+  border-color: currentColor;
+  color: inherit;
+  font-weight: var(--fw-bold);
 }
 
 .z-axis-val {

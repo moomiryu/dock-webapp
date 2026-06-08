@@ -1,45 +1,28 @@
-// Wall projection simulator — MEGAFONT's output side.
-// v2: 국립중앙박물관 식 — horizontal multi-track scrolling, emphasis mode
-// for newly arrived messages, max-age + recent-N filtering, real-time
-// Firestore onSnapshot updates.
-//
-// Two modes per message:
-//   - emphasis (EMPHASIS_MS after createdAt): solo at center, large, no scroll
-//   - crowd: assigned to one of N horizontal tracks, scrolls left/right
-//
-// Black canvas with faint horizontal track lines (museum projector grid).
+// Wall projection — MEGAFONT's output side.
+// Trigger-driven: messages are cached as they arrive but NOT shown. When an
+// operator sets control/display.showTrigger = true, the latest cached message
+// is revealed (typewriter), held 6s, then hidden — and the trigger is reset.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fontMap } from '../lib/palettes';
 import { palettes as legacyPalettes } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import { graphics as wallGraphics } from '../lib/graphics-v2';
-import { isFirebaseConfigured, submitMessage, subscribeMessages } from '../lib/firebase';
+import {
+  isFirebaseConfigured,
+  submitMessage,
+  subscribeMessages,
+  subscribeShowTrigger,
+  resetShowTrigger
+} from '../lib/firebase';
 import type { StoredMessage } from '../lib/firebase';
 import type { ToneState } from '../types';
 
 // ─── Tunables ─────────────────────────────────────────────────────────
-const RECENT_N = 24;                   // how many most-recent messages to display
-const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-const EMPHASIS_MS = 15_000;            // newly arrived message stays solo at center
+const RECENT_N = 24;                          // how many recent messages to cache
+const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;   // 7 days
+const DISPLAY_MS = 6000;                       // how long a triggered message stays
 const LOAD_TIMEOUT_MS = 20000;
-
-// Horizontal tracks — each is a fixed band on the wall.
-// y: vertical position (% of viewport height)
-// size: 'sm' | 'md' | 'lg'
-// duration: seconds for one full traverse
-// dir: 'left' (right→left) or 'right' (left→right)
-const TRACKS: ReadonlyArray<{ y: number; size: 'sm' | 'md' | 'lg'; duration: number; dir: 'left' | 'right' }> = [
-  { y: 8,  size: 'sm', duration: 95,  dir: 'left' },
-  { y: 22, size: 'md', duration: 70,  dir: 'right' },
-  { y: 38, size: 'lg', duration: 110, dir: 'left' },
-  { y: 54, size: 'md', duration: 80,  dir: 'right' },
-  { y: 70, size: 'sm', duration: 105, dir: 'left' },
-  { y: 86, size: 'lg', duration: 60,  dir: 'right' }
-];
-
-// ~2x the previous sizes — text was reading too small on the wall.
-const SIZE_PX: Record<'sm' | 'md' | 'lg', number> = { sm: 44, md: 68, lg: 104 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 
@@ -59,15 +42,6 @@ function wallColorsFor(p: { bg: string; text: string; graphic: string }) {
   return { text: ranked[0].c, graphic: ranked[1].c };
 }
 
-function hashStr(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) {
-    h = (h << 5) - h + s.charCodeAt(i);
-    h |= 0;
-  }
-  return Math.abs(h);
-}
-
 // ─── Component ────────────────────────────────────────────────────────
 
 export default function WallSimulation() {
@@ -76,6 +50,11 @@ export default function WallSimulation() {
   const [seeding, setSeeding] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+
+  // Currently revealed message (only set when triggered).
+  const [displayed, setDisplayed] = useState<StoredMessage | null>(null);
+  const [closing, setClosing] = useState(false);
+  const [showCount, setShowCount] = useState(0);
 
   // Body mode
   useEffect(() => {
@@ -87,13 +66,13 @@ export default function WallSimulation() {
     };
   }, []);
 
-  // Tick `now` every second so emphasis transitions feel live
+  // Tick `now` for the age filter
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
 
-  // Real-time Firestore subscription with a load-timeout fallback
+  // Cache messages (do NOT display on arrival)
   const initialLoadedRef = useRef(false);
   useEffect(() => {
     let timeoutId: number | null = null;
@@ -134,7 +113,7 @@ export default function WallSimulation() {
     };
   }, []);
 
-  // Filter + sort messages
+  // Recent, in-age messages (newest first)
   const visible = useMemo(() => {
     if (!messages) return [];
     return messages
@@ -143,34 +122,57 @@ export default function WallSimulation() {
       .slice(0, RECENT_N);
   }, [messages, now]);
 
-  // Newest message — eligible for emphasis if recently arrived
-  const newest = visible[0];
-  const newestAge = newest ? now - newest.createdAt : Infinity;
-  const emphasisMsg = newest && newestAge < EMPHASIS_MS ? newest : null;
+  // Keep the latest message in a ref so the trigger callback always sees it
+  const latestRef = useRef<StoredMessage | null>(null);
+  useEffect(() => {
+    latestRef.current = visible[0] ?? null;
+  }, [visible]);
 
-  // Crowd = everything else (or all when no emphasis)
-  const crowd = useMemo(() => {
-    if (!emphasisMsg) return visible;
-    return visible.filter((m) => m.id !== emphasisMsg.id);
-  }, [visible, emphasisMsg]);
+  // Listen to control/display.showTrigger — reveal the latest on the rising edge
+  const busyRef = useRef(false);
+  useEffect(() => {
+    const unsub = subscribeShowTrigger(
+      (showTrigger) => {
+        if (!showTrigger || busyRef.current) return;
+        const latest = latestRef.current;
+        busyRef.current = true;
+        void resetShowTrigger(); // reset immediately so it fires once
+        if (!latest) {
+          busyRef.current = false;
+          return;
+        }
+        setClosing(false);
+        setDisplayed(latest);
+        setShowCount((c) => c + 1);
+        window.setTimeout(() => setClosing(true), DISPLAY_MS - 400);
+        window.setTimeout(() => {
+          setDisplayed(null);
+          setClosing(false);
+          busyRef.current = false;
+        }, DISPLAY_MS);
+      },
+      () => {
+        /* control read errors are non-fatal; keep waiting */
+      }
+    );
+    return unsub;
+  }, []);
 
-  // Reload function for the retry button
   const retry = useCallback(() => {
     setError(null);
     setMessages(null);
     initialLoadedRef.current = false;
-    // Force a remount by changing key — easier: reload subscribe via a no-op state bump
     window.location.reload();
   }, []);
 
-  // Seed samples directly via submitMessage (writes to whatever client is active)
+  // Seed samples directly via submitMessage
   async function seedSamples() {
     if (seeding) return;
     setSeeding(true);
     const samples: Array<{ text: string; tone: ToneState }> = [
       { text: '저는 과기대를 사랑하는데 총장님은 아니신가봐요', tone: { font: 'ttoryeot', tone: 1.0, wght: 700, slnt: 0, size: 56, paletteIdx: 0, graphicIdx: 0 } },
       { text: '등록금 어디 쓰는지 알려줘', tone: { font: 'chabun', tone: 0.7, wght: 700, slnt: -8, size: 48, paletteIdx: 1, graphicIdx: 3 } },
-      { text: '내일 비 온대', tone: { font: 'botong', tone: 1.3, wght: 400, slnt: 0, size: 44, paletteIdx: 2, graphicIdx: 1 } },
+      { text: '내일 비 온대', tone: { font: 'doran', tone: 1.3, wght: 400, slnt: 0, size: 44, paletteIdx: 2, graphicIdx: 1 } },
       { text: '오늘 못 한 말', tone: { font: 'ttoryeot', tone: 1.0, wght: 700, slnt: 0, size: 52, paletteIdx: 4, graphicIdx: 4 } },
       { text: '여기에 누가 있다', tone: { font: 'deulseok', tone: 1.0, wght: 500, slnt: 0, size: 48, paletteIdx: 3, graphicIdx: -1 } }
     ];
@@ -196,13 +198,6 @@ export default function WallSimulation() {
         setShowOverlay((v) => !v);
       }}
     >
-      {/* Faint horizontal track lines (museum projector grid) */}
-      <div className="wall-tracks-bg" aria-hidden>
-        {TRACKS.map((t, i) => (
-          <div key={i} className="wall-track-line" style={{ top: `${t.y}%` }} />
-        ))}
-      </div>
-
       {/* Empty/error/loading panel */}
       {(isLoading || isEmpty || error) && (
         <div className="wall-empty">
@@ -240,7 +235,7 @@ export default function WallSimulation() {
                     ? 'Firestore에 샘플 5개 추가'
                     : 'mock에 샘플 5개 추가'}
               </button>
-              <a href="/?stage=enter&mode=z" className="wall-link-secondary">
+              <a href="/?stage=enter" className="wall-link-secondary">
                 또는 직접 메시지 쓰기 →
               </a>
             </>
@@ -248,21 +243,14 @@ export default function WallSimulation() {
         </div>
       )}
 
-      {/* Crowd (settled messages on horizontal tracks) */}
-      {crowd.map((msg) => (
-        <WallCrowdMessage key={msg.id} msg={msg} />
-      ))}
-
-      {/* Emphasis (newest message — solo at center for EMPHASIS_MS) */}
-      {emphasisMsg && (
-        <WallEmphasisMessage key={emphasisMsg.id} msg={emphasisMsg} ageMs={newestAge} />
-      )}
+      {/* Triggered message (revealed on control/display.showTrigger) */}
+      {displayed && <WallShowMessage key={showCount} msg={displayed} closing={closing} />}
 
       {showOverlay && (
         <div className="wall-overlay">
           <div className="wall-overlay-line">MEGAFONT · WALL</div>
           <div className="wall-overlay-line">
-            {visible.length}개 · 최대 {RECENT_N}개 · {Math.round(MAX_AGE_MS / 86_400_000)}일 안
+            캐시 {visible.length}개 · 트리거 대기 {busyRef.current ? '· 표시 중' : ''}
           </div>
           <div className="wall-overlay-line">
             {isFirebaseConfigured() ? 'Firestore 연결됨' : '로컬 mock 데이터'}
@@ -274,54 +262,16 @@ export default function WallSimulation() {
   );
 }
 
-// ─── Crowd message (horizontal track scroll) ────────────────────────
+// ─── Revealed message (typewriter, solo center) ──────────────────────
 
-function WallCrowdMessage({ msg }: { msg: StoredMessage }) {
-  const trackIdx = hashStr(msg.id) % TRACKS.length;
-  const track = TRACKS[trackIdx];
-  // Phase offset so messages don't all stack at the same x
-  const phaseSeed = (hashStr(msg.id + '#x') % 1000) / 1000;
-  const animDelay = -phaseSeed * track.duration;
-
-  const { color, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
-
-  return (
-    <div
-      className={`wall-crowd track-${track.dir}`}
-      style={{
-        top: `${track.y}%`,
-        fontSize: SIZE_PX[track.size] + 'px',
-        animationDuration: `${track.duration}s`,
-        animationDelay: `${animDelay}s`,
-        color,
-        fontFamily,
-        fontWeight: wght,
-        fontVariationSettings: `"wght" ${wght}`,
-        transform: `scaleX(${scaleX}) skewX(${skew}deg)`
-      }}
-    >
-      {msg.text.replace(/\n/g, ' ')}
-    </div>
-  );
-}
-
-// ─── Emphasis message (solo center, fades into crowd) ──────────────
-
-function WallEmphasisMessage({ msg, ageMs }: { msg: StoredMessage; ageMs: number }) {
+function WallShowMessage({ msg, closing }: { msg: StoredMessage; closing: boolean }) {
   const { color, graphic, graphicIdx, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
-
-  //   typing → chars fade in one by one (handled by per-char animation-delay)
-  //   hold   → stays solo at full size
-  //   settle → last 2s, shrinks down toward the crowd
-  const settleMs = 2000;
-  const stage: 'hold' | 'settle' = ageMs > EMPHASIS_MS - settleMs ? 'settle' : 'hold';
-
   const chars = useMemo(() => Array.from(msg.text), [msg.text]);
   const hasGraphic = graphicIdx >= 0 && graphicIdx < wallGraphics.length;
 
   return (
     <div
-      className={`wall-emphasis stage-${stage}`}
+      className={`wall-emphasis ${closing ? 'is-closing' : ''}`}
       style={{
         color,
         fontFamily,
@@ -346,12 +296,11 @@ function WallEmphasisMessage({ msg, ageMs }: { msg: StoredMessage; ageMs: number
             <br key={i} />
           ) : (
             <span key={i} className="wall-char" style={{ animationDelay: `${i * 0.07}s` }}>
-              {ch === ' ' ? ' ' : ch}
+              {ch === ' ' ? ' ' : ch}
             </span>
           )
         )}
       </div>
-      <div className="wall-emphasis-meta">방금 외벽에 도착</div>
     </div>
   );
 }

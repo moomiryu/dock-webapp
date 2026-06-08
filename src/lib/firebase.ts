@@ -276,3 +276,47 @@ export function subscribeMessages(
 export function isFirebaseConfigured(): boolean {
   return hasFirebaseEnv();
 }
+
+// ─── Wall display control (control/display doc) ──────────────────────
+// The wall caches messages but only reveals one when an external operator sets
+// control/display.showTrigger = true. We poll that single doc (REST) and reset
+// the flag after showing.
+const CONTROL_DOC = 'control/display';
+
+export function subscribeShowTrigger(
+  cb: (showTrigger: boolean) => void,
+  onError: (e: Error) => void
+): () => void {
+  if (!hasFirebaseEnv()) return () => {};
+  let cancelled = false;
+  const tick = async () => {
+    if (cancelled) return;
+    try {
+      const res = await withTimeout(fetch(`${FS_BASE}/${CONTROL_DOC}?key=${FS_KEY}`), 10000);
+      if (res.status === 404) {
+        if (!cancelled) cb(false);
+        return;
+      }
+      if (!res.ok) throw new Error(`control read ${res.status}`);
+      const json = (await res.json()) as { fields?: { showTrigger?: { booleanValue?: boolean } } };
+      if (!cancelled) cb(json.fields?.showTrigger?.booleanValue === true);
+    } catch (e) {
+      if (!cancelled) onError(e as Error);
+    }
+  };
+  tick();
+  const id = window.setInterval(tick, 1500);
+  return () => {
+    cancelled = true;
+    clearInterval(id);
+  };
+}
+
+export async function resetShowTrigger(): Promise<void> {
+  if (!hasFirebaseEnv()) return;
+  await fetch(`${FS_BASE}/${CONTROL_DOC}?key=${FS_KEY}&updateMask.fieldPaths=showTrigger`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: { showTrigger: { booleanValue: false } } })
+  }).catch(() => {});
+}

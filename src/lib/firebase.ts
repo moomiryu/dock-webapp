@@ -41,6 +41,8 @@ async function buildRealClient(): Promise<FirestoreLike> {
   ]);
   const {
     initializeFirestore,
+    persistentLocalCache,
+    persistentMultipleTabManager,
     doc,
     setDoc,
     collection,
@@ -68,7 +70,11 @@ async function buildRealClient(): Promise<FirestoreLike> {
   // to regular HTTPS requests which firewalls leave alone. Slightly more
   // overhead but reliable. autoDetect can be flaky so we just force it.
   const db = initializeFirestore(app, {
-    experimentalForceLongPolling: true
+    experimentalForceLongPolling: true,
+    // Offline cache: reads serve instantly from IndexedDB after first load and
+    // writes survive a slow/flaky connection, so the wall/archive don't depend
+    // on a fast server round-trip every time.
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
   });
 
   return {
@@ -85,7 +91,7 @@ async function buildRealClient(): Promise<FirestoreLike> {
           startedAt: d.startedAt,
           createdAt: serverTimestamp()
         }),
-        8000
+        20000
       ).catch(() => {
         throw new Error('외벽에 저장하지 못했어요. 잠시 후 다시 시도해주세요.');
       });
@@ -97,7 +103,7 @@ async function buildRealClient(): Promise<FirestoreLike> {
       // force long-polling). Cap the server read; on timeout/failure fall back
       // to whatever is in the local cache so the archive never hangs.
       try {
-        const snap = await withTimeout(getDocs(q), 6000);
+        const snap = await withTimeout(getDocs(q), 15000);
         return snap.docs.map(toStoredMessage);
       } catch (e) {
         try {

@@ -21,7 +21,7 @@ import type { ToneState } from '../types';
 const RECENT_N = 24;                   // how many most-recent messages to display
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const EMPHASIS_MS = 12_000;            // newly arrived message stays solo at center (12s)
-const LOAD_TIMEOUT_MS = 8000;
+const LOAD_TIMEOUT_MS = 20000;
 
 // Horizontal tracks — each is a fixed band on the wall.
 // y: vertical position (% of viewport height)

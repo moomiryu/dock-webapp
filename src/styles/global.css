@@ -231,6 +231,30 @@ body.themed {
   font-weight: var(--fw-bold);
 }
 
+/* Recording progress bar (replaces bare countdown) */
+.voice-progress {
+  width: 100%;
+  max-width: 320px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c-brand-text) 18%, transparent);
+  overflow: hidden;
+}
+
+.voice-progress-fill {
+  height: 100%;
+  background: var(--c-brand-accent);
+  border-radius: 999px;
+  transition: width 120ms linear;
+}
+
+.voice-progress-label {
+  font-family: 'D2Coding', monospace;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.18em;
+  opacity: 0.55;
+}
+
 /* Live rolling waveform (mic test feel) */
 .voice-wave-live {
   display: flex;

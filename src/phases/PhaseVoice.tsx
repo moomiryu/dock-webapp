@@ -12,7 +12,7 @@ interface Props {
 
 type Stage = 'intro' | 'recording' | 'result' | 'silent' | 'error';
 
-const RECORD_MS = 5500;
+const RECORD_MS = 10000;
 const WAVE_BARS = 40;
 const MODE_ORDER: VoiceMode['id'][] = ['cry', 'state', 'hush', 'song'];
 
@@ -142,14 +142,20 @@ export default function PhaseVoice({ onDone, onHome }: Props) {
           </div>
           <h1 className="voice-h1">듣고 있어요</h1>
           <p className="voice-body">아무 말이나, 자유롭게.</p>
-          <div className="voice-countdown">{Math.ceil(remainingMs / 1000)}초</div>
+          <div className="voice-progress" aria-hidden>
+            <div
+              className="voice-progress-fill"
+              style={{ width: `${((RECORD_MS - remainingMs) / RECORD_MS) * 100}%` }}
+            />
+          </div>
+          <div className="voice-progress-label">{Math.ceil(remainingMs / 1000)}초 남음</div>
           <button
             className="voice-skip"
             onClick={async () => {
               await recorderRef.current?.stop();
             }}
           >
-            지금 멈추기
+            충분해요, 그만 듣기
           </button>
         </div>
       )}

@@ -18,7 +18,7 @@ interface Props {
 const SAMPLE_TEXT = '발화';
 
 const DEFAULT = {
-  font: 'botong' as const,
+  font: 'ttoryeot' as const,
   tone: 1.0,
   wght: 500,
   slnt: 0,
@@ -29,7 +29,6 @@ const DEFAULT = {
 const FONT_STOPS: Array<{ val: ToneState['font']; label: string }> = [
   { val: 'doran', label: '도란도란' },
   { val: 'chabun', label: '차분히' },
-  { val: 'botong', label: '보통' },
   { val: 'ttoryeot', label: '또렷이' },
   { val: 'deulseok', label: '들썩들썩' }
 ];

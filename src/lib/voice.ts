@@ -9,10 +9,10 @@
 //   tempo  (fast × slow)   — peak count per second in volume envelope
 //
 // Mapping (voice mode → 형태 level):
-//   loud × fast  →  외침 → 또렷이 (ttoryeot)
-//   loud × slow  →  선언 → 보통 (botong)
+//   loud × fast  →  외침 → 들썩들썩 (deulseok)
+//   loud × slow  →  선언 → 또렷이 (ttoryeot)
 //   soft × slow  →  속삭임 → 차분히 (chabun)
-//   soft × fast  →  노래 → 들썩들썩 (deulseok)
+//   soft × fast  →  노래 → 도란도란 (doran)
 
 import type { ToneState } from '../types';
 
@@ -46,7 +46,7 @@ export const VOICE_MODES: Record<VoiceMode['id'], VoiceMode> = {
     labelKr: '외침',
     labelEn: 'CRY',
     description: '크고 빠른 목소리',
-    font: 'ttoryeot',
+    font: 'deulseok',
     wght: 700
   },
   state: {
@@ -54,7 +54,7 @@ export const VOICE_MODES: Record<VoiceMode['id'], VoiceMode> = {
     labelKr: '선언',
     labelEn: 'STATE',
     description: '크고 느린 목소리',
-    font: 'botong',
+    font: 'ttoryeot',
     wght: 700
   },
   hush: {
@@ -70,7 +70,7 @@ export const VOICE_MODES: Record<VoiceMode['id'], VoiceMode> = {
     labelKr: '노래',
     labelEn: 'SONG',
     description: '작고 빠른 목소리',
-    font: 'deulseok',
+    font: 'doran',
     wght: 300
   }
 };

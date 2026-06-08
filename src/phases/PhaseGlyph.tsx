@@ -44,10 +44,9 @@ const TONE_STOPS = [
   { val: 1.0, label: '보통' },
   { val: 0.7, label: '날렵하게' }
 ];
-const SLNT_STOPS = [
-  { val: 0, label: '또박또박' },
-  { val: -8, label: '툭툭' }
-];
+// 기울기 is a continuous slant, 0° (또박또박) → 28° (흘림). Stored as a negative
+// skewX so the text leans the same direction as before.
+const SLNT_MAX = 28;
 
 const FONT_LABELS: Record<ToneState['font'], string> = {
   doran: '도란도란',
@@ -136,7 +135,26 @@ export default function PhaseGlyph({ initialTone, voicePreset, onBack, onNext }:
         <FontSlider stops={FONT_STOPS} value={tone.font} onPick={(v) => setTone((t) => ({ ...t, font: v }))} />
         <StepSlider axisKey="WGHT" stops={WGHT_STOPS} value={tone.wght} onPick={(v) => setTone((t) => ({ ...t, wght: v }))} />
         <StepSlider axisKey="TONE" stops={TONE_STOPS} value={tone.tone} onPick={(v) => setTone((t) => ({ ...t, tone: v }))} />
-        <StepSlider axisKey="SLNT" stops={SLNT_STOPS} value={tone.slnt} onPick={(v) => setTone((t) => ({ ...t, slnt: v }))} />
+        <div className="z-axis-line z-slider-line">
+          <span className="z-axis-label">
+            <span className="z-axis-label-kr">{AXIS_LABELS.SLNT.kr}</span>
+            <span className="z-axis-label-en">{AXIS_LABELS.SLNT.en}</span>
+          </span>
+          <div className="z-slider-wrap">
+            <input
+              type="range"
+              min={0}
+              max={SLNT_MAX}
+              step={1}
+              value={-tone.slnt}
+              onChange={(e) => setTone((t) => ({ ...t, slnt: -parseInt(e.target.value, 10) }))}
+            />
+            <div className="z-slider-stops">
+              <span className={'z-slider-stop ' + (tone.slnt === 0 ? 'on' : '')}>또박또박</span>
+              <span className={'z-slider-stop ' + (tone.slnt !== 0 ? 'on' : '')}>흘림 {Math.round(-tone.slnt)}°</span>
+            </div>
+          </div>
+        </div>
         <div className="z-axis-line">
           <span className="z-axis-label">
             <span className="z-axis-label-kr">{AXIS_LABELS.SIZE.kr}</span>

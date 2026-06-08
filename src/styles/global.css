@@ -2334,6 +2334,58 @@ body.wall-mode {
   100% { transform: translateX(100vw); }
 }
 
+/* === Landscape blocks — drifting multi-line messages (line breaks + effect) === */
+.wall-block {
+  position: absolute;
+  left: 0;
+  z-index: var(--z-content);
+  will-change: transform;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.wall-block.track-left {
+  animation-name: wallSlideLeft;
+}
+
+.wall-block.track-right {
+  animation-name: wallSlideRight;
+}
+
+.wall-block-inner {
+  position: relative;
+  display: inline-block;
+  padding: 0.45em 0.7em;            /* each block keeps its own margin */
+  font-size: clamp(26px, 3.2vw, 46px);
+  line-height: 1.18;
+  letter-spacing: -0.01em;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.wall-block-graphic {
+  position: absolute;
+  inset: -0.15em -0.1em;
+  z-index: 0;
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+.wall-block-graphic svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.wall-block-text {
+  position: relative;
+  z-index: 1;
+}
+
+.wall-block-text .wall-line {
+  display: block;
+}
+
 /* === Emphasis message — newest, solo at center for EMPHASIS_MS === */
 .wall-emphasis {
   position: absolute;

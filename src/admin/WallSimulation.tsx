@@ -25,16 +25,14 @@ const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const EMPHASIS_MS = 10_000; // how long a triggered message stays solo at center
 const LOAD_TIMEOUT_MS = 20000;
 
-const TRACKS: ReadonlyArray<{ y: number; size: 'sm' | 'md' | 'lg'; duration: number; dir: 'left' | 'right' }> = [
-  { y: 8,  size: 'sm', duration: 95,  dir: 'left' },
-  { y: 22, size: 'md', duration: 70,  dir: 'right' },
-  { y: 38, size: 'lg', duration: 110, dir: 'left' },
-  { y: 54, size: 'md', duration: 80,  dir: 'right' },
-  { y: 70, size: 'sm', duration: 105, dir: 'left' },
-  { y: 86, size: 'lg', duration: 60,  dir: 'right' }
+// Fewer, slower, well-spaced tracks — each carries multi-line blocks that need
+// vertical room and drift gently.
+const TRACKS: ReadonlyArray<{ y: number; duration: number; dir: 'left' | 'right' }> = [
+  { y: 12, duration: 130, dir: 'left' },
+  { y: 38, duration: 165, dir: 'right' },
+  { y: 62, duration: 145, dir: 'left' },
+  { y: 86, duration: 180, dir: 'right' }
 ];
-
-const SIZE_PX: Record<'sm' | 'md' | 'lg', number> = { sm: 44, md: 68, lg: 104 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 
@@ -261,9 +259,10 @@ export default function WallSimulation() {
         </div>
       )}
 
-      {/* Landscape — always drifting */}
+      {/* Landscape — multi-line blocks drifting gently, each keeping its own
+          line breaks + effect + margin */}
       {visible.map((msg) => (
-        <WallCrowdMessage key={msg.id} msg={msg} />
+        <WallBlock key={msg.id} msg={msg} />
       ))}
 
       {/* Triggered emphasis on top */}
@@ -285,31 +284,48 @@ export default function WallSimulation() {
   );
 }
 
-// ─── Crowd message (landscape, horizontal scroll) ───────────────────
+// ─── Landscape block (drifting multi-line message) ──────────────────
 
-const WallCrowdMessage = memo(function WallCrowdMessage({ msg }: { msg: StoredMessage }) {
+const WallBlock = memo(function WallBlock({ msg }: { msg: StoredMessage }) {
   const trackIdx = hashStr(msg.id) % TRACKS.length;
   const track = TRACKS[trackIdx];
   const phaseSeed = (hashStr(msg.id + '#x') % 1000) / 1000;
   const animDelay = -phaseSeed * track.duration;
-  const { crowdColor, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
+  const { crowdColor, graphicIdx, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
+  const lines = useMemo(() => msg.text.split('\n'), [msg.text]);
+  const hasGraphic = graphicIdx >= 0 && graphicIdx < wallGraphics.length;
 
   return (
     <div
-      className={`wall-crowd track-${track.dir}`}
-      style={{
-        top: `${track.y}%`,
-        fontSize: SIZE_PX[track.size] + 'px',
-        animationDuration: `${track.duration}s`,
-        animationDelay: `${animDelay}s`,
-        color: crowdColor,
-        fontFamily,
-        fontWeight: wght,
-        fontVariationSettings: `"wght" ${wght}`,
-        transform: `scaleX(${scaleX}) skewX(${skew}deg)`
-      }}
+      className={`wall-block track-${track.dir}`}
+      style={{ top: `${track.y}%`, animationDuration: `${track.duration}s`, animationDelay: `${animDelay}s` }}
     >
-      {msg.text.replace(/\n/g, ' ')}
+      <div
+        className="wall-block-inner"
+        style={{
+          color: crowdColor,
+          fontFamily,
+          fontWeight: wght,
+          fontVariationSettings: `"wght" ${wght}`,
+          transform: `scaleX(${scaleX}) skewX(${skew}deg)`
+        }}
+      >
+        {hasGraphic && (
+          <div
+            className="wall-block-graphic"
+            style={{ color: crowdColor }}
+            aria-hidden
+            dangerouslySetInnerHTML={{ __html: wallGraphics[graphicIdx] }}
+          />
+        )}
+        <div className="wall-block-text">
+          {lines.map((line, li) => (
+            <div className="wall-line" key={li}>
+              {line}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 });

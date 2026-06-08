@@ -9,7 +9,7 @@ interface Props {
 export default function PhaseHome({ onStartWrite }: Props) {
   useEffect(() => {
     document.body.classList.add('themed');
-    document.body.style.setProperty('--bg-outer', '#F5E1B5');
+    document.body.style.setProperty('--bg-outer', '#ffffff');
     return () => {
       document.body.classList.remove('themed');
       document.body.style.removeProperty('--bg-outer');

@@ -103,11 +103,17 @@
   --c-brick: #8B2419;       /* 깊은 벽돌 — main 20% ★ 텍스트·강조 */
   --c-ink: #1F3E5C;         /* 잉크 네이비 — accent 10% */
 
+  /* Apple-minimal monochrome chrome — color lives only in the message content
+     (preview / wall / archive). Chrome = ink on white, no accent hue. */
+  --c-ink-900: #1d1d1f;   /* near-black ink (Apple) */
+  --c-gray-500: #6e6e73;  /* secondary gray */
+  --c-parchment: #f5f5f7; /* off-white surface */
+
   /* Brand role aliases — change here to swap base variation */
-  --c-brand-bg: var(--c-cream);
-  --c-brand-text: var(--c-brick);
-  --c-brand-accent: var(--c-honey);
-  --c-brand-deep: var(--c-ink);
+  --c-brand-bg: #ffffff;
+  --c-brand-text: var(--c-ink-900);
+  --c-brand-accent: var(--c-ink-900);
+  --c-brand-deep: var(--c-gray-500);
 
   /* ─── Texture / noise opacity ────────────────────────── */
   --o-grain: 0.05;       /* Riso grain — much subtler than v1's 0.12 */

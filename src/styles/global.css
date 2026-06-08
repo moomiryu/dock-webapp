@@ -68,12 +68,12 @@ body {
   justify-content: center;
   padding: 24px 16px;
   min-height: 100vh;
-  background: #efefef;
+  background: #ffffff;
   transition: background 0.4s;
 }
 
 body.themed {
-  background: var(--bg-outer, #efefef);
+  background: var(--bg-outer, #ffffff);
 }
 
 #root {
@@ -351,6 +351,7 @@ body.themed {
 
 /* Grain texture on warm brand surfaces */
 .mf-frame::after {
+  display: none; /* Apple-minimal: no grain on chrome */
   content: '';
   position: absolute;
   inset: 0;
@@ -1500,6 +1501,7 @@ a.primary-action {
 }
 
 .home-frame::after {
+  display: none; /* Apple-minimal: no grain on chrome */
   content: '';
   position: absolute;
   inset: 0;
@@ -1524,20 +1526,20 @@ a.primary-action {
 }
 
 .home-eyebrow {
-  font-family: 'D2Coding', monospace;
-  font-size: 10px;
-  letter-spacing: 0.3em;
-  opacity: 0.65;
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--c-gray-500);
 }
 
 .home-wordmark,
 .home-wordmark-static {
   position: relative;
-  font-family: 'Pretendard Variable', -apple-system, sans-serif;
-  font-size: clamp(40px, 13vw, 72px);
-  font-weight: 900;
-  font-variation-settings: 'wght' 900;
-  letter-spacing: -0.04em;
+  font-family: 'Pretendard Variable', system-ui, -apple-system, sans-serif;
+  font-size: clamp(40px, 13vw, 68px);
+  font-weight: 700;
+  font-variation-settings: 'wght' 700;
+  letter-spacing: -0.05em;
   line-height: 0.95;
   margin: 0;
   user-select: none;
@@ -1560,10 +1562,10 @@ a.primary-action {
 }
 
 .home-wordmark-static::before {
+  display: none; /* Apple-minimal: drop the warm double-print shadow */
   content: attr(data-glyph);
   position: absolute;
   inset: 0;
-  display: flex;
   align-items: center;
   justify-content: center;
   color: var(--c-brand-accent);
@@ -1652,12 +1654,13 @@ a.primary-action {
   background: var(--c-brand-text);
   border: 1px solid var(--c-brand-text);
   color: var(--c-brand-bg);
-  padding: var(--sp-4);
+  padding: 15px var(--sp-6);
+  border-radius: var(--radius-pill);
   font-family: inherit;
-  font-size: var(--fs-base);
-  font-weight: var(--fw-medium);
-  font-variation-settings: 'wght' 500;
-  letter-spacing: 0.2em;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-regular);
+  font-variation-settings: 'wght' 400;
+  letter-spacing: 0.01em;
   cursor: pointer;
   transition: transform var(--t-fast) var(--ease-standard);
 }
@@ -1672,15 +1675,14 @@ a.primary-action {
 
 .home-link {
   text-align: center;
-  font-family: 'D2Coding', monospace;
-  font-size: 11px;
-  letter-spacing: 0.15em;
-  color: inherit;
-  opacity: 0.75;
+  font-family: inherit;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  color: var(--c-gray-500);
+  opacity: 1;
   text-decoration: none;
-  border-bottom: 1px solid currentColor;
   align-self: center;
-  padding-bottom: 2px;
+  padding: 4px;
 }
 
 .home-link-secondary {

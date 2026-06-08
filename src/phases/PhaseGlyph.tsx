@@ -155,22 +155,6 @@ export default function PhaseGlyph({ initialTone, voicePreset, onBack, onNext }:
             </div>
           </div>
         </div>
-        <div className="z-axis-line">
-          <span className="z-axis-label">
-            <span className="z-axis-label-kr">{AXIS_LABELS.SIZE.kr}</span>
-            <span className="z-axis-label-en">{AXIS_LABELS.SIZE.en}</span>
-          </span>
-          <span className="z-size-end">작게</span>
-          <input
-            type="range"
-            min={24}
-            max={64}
-            step={2}
-            value={tone.size}
-            onChange={(e) => setTone((t) => ({ ...t, size: parseInt(e.target.value, 10) }))}
-          />
-          <span className="z-size-end">크게</span>
-        </div>
       </div>
 
       <button className="primary-action" onClick={() => onNext(tone)}>

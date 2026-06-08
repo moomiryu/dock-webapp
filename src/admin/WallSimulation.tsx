@@ -25,19 +25,15 @@ const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const EMPHASIS_MS = 10_000; // how long a triggered message stays solo at center
 const LOAD_TIMEOUT_MS = 20000;
 
-// Fixed, well-separated slots (block CENTER, % of viewport). Each block sits in
-// its own slot and only gently floats in place — so blocks never overlap.
-const SLOTS: ReadonlyArray<{ x: number; y: number }> = [
-  { x: 20, y: 22 },
-  { x: 52, y: 18 },
-  { x: 82, y: 28 },
-  { x: 30, y: 52 },
-  { x: 70, y: 50 },
-  { x: 18, y: 80 },
-  { x: 52, y: 82 },
-  { x: 84, y: 76 }
+// Three well-spaced tracks; blocks drift horizontally. Phase is distributed
+// evenly per track (not random) so same-speed blocks keep a constant gap and
+// never overlap.
+const TRACKS: ReadonlyArray<{ y: number; duration: number; dir: 'left' | 'right' }> = [
+  { y: 20, duration: 150, dir: 'left' },
+  { y: 50, duration: 190, dir: 'right' },
+  { y: 80, duration: 165, dir: 'left' }
 ];
-const LANDSCAPE_N = SLOTS.length; // how many recent messages drift as the landscape
+const LANDSCAPE_N = 9; // recent messages in the drifting landscape
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 
@@ -248,10 +244,10 @@ export default function WallSimulation() {
         </div>
       )}
 
-      {/* Landscape — multi-line blocks in fixed slots, gently floating, each
-          keeping its own line breaks + effect + margin (no overlap) */}
-      {visible.slice(0, LANDSCAPE_N).map((msg, i) => (
-        <WallBlock key={msg.id} msg={msg} index={i} />
+      {/* Landscape — multi-line blocks (line breaks kept, no effect, one size)
+          drifting horizontally on evenly-spaced tracks */}
+      {visible.slice(0, LANDSCAPE_N).map((msg, i, arr) => (
+        <WallBlock key={msg.id} msg={msg} index={i} total={arr.length} />
       ))}
 
       {/* Triggered emphasis on top */}
@@ -275,17 +271,19 @@ export default function WallSimulation() {
 
 // ─── Landscape block (drifting multi-line message) ──────────────────
 
-const WallBlock = memo(function WallBlock({ msg, index }: { msg: StoredMessage; index: number }) {
-  const slot = SLOTS[index % SLOTS.length];
-  const { crowdColor, graphicIdx, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
+const WallBlock = memo(function WallBlock({ msg, index, total }: { msg: StoredMessage; index: number; total: number }) {
+  const track = TRACKS[index % TRACKS.length];
+  const posInTrack = Math.floor(index / TRACKS.length);
+  const countInTrack = Math.max(1, Math.ceil(total / TRACKS.length));
+  const phase = posInTrack / countInTrack; // even spacing → constant gap, no overlap
+  const animDelay = -phase * track.duration;
+  const { crowdColor, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
   const lines = useMemo(() => msg.text.split('\n'), [msg.text]);
-  const hasGraphic = graphicIdx >= 0 && graphicIdx < wallGraphics.length;
-  const dur = 11 + (index % 5) * 2; // gentle float, desynced per slot
 
   return (
     <div
-      className="wall-block"
-      style={{ left: `${slot.x}%`, top: `${slot.y}%`, animationDuration: `${dur}s`, animationDelay: `${-index * 1.7}s` }}
+      className={`wall-block track-${track.dir}`}
+      style={{ top: `${track.y}%`, animationDuration: `${track.duration}s`, animationDelay: `${animDelay}s` }}
     >
       <div
         className="wall-block-inner"
@@ -297,21 +295,11 @@ const WallBlock = memo(function WallBlock({ msg, index }: { msg: StoredMessage; 
           transform: `scaleX(${scaleX}) skewX(${skew}deg)`
         }}
       >
-        {hasGraphic && (
-          <div
-            className="wall-block-graphic"
-            style={{ color: crowdColor }}
-            aria-hidden
-            dangerouslySetInnerHTML={{ __html: wallGraphics[graphicIdx] }}
-          />
-        )}
-        <div className="wall-block-text">
-          {lines.map((line, li) => (
-            <div className="wall-line" key={li}>
-              {line}
-            </div>
-          ))}
-        </div>
+        {lines.map((line, li) => (
+          <div className="wall-line" key={li}>
+            {line}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -324,6 +312,11 @@ const WallShowMessage = memo(function WallShowMessage({ msg, closing }: { msg: S
   const lines = useMemo(() => msg.text.split('\n'), [msg.text]);
   const hasGraphic = graphicIdx >= 0 && graphicIdx < wallGraphics.length;
   let charIdx = 0;
+
+  // Auto-fit: more text → smaller. Longest line fits the width, line count fits
+  // the height; CSS min() takes whichever is more constrained.
+  const longest = Math.max(1, ...lines.map((l) => Array.from(l).length));
+  const fitSize = `clamp(40px, min(${(88 / longest).toFixed(2)}vw, ${(82 / (lines.length * 1.25)).toFixed(2)}vh), 240px)`;
 
   return (
     <div className={`wall-show ${closing ? 'is-closing' : ''}`} style={{ background: bg, color: text }}>
@@ -338,6 +331,7 @@ const WallShowMessage = memo(function WallShowMessage({ msg, closing }: { msg: S
       <div
         className="wall-emphasis-text"
         style={{
+          fontSize: fitSize,
           transform: `scaleX(${scaleX}) skewX(${skew}deg)`,
           fontFamily,
           fontWeight: wght,

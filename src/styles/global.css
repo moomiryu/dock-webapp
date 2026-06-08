@@ -2334,57 +2334,36 @@ body.wall-mode {
   100% { transform: translateX(100vw); }
 }
 
-/* === Landscape blocks — fixed slots, gently floating (no overlap) === */
+/* === Landscape blocks — multi-line, one size, drifting horizontally === */
 .wall-block {
   position: absolute;
+  left: 0;
   z-index: var(--z-content);
   will-change: transform;
-  animation-name: wallFloat;
-  animation-timing-function: ease-in-out;
+  animation-timing-function: linear;
   animation-iteration-count: infinite;
 }
 
-@keyframes wallFloat {
-  0%   { transform: translate(-50%, -50%); }
-  25%  { transform: translate(calc(-50% + 7px), calc(-50% - 9px)); }
-  50%  { transform: translate(calc(-50% - 6px), calc(-50% + 5px)); }
-  75%  { transform: translate(calc(-50% + 4px), calc(-50% + 8px)); }
-  100% { transform: translate(-50%, -50%); }
+.wall-block.track-left {
+  animation-name: wallSlideLeft;
+}
+
+.wall-block.track-right {
+  animation-name: wallSlideRight;
 }
 
 .wall-block-inner {
-  position: relative;
   display: inline-block;
-  max-width: 30vw;
-  padding: 0.45em 0.7em;            /* each block keeps its own margin */
-  font-size: clamp(22px, 2.8vw, 40px);
-  line-height: 1.2;
+  padding: 0.25em 0.6em;            /* each block keeps its own margin */
+  font-size: clamp(36px, 4vw, 64px); /* all the same, larger */
+  line-height: 1.16;
   letter-spacing: -0.01em;
-  text-align: center;
-  word-break: keep-all;
+  text-align: left;
 }
 
-.wall-block-graphic {
-  position: absolute;
-  inset: -0.15em -0.1em;
-  z-index: 0;
-  opacity: 0.22;
-  pointer-events: none;
-}
-
-.wall-block-graphic svg {
-  width: 100%;
-  height: 100%;
+.wall-block-inner .wall-line {
   display: block;
-}
-
-.wall-block-text {
-  position: relative;
-  z-index: 1;
-}
-
-.wall-block-text .wall-line {
-  display: block;
+  white-space: nowrap;
 }
 
 /* === Emphasis message — newest, solo at center for EMPHASIS_MS === */

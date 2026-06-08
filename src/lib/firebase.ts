@@ -41,8 +41,6 @@ async function buildRealClient(): Promise<FirestoreLike> {
   ]);
   const {
     initializeFirestore,
-    persistentLocalCache,
-    persistentMultipleTabManager,
     doc,
     setDoc,
     collection,
@@ -69,12 +67,12 @@ async function buildRealClient(): Promise<FirestoreLike> {
   // long-lived connections are blocked or throttled. Long-polling falls back
   // to regular HTTPS requests which firewalls leave alone. Slightly more
   // overhead but reliable. autoDetect can be flaky so we just force it.
+  // Memory cache only (default). persistentLocalCache + forceLongPolling caused
+  // iOS Safari to serve an empty local cache and never sync the server — the
+  // wall showed 0 messages and writes timed out. Memory cache reads/writes go
+  // straight to the server (the long timeouts below absorb a slow first connect).
   const db = initializeFirestore(app, {
-    experimentalForceLongPolling: true,
-    // Offline cache: reads serve instantly from IndexedDB after first load and
-    // writes survive a slow/flaky connection, so the wall/archive don't depend
-    // on a fast server round-trip every time.
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    experimentalForceLongPolling: true
   });
 
   return {

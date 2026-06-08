@@ -1222,6 +1222,12 @@ a.primary-action {
   text-align: right;
 }
 
+.z-size-end {
+  font-size: var(--fs-xs);
+  opacity: 0.45;
+  white-space: nowrap;
+}
+
 .z-axis-line input[type='range'] {
   flex: 1;
   -webkit-appearance: none;

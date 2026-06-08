@@ -32,19 +32,19 @@ const FONT_OPTIONS: Array<{ val: ToneState['font']; label: string }> = [
   { val: 'song', label: '노래' }
 ];
 const TONE_OPTIONS = [
-  { val: 0.7, label: '장체' },
-  { val: 1.0, label: '평' },
-  { val: 1.3, label: '평체' }
+  { val: 0.7, label: '좁게' },
+  { val: 1.0, label: '보통' },
+  { val: 1.3, label: '넓게' }
 ];
 const WGHT_OPTIONS = [
-  { val: 100, label: 'THIN' },
-  { val: 400, label: 'RGLR' },
-  { val: 700, label: 'BOLD' },
-  { val: 900, label: 'BLAK' }
+  { val: 100, label: '여리게' },
+  { val: 400, label: '보통' },
+  { val: 700, label: '세게' },
+  { val: 900, label: '아주세게' }
 ];
 const SLNT_OPTIONS = [
-  { val: 0, label: '정' },
-  { val: -8, label: '경사' }
+  { val: 0, label: '곧게' },
+  { val: -8, label: '흘림' }
 ];
 
 const VOICE_LABELS: Record<ToneState['font'], { kr: string; en: string }> = {
@@ -57,7 +57,7 @@ const VOICE_LABELS: Record<ToneState['font'], { kr: string; en: string }> = {
 const AXIS_LABELS: Record<string, { kr: string; en: string }> = {
   FONT: { kr: '발화', en: 'VOICE' },
   WGHT: { kr: '무게', en: 'WGHT' },
-  TONE: { kr: '결', en: 'TONE' },
+  TONE: { kr: '폭', en: 'WDTH' },
   SLNT: { kr: '기울기', en: 'SLNT' },
   SIZE: { kr: '크기', en: 'SIZE' }
 };
@@ -171,6 +171,7 @@ export default function PhaseGlyph({ initialTone, voicePreset, onBack, onNext }:
             <span className="z-axis-label-kr">{AXIS_LABELS.SIZE.kr}</span>
             <span className="z-axis-label-en">{AXIS_LABELS.SIZE.en}</span>
           </span>
+          <span className="z-size-end">작게</span>
           <input
             type="range"
             min={40}
@@ -179,7 +180,7 @@ export default function PhaseGlyph({ initialTone, voicePreset, onBack, onNext }:
             value={tone.size}
             onChange={(e) => setTone((t) => ({ ...t, size: parseInt(e.target.value, 10) }))}
           />
-          <span className="z-axis-val">{tone.size}</span>
+          <span className="z-size-end">크게</span>
         </div>
       </div>
 

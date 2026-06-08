@@ -13,14 +13,14 @@ interface Props {
   onNext: (partialTone: PartialTone) => void;
 }
 
-// Glyph tuning happens before the message is written, so we shape a single
-// representative sample character. The full sentence is composed in the next step.
-const SAMPLE_CHAR = '가';
+// Glyph tuning happens before the message is written, so we shape a short
+// representative sample word ("발화") instead of a lone character.
+const SAMPLE_TEXT = '발화';
 
 const DEFAULT = {
   font: 'gothic' as const,
   tone: 1.0,
-  wght: 400,
+  wght: 500,
   slnt: 0,
   size: 80
 };
@@ -31,20 +31,21 @@ const FONT_OPTIONS: Array<{ val: ToneState['font']; label: string }> = [
   { val: 'myeongjo', label: '속삭임' },
   { val: 'song', label: '노래' }
 ];
-const TONE_OPTIONS = [
-  { val: 0.7, label: '좁게' },
+// Slider stops — left → right. Each maps to a discrete tone value.
+const WGHT_STOPS = [
+  { val: 300, label: '여리게' },
+  { val: 500, label: '보통' },
+  { val: 700, label: '세게' }
+];
+// Width (scaleX): leisurely/wide ↔ nimble/narrow
+const TONE_STOPS = [
+  { val: 1.3, label: '느긋하게' },
   { val: 1.0, label: '보통' },
-  { val: 1.3, label: '넓게' }
+  { val: 0.7, label: '날렵하게' }
 ];
-const WGHT_OPTIONS = [
-  { val: 100, label: '여리게' },
-  { val: 400, label: '보통' },
-  { val: 700, label: '세게' },
-  { val: 900, label: '아주세게' }
-];
-const SLNT_OPTIONS = [
-  { val: 0, label: '곧게' },
-  { val: -8, label: '흘림' }
+const SLNT_STOPS = [
+  { val: 0, label: '또박또박' },
+  { val: -8, label: '툭툭' }
 ];
 
 const VOICE_LABELS: Record<ToneState['font'], { kr: string; en: string }> = {
@@ -55,9 +56,9 @@ const VOICE_LABELS: Record<ToneState['font'], { kr: string; en: string }> = {
 };
 
 const AXIS_LABELS: Record<string, { kr: string; en: string }> = {
-  FONT: { kr: '발화', en: 'VOICE' },
-  WGHT: { kr: '무게', en: 'WGHT' },
-  TONE: { kr: '폭', en: 'WDTH' },
+  FONT: { kr: '형태', en: 'FONT' },
+  WGHT: { kr: '굵기', en: 'WGHT' },
+  TONE: { kr: '너비', en: 'WDTH' },
   SLNT: { kr: '기울기', en: 'SLNT' },
   SIZE: { kr: '크기', en: 'SIZE' }
 };
@@ -114,19 +115,19 @@ export default function PhaseGlyph({ initialTone, voicePreset, onBack, onNext }:
       <div className="z-glyph-stage">
         <div
           className="z-glyph"
-          data-glyph={SAMPLE_CHAR}
+          data-glyph={SAMPLE_TEXT}
           style={{
             fontFamily: fontMap[tone.font],
             fontWeight: tone.wght,
             fontVariationSettings: `"wght" ${tone.wght}`,
             transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)`,
-            fontSize: tone.size * 3 + 'px',
+            fontSize: Math.round(tone.size * 1.8) + 'px',
             color: Z_MOOD.text
           }}
         >
-          {SAMPLE_CHAR}
+          {SAMPLE_TEXT}
         </div>
-        <div className="z-glyph-caption">한 글자로 형태를 정해요</div>
+        <div className="z-glyph-caption">예시 ‘발화’로 형태를 정해요</div>
       </div>
 
       <div className="z-axes">
@@ -139,33 +140,9 @@ export default function PhaseGlyph({ initialTone, voicePreset, onBack, onNext }:
           }))}
           onPick={(_v, i) => setTone((t) => ({ ...t, font: FONT_OPTIONS[i].val }))}
         />
-        <CompactRow
-          axisKey="WGHT"
-          options={WGHT_OPTIONS.map((o) => ({
-            val: o.val,
-            label: o.label,
-            active: tone.wght === o.val
-          }))}
-          onPick={(v) => setTone((t) => ({ ...t, wght: v }))}
-        />
-        <CompactRow
-          axisKey="TONE"
-          options={TONE_OPTIONS.map((o) => ({
-            val: o.val,
-            label: o.label,
-            active: tone.tone === o.val
-          }))}
-          onPick={(v) => setTone((t) => ({ ...t, tone: v }))}
-        />
-        <CompactRow
-          axisKey="SLNT"
-          options={SLNT_OPTIONS.map((o) => ({
-            val: o.val,
-            label: o.label,
-            active: tone.slnt === o.val
-          }))}
-          onPick={(v) => setTone((t) => ({ ...t, slnt: v }))}
-        />
+        <StepSlider axisKey="WGHT" stops={WGHT_STOPS} value={tone.wght} onPick={(v) => setTone((t) => ({ ...t, wght: v }))} />
+        <StepSlider axisKey="TONE" stops={TONE_STOPS} value={tone.tone} onPick={(v) => setTone((t) => ({ ...t, tone: v }))} />
+        <StepSlider axisKey="SLNT" stops={SLNT_STOPS} value={tone.slnt} onPick={(v) => setTone((t) => ({ ...t, slnt: v }))} />
         <div className="z-axis-line">
           <span className="z-axis-label">
             <span className="z-axis-label-kr">{AXIS_LABELS.SIZE.kr}</span>
@@ -193,6 +170,56 @@ export default function PhaseGlyph({ initialTone, voicePreset, onBack, onNext }:
         <span className="dot" />
         <span className="dot" />
         <span className="z-progress-label">자형 → 효과 → 미리보기</span>
+      </div>
+    </div>
+  );
+}
+
+function StepSlider({
+  axisKey,
+  stops,
+  value,
+  onPick
+}: {
+  axisKey: keyof typeof AXIS_LABELS;
+  stops: Array<{ val: number; label: string }>;
+  value: number;
+  onPick: (v: number) => void;
+}) {
+  const { kr, en } = AXIS_LABELS[axisKey];
+  // Snap the current value to the nearest stop (handles voice presets that
+  // don't land exactly on a stop value).
+  const idx = stops.reduce(
+    (best, s, i) => (Math.abs(s.val - value) < Math.abs(stops[best].val - value) ? i : best),
+    0
+  );
+  return (
+    <div className="z-axis-line z-slider-line">
+      <span className="z-axis-label">
+        <span className="z-axis-label-kr">{kr}</span>
+        <span className="z-axis-label-en">{en}</span>
+      </span>
+      <div className="z-slider-wrap">
+        <input
+          type="range"
+          min={0}
+          max={stops.length - 1}
+          step={1}
+          value={idx}
+          onChange={(e) => onPick(stops[parseInt(e.target.value, 10)].val)}
+        />
+        <div className="z-slider-stops">
+          {stops.map((s, i) => (
+            <button
+              key={i}
+              type="button"
+              className={'z-slider-stop ' + (i === idx ? 'on' : '')}
+              onClick={() => onPick(s.val)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

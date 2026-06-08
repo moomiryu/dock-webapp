@@ -1228,6 +1228,46 @@ a.primary-action {
   white-space: nowrap;
 }
 
+/* Step sliders (굵기/너비/기울기) — discrete stops with labels underneath */
+.z-slider-line {
+  align-items: flex-start;
+}
+
+.z-slider-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.z-slider-wrap input[type='range'] {
+  width: 100%;
+}
+
+.z-slider-stops {
+  display: flex;
+  justify-content: space-between;
+}
+
+.z-slider-stop {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  opacity: 0.4;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity var(--t-fast) ease;
+}
+
+.z-slider-stop.on {
+  opacity: 1;
+  font-weight: var(--fw-bold);
+}
+
 .z-axis-line input[type='range'] {
   flex: 1;
   -webkit-appearance: none;

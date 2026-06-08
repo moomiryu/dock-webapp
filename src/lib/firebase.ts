@@ -67,12 +67,13 @@ async function buildRealClient(): Promise<FirestoreLike> {
   // long-lived connections are blocked or throttled. Long-polling falls back
   // to regular HTTPS requests which firewalls leave alone. Slightly more
   // overhead but reliable. autoDetect can be flaky so we just force it.
-  // Memory cache only (default). persistentLocalCache + forceLongPolling caused
-  // iOS Safari to serve an empty local cache and never sync the server — the
-  // wall showed 0 messages and writes timed out. Memory cache reads/writes go
-  // straight to the server (the long timeouts below absorb a slow first connect).
+  // Auto-detect transport. A Node connectivity probe (default/auto transport)
+  // read+wrote in ~150ms, but the browser with experimentalForceLongPolling
+  // forced stalled on iOS Safari (empty wall, write timeouts). Auto-detect uses
+  // fast WebChannel where it works and only falls back to long-polling on
+  // networks that need it. Memory cache (default) so reads/writes hit the server.
   const db = initializeFirestore(app, {
-    experimentalForceLongPolling: true
+    experimentalAutoDetectLongPolling: true
   });
 
   return {

@@ -33,7 +33,7 @@ const TRACKS: ReadonlyArray<{ y: number; duration: number; dir: 'left' | 'right'
   { y: 50, duration: 190, dir: 'right' },
   { y: 80, duration: 165, dir: 'left' }
 ];
-const LANDSCAPE_N = 9; // recent messages in the drifting landscape
+const LANDSCAPE_N = 12; // recent messages in the drifting landscape (denser)
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 

@@ -2354,6 +2354,7 @@ body.wall-mode {
 
 .wall-block-inner {
   display: inline-block;
+  max-width: 30vw;                  /* cap width so dense blocks never overlap */
   padding: 0.25em 0.6em;            /* each block keeps its own margin */
   font-size: clamp(36px, 4vw, 64px); /* all the same, larger */
   line-height: 1.16;
@@ -2363,7 +2364,7 @@ body.wall-mode {
 
 .wall-block-inner .wall-line {
   display: block;
-  white-space: nowrap;
+  word-break: keep-all;             /* keep manual breaks; wrap only over-long lines */
 }
 
 /* === Emphasis message — newest, solo at center for EMPHASIS_MS === */

@@ -2365,7 +2365,7 @@ body.wall-mode {
   display: inline-block;
   white-space: pre;
   opacity: 0;
-  animation: wallCharIn 0.45s var(--ease-emphasized) forwards;
+  animation: wallCharIn 0.55s var(--ease-emphasized) forwards;
 }
 
 @keyframes wallCharIn {

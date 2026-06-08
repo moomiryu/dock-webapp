@@ -1242,6 +1242,8 @@ a.primary-action {
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+  /* inset so the range thumb isn't clipped at the track ends (iOS) */
+  padding: 0 6px;
 }
 
 .z-slider-wrap input[type='range'] {
@@ -1324,7 +1326,7 @@ a.primary-action {
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
-  height: 22px;
+  height: 18px;
 }
 
 .z-axis-line input[type='range']::-webkit-slider-runnable-track {
@@ -1341,18 +1343,18 @@ a.primary-action {
 
 .z-axis-line input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   background: currentColor;
   border-radius: 50%;
-  margin-top: -6px;
+  margin-top: -4.5px;
   cursor: pointer;
   border: none;
 }
 
 .z-axis-line input[type='range']::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   background: currentColor;
   border-radius: 50%;
   cursor: pointer;

@@ -90,7 +90,7 @@ export function modeToTone(m: VoiceMode): Pick<ToneState, 'font' | 'wght' | 'ton
     wght: m.wght,
     tone: 1.0,
     slnt: 0,
-    size: 80
+    size: 44
   };
 }
 

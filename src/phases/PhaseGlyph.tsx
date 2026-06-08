@@ -22,7 +22,7 @@ const DEFAULT = {
   tone: 1.0,
   wght: 500,
   slnt: 0,
-  size: 80
+  size: 44
 };
 
 // 형태 5단계 — calm → lively. Each maps to a font key (→ Adobe Fonts in fontMap).
@@ -124,7 +124,7 @@ export default function PhaseGlyph({ initialTone, voicePreset, onBack, onNext }:
             fontWeight: tone.wght,
             fontVariationSettings: `"wght" ${tone.wght}`,
             transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)`,
-            fontSize: Math.round(tone.size * 1.8) + 'px',
+            fontSize: Math.round(tone.size * 3) + 'px',
             color: Z_MOOD.text
           }}
         >
@@ -146,8 +146,8 @@ export default function PhaseGlyph({ initialTone, voicePreset, onBack, onNext }:
           <span className="z-size-end">작게</span>
           <input
             type="range"
-            min={40}
-            max={180}
+            min={24}
+            max={64}
             step={2}
             value={tone.size}
             onChange={(e) => setTone((t) => ({ ...t, size: parseInt(e.target.value, 10) }))}

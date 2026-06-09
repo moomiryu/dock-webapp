@@ -42,7 +42,7 @@ export default function PhaseSubmit({ draft, onRestart }: Props) {
   }, [draft]);
 
   return (
-    <MegafontFrame phaseLabel="외벽에 합류했어요">
+    <MegafontFrame phaseLabel="거치대에 올려주세요">
       <div className="guide-hero">
         {status.kind === 'sending' && (
           <>
@@ -54,10 +54,14 @@ export default function PhaseSubmit({ draft, onRestart }: Props) {
 
         {status.kind === 'sent' && (
           <>
-            <div className="glyph" aria-hidden>✶</div>
-            <h1>외벽에 합류했어요</h1>
+            <div className="glyph" aria-hidden>↓</div>
+            <h1>이제 거치대에 올려주세요</h1>
             <p>
-              7일간 외벽에 머무릅니다.
+              폰을 슬롯에 가만히 꽂으면,<br />
+              당신의 한 줄이 외벽 한가운데 떠올라요.
+            </p>
+            <p style={{ fontSize: 12, opacity: 0.5, marginTop: 4 }}>
+              외벽엔 7일간 머무릅니다.
             </p>
             {!isFirebaseConfigured() && (
               <p style={{ fontSize: 10, opacity: 0.55 }}>
@@ -66,14 +70,9 @@ export default function PhaseSubmit({ draft, onRestart }: Props) {
                 id: {status.id}
               </p>
             )}
-            <div className="done-actions">
-              <a className="primary-action" href="/archive">
-                <span>아카이브 보기 →</span>
-              </a>
-              <button className="done-home-link" onClick={onRestart}>
-                처음으로
-              </button>
-            </div>
+            <button className="done-home-link" onClick={onRestart} style={{ marginTop: 18 }}>
+              처음으로
+            </button>
           </>
         )}
 

@@ -20,7 +20,7 @@ import type { StoredMessage } from '../lib/firebase';
 import type { ToneState } from '../types';
 
 // ─── Tunables ─────────────────────────────────────────────────────────
-const RECENT_N = 24;
+const RECENT_N = 15;                            // fewer reads per poll (quota)
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const EMPHASIS_MS = 10_000; // how long a triggered message stays solo at center
 const LOAD_TIMEOUT_MS = 20000;
@@ -104,13 +104,17 @@ export default function WallSimulation() {
         setMessages(msgs);
       },
       (err) => {
-        initialLoadedRef.current = true;
         if (timeoutId !== null) {
           clearTimeout(timeoutId);
           timeoutId = null;
         }
-        setError(err.message);
-        setMessages([]);
+        // Only surface an error on the very first load. Once the landscape is
+        // up, ignore transient failures (e.g. a 429 burst) so it doesn't blank.
+        if (!initialLoadedRef.current) {
+          initialLoadedRef.current = true;
+          setError(err.message);
+          setMessages([]);
+        }
       }
     );
 

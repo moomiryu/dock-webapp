@@ -129,7 +129,9 @@ function buildRestClient(): FirestoreLike {
     },
     listMessages: list,
     subscribeMessages(lim, cb, onError) {
-      // REST has no realtime stream — poll every 5s.
+      // REST has no realtime stream — poll. 60s: the landscape refreshes once a
+      // minute. Polling faster blows through Firestore's free-tier daily read
+      // quota (50k/day) on a 24/7 wall.
       let cancelled = false;
       const tick = () => {
         if (cancelled) return;
@@ -143,7 +145,7 @@ function buildRestClient(): FirestoreLike {
         );
       };
       tick();
-      const id = window.setInterval(tick, 5000);
+      const id = window.setInterval(tick, 60000);
       return () => {
         cancelled = true;
         clearInterval(id);
@@ -305,7 +307,8 @@ export function subscribeShowTrigger(
     }
   };
   tick();
-  const id = window.setInterval(tick, 1500);
+  // 3s: responsive enough for a switch while staying within the free-tier quota.
+  const id = window.setInterval(tick, 3000);
   return () => {
     cancelled = true;
     clearInterval(id);

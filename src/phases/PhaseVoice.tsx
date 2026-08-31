@@ -27,11 +27,7 @@ export default function PhaseVoice({ onDone, onHome }: Props) {
   const tickRef = useRef<number | null>(null);
 
   useEffect(() => {
-    document.body.classList.add('themed');
-    document.body.style.setProperty('--bg-outer', '#ffffff');
     return () => {
-      document.body.classList.remove('themed');
-      document.body.style.removeProperty('--bg-outer');
       if (tickRef.current) clearInterval(tickRef.current);
       void recorderRef.current?.stop().catch(() => {});
     };
@@ -105,21 +101,18 @@ export default function PhaseVoice({ onDone, onHome }: Props) {
 
       {stage === 'intro' && (
         <div className="voice-stage">
-          <div className="voice-mic" aria-hidden>
-            <div className="voice-mic-ring" />
-            <span>🎤</span>
-          </div>
           <h1 className="voice-h1">음성으로 시작해볼까요?</h1>
           <p className="voice-body">
-            아무 말이나 5초 정도 들려주세요.<br />
-            목소리의 결로 글의 음성을 정해요.
+            아무 말이나 {RECORD_MS / 1000}초 동안 들려주세요.<br />
+            목소리의 결로 글의 음성을 정해요.<br />
+            말을 마치면 바로 멈출 수 있어요.
           </p>
           <div className="voice-actions">
             <button className="primary-action" onClick={beginRecording}>
               <span>녹음 시작</span>
             </button>
             <button className="voice-skip" onClick={skip}>
-              건너뛰고 직접 정하기 →
+              건너뛰고 직접 정하기
             </button>
           </div>
           <p className="voice-fineprint">
@@ -191,13 +184,13 @@ export default function PhaseVoice({ onDone, onHome }: Props) {
 
           <div className="voice-actions">
             <button className="primary-action" onClick={accept}>
-              <span>이대로 시작 →</span>
+              <span>이대로 시작</span>
             </button>
             <button className="voice-skip" onClick={retry}>
               다시 녹음
             </button>
             <button className="voice-skip" onClick={skip}>
-              음성 없이 직접 정하기 →
+              음성 없이 직접 정하기
             </button>
           </div>
         </div>
@@ -205,9 +198,6 @@ export default function PhaseVoice({ onDone, onHome }: Props) {
 
       {stage === 'silent' && (
         <div className="voice-stage">
-          <div className="voice-mic" aria-hidden>
-            <span>···</span>
-          </div>
           <h1 className="voice-h1">소리가 너무 작아요</h1>
           <p className="voice-body">
             마이크가 목소리를 못 들었어요.<br />
@@ -215,10 +205,10 @@ export default function PhaseVoice({ onDone, onHome }: Props) {
           </p>
           <div className="voice-actions">
             <button className="primary-action" onClick={retry}>
-              <span>다시 녹음 →</span>
+              <span>다시 녹음</span>
             </button>
             <button className="voice-skip" onClick={skip}>
-              건너뛰고 직접 정하기 →
+              건너뛰고 직접 정하기
             </button>
           </div>
         </div>
@@ -226,14 +216,11 @@ export default function PhaseVoice({ onDone, onHome }: Props) {
 
       {stage === 'error' && (
         <div className="voice-stage">
-          <div className="voice-mic" aria-hidden>
-            <span>!</span>
-          </div>
           <h1 className="voice-h1">음성을 받지 못했어요</h1>
           <p className="voice-body">{errorMsg}</p>
           <div className="voice-actions">
             <button className="primary-action" onClick={skip}>
-              <span>건너뛰고 직접 정하기 →</span>
+              <span>건너뛰고 직접 정하기</span>
             </button>
             <button className="voice-skip" onClick={retry}>
               다시 시도

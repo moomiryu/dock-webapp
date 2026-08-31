@@ -42,11 +42,10 @@ export default function PhaseSubmit({ draft, onRestart }: Props) {
   }, [draft]);
 
   return (
-    <MegafontFrame phaseLabel="거치대에 올려주세요">
+    <MegafontFrame phaseLabel="보냄">
       <div className="guide-hero">
         {status.kind === 'sending' && (
           <>
-            <div className="glyph" aria-hidden>↑</div>
             <h1>외벽으로 보내는 중…</h1>
             <p>잠시만요.</p>
           </>
@@ -54,23 +53,18 @@ export default function PhaseSubmit({ draft, onRestart }: Props) {
 
         {status.kind === 'sent' && (
           <>
-            <div className="glyph" aria-hidden>↓</div>
             <h1>이제 거치대에 올려주세요</h1>
             <p>
               폰을 슬롯에 가만히 꽂으면,<br />
               당신의 한 줄이 외벽 한가운데 떠올라요.
             </p>
-            <p style={{ fontSize: 12, opacity: 0.5, marginTop: 4 }}>
-              외벽엔 7일간 머무릅니다.
-            </p>
+            <p>외벽엔 7일간 머무릅니다.</p>
             {!isFirebaseConfigured() && (
-              <p style={{ fontSize: 10, opacity: 0.55 }}>
-                (개발 모드 — Firebase 미연결, 로컬 mock 전송)
-                <br />
-                id: {status.id}
+              <p className="dev-note">
+                개발 모드 — Firebase 미연결, 로컬 mock 전송 · id {status.id}
               </p>
             )}
-            <button className="done-home-link" onClick={onRestart} style={{ marginTop: 18 }}>
+            <button className="done-home-link" onClick={onRestart}>
               처음으로
             </button>
           </>
@@ -78,10 +72,9 @@ export default function PhaseSubmit({ draft, onRestart }: Props) {
 
         {status.kind === 'error' && (
           <>
-            <div className="glyph" aria-hidden>!</div>
             <h1>보내지 못했어요</h1>
             <p>{status.message}</p>
-            <button className="primary-action" onClick={onRestart} style={{ marginTop: 8 }}>
+            <button className="primary-action" onClick={onRestart}>
               <span>다시 쓰기</span>
             </button>
           </>

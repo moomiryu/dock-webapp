@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { fontMap } from '../lib/palettes';
-import { moods } from '../lib/palettes-v2';
 import type { ToneState } from '../types';
 
 type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
@@ -9,6 +8,8 @@ interface Props {
   initialTone?: PartialTone | null;
   /** Tone preset from the voice intro (or null if skipped). Shows a small badge. */
   voicePreset?: Pick<ToneState, 'font' | 'wght'> | null;
+  /** 이 화면에 어디서 들어왔는지 — 뒤로 가기 라벨이 그걸 그대로 말한다. */
+  backLabel: string;
   onBack: () => void;
   onNext: (partialTone: PartialTone) => void;
 }
@@ -25,7 +26,7 @@ const DEFAULT = {
   size: 44
 };
 
-// 형태 5단계 — calm → lively. Each maps to a font key (→ Adobe Fonts in fontMap).
+// 형태 4단계 — calm → lively. Each maps to a font key (→ Adobe Fonts in fontMap).
 const FONT_STOPS: Array<{ val: ToneState['font']; label: string }> = [
   { val: 'doran', label: '도란도란' },
   { val: 'chabun', label: '차분히' },
@@ -56,17 +57,15 @@ const FONT_LABELS: Record<ToneState['font'], string> = {
   deulseok: '들썩들썩'
 };
 
-const AXIS_LABELS: Record<string, { kr: string; en: string }> = {
-  FONT: { kr: '형태', en: 'FONT' },
-  WGHT: { kr: '굵기', en: 'WGHT' },
-  TONE: { kr: '너비', en: 'WDTH' },
-  SLNT: { kr: '기울기', en: 'SLNT' },
-  SIZE: { kr: '크기', en: 'SIZE' }
+// 최소 버전 — 한글 라벨만. (영문 병기는 최종 디자인 단계에서 다시 판단)
+const AXIS_LABELS: Record<string, string> = {
+  FONT: '형태',
+  WGHT: '굵기',
+  TONE: '너비',
+  SLNT: '기울기'
 };
 
-const Z_MOOD = moods.find((m) => m.id === 'night')!;
-
-export default function PhaseGlyph({ initialTone, voicePreset, onBack, onNext }: Props) {
+export default function PhaseGlyph({ initialTone, voicePreset, backLabel, onBack, onNext }: Props) {
   const [tone, setTone] = useState({
     font: initialTone?.font ?? DEFAULT.font,
     tone: initialTone?.tone ?? DEFAULT.tone,
@@ -75,39 +74,21 @@ export default function PhaseGlyph({ initialTone, voicePreset, onBack, onNext }:
     size: initialTone?.size ?? DEFAULT.size
   });
 
-  useEffect(() => {
-    document.body.classList.add('themed');
-    document.body.style.setProperty('--bg-outer', Z_MOOD.bg);
-  }, []);
-
   const presetLabel = voicePreset ? FONT_LABELS[voicePreset.font] : null;
 
   return (
-    <div
-      className="z-frame z1 has-content"
-      style={{
-        ['--bg' as string]: Z_MOOD.bg,
-        ['--text' as string]: Z_MOOD.text,
-        ['--graphic' as string]: Z_MOOD.graphic,
-        ['--blend' as string]: Z_MOOD.blend,
-        background: Z_MOOD.bg,
-        color: Z_MOOD.text
-      }}
-    >
+    <div className="z-frame z1">
       <div className="z-header">
-        <button className="z-back" onClick={onBack} aria-label="음성으로 돌아가기">
-          ← 음성 다시
+        <button className="z-back" onClick={onBack}>
+          {backLabel}
         </button>
-        <span>1 / 3 · 자형 정하기</span>
+        <span>1 / 3 · 자형</span>
       </div>
 
       {presetLabel && (
         <div className="z-voice-badge">
           <span className="z-voice-badge-label">음성 추천</span>
-          <span
-            className="z-voice-badge-value"
-            style={{ fontFamily: fontMap[voicePreset!.font] }}
-          >
+          <span className="z-voice-badge-value" style={{ fontFamily: fontMap[voicePreset!.font] }}>
             {presetLabel}
           </span>
         </div>
@@ -116,14 +97,12 @@ export default function PhaseGlyph({ initialTone, voicePreset, onBack, onNext }:
       <div className="z-glyph-stage">
         <div
           className="z-glyph"
-          data-glyph={SAMPLE_TEXT}
           style={{
             fontFamily: fontMap[tone.font],
             fontWeight: tone.wght,
             fontVariationSettings: `"wght" ${tone.wght}`,
             transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)`,
-            fontSize: Math.round(tone.size * 3) + 'px',
-            color: Z_MOOD.text
+            fontSize: Math.round(tone.size * 3) + 'px'
           }}
         >
           {SAMPLE_TEXT}
@@ -136,10 +115,7 @@ export default function PhaseGlyph({ initialTone, voicePreset, onBack, onNext }:
         <StepSlider axisKey="WGHT" stops={WGHT_STOPS} value={tone.wght} onPick={(v) => setTone((t) => ({ ...t, wght: v }))} />
         <StepSlider axisKey="TONE" stops={TONE_STOPS} value={tone.tone} onPick={(v) => setTone((t) => ({ ...t, tone: v }))} />
         <div className="z-axis-line z-slider-line">
-          <span className="z-axis-label">
-            <span className="z-axis-label-kr">{AXIS_LABELS.SLNT.kr}</span>
-            <span className="z-axis-label-en">{AXIS_LABELS.SLNT.en}</span>
-          </span>
+          <span className="z-axis-label">{AXIS_LABELS.SLNT}</span>
           <div className="z-slider-wrap">
             <input
               type="range"
@@ -158,14 +134,14 @@ export default function PhaseGlyph({ initialTone, voicePreset, onBack, onNext }:
       </div>
 
       <button className="primary-action" onClick={() => onNext(tone)}>
-        <span>이 자형으로, 다음 →</span>
+        <span>이 자형으로, 다음</span>
       </button>
 
       <div className="z-progress">
         <span className="dot on" />
         <span className="dot" />
         <span className="dot" />
-        <span className="z-progress-label">자형 → 효과 → 미리보기</span>
+        <span className="z-progress-label">자형 · 효과 · 미리보기</span>
       </div>
     </div>
   );
@@ -182,7 +158,6 @@ function StepSlider({
   value: number;
   onPick: (v: number) => void;
 }) {
-  const { kr, en } = AXIS_LABELS[axisKey];
   // Snap the current value to the nearest stop (handles voice presets that
   // don't land exactly on a stop value).
   const idx = stops.reduce(
@@ -191,10 +166,7 @@ function StepSlider({
   );
   return (
     <div className="z-axis-line z-slider-line">
-      <span className="z-axis-label">
-        <span className="z-axis-label-kr">{kr}</span>
-        <span className="z-axis-label-en">{en}</span>
-      </span>
+      <span className="z-axis-label">{AXIS_LABELS[axisKey]}</span>
       <div className="z-slider-wrap">
         <input
           type="range"
@@ -230,15 +202,11 @@ function FontSlider({
   value: ToneState['font'];
   onPick: (v: ToneState['font']) => void;
 }) {
-  const { kr, en } = AXIS_LABELS.FONT;
   let idx = stops.findIndex((s) => s.val === value);
   if (idx < 0) idx = 2;
   return (
     <div className="z-axis-line z-slider-line">
-      <span className="z-axis-label">
-        <span className="z-axis-label-kr">{kr}</span>
-        <span className="z-axis-label-en">{en}</span>
-      </span>
+      <span className="z-axis-label">{AXIS_LABELS.FONT}</span>
       <div className="z-slider-wrap">
         <input
           type="range"

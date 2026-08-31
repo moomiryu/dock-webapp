@@ -17,11 +17,6 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
 
   const mood = moods[tone.paletteIdx % moods.length];
 
-  useEffect(() => {
-    document.body.classList.add('themed');
-    document.body.style.setProperty('--bg-outer', mood.bg);
-  }, [mood.bg]);
-
   // Build word spans + line pulse (same rhythm as the compose stage / wall)
   useEffect(() => {
     if (!previewRef.current) return;
@@ -86,17 +81,16 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
     <div
       className="z-frame z2"
       style={{
+        // 색은 프레임이 아니라 *메시지 무대*에만 흐른다 (최소 흑백 UI 원칙)
         ['--bg' as string]: mood.bg,
         ['--text' as string]: mood.text,
         ['--graphic' as string]: mood.graphic,
-        ['--blend' as string]: mood.blend,
-        background: mood.bg,
-        color: mood.text
+        ['--blend' as string]: mood.blend
       }}
     >
       <div className="z-header">
         <button className="z-back" onClick={onBack} aria-label="다시 손보기">
-          ← 다시 손보기
+          다시 손보기
         </button>
         <span>3 / 3 · 미리보기</span>
       </div>
@@ -116,8 +110,7 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
             fontSize: tone.size + 'px',
             transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)`,
             ['--wght-base' as string]: String(lowWght),
-            ['--wght-active' as string]: String(tone.wght),
-            color: mood.text
+            ['--wght-active' as string]: String(tone.wght)
           }}
         />
         <div className="z-stage-caption">이대로 외벽에 올라가요</div>
@@ -127,9 +120,12 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
         <span>이대로 맡기기</span>
       </button>
 
-      <button className="z-back z-preview-redo" onClick={onBack}>
-        다시 손보기
-      </button>
+      <div className="z-progress">
+        <span className="dot on" />
+        <span className="dot on" />
+        <span className="dot on" />
+        <span className="z-progress-label">자형 · 효과 · 미리보기</span>
+      </div>
     </div>
   );
 }

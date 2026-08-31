@@ -43,11 +43,6 @@ export default function PhaseCompose({
 
   const mood = moods[moodIdx % moods.length];
 
-  useEffect(() => {
-    document.body.classList.add('themed');
-    document.body.style.setProperty('--bg-outer', mood.bg);
-  }, [mood.bg]);
-
   // Build word spans + line pulse
   useEffect(() => {
     if (!previewRef.current) return;
@@ -128,19 +123,18 @@ export default function PhaseCompose({
     <div
       className="z-frame z2"
       style={{
+        // 색은 프레임이 아니라 *메시지 무대*에만 흐른다 (최소 흑백 UI 원칙)
         ['--bg' as string]: mood.bg,
         ['--text' as string]: mood.text,
         ['--graphic' as string]: mood.graphic,
-        ['--blend' as string]: mood.blend,
-        background: mood.bg,
-        color: mood.text
+        ['--blend' as string]: mood.blend
       }}
     >
       <div className="z-header">
         <button className="z-back" onClick={onBack} aria-label="자형 다시 정하기">
-          ← 자형 다시
+          자형 다시
         </button>
-        <span>2 / 3 · 효과·색 · {mood.nameLatin}</span>
+        <span>2 / 3 · 쓰기와 색</span>
       </div>
 
       <div className="z-compose-input">
@@ -173,8 +167,7 @@ export default function PhaseCompose({
             fontSize: partialTone.size + 'px',
             transform: `scaleX(${partialTone.tone}) skewX(${partialTone.slnt}deg)`,
             ['--wght-base' as string]: String(lowWght),
-            ['--wght-active' as string]: String(partialTone.wght),
-            color: mood.text
+            ['--wght-active' as string]: String(partialTone.wght)
           }}
         />
         <div className="z-stage-caption">외벽에서 이렇게 보여요</div>
@@ -190,14 +183,14 @@ export default function PhaseCompose({
       </div>
 
       <button className="primary-action" disabled={!text.trim()} onClick={handleSubmit}>
-        <span>미리보기 →</span>
+        <span>미리보기</span>
       </button>
 
       <div className="z-progress">
         <span className="dot on" />
         <span className="dot on" />
         <span className="dot" />
-        <span className="z-progress-label">효과 → 미리보기</span>
+        <span className="z-progress-label">자형 · 효과 · 미리보기</span>
       </div>
     </div>
   );

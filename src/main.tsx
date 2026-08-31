@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { registerSW } from 'virtual:pwa-register';
 import './styles/global.css';
+import './styles/app.css';
 
 // Display/operator surfaces (/wall projection, /admin, /archive) must always
 // show the freshest build — a stale PWA cache here caused the wall to keep

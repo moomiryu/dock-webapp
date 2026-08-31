@@ -1,0 +1,683 @@
+/* === MEGAFONT — 입력 앱 최소 UI (흑백 베이스) =======================
+   원칙 (2026-09-01):
+   1. 껍데기(chrome)는 흑백만. 색은 오직 *사용자가 만든 메시지*에만 산다.
+   2. 장식 금지 — 그레인·오프셋·이모지·라운드·그림자 없음.
+   3. 위계는 크기·굵기·여백으로만. 선은 1px 한 종류.
+   이 파일은 최종 디자인이 아니라 *구조를 보기 위한 바닥*이다.
+   =================================================================== */
+
+:root {
+  --ink: #000000;
+  --paper: #ffffff;
+  --muted: #767676;
+  --line: #d8d8d8;
+  --ui-font: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ─── 공통 프레임 ────────────────────────────────────────────── */
+
+.home-frame,
+.mf-frame,
+.z-frame {
+  width: 100%;
+  max-width: 480px;
+  min-height: 100dvh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--ui-font);
+  padding: 18px 20px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: relative;
+}
+
+/* 화면 상단 라벨줄 — "지금 어디인가"만 말한다 */
+.mf-header,
+.z-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  flex: none;
+}
+
+.mf-header > span:first-child,
+.z-header > span:last-child {
+  color: var(--ink);
+}
+
+.mf-home-btn,
+.z-back {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.mf-home-btn:hover,
+.z-back:hover {
+  color: var(--ink);
+}
+
+/* ─── 공통 타이포 ────────────────────────────────────────────── */
+
+.voice-h1,
+.guide-hero h1 {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.voice-body,
+.guide-hero p {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.voice-fineprint {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* ─── 공통 버튼 ──────────────────────────────────────────────── */
+
+.primary-action {
+  width: 100%;
+  min-height: 52px;
+  background: var(--ink);
+  color: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.primary-action:disabled {
+  background: var(--paper);
+  color: var(--line);
+  border-color: var(--line);
+  cursor: not-allowed;
+}
+
+.primary-action span {
+  display: block;
+}
+
+/* 보조 동작 — 언제나 주 동작 아래, 회색 텍스트 */
+.voice-skip,
+.home-link,
+.done-home-link,
+.z-preview-redo {
+  background: none;
+  border: none;
+  padding: 6px 0;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+  cursor: pointer;
+  text-align: center;
+  display: block;
+  width: 100%;
+}
+
+.voice-skip:hover,
+.home-link:hover,
+.done-home-link:hover,
+.z-preview-redo:hover {
+  color: var(--ink);
+}
+
+/* ─── 홈 ────────────────────────────────────────────────────── */
+
+.home-frame {
+  justify-content: space-between;
+}
+
+.home-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 40px 0;
+}
+
+.home-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.home-wordmark-static {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.home-headline {
+  font-size: 27px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+  margin-top: 10px;
+}
+
+.home-tagline {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.home-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.home-cta {
+  width: 100%;
+  min-height: 52px;
+  background: var(--ink);
+  color: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ─── 음성 ──────────────────────────────────────────────────── */
+
+.voice-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px 0;
+}
+
+.voice-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.voice-result-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.voice-mode-name {
+  font-size: 32px;
+}
+
+/* 녹음 파형 — 장식이 아니라 "마이크가 듣고 있다"는 유일한 증거 */
+.voice-wave-live {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 64px;
+  border-bottom: 1px solid var(--line);
+}
+
+.voice-wave-live span {
+  flex: 1;
+  height: 100%;
+  background: var(--ink);
+  transform: scaleY(0.06);
+  transform-origin: center;
+  transition: transform 90ms linear;
+}
+
+.voice-meter {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.voice-meter.on {
+  color: var(--ink);
+}
+
+.voice-progress {
+  height: 1px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.voice-progress-fill {
+  height: 100%;
+  background: var(--ink);
+  transition: width 100ms linear;
+}
+
+.voice-progress-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.voice-mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  margin-top: 6px;
+}
+
+.voice-mode-card {
+  background: var(--paper);
+  border: none;
+  border-radius: 0;
+  padding: 14px 12px;
+  font-family: inherit;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+}
+
+.voice-mode-card.on {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.voice-mode-card-kr {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.voice-mode-card-desc {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.voice-mode-card.on .voice-mode-card-desc {
+  color: var(--paper);
+  opacity: 0.7;
+}
+
+.voice-mode-card-tag {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.voice-mode-card.on .voice-mode-card-tag {
+  color: var(--paper);
+}
+
+/* ─── 자형 (glyph) ──────────────────────────────────────────── */
+
+.z-voice-badge {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  flex: none;
+}
+
+.z-voice-badge-value {
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.z-glyph-stage {
+  flex: 1;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.z-glyph {
+  line-height: 1;
+  text-align: center;
+  transition: transform 200ms, font-size 200ms;
+  transform-origin: center;
+}
+
+.z-glyph-caption,
+.z-stage-caption {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* 조절 축 — 라벨 + 슬라이더 + 현재값 */
+.z-axes {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: none;
+}
+
+.z-axis-line {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.z-axis-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.z-slider-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.z-slider-stops {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.z-slider-stop {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.z-slider-stop.on {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* 슬라이더 — 선 하나와 점 하나 */
+.z-axis-line input[type='range'] {
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 22px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.z-axis-line input[type='range']::-webkit-slider-runnable-track {
+  height: 1px;
+  background: var(--ink);
+}
+
+.z-axis-line input[type='range']::-moz-range-track {
+  height: 1px;
+  background: var(--ink);
+}
+
+.z-axis-line input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ink);
+  margin-top: -6.5px;
+}
+
+.z-axis-line input[type='range']::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+/* ─── 효과·색 (compose) / 미리보기 ──────────────────────────── */
+
+.z-compose-input {
+  position: relative;
+  flex: none;
+}
+
+.z-input {
+  width: 100%;
+  min-height: 76px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  padding: 12px 44px 12px 12px;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+}
+
+.z-input::placeholder {
+  color: var(--muted);
+}
+
+.z-counter-inline {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* 메시지 무대 — 여기만 사용자가 고른 색이 산다 */
+.z-full-stage {
+  flex: 1;
+  min-height: 200px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px 30px;
+  background: var(--bg, #ffffff);
+  color: var(--text, #000000);
+  border: 1px solid var(--ink);
+}
+
+.z-stage-tracks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.z-stage-tracks span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.14;
+}
+
+.z-full-stage .graphic-layer svg {
+  color: var(--graphic, currentColor);
+  mix-blend-mode: var(--blend, multiply);
+}
+
+.z-full-text {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  line-height: 1.25;
+  word-break: keep-all;
+  transform-origin: center;
+  transition: transform 200ms;
+  font-weight: var(--wght-base, 400);
+  font-variation-settings: 'wght' var(--wght-base, 400);
+}
+
+.z-full-text .word {
+  display: inline-block;
+  transition: font-weight 900ms ease-in-out, font-variation-settings 900ms ease-in-out;
+  font-weight: inherit;
+}
+
+.z-full-text .word.active {
+  font-weight: var(--wght-active, 400);
+  font-variation-settings: 'wght' var(--wght-active, 400);
+}
+
+.z-stage-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  opacity: 0.7;
+}
+
+/* 색·효과 — 누를 때마다 다음 값으로 */
+.z-cycles {
+  display: flex;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  flex: none;
+}
+
+.z-cycle {
+  flex: 1;
+  background: var(--paper);
+  border: none;
+  border-radius: 0;
+  padding: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.z-cycle-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.z-cycle-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.z-cycle-arrow {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ─── 진행 표시 ─────────────────────────────────────────────── */
+
+.z-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  flex: none;
+}
+
+.z-progress .dot {
+  width: 18px;
+  height: 2px;
+  background: var(--line);
+}
+
+.z-progress .dot.on {
+  background: var(--ink);
+}
+
+.z-progress-label {
+  margin-left: 6px;
+  letter-spacing: 0.04em;
+}
+
+/* ─── 송신·도킹 안내 ────────────────────────────────────────── */
+
+.guide-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 0;
+}
+
+.guide-hero .primary-action,
+.guide-hero .done-home-link {
+  margin-top: 12px;
+}
+
+.error-banner {
+  border: 1px solid var(--ink);
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* 개발 중에만 보이는 참고줄 */
+.dev-note {
+  font-size: 11px;
+  color: var(--muted);
+}

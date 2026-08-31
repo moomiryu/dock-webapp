@@ -40,7 +40,7 @@ function pickInitialScreen(stage: ReturnType<typeof getStageFromUrl>, draft: Dra
   if (stage === 'enter') {
     // NFC arrival — bypass home. Resume at preview if a full draft exists.
     if (draft && draft.tone && draft.text) return 'preview';
-    return 'voice';
+    return 'glyph';
   }
   return 'home';
 }
@@ -53,6 +53,8 @@ export default function App() {
     return d?.tone ? toPartial(d.tone) : null;
   });
   const [voicePreset, setVoicePreset] = useState<Pick<ToneState, 'font' | 'wght'> | null>(null);
+  // 자형 화면에 어디서 들어왔는지 — 뒤로 가기가 온 길로 되돌아가야 한다.
+  const [glyphOrigin, setGlyphOrigin] = useState<'home' | 'voice'>('home');
 
   useEffect(() => {
     if (window.location.pathname.startsWith('/admin')) return;
@@ -71,7 +73,13 @@ export default function App() {
     return <ArchiveView />;
   }
 
+  // 기본 진입은 자형부터. 음성은 홈에서 고르는 선택지.
   function handleStart() {
+    setGlyphOrigin('home');
+    setScreen('glyph');
+  }
+
+  function handleStartVoice() {
     setScreen('voice');
   }
 
@@ -82,11 +90,12 @@ export default function App() {
     } else {
       setVoicePreset(null);
     }
+    setGlyphOrigin('voice');
     setScreen('glyph');
   }
 
   function handleGlyphBack() {
-    setScreen('voice');
+    setScreen(glyphOrigin);
   }
 
   function handleGlyphNext(partial: PartialTone) {
@@ -120,12 +129,15 @@ export default function App() {
     setDraft(null);
     setGlyphTone(null);
     setVoicePreset(null);
+    setGlyphOrigin('home');
     setScreen('home');
   }
 
+  const glyphBackLabel = glyphOrigin === 'voice' ? '음성 다시' : '처음으로';
+
   switch (screen) {
     case 'home':
-      return <PhaseHome onStartWrite={handleStart} />;
+      return <PhaseHome onStartWrite={handleStart} onStartVoice={handleStartVoice} />;
 
     case 'voice':
       return <PhaseVoice onDone={handleVoiceDone} onHome={() => setScreen('home')} />;
@@ -135,6 +147,7 @@ export default function App() {
         <PhaseGlyph
           initialTone={draft?.tone ? toPartial(draft.tone) : glyphTone}
           voicePreset={voicePreset}
+          backLabel={glyphBackLabel}
           onBack={handleGlyphBack}
           onNext={handleGlyphNext}
         />
@@ -148,6 +161,7 @@ export default function App() {
           <PhaseGlyph
             initialTone={null}
             voicePreset={voicePreset}
+            backLabel={glyphBackLabel}
             onBack={handleGlyphBack}
             onNext={handleGlyphNext}
           />
@@ -167,7 +181,16 @@ export default function App() {
 
     case 'preview':
       if (!draft?.text || !draft.tone) {
-        return <PhaseVoice onDone={handleVoiceDone} />;
+        // 되살릴 초안이 없으면 플로우 첫 단계로.
+        return (
+          <PhaseGlyph
+            initialTone={glyphTone}
+            voicePreset={voicePreset}
+            backLabel={glyphBackLabel}
+            onBack={handleGlyphBack}
+            onNext={handleGlyphNext}
+          />
+        );
       }
       return (
         <PhasePreview

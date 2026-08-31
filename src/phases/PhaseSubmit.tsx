@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import MegafontFrame from '../components/MegafontFrame';
 import { clearDraft } from '../lib/draft';
 import { isFirebaseConfigured, submitMessage } from '../lib/firebase';
+import { rotateWallCode } from '../lib/wallCode';
 import type { Draft } from '../types';
 
 type Status =
@@ -28,6 +29,7 @@ export default function PhaseSubmit({ draft, onRestart }: Props) {
         const id = await submitMessage(draft);
         if (!cancelled) {
           clearDraft();
+          rotateWallCode(); // 다음 사람은 새 숫자를 받는다
           setStatus({ kind: 'sent', id });
         }
       } catch (err) {

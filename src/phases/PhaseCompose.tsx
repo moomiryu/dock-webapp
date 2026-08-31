@@ -134,7 +134,7 @@ export default function PhaseCompose({
         <button className="z-back" onClick={onBack} aria-label="자형 다시 정하기">
           자형 다시
         </button>
-        <span>2 / 3 · 쓰기와 색</span>
+        <span>2 / 4 · 쓰기와 색</span>
       </div>
 
       <div className="z-compose-input">
@@ -190,7 +190,8 @@ export default function PhaseCompose({
         <span className="dot on" />
         <span className="dot on" />
         <span className="dot" />
-        <span className="z-progress-label">자형 · 효과 · 미리보기</span>
+        <span className="dot" />
+        <span className="z-progress-label">자형 · 효과 · 미리보기 · 확인</span>
       </div>
     </div>
   );

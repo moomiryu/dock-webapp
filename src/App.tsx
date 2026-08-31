@@ -7,6 +7,7 @@ import PhaseVoice from './phases/PhaseVoice';
 import PhaseGlyph from './phases/PhaseGlyph';
 import PhaseCompose from './phases/PhaseCompose';
 import PhasePreview from './phases/PhasePreview';
+import PhaseCode from './phases/PhaseCode';
 import PhaseSubmit from './phases/PhaseSubmit';
 import {
   clearDraft,
@@ -24,7 +25,8 @@ type Screen =
   | 'glyph'    // 자형 — 한 글자와 형태
   | 'compose'  // 효과 — 풀 문장 작성 + 색·그래픽
   | 'preview'  // 미리보기 — 확인 / 다시
-  | 'submit';  // 로딩 → 완료
+  | 'code'     // 외벽 코드 확인 — 이걸 통과해야 전송
+  | 'submit';  // 로딩 → 완료(도킹 유도)
 
 type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
 
@@ -117,11 +119,19 @@ export default function App() {
   }
 
   function handlePreviewConfirm() {
-    setScreen('submit');
+    setScreen('code');
   }
 
   function handlePreviewBack() {
     setScreen('compose');
+  }
+
+  function handleCodeConfirm() {
+    setScreen('submit');
+  }
+
+  function handleCodeBack() {
+    setScreen('preview');
   }
 
   function handleRestart() {
@@ -200,6 +210,9 @@ export default function App() {
           onBack={handlePreviewBack}
         />
       );
+
+    case 'code':
+      return <PhaseCode onBack={handleCodeBack} onConfirm={handleCodeConfirm} />;
 
     case 'submit':
       return <PhaseSubmit draft={draft} onRestart={handleRestart} />;

@@ -681,3 +681,65 @@
   font-size: 11px;
   color: var(--muted);
 }
+
+/* ─── 외벽 코드 확인 ────────────────────────────────────────── */
+
+.code-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px 0;
+}
+
+.code-input {
+  width: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  padding: 14px 0;
+  font-family: inherit;
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-align: center;
+  text-indent: 0.3em;
+  outline: none;
+  margin-top: 8px;
+}
+
+.code-input::placeholder {
+  color: var(--line);
+  font-weight: 400;
+}
+
+.code-input.is-wrong {
+  border-width: 2px;
+}
+
+.code-error {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+/* 목업 표시 — 실제 설치에서는 이 자리가 사라지고 외벽이 숫자의 주인이 된다 */
+.code-mock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.code-mock strong {
+  font-size: 20px;
+  letter-spacing: 0.2em;
+  color: var(--ink);
+}

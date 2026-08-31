@@ -82,7 +82,7 @@ export default function PhaseGlyph({ initialTone, voicePreset, backLabel, onBack
         <button className="z-back" onClick={onBack}>
           {backLabel}
         </button>
-        <span>1 / 3 · 자형</span>
+        <span>1 / 4 · 자형</span>
       </div>
 
       {presetLabel && (
@@ -141,7 +141,8 @@ export default function PhaseGlyph({ initialTone, voicePreset, backLabel, onBack
         <span className="dot on" />
         <span className="dot" />
         <span className="dot" />
-        <span className="z-progress-label">자형 · 효과 · 미리보기</span>
+        <span className="dot" />
+        <span className="z-progress-label">자형 · 효과 · 미리보기 · 확인</span>
       </div>
     </div>
   );

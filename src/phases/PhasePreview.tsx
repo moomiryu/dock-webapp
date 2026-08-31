@@ -92,7 +92,7 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
         <button className="z-back" onClick={onBack} aria-label="다시 손보기">
           다시 손보기
         </button>
-        <span>3 / 3 · 미리보기</span>
+        <span>3 / 4 · 미리보기</span>
       </div>
 
       <div className="z-full-stage">
@@ -117,14 +117,15 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
       </div>
 
       <button className="primary-action" onClick={onConfirm}>
-        <span>이대로 맡기기</span>
+        <span>이대로 · 외벽 확인으로</span>
       </button>
 
       <div className="z-progress">
         <span className="dot on" />
         <span className="dot on" />
         <span className="dot on" />
-        <span className="z-progress-label">자형 · 효과 · 미리보기</span>
+        <span className="dot" />
+        <span className="z-progress-label">자형 · 효과 · 미리보기 · 확인</span>
       </div>
     </div>
   );

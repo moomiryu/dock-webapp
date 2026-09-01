@@ -55,9 +55,9 @@ export default function PhaseSubmit({ draft, onRestart }: Props) {
 
         {status.kind === 'sent' && (
           <>
-            <h1>이제 거치대에 올려주세요</h1>
+            <h1>이제 홈에 꽂아주세요</h1>
             <p>
-              폰을 슬롯에 가만히 꽂으면,<br />
+              폰을 가로로 눕혀 가만히 밀어 넣으면,<br />
               당신의 한 줄이 외벽 한가운데 떠올라요.
             </p>
             <p>외벽엔 7일간 머무릅니다.</p>

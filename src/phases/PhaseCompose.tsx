@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import BackButton from '../components/BackButton';
 import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
+import { fitFontSize } from '../lib/fit';
 import type { ToneState } from '../types';
 
 type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
@@ -37,6 +38,14 @@ export default function PhaseCompose({
 
   const mood = moods[moodIdx % moods.length];
   const empty = !text.trim();
+
+  // 쓰는 만큼 글자가 작아진다 — 외벽 액자는 정해진 크기라서.
+  // 미리보기 화면과 같은 공식을 쓰되, 편집 중에는 읽을 수 있어야 하므로
+  // 최소치를 조금 높게 잡는다.
+  const fitSize = useMemo(
+    () => fitFontSize(empty ? PLACEHOLDER : text, { min: 13 }),
+    [text, empty]
+  );
 
   // 입력창과 미리보기는 한 몸이다. 아래에 실제 렌더(줄 펄스 포함)를 깔고
   // 그 위에 투명 textarea를 겹쳐 커서와 선택만 textarea 것을 쓴다.
@@ -84,7 +93,7 @@ export default function PhaseCompose({
     tick();
     const interval = window.setInterval(tick, 2400);
     return () => clearInterval(interval);
-  }, [text, partialTone.font, partialTone.tone, partialTone.wght, partialTone.slnt, partialTone.size]);
+  }, [text, partialTone.font, partialTone.tone, partialTone.wght, partialTone.slnt]);
 
   function handleSubmit() {
     onSubmit(text.trim().slice(0, MAX), {
@@ -97,63 +106,59 @@ export default function PhaseCompose({
   const lowWght = Math.max(100, Math.round(partialTone.wght * 0.5));
 
   return (
-    <div
-      className="z-frame z2"
-      style={{
-        // 색은 프레임이 아니라 *메시지 무대*에만 흐른다 (최소 흑백 UI 원칙)
-        ['--bg' as string]: mood.bg,
-        ['--text' as string]: mood.text
-      }}
-    >
+    <div className="z-frame">
       <div className="z-header">
         <BackButton label="자형 다시 정하기" onClick={onBack} />
         <span>2 / 3 · 메시지</span>
       </div>
 
-      <div className="z-full-stage">
-        {/* Faint horizontal track lines — echoes /wall projector grid */}
-        <div className="z-stage-tracks" aria-hidden>
-          <span style={{ top: '20%' }} />
-          <span style={{ top: '50%' }} />
-          <span style={{ top: '80%' }} />
+      <div className="proj-stage">
+        {/* 미리보기 화면과 같은 16:10 액자. 여기서는 그 안에 직접 쓴다 */}
+        <div className="proj-frame" style={{ background: mood.bg, color: mood.text }}>
+          <div className="proj-tracks" aria-hidden>
+            <span style={{ top: '20%' }} />
+            <span style={{ top: '50%' }} />
+            <span style={{ top: '80%' }} />
+          </div>
+
+          <div
+            className="live-wrap"
+            style={{
+              fontFamily: fontMap[partialTone.font],
+              fontSize: fitSize,
+              transform: `scaleX(${partialTone.tone}) skewX(${partialTone.slnt}deg)`,
+              ['--wght-base' as string]: String(lowWght),
+              ['--wght-active' as string]: String(partialTone.wght)
+            }}
+          >
+            {/* 아래층 — 실제로 보이는 글자 */}
+            <div className="live-text" ref={renderRef} aria-hidden />
+            {empty && (
+              <div className="live-placeholder" aria-hidden>
+                {PLACEHOLDER}
+              </div>
+            )}
+
+            {/* 위층 — 보이지 않는 입력. 커서만 남는다 */}
+            <textarea
+              className="live-input"
+              value={text}
+              maxLength={MAX}
+              aria-label="외벽에 올릴 한 줄"
+              spellCheck={false}
+              style={{ caretColor: mood.text }}
+              onChange={(e) => setText(e.target.value.slice(0, MAX))}
+            />
+          </div>
         </div>
 
-        <div
-          className="live-wrap"
-          style={{
-            fontFamily: fontMap[partialTone.font],
-            fontSize: partialTone.size + 'px',
-            transform: `scaleX(${partialTone.tone}) skewX(${partialTone.slnt}deg)`,
-            ['--wght-base' as string]: String(lowWght),
-            ['--wght-active' as string]: String(partialTone.wght)
-          }}
-        >
-          {/* 아래층 — 실제로 보이는 글자 */}
-          <div className="live-text" ref={renderRef} aria-hidden />
-          {empty && (
-            <div className="live-placeholder" aria-hidden>
-              {PLACEHOLDER}
-            </div>
-          )}
-
-          {/* 위층 — 보이지 않는 입력. 커서만 남는다 */}
-          <textarea
-            className="live-input"
-            value={text}
-            maxLength={MAX}
-            aria-label="외벽에 올릴 한 줄"
-            spellCheck={false}
-            style={{ caretColor: mood.text }}
-            onChange={(e) => setText(e.target.value.slice(0, MAX))}
-          />
+        <div className="proj-meta">
+          <span>외벽에서 이렇게 보여요</span>
+          <span className="proj-meta-end">
+            {text.length}
+            <span>/{MAX}</span>
+          </span>
         </div>
-
-        <div className="z-stage-caption">외벽에서 이렇게 보여요</div>
-      </div>
-
-      <div className="z-counter">
-        {text.length}
-        <span>/{MAX}</span>
       </div>
 
       {/* 색 — 무대가 이미 색을 보여주므로 버튼은 몇 번째인지만 센다 */}

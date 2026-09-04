@@ -3,6 +3,7 @@ import BackButton from '../components/BackButton';
 import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import { STAY_DAYS, WALL_H_M, WALL_W_M } from '../lib/wall';
+import { fitFontSize, glyphCm } from '../lib/fit';
 import type { ToneState } from '../types';
 
 interface Props {
@@ -16,19 +17,10 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
   const previewRef = useRef<HTMLDivElement>(null);
 
   const mood = moods[tone.paletteIdx % moods.length];
-  const lines = useMemo(() => text.split('\n'), [text]);
 
-  // /wall의 강조 렌더와 같은 자동 맞춤 공식. 단위만 뷰포트(vw/vh)에서
-  // 컨테이너(cqw/cqh)로 바꿔, 이 작은 액자가 실제 외벽과 같은 비율로 글자를 키운다.
-  // 가장 긴 줄이 폭의 88%, 전체 줄이 높이의 82%에 맞춰진다.
-  const longest = Math.max(1, ...lines.map((l) => Array.from(l).length));
-  const fitSize = `clamp(6px, min(${(88 / longest).toFixed(2)}cqw, ${(
-    82 /
-    (lines.length * 1.25)
-  ).toFixed(2)}cqh), 200px)`;
-
-  // 그 글자가 실제 외벽에서 몇 cm가 되는지 — 스케일을 숫자로 붙여준다.
-  const glyphCm = Math.round(((WALL_W_M * 100) / longest) * 0.88);
+  // 쓰기 화면과 같은 계산(lib/fit). 액자가 정해진 크기라 긴 문장은 작게 들어간다.
+  const fitSize = useMemo(() => fitFontSize(text), [text]);
+  const cm = useMemo(() => glyphCm(text, WALL_W_M), [text]);
 
   // Build word spans + line pulse (same rhythm as the compose stage / wall)
   useEffect(() => {
@@ -110,7 +102,7 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
           <span>
             {WALL_W_M} × {WALL_H_M} m
           </span>
-          <span>글자 약 {glyphCm}cm</span>
+          <span>글자 약 {cm}cm</span>
           <span>{STAY_DAYS}일간</span>
         </div>
       </div>

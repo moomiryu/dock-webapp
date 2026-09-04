@@ -194,22 +194,22 @@
   cursor: grabbing;
 }
 
-/* 스스로 떠다니는 움직임. 손으로 민 거리는 바깥 h1이 따로 맡는다 */
+/* 표류와 튕김은 rAF가 h1의 transform에 직접 쓴다.
+   여기서는 아주 약한 기울임만 얹어 '떠 있는' 느낌을 만든다 */
 .home-mark-float {
   display: block;
-  animation: markFloat 16s ease-in-out infinite;
+  animation: markSway 19s ease-in-out infinite;
 }
 
 .home-mark.is-dragging .home-mark-float {
   animation-play-state: paused;
 }
 
-@keyframes markFloat {
+@keyframes markSway {
   0%,
-  100% { transform: translate(0, 0) rotate(0deg); }
-  22%  { transform: translate(7px, -11px) rotate(-0.45deg); }
-  48%  { transform: translate(-6px, 7px) rotate(0.35deg); }
-  74%  { transform: translate(9px, 4px) rotate(0.25deg); }
+  100% { transform: rotate(0deg); }
+  33%  { transform: rotate(-0.5deg); }
+  66%  { transform: rotate(0.4deg); }
 }
 
 .home-mark span span {
@@ -326,14 +326,6 @@
 
 .z-glyph-ask {
   font-size: 15px;
-  color: var(--muted);
-  text-align: center;
-}
-
-.z-glyph-caption,
-.z-stage-caption {
-  font-size: 12px;
-  letter-spacing: 0;
   color: var(--muted);
   text-align: center;
 }
@@ -477,56 +469,8 @@
 
 /* ─── 효과·색 (compose) / 미리보기 ──────────────────────────── */
 
-/* 글자수 — 무대 밖 오른쪽 아래 */
-.z-counter {
-  align-self: flex-end;
-  margin-top: -8px;
-  font-family: var(--label-font);
-  font-size: 12px;
-  color: var(--muted);
-  flex: none;
-}
-
-.z-counter span {
-  opacity: 0.55;
-}
-
-/* 메시지 무대 — 여기만 사용자가 고른 색이 산다 */
-.z-full-stage {
-  flex: 1;
-  min-height: 200px;
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 16px 30px;
-  background: var(--bg, #ffffff);
-  color: var(--text, #000000);
-  border: 1px solid var(--ink);
-}
-
-.z-stage-tracks {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.z-stage-tracks span {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.14;
-}
-
-.z-full-stage .graphic-layer svg {
-  color: var(--graphic, currentColor);
-  mix-blend-mode: var(--blend, multiply);
-}
-
-.z-full-text,
+/* 아래층(보이는 글자)과 위층(투명 입력)이 같은 상자를 정확히 나눠 쓴다.
+   폰트·크기·자간·정렬·변형은 여기서 한 번만 정하고 둘 다 물려받는다. */
 .live-wrap {
   position: relative;
   z-index: 2;
@@ -535,13 +479,10 @@
   line-height: 1.25;
   word-break: keep-all;
   transform-origin: center;
-  transition: transform 200ms;
   font-weight: var(--wght-base, 400);
   font-variation-settings: 'wght' var(--wght-base, 400);
 }
 
-/* 아래층(보이는 글자)과 위층(투명 입력)은 같은 상자를 정확히 나눠 쓴다.
-   폰트·자간·정렬·변형은 부모 .live-wrap에서 한 번만 정하고 둘 다 물려받는다. */
 .live-text,
 .live-placeholder {
   white-space: pre-wrap;
@@ -583,25 +524,17 @@
   opacity: 0.25;
 }
 
-.z-full-text .word,
-.live-text .word {
+.live-text .word,
+.proj-text .word {
   display: inline-block;
   transition: font-weight 900ms ease-in-out, font-variation-settings 900ms ease-in-out;
   font-weight: inherit;
 }
 
-.z-full-text .word.active,
-.live-text .word.active {
+.live-text .word.active,
+.proj-text .word.active {
   font-weight: var(--wght-active, 400);
   font-variation-settings: 'wght' var(--wght-active, 400);
-}
-
-.z-stage-caption {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 8px;
-  opacity: 0.7;
 }
 
 /* ─── 투사 미리보기 (16:10 = 실제 외벽 2.4 × 1.5 m) ─────────── */
@@ -657,21 +590,21 @@
   font-variation-settings: 'wght' var(--wght-base, 400);
 }
 
-.proj-text .word {
-  display: inline-block;
-  transition: font-weight 900ms ease-in-out, font-variation-settings 900ms ease-in-out;
-  font-weight: inherit;
-}
-
-.proj-text .word.active {
-  font-weight: var(--wght-active, 400);
-  font-variation-settings: 'wght' var(--wght-active, 400);
-}
-
 /* 액자 아래 — 이 한 줄이 실제 크기 감각을 준다 */
+.proj-meta-end {
+  margin-left: auto;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.proj-meta-end span {
+  color: var(--muted);
+}
+
 .proj-meta {
   display: flex;
   flex-wrap: wrap;
+  align-items: baseline;
   gap: 12px;
   font-family: var(--label-font);
   font-size: 12px;

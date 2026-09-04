@@ -72,21 +72,18 @@ export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
 
       <div className="z-glyph-stage">
         {font ? (
-          <>
-            <div
-              className="z-glyph"
-              style={{
-                fontFamily: fontMap[font],
-                fontWeight: tone.wght,
-                fontVariationSettings: `"wght" ${tone.wght}`,
-                transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)`,
-                fontSize: Math.round(tone.size * 3) + 'px'
-              }}
-            >
-              {SAMPLE_TEXT}
-            </div>
-            <div className="z-glyph-caption">예시 ‘발화’로 형태를 정해요</div>
-          </>
+          <div
+            className="z-glyph"
+            style={{
+              fontFamily: fontMap[font],
+              fontWeight: tone.wght,
+              fontVariationSettings: `"wght" ${tone.wght}`,
+              transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)`,
+              fontSize: Math.round(tone.size * 3) + 'px'
+            }}
+          >
+            {SAMPLE_TEXT}
+          </div>
         ) : (
           <div className="z-glyph-ask">원하는 스타일을 택해주세요</div>
         )}

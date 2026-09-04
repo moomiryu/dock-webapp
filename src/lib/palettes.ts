@@ -17,14 +17,19 @@ export const palettes: Palette[] = [
   { bg: '#FFFAE3', text: '#D9381E', graphic: '#1B4965' }
 ];
 
-// 형태 5단계 → Adobe Fonts (kit zhl0ile). Korean fallbacks added because some
-// faces (e.g. orbit) may not cover all Hangul.
+// 자형 4종 → 실제 서체. 키는 Firestore 호환을 위해 옛 이름 그대로 둔다.
+//   doran    다정한  손글씨   — 임시. 손글씨 서체 조달 전
+//   deulseok 짓궂은  탈네모틀
+//   ttoryeot 당당한  고딕
+//   chabun   정갈한  명조
+// (botong/orbit은 UI 라벨 전용으로 빠졌고, 안상수체2012는 당당·정갈과
+//  인상이 겹쳐 자형 선택지에서 내렸다 — fontMap에는 옛 문서 렌더용으로 남긴다)
 export const fontMap: Record<string, string> = {
   doran: '"jjgulwol", "Noto Serif KR Variable", serif',
   chabun: '"kim-jung-chul-myungjo", "Noto Serif KR Variable", serif',
   botong: '"orbit", "Pretendard Variable", sans-serif',
   ttoryeot: '"seoul-namsan", "Pretendard Variable", sans-serif',
-  deulseok: '"agahnsangsoo2012", "Pretendard Variable", sans-serif',
+  deulseok: '"Sunflower", "agahnsangsoo2012", "Pretendard Variable", sans-serif',
   // legacy keys — keep so older Firestore docs still render
   gothic: '"seoul-namsan", "Pretendard Variable", sans-serif',
   mono: '"orbit", "Pretendard Variable", sans-serif',

@@ -8,7 +8,6 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fontMap } from '../lib/palettes';
 import { palettes as legacyPalettes } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
-import { graphics as wallGraphics } from '../lib/graphics-v2';
 import {
   isFirebaseConfigured,
   submitMessage,
@@ -46,9 +45,9 @@ function luminance(hex: string): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-// Brightest of the mood's three colors — readable on the black landscape.
-function brightestColor(p: { bg: string; text: string; graphic: string }): string {
-  return [p.bg, p.text, p.graphic].sort((a, b) => luminance(b) - luminance(a))[0];
+// Brighter of the mood's two colors — readable on the black landscape.
+function brightestColor(p: { bg: string; text: string }): string {
+  return [p.bg, p.text].sort((a, b) => luminance(b) - luminance(a))[0];
 }
 
 // ─── Component ────────────────────────────────────────────────────────
@@ -312,9 +311,8 @@ const WallBlock = memo(function WallBlock({ msg, index, total }: { msg: StoredMe
 // ─── Triggered emphasis (full-bleed mood, typewriter) ───────────────
 
 const WallShowMessage = memo(function WallShowMessage({ msg, closing }: { msg: StoredMessage; closing: boolean }) {
-  const { bg, text, graphic, blend, graphicIdx, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
+  const { bg, text, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
   const lines = useMemo(() => msg.text.split('\n'), [msg.text]);
-  const hasGraphic = graphicIdx >= 0 && graphicIdx < wallGraphics.length;
   let charIdx = 0;
 
   // Auto-fit: more text → smaller. Longest line fits the width, line count fits
@@ -324,14 +322,6 @@ const WallShowMessage = memo(function WallShowMessage({ msg, closing }: { msg: S
 
   return (
     <div className={`wall-show ${closing ? 'is-closing' : ''}`} style={{ background: bg, color: text }}>
-      {hasGraphic && (
-        <div
-          className="wall-emphasis-graphic"
-          style={{ color: graphic, mixBlendMode: blend }}
-          aria-hidden
-          dangerouslySetInnerHTML={{ __html: wallGraphics[graphicIdx] }}
-        />
-      )}
       <div
         className="wall-emphasis-text"
         style={{
@@ -373,18 +363,14 @@ function useDerivedStyle(msg: StoredMessage) {
       if (mood) pal = mood;
       else {
         const legacy = legacyPalettes[tone.paletteIdx];
-        pal = legacy ? { bg: legacy.bg, text: legacy.text, graphic: legacy.graphic } : moods[3];
+        pal = legacy ? { bg: legacy.bg, text: legacy.text } : moods[3];
       }
     }
-    const blend = (pal as { blend?: 'multiply' | 'screen' }).blend ?? 'multiply';
     const fontFamily = tone ? fontMap[tone.font] : fontMap.botong;
     return {
       bg: pal.bg,
       text: pal.text,
-      graphic: pal.graphic,
-      blend,
       crowdColor: brightestColor(pal),
-      graphicIdx: tone?.graphicIdx ?? -1,
       fontFamily,
       wght: tone?.wght ?? 400,
       scaleX: tone?.tone ?? 1.0,

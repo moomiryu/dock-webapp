@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import BackButton from '../components/BackButton';
 import { fontMap } from '../lib/palettes';
-import { graphics as graphicsV2 } from '../lib/graphics-v2';
 import { moods } from '../lib/palettes-v2';
 import type { ToneState } from '../types';
 
@@ -10,43 +10,40 @@ interface Props {
   initialText: string;
   partialTone: PartialTone;
   initialPaletteIdx?: number;
-  initialGraphicIdx?: number;
   onBack: () => void;
   onSubmit: (text: string, tone: ToneState) => void;
 }
 
 const MAX = 60;
+const PLACEHOLDER = '여기에 말을 적어보세요';
 
-// 효과(겹침) — off + 4 graphics. ㄱ 모서리(graphic idx 1) is intentionally dropped.
-const EFFECT_OPTIONS: Array<{ idx: number; label: string }> = [
-  { idx: -1, label: '효과X' },
-  { idx: 3, label: '받치기' }, // ─ 단선
-  { idx: 0, label: '감싸기' }, // ㅇ 원음
-  { idx: 4, label: '콕찍기' }, // ※ 별표
-  { idx: 2, label: '흔들기' } // ㅅ 산형
-];
+// 효과(배경 그래픽) 기능은 걷어냈다 — 외벽 풍경에서는 렌더되지 않아
+// 7일 중 10초만 보였고, 라벨(받치기·감싸기)이 약속하는 '글자에 하는 행위'와
+// 실제 구현(화면을 덮는 배경 도형)이 어긋나 있었다.
+// Firestore 스키마는 유지하되 항상 꺼진 값으로 저장한다.
+const GRAPHIC_OFF = -1;
 
 export default function PhaseCompose({
   initialText,
   partialTone,
   initialPaletteIdx,
-  initialGraphicIdx,
   onBack,
   onSubmit
 }: Props) {
   const [text, setText] = useState(initialText);
   const [moodIdx, setMoodIdx] = useState(initialPaletteIdx ?? 0);
-  const [graphicIdx, setGraphicIdx] = useState(initialGraphicIdx ?? -1);
 
-  const previewRef = useRef<HTMLDivElement>(null);
-  const gfxRef = useRef<HTMLDivElement>(null);
+  const renderRef = useRef<HTMLDivElement>(null);
 
   const mood = moods[moodIdx % moods.length];
+  const empty = !text.trim();
 
-  // Build word spans + line pulse
+  // 입력창과 미리보기는 한 몸이다. 아래에 실제 렌더(줄 펄스 포함)를 깔고
+  // 그 위에 투명 textarea를 겹쳐 커서와 선택만 textarea 것을 쓴다.
+  // 둘은 같은 부모에서 폰트·자간·정렬·변형을 물려받아야 글자가 어긋나지 않는다.
   useEffect(() => {
-    if (!previewRef.current) return;
-    const el = previewRef.current;
+    if (!renderRef.current) return;
+    const el = renderRef.current;
     const visible = text.trim();
     if (!visible) {
       el.innerHTML = '';
@@ -89,35 +86,15 @@ export default function PhaseCompose({
     return () => clearInterval(interval);
   }, [text, partialTone.font, partialTone.tone, partialTone.wght, partialTone.slnt, partialTone.size]);
 
-  // Graphic layer
-  useEffect(() => {
-    if (!gfxRef.current) return;
-    if (graphicIdx >= 0 && graphicIdx < graphicsV2.length) {
-      gfxRef.current.innerHTML = graphicsV2[graphicIdx];
-      gfxRef.current.classList.add('active');
-    } else {
-      gfxRef.current.classList.remove('active');
-      setTimeout(() => {
-        if (gfxRef.current && graphicIdx === -1) gfxRef.current.innerHTML = '';
-      }, 500);
-    }
-  }, [graphicIdx]);
-
   function handleSubmit() {
     onSubmit(text.trim().slice(0, MAX), {
       ...partialTone,
       paletteIdx: moodIdx,
-      graphicIdx
+      graphicIdx: GRAPHIC_OFF
     });
   }
 
   const lowWght = Math.max(100, Math.round(partialTone.wght * 0.5));
-
-  const currentEffect = EFFECT_OPTIONS.find((e) => e.idx === graphicIdx) ?? EFFECT_OPTIONS[0];
-  function cycleEffect() {
-    const pos = EFFECT_OPTIONS.findIndex((e) => e.idx === graphicIdx);
-    setGraphicIdx(EFFECT_OPTIONS[(pos + 1) % EFFECT_OPTIONS.length].idx);
-  }
 
   return (
     <div
@@ -125,30 +102,12 @@ export default function PhaseCompose({
       style={{
         // 색은 프레임이 아니라 *메시지 무대*에만 흐른다 (최소 흑백 UI 원칙)
         ['--bg' as string]: mood.bg,
-        ['--text' as string]: mood.text,
-        ['--graphic' as string]: mood.graphic,
-        ['--blend' as string]: mood.blend
+        ['--text' as string]: mood.text
       }}
     >
       <div className="z-header">
-        <button className="z-back" onClick={onBack} aria-label="자형 다시 정하기">
-          자형 다시
-        </button>
-        <span>2 / 4 · 쓰기와 색</span>
-      </div>
-
-      <div className="z-compose-input">
-        <textarea
-          className="z-input"
-          value={text}
-          maxLength={MAX}
-          placeholder="한 줄 적어보세요"
-          onChange={(e) => setText(e.target.value.slice(0, MAX))}
-        />
-        <div className="z-counter-inline">
-          {text.length}
-          <span>/{MAX}</span>
-        </div>
+        <BackButton label="자형 다시 정하기" onClick={onBack} />
+        <span>2 / 3 · 메시지</span>
       </div>
 
       <div className="z-full-stage">
@@ -158,10 +117,9 @@ export default function PhaseCompose({
           <span style={{ top: '50%' }} />
           <span style={{ top: '80%' }} />
         </div>
-        <div className="graphic-layer" ref={gfxRef} />
+
         <div
-          className="z-full-text"
-          ref={previewRef}
+          className="live-wrap"
           style={{
             fontFamily: fontMap[partialTone.font],
             fontSize: partialTone.size + 'px',
@@ -169,20 +127,57 @@ export default function PhaseCompose({
             ['--wght-base' as string]: String(lowWght),
             ['--wght-active' as string]: String(partialTone.wght)
           }}
-        />
+        >
+          {/* 아래층 — 실제로 보이는 글자 */}
+          <div className="live-text" ref={renderRef} aria-hidden />
+          {empty && (
+            <div className="live-placeholder" aria-hidden>
+              {PLACEHOLDER}
+            </div>
+          )}
+
+          {/* 위층 — 보이지 않는 입력. 커서만 남는다 */}
+          <textarea
+            className="live-input"
+            value={text}
+            maxLength={MAX}
+            aria-label="외벽에 올릴 한 줄"
+            spellCheck={false}
+            style={{ caretColor: mood.text }}
+            onChange={(e) => setText(e.target.value.slice(0, MAX))}
+          />
+        </div>
+
         <div className="z-stage-caption">외벽에서 이렇게 보여요</div>
       </div>
 
-      <div className="z-cycles">
-        <CycleButton
-          label="색"
-          value={mood.nameLatin}
-          onClick={() => setMoodIdx((i) => (i + 1) % moods.length)}
-        />
-        <CycleButton label="효과" value={currentEffect.label} onClick={cycleEffect} />
+      <div className="z-counter">
+        {text.length}
+        <span>/{MAX}</span>
       </div>
 
-      <button className="primary-action" disabled={!text.trim()} onClick={handleSubmit}>
+      {/* 색 — 누를 때마다 다음 조합으로. 이름 대신 색 자체를 보여준다. */}
+      <button
+        type="button"
+        className="z-cycle"
+        onClick={() => setMoodIdx((i) => (i + 1) % moods.length)}
+        aria-label={`색 바꾸기 — 지금 ${moodIdx + 1}번째, 모두 ${moods.length}가지`}
+      >
+        <span className="z-cycle-label">색</span>
+        <span className="z-swatch" aria-hidden>
+          <i style={{ background: mood.bg }} />
+          <i style={{ background: mood.text }} />
+        </span>
+        <span className="z-cycle-count">
+          {moodIdx + 1}
+          <span>/{moods.length}</span>
+        </span>
+        <span className="z-cycle-arrow" aria-hidden>
+          ↻
+        </span>
+      </button>
+
+      <button className="primary-action" disabled={empty} onClick={handleSubmit}>
         <span>미리보기</span>
       </button>
 
@@ -190,30 +185,9 @@ export default function PhaseCompose({
         <span className="dot on" />
         <span className="dot on" />
         <span className="dot" />
-        <span className="dot" />
-        <span className="z-progress-label">자형 · 효과 · 미리보기 · 확인</span>
+        <span className="z-progress-label">자형 · 색 · 미리보기</span>
       </div>
     </div>
-  );
-}
-
-function CycleButton({
-  label,
-  value,
-  onClick
-}: {
-  label: string;
-  value: string;
-  onClick: () => void;
-}) {
-  return (
-    <button type="button" className="z-cycle" onClick={onClick}>
-      <span className="z-cycle-label">{label}</span>
-      <span className="z-cycle-value">{value}</span>
-      <span className="z-cycle-arrow" aria-hidden>
-        ↻
-      </span>
-    </button>
   );
 }
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import BackButton from '../components/BackButton';
 import { fontMap } from '../lib/palettes';
 import type { ToneState } from '../types';
 
@@ -26,12 +27,13 @@ const DEFAULT = {
   size: 44
 };
 
-// 형태 4단계 — calm → lively. Each maps to a font key (→ Adobe Fonts in fontMap).
-const FONT_STOPS: Array<{ val: ToneState['font']; label: string }> = [
-  { val: 'doran', label: '도란도란' },
-  { val: 'chabun', label: '차분히' },
-  { val: 'ttoryeot', label: '또렷이' },
-  { val: 'deulseok', label: '들썩들썩' }
+// 자형 4종 — 태도(형용사)로 고르고, 아래에 서체 계열을 병기한다.
+// 정도가 아니라 종류라서 슬라이더가 아니라 선택이다.
+const STYLE_OPTIONS: Array<{ val: ToneState['font']; label: string; kind: string }> = [
+  { val: 'doran', label: '다정한', kind: '손글씨' },
+  { val: 'deulseok', label: '짓궂은', kind: '탈네모' },
+  { val: 'ttoryeot', label: '당당한', kind: '고딕' },
+  { val: 'chabun', label: '정갈한', kind: '명조' }
 ];
 // Slider stops — left → right. Each maps to a discrete tone value.
 const WGHT_STOPS = [
@@ -50,16 +52,15 @@ const TONE_STOPS = [
 const SLNT_MAX = 28;
 
 const FONT_LABELS: Record<ToneState['font'], string> = {
-  doran: '도란도란',
-  chabun: '차분히',
+  doran: '다정한',
+  chabun: '정갈한',
   botong: '보통',
-  ttoryeot: '또렷이',
-  deulseok: '들썩들썩'
+  ttoryeot: '당당한',
+  deulseok: '짓궂은'
 };
 
 // 최소 버전 — 한글 라벨만. (영문 병기는 최종 디자인 단계에서 다시 판단)
 const AXIS_LABELS: Record<string, string> = {
-  FONT: '형태',
   WGHT: '굵기',
   TONE: '너비',
   SLNT: '기울기'
@@ -79,10 +80,8 @@ export default function PhaseGlyph({ initialTone, voicePreset, backLabel, onBack
   return (
     <div className="z-frame z1">
       <div className="z-header">
-        <button className="z-back" onClick={onBack}>
-          {backLabel}
-        </button>
-        <span>1 / 4 · 자형</span>
+        <BackButton label={backLabel} onClick={onBack} />
+        <span>1 / 3 · 자형</span>
       </div>
 
       {presetLabel && (
@@ -110,8 +109,27 @@ export default function PhaseGlyph({ initialTone, voicePreset, backLabel, onBack
         <div className="z-glyph-caption">예시 ‘발화’로 형태를 정해요</div>
       </div>
 
+      <div className="style-cards" role="group" aria-label="자형 고르기">
+        {STYLE_OPTIONS.map((s) => {
+          const on = s.val === tone.font;
+          return (
+            <button
+              key={s.val}
+              type="button"
+              className={'style-card ' + (on ? 'on' : '')}
+              aria-pressed={on}
+              onClick={() => setTone((t) => ({ ...t, font: s.val }))}
+            >
+              <span className="style-card-name" style={{ fontFamily: fontMap[s.val] }}>
+                {s.label}
+              </span>
+              <span className="style-card-kind">{s.kind}</span>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="z-axes">
-        <FontSlider stops={FONT_STOPS} value={tone.font} onPick={(v) => setTone((t) => ({ ...t, font: v }))} />
         <StepSlider axisKey="WGHT" stops={WGHT_STOPS} value={tone.wght} onPick={(v) => setTone((t) => ({ ...t, wght: v }))} />
         <StepSlider axisKey="TONE" stops={TONE_STOPS} value={tone.tone} onPick={(v) => setTone((t) => ({ ...t, tone: v }))} />
         <div className="z-axis-line z-slider-line">
@@ -141,8 +159,7 @@ export default function PhaseGlyph({ initialTone, voicePreset, backLabel, onBack
         <span className="dot on" />
         <span className="dot" />
         <span className="dot" />
-        <span className="dot" />
-        <span className="z-progress-label">자형 · 효과 · 미리보기 · 확인</span>
+        <span className="z-progress-label">자형 · 색 · 미리보기</span>
       </div>
     </div>
   );
@@ -178,46 +195,6 @@ function StepSlider({
           onChange={(e) => onPick(stops[parseInt(e.target.value, 10)].val)}
         />
         <div className="z-slider-stops">
-          {stops.map((s, i) => (
-            <button
-              key={i}
-              type="button"
-              className={'z-slider-stop ' + (i === idx ? 'on' : '')}
-              onClick={() => onPick(s.val)}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FontSlider({
-  stops,
-  value,
-  onPick
-}: {
-  stops: Array<{ val: ToneState['font']; label: string }>;
-  value: ToneState['font'];
-  onPick: (v: ToneState['font']) => void;
-}) {
-  let idx = stops.findIndex((s) => s.val === value);
-  if (idx < 0) idx = 2;
-  return (
-    <div className="z-axis-line z-slider-line">
-      <span className="z-axis-label">{AXIS_LABELS.FONT}</span>
-      <div className="z-slider-wrap">
-        <input
-          type="range"
-          min={0}
-          max={stops.length - 1}
-          step={1}
-          value={idx}
-          onChange={(e) => onPick(stops[parseInt(e.target.value, 10)].val)}
-        />
-        <div className="z-slider-stops z-slider-stops-font">
           {stops.map((s, i) => (
             <button
               key={i}

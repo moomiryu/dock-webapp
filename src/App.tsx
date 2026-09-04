@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import AdminWall from './admin/AdminWall';
 import WallSimulation from './admin/WallSimulation';
 import ArchiveView from './archive/ArchiveView';
+import PhaseSplash from './phases/PhaseSplash';
 import PhaseHome from './phases/PhaseHome';
 import PhaseVoice from './phases/PhaseVoice';
 import PhaseGlyph from './phases/PhaseGlyph';
 import PhaseCompose from './phases/PhaseCompose';
 import PhasePreview from './phases/PhasePreview';
-import PhaseCode from './phases/PhaseCode';
 import PhaseSubmit from './phases/PhaseSubmit';
 import {
   clearDraft,
@@ -24,8 +24,7 @@ type Screen =
   | 'voice'    // 음성으로 시작 (skip 가능)
   | 'glyph'    // 자형 — 한 글자와 형태
   | 'compose'  // 효과 — 풀 문장 작성 + 색·그래픽
-  | 'preview'  // 미리보기 — 확인 / 다시
-  | 'code'     // 외벽 코드 확인 — 이걸 통과해야 전송
+  | 'preview'  // 미리보기 — 이대로 맡기기 / 다시
   | 'submit';  // 로딩 → 완료(도킹 유도)
 
 type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
@@ -57,10 +56,26 @@ export default function App() {
   const [voicePreset, setVoicePreset] = useState<Pick<ToneState, 'font' | 'wght'> | null>(null);
   // 자형 화면에 어디서 들어왔는지 — 뒤로 가기가 온 길로 되돌아가야 한다.
   const [glyphOrigin, setGlyphOrigin] = useState<'home' | 'voice'>('home');
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (window.location.pathname.startsWith('/admin')) return;
     clearStageFromUrl();
+  }, []);
+
+  // 웹폰트가 준비될 때까지 splash. 자형이 이 앱의 내용이라 폰트가 늦으면
+  // 첫 화면이 다른 글씨로 한 번 깜빡인다. 최소 노출 시간을 둬 깜빡임 자체를 없애고,
+  // 폰트가 영영 오지 않는 경우를 위해 상한도 건다.
+  useEffect(() => {
+    let live = true;
+    const settle = () => live && setReady(true);
+    const floor = new Promise<void>((r) => setTimeout(r, 650));
+    Promise.all([document.fonts.ready, floor]).then(settle);
+    const cap = window.setTimeout(settle, 3500);
+    return () => {
+      live = false;
+      clearTimeout(cap);
+    };
   }, []);
 
   if (window.location.pathname.startsWith('/wall')) {
@@ -73,6 +88,11 @@ export default function App() {
 
   if (window.location.pathname.startsWith('/archive')) {
     return <ArchiveView />;
+  }
+
+  // 00 — 입력 앱에만. 외벽·관리·아카이브는 곧바로 뜬다.
+  if (!ready) {
+    return <PhaseSplash />;
   }
 
   // 기본 진입은 자형부터. 음성은 홈에서 고르는 선택지.
@@ -119,19 +139,11 @@ export default function App() {
   }
 
   function handlePreviewConfirm() {
-    setScreen('code');
+    setScreen('submit');
   }
 
   function handlePreviewBack() {
     setScreen('compose');
-  }
-
-  function handleCodeConfirm() {
-    setScreen('submit');
-  }
-
-  function handleCodeBack() {
-    setScreen('preview');
   }
 
   function handleRestart() {
@@ -182,7 +194,6 @@ export default function App() {
           initialText={draft?.text ?? ''}
           partialTone={partial}
           initialPaletteIdx={draft?.tone?.paletteIdx}
-          initialGraphicIdx={draft?.tone?.graphicIdx}
           onBack={handleComposeBack}
           onSubmit={handleComposeSubmit}
         />
@@ -210,9 +221,6 @@ export default function App() {
           onBack={handlePreviewBack}
         />
       );
-
-    case 'code':
-      return <PhaseCode onBack={handleCodeBack} onConfirm={handleCodeConfirm} />;
 
     case 'submit':
       return <PhaseSubmit draft={draft} onRestart={handleRestart} />;

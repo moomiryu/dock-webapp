@@ -608,6 +608,7 @@
   gap: 12px;
   font-family: var(--label-font);
   font-size: 12px;
+  line-height: 1.65;
   letter-spacing: 0.02em;
   color: var(--muted);
 }
@@ -898,9 +899,10 @@
 }
 
 @keyframes dockDrop {
-  0%, 12%   { transform: translateY(0); opacity: 1; }
-  52%       { transform: translateY(76px); opacity: 1; }
-  66%, 100% { transform: translateY(76px); opacity: 0; }
+  /* 끝에서 가속 — 마지막에 '팍' 들어간다 */
+  0%, 16%   { transform: translateY(0); animation-timing-function: cubic-bezier(0.5, 0, 0.85, 0.9); }
+  54%       { transform: translateY(126px); }
+  100%      { transform: translateY(126px); }
 }
 
 .dock-arrow {

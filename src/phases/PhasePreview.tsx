@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import BackButton from '../components/BackButton';
 import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
-import { STAY_DAYS, WALL_H_M, WALL_W_M } from '../lib/wall';
-import { fitFontSize, glyphCm } from '../lib/fit';
+import { STAY_DAYS } from '../lib/wall';
+import { fitFontSize } from '../lib/fit';
 import type { ToneState } from '../types';
 
 interface Props {
@@ -20,7 +20,6 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
 
   // 쓰기 화면과 같은 계산(lib/fit). 액자가 정해진 크기라 긴 문장은 작게 들어간다.
   const fitSize = useMemo(() => fitFontSize(text), [text]);
-  const cm = useMemo(() => glyphCm(text, WALL_W_M), [text]);
 
   // Build word spans + line pulse (same rhythm as the compose stage / wall)
   useEffect(() => {
@@ -99,11 +98,7 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
         </div>
 
         <div className="proj-meta">
-          <span>
-            {WALL_W_M} × {WALL_H_M} m
-          </span>
-          <span>글자 약 {cm}cm</span>
-          <span>{STAY_DAYS}일간</span>
+          당신의 한 줄이 외벽 한가운데 떠오른 후, {STAY_DAYS}일간 메아리로 남습니다.
         </div>
       </div>
 

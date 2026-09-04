@@ -16,8 +16,8 @@ export default function PhaseDocking({ onRestart, devNote }: Props) {
       <div className="guide-hero">
         <h1>이제 홈에 꽂아주세요</h1>
         <p>
-          폰을 가로로 눕혀 가만히 밀어 넣으면,<br />
-          당신의 한 줄이 외벽 한가운데 떠올라요.
+          폰 위쪽이 먼저 들어가도록,<br />
+          세로로 밀어 넣어주세요.
         </p>
 
         <DockGuide />
@@ -35,34 +35,45 @@ export default function PhaseDocking({ onRestart, devNote }: Props) {
 }
 
 // 폰 → 홈. 말로 설명하기 어려운 동작이라 그림이 대신한다.
+// 그리는 순서가 곧 앞뒤다: 폰을 먼저 두고 본체를 바탕색으로 덮어,
+// 내려간 폰이 본체 뒤로 사라지게 한다 — 페이드 없이 '들어갔다'가 읽힌다.
 function DockGuide() {
   return (
     <div className="dock-guide" aria-hidden>
-      <svg viewBox="0 0 160 150" width="150" height="141">
-        {/* 본체 윗면과 홈(슬롯) */}
-        <rect x="18" y="104" width="124" height="38" fill="none" stroke="currentColor" strokeWidth="1.5" />
-        <rect x="44" y="112" width="72" height="7" rx="3.5" fill="currentColor" />
-
-        {/* 내려가는 폰 — 가로로 눕힌 상태 */}
+      <svg viewBox="0 0 140 190" width="126" height="171">
+        {/* 내려가는 폰 — 세로로, 위쪽(스피커 쪽)이 아래를 향한다 */}
         <g className="dock-phone">
           <rect
-            x="44"
-            y="30"
-            width="72"
-            height="38"
-            rx="5"
-            fill="none"
+            x="50"
+            y="8"
+            width="40"
+            height="76"
+            rx="6"
+            fill="var(--paper)"
             stroke="currentColor"
             strokeWidth="1.8"
           />
-          <line x1="52" y1="49" x2="56" y2="49" stroke="currentColor" strokeWidth="1.8" />
+          {/* 스피커 — 이게 아래에 있다는 게 '거꾸로 잡는다'는 표시 */}
+          <rect x="62" y="74" width="16" height="2.6" rx="1.3" fill="currentColor" />
         </g>
 
         {/* 방향 */}
         <g className="dock-arrow" stroke="currentColor" strokeWidth="1.5" fill="none">
-          <line x1="80" y1="76" x2="80" y2="94" />
-          <polyline points="73,87 80,94 87,87" />
+          <line x1="70" y1="94" x2="70" y2="114" />
+          <polyline points="63,107 70,114 77,107" />
         </g>
+
+        {/* 본체 윗면과 홈(슬롯) — 바탕색으로 채워 폰을 가린다 */}
+        <rect
+          x="14"
+          y="124"
+          width="112"
+          height="62"
+          fill="var(--paper)"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <rect x="46" y="132" width="48" height="7" rx="3.5" fill="currentColor" />
       </svg>
     </div>
   );

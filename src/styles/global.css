@@ -66,8 +66,10 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 24px 16px;
-  min-height: 100vh;
+  /* 패딩 없음 — 입력 앱 프레임이 100dvh를 꽉 쓴다.
+     /admin·/archive는 .admin-wall이, /wall은 body.wall-mode가 자기 여백을 갖는다. */
+  padding: 0;
+  min-height: 100dvh;
   background: #ffffff;
   transition: background 0.4s;
 }

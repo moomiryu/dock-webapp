@@ -185,14 +185,38 @@
   line-height: 0.86;
   letter-spacing: -0.015em;
   color: var(--ink);
-  pointer-events: none;
   user-select: none;
+  touch-action: none; /* 끌 때 페이지가 같이 움직이지 않게 */
+  cursor: grab;
 }
 
-.home-mark span {
+.home-mark.is-dragging {
+  cursor: grabbing;
+}
+
+/* 스스로 떠다니는 움직임. 손으로 민 거리는 바깥 h1이 따로 맡는다 */
+.home-mark-float {
+  display: block;
+  animation: markFloat 16s ease-in-out infinite;
+}
+
+.home-mark.is-dragging .home-mark-float {
+  animation-play-state: paused;
+}
+
+@keyframes markFloat {
+  0%,
+  100% { transform: translate(0, 0) rotate(0deg); }
+  22%  { transform: translate(7px, -11px) rotate(-0.45deg); }
+  48%  { transform: translate(-6px, 7px) rotate(0.35deg); }
+  74%  { transform: translate(9px, 4px) rotate(0.25deg); }
+}
+
+.home-mark span span {
   display: block;
 }
 
+/* 조작층은 자기 요소만 클릭을 받는다 — 빈 자리에서는 워드마크를 끌 수 있게 */
 .home-layer {
   position: relative;
   z-index: 2;
@@ -202,6 +226,12 @@
   flex-direction: column;
   justify-content: space-between;
   gap: 20px;
+  pointer-events: none;
+}
+
+.home-top,
+.home-bottom {
+  pointer-events: auto;
 }
 
 .home-top {
@@ -953,7 +983,8 @@
 @media (prefers-reduced-motion: reduce) {
   .dock-phone,
   .dock-arrow,
-  .splash-bar i {
+  .splash-bar i,
+  .home-mark-float {
     animation: none !important;
   }
   .splash-bar i {

@@ -7,10 +7,6 @@ type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
 
 interface Props {
   initialTone?: PartialTone | null;
-  /** Tone preset from the voice intro (or null if skipped). Shows a small badge. */
-  voicePreset?: Pick<ToneState, 'font' | 'wght'> | null;
-  /** 이 화면에 어디서 들어왔는지 — 뒤로 가기 라벨이 그걸 그대로 말한다. */
-  backLabel: string;
   onBack: () => void;
   onNext: (partialTone: PartialTone) => void;
 }
@@ -51,14 +47,6 @@ const TONE_STOPS = [
 // skewX so the text leans the same direction as before.
 const SLNT_MAX = 28;
 
-const FONT_LABELS: Record<ToneState['font'], string> = {
-  doran: '다정한',
-  chabun: '정갈한',
-  botong: '보통',
-  ttoryeot: '당당한',
-  deulseok: '짓궂은'
-};
-
 // 최소 버전 — 한글 라벨만. (영문 병기는 최종 디자인 단계에서 다시 판단)
 const AXIS_LABELS: Record<string, string> = {
   WGHT: '굵기',
@@ -66,7 +54,7 @@ const AXIS_LABELS: Record<string, string> = {
   SLNT: '기울기'
 };
 
-export default function PhaseGlyph({ initialTone, voicePreset, backLabel, onBack, onNext }: Props) {
+export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
   const [tone, setTone] = useState({
     font: initialTone?.font ?? DEFAULT.font,
     tone: initialTone?.tone ?? DEFAULT.tone,
@@ -75,23 +63,12 @@ export default function PhaseGlyph({ initialTone, voicePreset, backLabel, onBack
     size: initialTone?.size ?? DEFAULT.size
   });
 
-  const presetLabel = voicePreset ? FONT_LABELS[voicePreset.font] : null;
-
   return (
     <div className="z-frame z1">
       <div className="z-header">
-        <BackButton label={backLabel} onClick={onBack} />
+        <BackButton label="처음으로" onClick={onBack} />
         <span>1 / 3 · 자형</span>
       </div>
-
-      {presetLabel && (
-        <div className="z-voice-badge">
-          <span className="z-voice-badge-label">음성 추천</span>
-          <span className="z-voice-badge-value" style={{ fontFamily: fontMap[voicePreset!.font] }}>
-            {presetLabel}
-          </span>
-        </div>
-      )}
 
       <div className="z-glyph-stage">
         <div
@@ -176,8 +153,7 @@ function StepSlider({
   value: number;
   onPick: (v: number) => void;
 }) {
-  // Snap the current value to the nearest stop (handles voice presets that
-  // don't land exactly on a stop value).
+  // 저장된 값이 정확히 눈금에 없을 수 있어 가장 가까운 눈금으로 맞춘다.
   const idx = stops.reduce(
     (best, s, i) => (Math.abs(s.val - value) < Math.abs(stops[best].val - value) ? i : best),
     0

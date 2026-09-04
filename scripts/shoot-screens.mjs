@@ -7,8 +7,7 @@
 // 시스템에 설치된 Chrome 또는 Edge를 그대로 쓴다 (브라우저 내려받지 않음).
 //
 // 파일 번호는 플로우 문서(00 Splash ~ 06 Docking)를 따른다.
-// 못 찍는 화면: 음성의 녹음/결과/무음/오류(마이크 필요),
-//               05 Processing(mock 전송이 즉시 끝나 한 프레임도 남지 않음).
+// 못 찍는 화면: 05 Processing (mock 전송이 즉시 끝나 한 프레임도 남지 않음).
 
 import { chromium } from 'playwright-core';
 import { mkdir } from 'node:fs/promises';
@@ -83,12 +82,6 @@ async function main() {
   // 01 프로젝트 정보 덮개
   await page.getByRole('button', { name: '프로젝트 정보' }).click();
   await shoot(page, '01-info');
-
-  // (플로우 밖) 음성 안내 — 녹음 이후 상태는 마이크가 필요해 못 찍는다
-  await page.goto(url('/?mock=1'), { waitUntil: 'load' });
-  await settle(page);
-  await page.getByRole('button', { name: '음성으로 시작하기' }).click();
-  await shoot(page, 'x-voice-intro');
 
   // 02 자형
   await page.goto(url('/?mock=1'), { waitUntil: 'load' });

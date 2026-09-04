@@ -682,15 +682,3 @@ body.wall-mode {
   opacity: 0.55;
 }
 
-
-/* 아카이브 상단 홈 링크 (입력앱 CSS 분리 후 여기로 옮김) */
-.archive__home-link {
-  font-size: 12px;
-  color: inherit;
-  opacity: 0.6;
-  text-decoration: none;
-}
-
-.archive__home-link:hover {
-  opacity: 1;
-}

@@ -1,4 +1,5 @@
 import MegafontFrame from '../components/MegafontFrame';
+import { STAY_DAYS } from '../lib/wall';
 
 interface Props {
   onRestart: () => void;
@@ -21,7 +22,7 @@ export default function PhaseDocking({ onRestart, devNote }: Props) {
 
         <DockGuide />
 
-        <p>외벽엔 7일간 머무릅니다.</p>
+        <p>외벽엔 {STAY_DAYS}일간 머무릅니다. 그 뒤에는 남지 않아요.</p>
 
         {devNote && <p className="dev-note">{devNote}</p>}
 

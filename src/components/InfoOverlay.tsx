@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { STAY_DAYS } from '../lib/wall';
 
 interface Props {
   onClose: () => void;
@@ -43,7 +44,7 @@ export default function InfoOverlay({ onClose }: Props) {
           </div>
           <div>
             <dt>기간</dt>
-            <dd>올라간 뒤 7일간 머무릅니다</dd>
+            <dd>올라간 뒤 {STAY_DAYS}일간 머무릅니다</dd>
           </div>
           <div>
             <dt>수정</dt>
@@ -57,10 +58,15 @@ export default function InfoOverlay({ onClose }: Props) {
             <dt>삭제</dt>
             <dd>문제가 되는 글은 관리자가 내립니다</dd>
           </div>
+          <div>
+            <dt>보관</dt>
+            <dd>따로 모아두지 않습니다</dd>
+          </div>
         </dl>
 
         <p className="info-foot">
-          외벽에 이미 올라간 말들은 <a href="/archive">아카이브</a>에서 볼 수 있습니다.
+          보관함은 없습니다. {STAY_DAYS}일 동안 외벽에 떠 있는 동안이 이 말의 전부이고,
+          그 뒤에는 남지 않습니다.
         </p>
       </div>
 

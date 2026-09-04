@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
 import AdminWall from './admin/AdminWall';
 import WallSimulation from './admin/WallSimulation';
-import ArchiveView from './archive/ArchiveView';
 import PhaseSplash from './phases/PhaseSplash';
 import PhaseHome from './phases/PhaseHome';
-import PhaseVoice from './phases/PhaseVoice';
 import PhaseGlyph from './phases/PhaseGlyph';
 import PhaseCompose from './phases/PhaseCompose';
 import PhasePreview from './phases/PhasePreview';
@@ -20,12 +18,11 @@ import { clearStageFromUrl, getStageFromUrl } from './lib/stage';
 import type { Draft, ToneState } from './types';
 
 type Screen =
-  | 'home'     // START
-  | 'voice'    // 음성으로 시작 (skip 가능)
-  | 'glyph'    // 자형 — 한 글자와 형태
-  | 'compose'  // 효과 — 풀 문장 작성 + 색·그래픽
-  | 'preview'  // 미리보기 — 이대로 맡기기 / 다시
-  | 'submit';  // 로딩 → 완료(도킹 유도)
+  | 'home'     // 01 Intro
+  | 'glyph'    // 02 자형
+  | 'compose'  // 03 메시지 (입력 = 미리보기) + 색
+  | 'preview'  // 04 최종 미리보기
+  | 'submit';  // 05 전송 중 → 06 도킹
 
 type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
 
@@ -53,9 +50,6 @@ export default function App() {
     const d = loadDraft();
     return d?.tone ? toPartial(d.tone) : null;
   });
-  const [voicePreset, setVoicePreset] = useState<Pick<ToneState, 'font' | 'wght'> | null>(null);
-  // 자형 화면에 어디서 들어왔는지 — 뒤로 가기가 온 길로 되돌아가야 한다.
-  const [glyphOrigin, setGlyphOrigin] = useState<'home' | 'voice'>('home');
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -87,38 +81,13 @@ export default function App() {
     return <AdminWall />;
   }
 
-  if (window.location.pathname.startsWith('/archive')) {
-    return <ArchiveView />;
-  }
-
-  // 00 — 입력 앱에만. 외벽·관리·아카이브는 곧바로 뜬다.
+  // 00 — 입력 앱에만. 외벽·관리 화면은 곧바로 뜬다.
   if (!ready) {
     return <PhaseSplash />;
   }
 
-  // 기본 진입은 자형부터. 음성은 홈에서 고르는 선택지.
   function handleStart() {
-    setGlyphOrigin('home');
     setScreen('glyph');
-  }
-
-  function handleStartVoice() {
-    setScreen('voice');
-  }
-
-  function handleVoiceDone(voicePartial: PartialTone | null) {
-    if (voicePartial) {
-      setVoicePreset({ font: voicePartial.font, wght: voicePartial.wght });
-      setGlyphTone(voicePartial);
-    } else {
-      setVoicePreset(null);
-    }
-    setGlyphOrigin('voice');
-    setScreen('glyph');
-  }
-
-  function handleGlyphBack() {
-    setScreen(glyphOrigin);
   }
 
   function handleGlyphNext(partial: PartialTone) {
@@ -151,27 +120,18 @@ export default function App() {
     clearDraft();
     setDraft(null);
     setGlyphTone(null);
-    setVoicePreset(null);
-    setGlyphOrigin('home');
     setScreen('home');
   }
 
-  const glyphBackLabel = glyphOrigin === 'voice' ? '음성 다시' : '처음으로';
-
   switch (screen) {
     case 'home':
-      return <PhaseHome onStartWrite={handleStart} onStartVoice={handleStartVoice} />;
-
-    case 'voice':
-      return <PhaseVoice onDone={handleVoiceDone} onHome={() => setScreen('home')} />;
+      return <PhaseHome onStart={handleStart} />;
 
     case 'glyph':
       return (
         <PhaseGlyph
           initialTone={draft?.tone ? toPartial(draft.tone) : glyphTone}
-          voicePreset={voicePreset}
-          backLabel={glyphBackLabel}
-          onBack={handleGlyphBack}
+          onBack={() => setScreen('home')}
           onNext={handleGlyphNext}
         />
       );
@@ -183,9 +143,7 @@ export default function App() {
         return (
           <PhaseGlyph
             initialTone={null}
-            voicePreset={voicePreset}
-            backLabel={glyphBackLabel}
-            onBack={handleGlyphBack}
+            onBack={() => setScreen('home')}
             onNext={handleGlyphNext}
           />
         );
@@ -207,9 +165,7 @@ export default function App() {
         return (
           <PhaseGlyph
             initialTone={glyphTone}
-            voicePreset={voicePreset}
-            backLabel={glyphBackLabel}
-            onBack={handleGlyphBack}
+            onBack={() => setScreen('home')}
             onNext={handleGlyphNext}
           />
         );

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import BackButton from '../components/BackButton';
 import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
+import { STAY_DAYS, WALL_H_M, WALL_W_M } from '../lib/wall';
 import type { ToneState } from '../types';
 
 interface Props {
@@ -10,10 +11,6 @@ interface Props {
   onConfirm: () => void;
   onBack: () => void;
 }
-
-// 실제 외벽 디스플레이 — 2.4 × 1.5 m (16:10)
-export const WALL_W_M = 2.4;
-export const WALL_H_M = 1.5;
 
 export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
   const previewRef = useRef<HTMLDivElement>(null);
@@ -114,7 +111,7 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
             {WALL_W_M} × {WALL_H_M} m
           </span>
           <span>글자 약 {glyphCm}cm</span>
-          <span>7일간</span>
+          <span>{STAY_DAYS}일간</span>
         </div>
       </div>
 

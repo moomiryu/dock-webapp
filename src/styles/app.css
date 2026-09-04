@@ -14,6 +14,9 @@
   --ui-font: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, sans-serif;
   /* 라벨·수치용 — 기하학적 산세리프. 본문에는 쓰지 않는다 (얇아서 긴 글에 안 맞음) */
   --label-font: 'Orbit', 'Pretendard Variable', sans-serif;
+  /* 워드마크 전용 고정폭. MEGAFONT 여덟 글자만 서브셋으로 받으므로
+     .home-mark 밖에서는 쓰지 말 것 — 다른 글자는 폴백으로 떨어진다 */
+  --mono-font: 'Space Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
 /* ─── 공통 프레임 ────────────────────────────────────────────── */
@@ -93,7 +96,6 @@
 
 /* ─── 공통 타이포 ────────────────────────────────────────────── */
 
-.voice-h1,
 .guide-hero h1 {
   font-size: 24px;
   font-weight: 600;
@@ -101,16 +103,9 @@
   line-height: 1.3;
 }
 
-.voice-body,
 .guide-hero p {
   font-size: 15px;
   line-height: 1.65;
-  color: var(--muted);
-}
-
-.voice-fineprint {
-  font-size: 12px;
-  line-height: 1.6;
   color: var(--muted);
 }
 
@@ -146,10 +141,8 @@
 }
 
 /* 보조 동작 — 언제나 주 동작 아래, 회색 텍스트 */
-.voice-skip,
 .home-link,
-.done-home-link,
-.z-preview-redo {
+.done-home-link {
   background: none;
   border: none;
   padding: 6px 0;
@@ -163,26 +156,66 @@
   width: 100%;
 }
 
-.voice-skip:hover,
 .home-link:hover,
-.done-home-link:hover,
-.z-preview-redo:hover {
+.done-home-link:hover {
   color: var(--ink);
 }
 
-/* ─── 홈 ────────────────────────────────────────────────────── */
+/* ─── 홈 ────────────────────────────────────────────────────
+   위계: 이름이 먼저 화면을 차지하고, 조작이 그 위에 얹힌다.
+   워드마크는 가장자리에서 잘리도록 크게 둔다 — 액자에 맞추지 않는다. */
 
 .home-frame {
-  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  gap: 0;
 }
 
-.home-stage {
-  flex: 1;
+.home-mark {
+  position: absolute;
+  top: 7vh;
+  left: -0.05em;
+  right: 0;
+  margin: 0;
+  font-family: var(--mono-font);
+  font-weight: 700;
+  /* 고정폭의 격자감이 남도록 자간은 거의 건드리지 않는다 */
+  font-size: min(46vw, 212px);
+  line-height: 0.86;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  pointer-events: none;
+  user-select: none;
+}
+
+.home-mark span {
+  display: block;
+}
+
+.home-layer {
+  position: relative;
+  z-index: 2;
+  min-height: 100dvh;
+  padding: 18px 20px 28px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.home-top {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* 아래층 워드마크와 겹치는 자리라 자기 바탕을 깔고 올라선다 */
+.home-bottom {
+  display: flex;
+  flex-direction: column;
   gap: 14px;
-  padding: 40px 0;
+  background: var(--paper);
+  padding-top: 14px;
 }
 
 .home-eyebrow {
@@ -193,19 +226,11 @@
   color: var(--muted);
 }
 
-.home-wordmark-static {
-  font-size: 34px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1;
-}
-
 .home-headline {
   font-size: 27px;
   font-weight: 500;
   line-height: 1.35;
   letter-spacing: -0.02em;
-  margin-top: 10px;
 }
 
 .home-tagline {
@@ -218,7 +243,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 24px;
+  margin-top: 6px;
 }
 
 .home-cta {
@@ -248,153 +273,7 @@
   color: var(--muted);
 }
 
-/* ─── 음성 ──────────────────────────────────────────────────── */
-
-.voice-stage {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 14px;
-  padding: 24px 0;
-}
-
-.voice-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 12px;
-}
-
-.voice-result-label {
-  font-family: var(--label-font);
-  font-size: 12px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.voice-mode-name {
-  font-size: 32px;
-}
-
-/* 녹음 파형 — 장식이 아니라 "마이크가 듣고 있다"는 유일한 증거 */
-.voice-wave-live {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  height: 64px;
-  border-bottom: 1px solid var(--line);
-}
-
-.voice-wave-live span {
-  flex: 1;
-  height: 100%;
-  background: var(--ink);
-  transform: scaleY(0.06);
-  transform-origin: center;
-  transition: transform 90ms linear;
-}
-
-.voice-meter {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.voice-meter.on {
-  color: var(--ink);
-}
-
-.voice-progress {
-  height: 1px;
-  background: var(--line);
-  overflow: hidden;
-}
-
-.voice-progress-fill {
-  height: 100%;
-  background: var(--ink);
-  transition: width 100ms linear;
-}
-
-.voice-progress-label {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.voice-mode-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  background: var(--line);
-  border: 1px solid var(--line);
-  margin-top: 6px;
-}
-
-.voice-mode-card {
-  background: var(--paper);
-  border: none;
-  border-radius: 0;
-  padding: 14px 12px;
-  font-family: inherit;
-  color: var(--ink);
-  text-align: left;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  position: relative;
-}
-
-.voice-mode-card.on {
-  background: var(--ink);
-  color: var(--paper);
-}
-
-.voice-mode-card-kr {
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.voice-mode-card-desc {
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--muted);
-}
-
-.voice-mode-card.on .voice-mode-card-desc {
-  color: var(--paper);
-  opacity: 0.7;
-}
-
-.voice-mode-card-tag {
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-
-.voice-mode-card.on .voice-mode-card-tag {
-  color: var(--paper);
-}
-
 /* ─── 자형 (glyph) ──────────────────────────────────────────── */
-
-.z-voice-badge {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--muted);
-  flex: none;
-}
-
-.z-voice-badge-value {
-  font-size: 16px;
-  color: var(--ink);
-}
 
 .z-glyph-stage {
   flex: 1;

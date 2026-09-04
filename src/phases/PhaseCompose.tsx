@@ -156,24 +156,16 @@ export default function PhaseCompose({
         <span>/{MAX}</span>
       </div>
 
-      {/* 색 — 누를 때마다 다음 조합으로. 이름 대신 색 자체를 보여준다. */}
+      {/* 색 — 무대가 이미 색을 보여주므로 버튼은 몇 번째인지만 센다 */}
       <button
         type="button"
         className="z-cycle"
         onClick={() => setMoodIdx((i) => (i + 1) % moods.length)}
         aria-label={`색 바꾸기 — 지금 ${moodIdx + 1}번째, 모두 ${moods.length}가지`}
       >
-        <span className="z-cycle-label">색</span>
-        <span className="z-swatch" aria-hidden>
-          <i style={{ background: mood.bg }} />
-          <i style={{ background: mood.text }} />
-        </span>
         <span className="z-cycle-count">
-          {moodIdx + 1}
-          <span>/{moods.length}</span>
-        </span>
-        <span className="z-cycle-arrow" aria-hidden>
-          ↻
+          {String(moodIdx + 1).padStart(2, '0')}
+          <span> / {moods.length}</span>
         </span>
       </button>
 

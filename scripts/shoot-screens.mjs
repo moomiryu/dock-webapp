@@ -83,11 +83,13 @@ async function main() {
   await page.getByRole('button', { name: '프로젝트 정보' }).click();
   await shoot(page, '01-info');
 
-  // 02 자형
+  // 02 자형 — 고르기 전(빈 무대)과 고른 뒤
   await page.goto(url('/?mock=1'), { waitUntil: 'load' });
   await settle(page);
   await page.getByRole('button', { name: '시작하기', exact: true }).click();
-  await shoot(page, '02-glyph');
+  await shoot(page, '02-glyph-empty');
+  await page.getByRole('button', { name: '당당한' }).click();
+  await shoot(page, '02-glyph-picked');
 
   // 03 메시지 — 빈 상태와 채운 상태
   await page.locator('.primary-action').click();

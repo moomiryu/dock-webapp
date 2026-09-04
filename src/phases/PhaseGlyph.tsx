@@ -11,20 +11,18 @@ interface Props {
   onNext: (partialTone: PartialTone) => void;
 }
 
-// Glyph tuning happens before the message is written, so we shape a short
-// representative sample word ("발화") instead of a lone character.
+// 글을 쓰기 전이라 한 글자 대신 짧은 대표 낱말로 형태를 본다.
 const SAMPLE_TEXT = '발화';
 
 const DEFAULT = {
-  font: 'ttoryeot' as const,
   tone: 1.0,
   wght: 500,
   slnt: 0,
   size: 44
 };
 
-// 자형 4종 — 태도(형용사)로 고르고, 아래에 서체 계열을 병기한다.
-// 정도가 아니라 종류라서 슬라이더가 아니라 선택이다.
+// 자형 4종 — 고르는 근거는 태도(형용사)다.
+// 서체 계열은 고른 칸에만 뜬다: 먼저 마음을 정하고, 그게 무엇이었는지 나중에 안다.
 const STYLE_OPTIONS: Array<{ val: ToneState['font']; label: string; kind: string }> = [
   { val: 'doran', label: '다정한', kind: '손글씨' },
   { val: 'deulseok', label: '짓궂은', kind: '탈네모' },
@@ -55,8 +53,10 @@ const AXIS_LABELS: Record<string, string> = {
 };
 
 export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
+  // 처음에는 아무것도 고르지 않은 상태로 연다 — 무대가 비어 있어야
+  // '고르는 일'이 이 화면의 과제라는 게 보인다.
+  const [font, setFont] = useState<ToneState['font'] | null>(initialTone?.font ?? null);
   const [tone, setTone] = useState({
-    font: initialTone?.font ?? DEFAULT.font,
     tone: initialTone?.tone ?? DEFAULT.tone,
     wght: initialTone?.wght ?? DEFAULT.wght,
     slnt: initialTone?.slnt ?? DEFAULT.slnt,
@@ -71,36 +71,42 @@ export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
       </div>
 
       <div className="z-glyph-stage">
-        <div
-          className="z-glyph"
-          style={{
-            fontFamily: fontMap[tone.font],
-            fontWeight: tone.wght,
-            fontVariationSettings: `"wght" ${tone.wght}`,
-            transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)`,
-            fontSize: Math.round(tone.size * 3) + 'px'
-          }}
-        >
-          {SAMPLE_TEXT}
-        </div>
-        <div className="z-glyph-caption">예시 ‘발화’로 형태를 정해요</div>
+        {font ? (
+          <>
+            <div
+              className="z-glyph"
+              style={{
+                fontFamily: fontMap[font],
+                fontWeight: tone.wght,
+                fontVariationSettings: `"wght" ${tone.wght}`,
+                transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)`,
+                fontSize: Math.round(tone.size * 3) + 'px'
+              }}
+            >
+              {SAMPLE_TEXT}
+            </div>
+            <div className="z-glyph-caption">예시 ‘발화’로 형태를 정해요</div>
+          </>
+        ) : (
+          <div className="z-glyph-ask">원하는 스타일을 택해주세요</div>
+        )}
       </div>
 
       <div className="style-cards" role="group" aria-label="자형 고르기">
         {STYLE_OPTIONS.map((s) => {
-          const on = s.val === tone.font;
+          const on = s.val === font;
           return (
             <button
               key={s.val}
               type="button"
               className={'style-card ' + (on ? 'on' : '')}
               aria-pressed={on}
-              onClick={() => setTone((t) => ({ ...t, font: s.val }))}
+              onClick={() => setFont(s.val)}
             >
-              <span className="style-card-name" style={{ fontFamily: fontMap[s.val] }}>
+              <span className="style-card-name" style={{ fontFamily: on ? fontMap[s.val] : undefined }}>
                 {s.label}
               </span>
-              <span className="style-card-kind">{s.kind}</span>
+              {on && <span className="style-card-kind">{s.kind}</span>}
             </button>
           );
         })}
@@ -128,7 +134,11 @@ export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
         </div>
       </div>
 
-      <button className="primary-action" onClick={() => onNext(tone)}>
+      <button
+        className="primary-action"
+        disabled={!font}
+        onClick={() => font && onNext({ font, ...tone })}
+      >
         <span>이 자형으로, 다음</span>
       </button>
 

@@ -294,6 +294,12 @@
   transform-origin: center;
 }
 
+.z-glyph-ask {
+  font-size: 15px;
+  color: var(--muted);
+  text-align: center;
+}
+
 .z-glyph-caption,
 .z-stage-caption {
   font-size: 12px;
@@ -317,7 +323,9 @@
   background: var(--paper);
   border: none;
   border-radius: 0;
-  padding: 13px 4px 11px;
+  min-height: 62px;
+  justify-content: center;
+  padding: 10px 4px;
   font-family: inherit;
   color: var(--ink);
   cursor: pointer;
@@ -647,30 +655,19 @@
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 0;
-  padding: 11px 12px;
+  padding: 13px 12px;
   font-family: inherit;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
   flex: none;
 }
 
-.z-swatch {
-  display: inline-flex;
-  border: 1px solid var(--line);
-}
-
-.z-swatch i {
-  display: block;
-  width: 20px;
-  height: 20px;
-}
-
 .z-cycle-count {
-  margin-left: auto;
   font-family: var(--label-font);
-  font-size: 13px;
+  font-size: 15px;
+  letter-spacing: 0.04em;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
@@ -679,23 +676,10 @@
   color: var(--muted);
 }
 
-.z-cycle-label {
-  font-family: var(--label-font);
-  font-size: 12px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
 .z-cycle-value {
   font-size: 14px;
   font-weight: 500;
   color: var(--ink);
-}
-
-.z-cycle-arrow {
-  font-size: 13px;
-  color: var(--muted);
 }
 
 /* ─── 진행 표시 ─────────────────────────────────────────────── */

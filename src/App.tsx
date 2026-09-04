@@ -64,14 +64,15 @@ export default function App() {
   }, []);
 
   // 웹폰트가 준비될 때까지 splash. 자형이 이 앱의 내용이라 폰트가 늦으면
-  // 첫 화면이 다른 글씨로 한 번 깜빡인다. 최소 노출 시간을 둬 깜빡임 자체를 없애고,
-  // 폰트가 영영 오지 않는 경우를 위해 상한도 건다.
+  // 첫 화면이 다른 글씨로 한 번 깜빡인다.
+  // 최소 2초를 지키는 건 로딩 때문이 아니라 도입을 위해서다 — 폰을 대자마자
+  // 화면이 튀어나오면 시작한 줄 모른다. 폰트가 영영 오지 않는 경우엔 상한이 끊는다.
   useEffect(() => {
     let live = true;
     const settle = () => live && setReady(true);
-    const floor = new Promise<void>((r) => setTimeout(r, 650));
+    const floor = new Promise<void>((r) => setTimeout(r, 2000));
     Promise.all([document.fonts.ready, floor]).then(settle);
-    const cap = window.setTimeout(settle, 3500);
+    const cap = window.setTimeout(settle, 4000);
     return () => {
       live = false;
       clearTimeout(cap);

@@ -408,6 +408,49 @@
 }
 
 /* 조작층은 자기 요소만 클릭을 받는다 — 빈 자리에서는 워드마크를 끌 수 있게 */
+/* ─── 홈에 사는 캐릭터 ───────────────────────────────────────
+   워드마크와 아래 조작층 사이의 빈 띠. 위치는 rAF가 직접 쓴다
+   (components/HomeCharacter.tsx). z는 워드마크 위, 조작층 아래. */
+
+.home-char {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 46%;
+  width: 44vw;
+  max-width: 170px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  line-height: 0;
+}
+
+.home-char svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* 눈 깜빡임. 이 그림에서 원은 눈(흰자 둘·눈동자 둘)뿐이라
+   circle을 통째로 세로로 눌러 감으면 두 눈이 같이 감긴다.
+   깜빡이는 시간은 6.2초 중 3% — 사람이 눈 감는 시간과 비슷하다. */
+.home-char svg circle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mfBlink 6.2s infinite;
+}
+
+@keyframes mfBlink {
+  0%, 95.5%, 100% { transform: scaleY(1); }
+  97%             { transform: scaleY(0.06); }
+  98.5%           { transform: scaleY(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-char svg circle {
+    animation: none;
+  }
+}
+
 .home-layer{
   position: relative;
   z-index: 2;

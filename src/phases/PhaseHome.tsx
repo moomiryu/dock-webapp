@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import InfoOverlay from '../components/InfoOverlay';
+import HomeCharacter from '../components/HomeCharacter';
 
 interface Props {
   onStart: () => void;
@@ -168,6 +169,9 @@ export default function PhaseHome({ onStart }: Props) {
           <span>FONT</span>
         </span>
       </h1>
+
+      {/* 워드마크와 조작층 사이의 빈 띠에서 유영한다 */}
+      <HomeCharacter />
 
       {/* 위층 — 조작 */}
       <div className="home-layer">

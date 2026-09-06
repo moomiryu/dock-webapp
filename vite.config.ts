@@ -1,8 +1,16 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  // 디자인 에셋은 by_moomiryu/ 에 쌓인다. 작가가 넣는 폴더라
+  // src 밖에 두고 별칭으로만 부른다 — 경로가 ../../ 로 새지 않게.
+  resolve: {
+    alias: {
+      '@assets': fileURLToPath(new URL('./by_moomiryu', import.meta.url))
+    }
+  },
   plugins: [
     react(),
     VitePWA({

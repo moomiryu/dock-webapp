@@ -149,7 +149,25 @@ pressed · 키보드 포커스**로 못박는다. 우리에게 **pressed가 없�
 
 ---
 
-## 6. 다시 돌리는 법
+## 6. 갱신 (2026-09-07) — 문서 대신 제품
+
+실제 토스 앱 화면 51장을 픽셀로 재서 문서와 대조했다
+([reference-capture-analysis.md](reference-capture-analysis.md)).
+
+**문서가 맞은 자리는 버튼 높이 하나다** — 56px, 34장 전수 일치.
+활자와 여백은 달랐다. 그 표가 개발 문서 *웹사이트*의 계산값이라고
+문서 스스로 밝혀 뒀고, 실측이 그 경고를 확인했다.
+
+그래서 넷을 제품 쪽으로 되돌렸다: 좌우 여백 24 → **20**,
+버튼 라운드 16 → **14**, 바닥 여백 `24 + 안전영역` → **안전영역만**,
+제목 H1 36/1.5 → **28/1.3** (H2 24 · H3 22 · H4 20).
+
+§1의 활자·간격 표는 이 갱신으로 대체됐다. 본문 16/1.5와 버튼 높이 사다리는
+그대로다.
+
+---
+
+## 7. 다시 돌리는 법
 
 ```bash
 npx oh-my-design-cli@latest design-md validate DESIGN.md   # 계약
@@ -157,4 +175,5 @@ node scripts/audit-a11y.mjs                                # 접근성 (npm run 
 node scripts/shoot-screens.mjs                             # 화면 캡처
 node scripts/shoot-faces.mjs                               # 말투 네 칸
 node scripts/e2e-dock.mjs                                  # 폰 ↔ 벽 왕복
+python scripts/measure-reference.py "reference capture"     # 참조 실측
 ```

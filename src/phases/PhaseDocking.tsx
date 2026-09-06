@@ -3,7 +3,7 @@ import { raiseShowTrigger } from '../lib/firebase';
 import { EMPHASIS_SEC, STAY_DAYS } from '../lib/wall';
 
 interface Props {
-  /** 방금 보낸 글의 id — 외벽이 '어느 글을 띄울지' 알아야 한다 */
+  /** 방금 보낸 글의 id — 벽이 '어느 글을 띄울지' 알아야 한다 */
   messageId: string;
   /** 폰이 홈에 꽂혔을 때. 실제 설치에서는 NFC·센서가 이걸 부른다 */
   onDocked: () => void;
@@ -16,8 +16,8 @@ interface Props {
 // 지시만 하고 끝내면 사용자는 꽂은 뒤 무슨 일이 생기는지 모른 채 서 있게 된다.
 // 그래서 '무엇을 하라'와 '그러면 무엇이 일어난다'를 한 화면에 같이 둔다.
 export default function PhaseDocking({ messageId, onDocked, devNote }: Props) {
-  // 꽂힌 순간 외벽에 신호를 보낸다. 실패해도 화면은 넘어간다 —
-  // 외벽이 못 받았다고 사용자를 여기 붙잡아 둘 이유는 없다.
+  // 꽂힌 순간 벽에 신호를 보낸다. 실패해도 화면은 넘어간다 —
+  // 벽이 못 받았다고 사용자를 여기 붙잡아 둘 이유는 없다.
   function handleDocked() {
     void raiseShowTrigger(messageId);
     onDocked();
@@ -29,7 +29,7 @@ export default function PhaseDocking({ messageId, onDocked, devNote }: Props) {
         <h1>이제 홈에 꽂아주세요</h1>
 
         <p>
-          폰 위쪽이 먼저 들어가도록,<br />
+          벽을 보고 서서, 폰 위쪽이 먼저 들어가도록<br />
           세로로 밀어 넣어주세요.
         </p>
 
@@ -42,7 +42,7 @@ export default function PhaseDocking({ messageId, onDocked, devNote }: Props) {
           <div className="dock-next-row">
             <span className="dock-next-label">꽂으면</span>
             <p>
-              당신의 한 줄이 벽 한가운데에 <b>크게</b> 떠오릅니다.
+              당신의 한 줄이 저 벽 한가운데에 <b>크게</b> 떠오릅니다.
             </p>
           </div>
           <div className="dock-next-row">
@@ -52,7 +52,7 @@ export default function PhaseDocking({ messageId, onDocked, devNote }: Props) {
             </p>
           </div>
           <span className="dock-next-cap">
-            아무도 빼지 않으면 {EMPHASIS_SEC}초 뒤 저절로 끝납니다
+            그대로 두면 {EMPHASIS_SEC}초 뒤 저절로 메아리가 됩니다
           </span>
         </div>
 

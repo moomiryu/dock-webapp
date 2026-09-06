@@ -28,7 +28,7 @@ export default function AdminWall() {
   return (
     <div className="admin-wall">
       <header className="admin-wall__header">
-        <div className="admin-wall__title">MEGAFONT · 외벽 미리보기</div>
+        <div className="admin-wall__title">MEGAFONT · 벽 미리보기</div>
         <div className="admin-wall__meta">
           {isFirebaseConfigured() ? (
             <span>Firebase 연결됨</span>

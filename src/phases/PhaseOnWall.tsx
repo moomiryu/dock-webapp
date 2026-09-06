@@ -48,8 +48,8 @@ export default function PhaseOnWall({ onDone }: Props) {
   return (
     <DockedFrame phaseLabel="벽에 표시 중">
       <div className="onwall">
-        <h1>지금 벽에 떠 있어요</h1>
-        <p className="onwall-look">고개를 들어 보세요.</p>
+        <h1>고개를 들어 보세요</h1>
+        <p className="onwall-look">지금 저 벽에 크게 떠 있어요.</p>
 
         <div className="onwall-meter">
           <div className="onwall-count" aria-live="off">

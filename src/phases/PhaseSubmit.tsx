@@ -13,7 +13,7 @@ type Status =
 
 interface Props {
   draft: Draft | null;
-  /** 폰이 홈에 꽂혔을 때 — 다음은 외벽에 떠 있는 화면(07) */
+  /** 폰이 홈에 꽂혔을 때 — 다음은 벽에 떠 있는 화면(07) */
   onDocked: () => void;
   /** 실패했을 때 고쳐 쓰러 돌아가는 길 (04 미리보기) */
   onEdit: () => void;
@@ -45,7 +45,7 @@ function explain(err: unknown): { message: string; detail?: string } {
   if (/[가-힣]/.test(raw)) return { message: raw };
 
   if (/timeout|abort|network|failed to fetch/i.test(raw)) {
-    return { message: '외벽에 닿지 못했어요. 잠시 뒤 다시 보내주세요.', detail: raw };
+    return { message: '벽에 닿지 못했어요. 잠시 뒤 다시 보내주세요.', detail: raw };
   }
   if (/40[13]|permission/i.test(raw)) {
     return { message: '지금은 글을 받을 수 없는 상태예요. 운영자에게 알려주세요.', detail: raw };
@@ -129,7 +129,7 @@ export default function PhaseSubmit({ draft, onDocked, onEdit, onRestart }: Prop
   return (
     <MegafontFrame phaseLabel="보내지 못함">
       <div className="guide-hero">
-        <h1>아직 외벽에 닿지 않았어요</h1>
+        <h1>아직 벽에 닿지 않았어요</h1>
         <p>{status.message}</p>
 
         {hasDraft && (

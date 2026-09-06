@@ -45,9 +45,11 @@ async function capture(page, name) {
 async function settle(page) {
   // 웹폰트(Adobe Fonts는 JS 로더라 늦게 온다) → splash가 걷힘 → 진입 모션
   await page.evaluate(() => document.fonts.ready);
+  // 스플래시는 최소 2초를 지키고 최대 4초에 끊긴다. 그보다 오래 남아 있으면
+  // 무언가 잘못된 것이므로 조용히 넘기지 말고 알린다.
   await page
-    .waitForFunction(() => !document.querySelector('.splash'), { timeout: 8000 })
-    .catch(() => {});
+    .waitForFunction(() => !document.querySelector('.splash'), { timeout: 12000 })
+    .catch(() => console.log('  ⚠ 스플래시가 걷히지 않았다'));
   await page.waitForTimeout(900);
 }
 

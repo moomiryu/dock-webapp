@@ -86,7 +86,7 @@ export default function App() {
     return <AdminWall />;
   }
 
-  // 00 — 입력 앱에만. 외벽·관리 화면은 곧바로 뜬다.
+  // 00 — 입력 앱에만. 벽·관리 화면은 곧바로 뜬다.
   if (!ready) {
     return <PhaseSplash />;
   }

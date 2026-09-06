@@ -99,7 +99,7 @@ function buildRestClient(): FirestoreLike {
   async function list(lim: number): Promise<StoredMessage[]> {
     const url = `${FS_BASE}/messages?key=${FS_KEY}&pageSize=${lim}&orderBy=${encodeURIComponent('createdAt desc')}`;
     const res = await withTimeout(fetch(url), 15000);
-    if (!res.ok) throw new Error(`외벽을 불러오지 못했어요 (${res.status})`);
+    if (!res.ok) throw new Error(`벽을 불러오지 못했어요 (${res.status})`);
     const json = (await res.json()) as { documents?: RestDoc[] };
     return (json.documents ?? []).map(restDocToStored);
   }
@@ -121,9 +121,9 @@ function buildRestClient(): FirestoreLike {
         }),
         15000
       ).catch(() => {
-        throw new Error('외벽에 저장하지 못했어요. 잠시 후 다시 시도해주세요.');
+        throw new Error('벽에 닿지 못했어요. 잠시 뒤 다시 보내주세요.');
       });
-      if (!res.ok) throw new Error('외벽에 저장하지 못했어요. 잠시 후 다시 시도해주세요.');
+      if (!res.ok) throw new Error('벽에 닿지 못했어요. 잠시 뒤 다시 보내주세요.');
       const json = (await res.json()) as { name?: string };
       return json.name ? (json.name.split('/').pop() ?? 'rest') : 'rest-' + Date.now();
     },
@@ -328,16 +328,16 @@ export function subscribeShowTrigger(
 }
 
 /**
- * 외벽에 "지금 이 글을 크게 띄워라"를 알린다.
+ * 벽에 "지금 이 글을 크게 띄워라"를 알린다.
  *
  * 물리 설치에서는 홈의 NFC·센서가 이 값을 올린다. 그 장치가 아직 없으므로
- * 지금은 앱이 도킹 순간에 대신 올린다 — 이게 없으면 07 화면이 "지금 외벽에
- * 떠 있어요"라고 말하는 동안 외벽에서는 아무 일도 일어나지 않는다.
+ * 지금은 앱이 도킹 순간에 대신 올린다 — 이게 없으면 07 화면이 "지금 벽에
+ * 떠 있어요"라고 말하는 동안 벽에서는 아무 일도 일어나지 않는다.
  */
 export async function raiseShowTrigger(messageId?: string): Promise<void> {
   if (!hasFirebaseEnv()) return;
   // 어느 글을 띄울지도 같이 보낸다. 신호가 목록 폴링보다 빨라서, id가 없으면
-  // 외벽이 '아직 아는 것 중 최신' — 즉 앞사람 글 — 을 띄울 수 있다.
+  // 벽이 '아직 아는 것 중 최신' — 즉 앞사람 글 — 을 띄울 수 있다.
   const mask =
     'updateMask.fieldPaths=showTrigger&updateMask.fieldPaths=showId&updateMask.fieldPaths=docked';
   await fetch(`${FS_BASE}/${CONTROL_DOC}?key=${FS_KEY}&${mask}`, {

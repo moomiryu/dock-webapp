@@ -238,7 +238,7 @@ export default function WallSimulation() {
           {isLoading && (
             <>
               <div className="wall-empty-glyph">···</div>
-              <div className="wall-empty-text">외벽을 불러오고 있어요</div>
+              <div className="wall-empty-text">벽을 불러오고 있어요</div>
             </>
           )}
           {error && (
@@ -256,7 +256,7 @@ export default function WallSimulation() {
           {isEmpty && !error && (
             <>
               <div className="wall-empty-glyph">···</div>
-              <div className="wall-empty-text">아직 외벽이 비어있어요</div>
+              <div className="wall-empty-text">아직 벽이 비어 있어요</div>
               <div className="wall-empty-mode">
                 {isFirebaseConfigured() ? '저장소: Firestore (라이브)' : '저장소: 로컬 mock (?mock=1)'}
               </div>
@@ -304,7 +304,7 @@ const WallBlock = memo(function WallBlock({ msg, index, total }: { msg: StoredMe
   // 한 트랙 안에서는 균등 간격이라 같은 속도끼리 겹치지 않는다.
   // 거기에 트랙마다 시작점을 어긋내야 메시지가 적을 때도 화면이 고르게 찬다 —
   // 이게 없으면 글이 세 개일 때 셋 다 위상 0에서 같이 출발해, 설치 첫날
-  // 외벽이 대부분 비어 있다가 한 덩어리가 지나가는 꼴이 된다.
+  // 벽이 대부분 비어 있다가 한 덩어리가 지나가는 꼴이 된다.
   const trackOffset = (index % TRACKS.length) / TRACKS.length;
   const phase = (posInTrack / countInTrack + trackOffset) % 1;
   const animDelay = -phase * track.duration;

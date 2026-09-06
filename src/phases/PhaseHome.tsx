@@ -173,14 +173,16 @@ export default function PhaseHome({ onStart }: Props) {
       {/* 위층 — 조작 */}
       <div className="home-layer">
         <div className="home-top">
-          <span className="home-eyebrow">캠퍼스 공공 발화 시스템</span>
+          <span className="home-eyebrow">캠퍼스 공공 발화</span>
           <FullscreenToggle />
         </div>
 
         <div className="home-bottom">
+          {/* 홈에는 3단계 띠도 태그라인도 없다. 그러니 헤드라인이 거래
+              전체를 혼자 져야 한다 — 무엇을 하면 무엇이 되는지까지. */}
           <div className="home-headline">
-            공공의 한 줄,<br />
-            당신의 형식
+            쓰면<br />
+            저 벽에 뜹니다
           </div>
 
           {/* 규칙과 절차는 여기 늘어놓지 않는다. 홈에서 알아야 할 것은

@@ -13,12 +13,15 @@ export default defineConfig({
         short_name: 'MEGAFONT',
         description: '캠퍼스 공공 발화 시스템',
         lang: 'ko',
-        start_url: '/?stage=enter',
+        // 홈 화면에서 여는 것은 '처음 오는 것'과 같다 — 홈(01)부터 시작해야
+        // 프로젝트 정보를 볼 기회가 생긴다. ?stage=enter는 NFC 태그의 몫이다.
+        start_url: '/',
         scope: '/',
         display: 'standalone',
         orientation: 'portrait',
-        theme_color: '#FCE7F3',
-        background_color: '#efefef',
+        // 크롬은 흑백이다 — 설치 스플래시가 분홍으로 번쩍이면 안 된다
+        theme_color: '#ffffff',
+        background_color: '#ffffff',
         icons: [
           { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
           { src: '/pwa-64x64.png', sizes: '64x64', type: 'image/png' },

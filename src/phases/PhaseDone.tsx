@@ -20,9 +20,12 @@ export default function PhaseDone({ stillDocked, onRestart }: Props) {
   return (
     <Frame phaseLabel="완료">
       <div className="done">
-        <h1>이제 폰을 가져가세요</h1>
+        {/* 두 급의 활자가 한 문장을 나눠 쥔다. '두고.'로 흘리는 종결은
+            이 앱에서 허용하는 유일한 예외다 — 몸을 돌려 걸어 나가는
+            동작과 문장이 같이 끝나는 자리라서. */}
+        <h1>폰만 가져가세요</h1>
 
-        <p className="done-lead">당신의 한 줄은 벽에 남았습니다.</p>
+        <p className="done-lead">한 줄은 저 벽에 두고.</p>
 
         <div className="done-after">
           <p>

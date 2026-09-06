@@ -1,6 +1,6 @@
 // 액자에 글을 맞추는 계산 — 쓰는 만큼 글자가 작아진다.
 //
-// 외벽은 정해진 크기(2.4 × 1.5 m)라, 긴 문장은 작게 들어갈 수밖에 없다.
+// 벽은 정해진 크기(2.4 × 1.5 m)라, 긴 문장은 작게 들어갈 수밖에 없다.
 // 그 사실을 쓰는 동안에도 보여주려고 입력 화면과 미리보기가 같은 공식을 쓴다.
 // /wall의 강조 렌더도 같은 비율을 쓰되 단위만 뷰포트(vw/vh)다.
 //
@@ -24,7 +24,7 @@ export function fitFontSize(text: string, { min = 6, max = 200 }: Options = {}):
   return `clamp(${min}px, min(${byWidth}cqw, ${byHeight}cqh), ${max}px)`;
 }
 
-/** 그 글자가 실제 외벽에서 몇 cm가 되는지 */
+/** 그 글자가 실제 벽에서 몇 cm가 되는지 */
 export function glyphCm(text: string, wallWidthM: number): number {
   const lines = text.split('\n');
   const longest = Math.max(1, ...lines.map((l) => Array.from(l).length));

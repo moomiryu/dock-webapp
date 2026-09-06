@@ -35,7 +35,7 @@
 | 경로 | 화면 | 청중 | 비고 |
 |:--|:--|:--|:--|
 | `/` | 00 → 08 발화 플로우 | 참여자 | 화면 상태머신 |
-| `/?stage=enter` | 홈을 건너뛰고 **02 자형**부터 | 참여자 | NFC 태그가 여는 URL. 살아 있는 초안이 있으면 04로 복귀 |
+| `/?stage=enter` | 홈을 건너뛰고 **02 말투**부터 | 참여자 | NFC 태그가 여는 URL. 살아 있는 초안이 있으면 04로 복귀 |
 | `/wall` | 벽 출력 | 설치 | 3트랙 풍경 + 도킹 시 강조(최대 30초) |
 | `/admin` | 메시지 목록 | 운영 | id·메타 포함 |
 | `?mock=1` | (모든 경로) localStorage 백엔드 | 개발 | Firestore를 건드리지 않는다 |
@@ -53,10 +53,10 @@
 flowchart TD
     SPLASH["00 Splash<br/>웹폰트 대기 (최소 2s)"]
     HOME["01 Intro<br/>워드마크 · 시작 · 정보"]
-    INFO["무슨 일이 일어나나요<br/>(6장 슬라이드)"]
-    GLYPH["02 자형<br/>4종 + 굵기·너비·기울기"]
-    COMPOSE["03 메시지<br/>입력 = 미리보기 · 색 10"]
-    PREVIEW["04 미리보기<br/>16:10 액자"]
+    INFO["처음이에요<br/>(6장 소개)"]
+    GLYPH["02 말투<br/>4종 + 굵기·너비·기울기"]
+    COMPOSE["03 한 줄<br/>입력 = 미리보기 · 색 10"]
+    PREVIEW["04 벽에서 보기<br/>16:10 액자"]
     SENDING["05 전송 중<br/>파문 + 링"]
     DOCK["06 도킹 안내<br/>+ 꽂으면 무엇이"]
     ONWALL["07 벽에 떠 있음<br/>최대 30초 · 아래 절반"]
@@ -64,16 +64,17 @@ flowchart TD
     ERR["전송 실패"]
 
     SPLASH --> HOME
-    HOME -->|시작하기| GLYPH
-    HOME <-->|무슨 일이 일어나나요| INFO
+    HOME <-->|처음이에요| INFO
+    INFO -->|시작하기| GLYPH
+    HOME -->|써봤어요| GLYPH
     NFC(["NFC ?stage=enter"]) --> GLYPH
     NFC -.->|살아 있는 초안| PREVIEW
 
-    GLYPH -->|이 자형으로| COMPOSE
+    GLYPH -->|다음 · 한 줄 쓰기| COMPOSE
     GLYPH -.->|뒤로| HOME
-    COMPOSE -->|미리보기| PREVIEW
+    COMPOSE -->|다음 · 벽에서 보기| PREVIEW
     COMPOSE -.->|뒤로| GLYPH
-    PREVIEW -->|이대로 맡기기| SENDING
+    PREVIEW -->|발화하기| SENDING
     PREVIEW -.->|뒤로| COMPOSE
 
     SENDING -->|성공| DOCK
@@ -92,9 +93,9 @@ flowchart TD
 ## 4. 단계별로 정해지는 값
 
 ```
-02 자형     →  font, wght, tone(너비), slnt
-03 메시지   →  text(60자), paletteIdx
-04 미리보기 →  (확인만)
+02 말투     →  font, wght, tone(너비), slnt
+03 한 줄   →  text(60자), paletteIdx
+04 벽에서 보기 →  (확인만)
 05 전송     →  Firestore로 write, 초안 삭제
 ```
 
@@ -157,7 +158,7 @@ flowchart TD
 - **07 도중 이탈** — 앱과 벽은 이미 처리한다(`control/display.docked`가
   내려가면 벽이 강조를 접고 앱은 08로 간다). 다만 그걸 알리는 건 아직
   버튼이라, 말없이 뽑고 가버리면 30초 상한이 대신 끊는다
-- **'짓궂은' 서체** — Sunflower가 '당당한'과 골격이 겹치고, 부제 '탈네모'와도 어긋난다. 사용자 테스트의 선결 조건
+- **'발랄한' 서체** — Sunflower가 '당당한'과 골격이 겹친다. 부제는 '둥근고딕'으로 맞춰 두었다. 사용자 테스트의 선결 조건
 - **본체 방향** — 앱 카피의 '저 벽'은 본체가 벽을 보고 선다는 전제 위에 있다
 - **관리자 삭제** — `/admin`은 읽기 전용
 - **보안** — Firestore 규칙이 열려 있다. 출시 전 좁혀야 한다

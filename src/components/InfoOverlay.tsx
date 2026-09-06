@@ -4,17 +4,20 @@ import { EMPHASIS_SEC, STAY_DAYS, WALL_H_M, WALL_W_M } from '../lib/wall';
 
 interface Props {
   onClose: () => void;
+  /** 마지막 장에서 곧바로 쓰러 간다 — 다 읽었으면 홈으로 되돌아올 이유가 없다 */
+  onStart: () => void;
 }
 
-// 프로젝트 정보 — 명세서가 아니라 한 장씩 넘기며 이해하는 자리.
+// 처음 온 사람이 보는 여섯 장.
 //
-// 규칙을 표로 늘어놓으면 읽는 사람이 순서를 스스로 세워야 한다. 이 장치는
-// 순서가 곧 내용이므로(쓴다 → 꽂는다 → 크게 뜬다 → 뺀다 → 사흘 → 사라진다)
-// 그 순서대로 한 장에 하나씩 둔다. 규칙은 마지막 장에만 모은다.
+// 순서가 곧 내용이다: 이게 뭔지(의도) → 1 쓴다 → 2 말투와 색을 고른다 →
+// 3 꽂는다 → 그러면 크게 뜬다 → 빼면 메아리로 남고 사라진다.
+// 의도를 먼저 두는 이유는 그게 납득되면 나머지 단계가 설명 없이 따라오기
+// 때문이다. 규칙(익명·수정불가)은 마지막 장에만 모은다.
 //
 // 넘기기는 브라우저의 가로 스크롤 스냅에 맡긴다 — 미는 감각을 직접 구현하면
 // 기기마다 어긋난다.
-export default function InfoOverlay({ onClose }: Props) {
+export default function InfoOverlay({ onClose, onStart }: Props) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
 
@@ -47,7 +50,7 @@ export default function InfoOverlay({ onClose }: Props) {
   const last = idx >= SLIDES.length - 1;
 
   return (
-    <div className="info-overlay" role="dialog" aria-modal="true" aria-label="프로젝트 정보">
+    <div className="info-overlay" role="dialog" aria-modal="true" aria-label="메가폰트 소개">
       <div className="info-head">
         <span>
           {idx + 1} / {SLIDES.length}
@@ -63,6 +66,7 @@ export default function InfoOverlay({ onClose }: Props) {
             <div className="info-art" aria-hidden>
               {s.art}
             </div>
+            <span className="info-step-label">{s.step}</span>
             <h2>{s.title}</h2>
             <div className="info-said">{s.body}</div>
           </section>
@@ -80,8 +84,8 @@ export default function InfoOverlay({ onClose }: Props) {
           이전
         </button>
         {last ? (
-          <button type="button" className="primary-action" onClick={onClose}>
-            <span>알겠어요</span>
+          <button type="button" className="primary-action" onClick={onStart}>
+            <span>시작하기</span>
           </button>
         ) : (
           <button type="button" className="primary-action" onClick={() => go(1)}>
@@ -95,57 +99,56 @@ export default function InfoOverlay({ onClose }: Props) {
 
 // ─── 슬라이드 ────────────────────────────────────────────────
 // 삽화는 선 하나로만 그린다 (흑백 원칙). 색은 사용자가 만든 말에만 산다.
-// 본문은 장당 40자 안쪽. 넘기는 형식은 한 장에 한 생각일 때만 살아 있다 —
-// 두 생각이 들어가는 순간 이건 그냥 세로로 긴 글을 잘라 놓은 것이 된다.
+// 본문은 장당 40자 안쪽. 넘기는 형식은 한 장에 한 생각일 때만 살아 있다.
 
-const SLIDES: Array<{ title: string; body: ReactNode; art: ReactNode }> = [
+const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNode }> = [
   {
-    title: '벽에 화면이 하나 있습니다',
+    step: '이게 뭔가요',
+    title: '학교 벽에 대고 크게 말하는 장치입니다',
     body: (
       <p>
-        캠퍼스 건물에 걸린 {WALL_W_M} × {WALL_H_M} m 화면입니다. 누구나 읽습니다.
+        누구나 한 줄을 캠퍼스 벽에 띄울 수 있습니다.
+        무엇을, <b>어떻게</b> 말할지는 당신이 정합니다.
       </p>
     ),
     art: <ArtWall />
   },
   {
-    title: '거기에 한 줄을 둡니다',
-    body: <p>폰으로 씁니다. 한 번에 60자까지.</p>,
+    step: '1단계',
+    title: '한 줄을 씁니다',
+    body: <p>폰으로. 한 번에 60자까지.</p>,
     art: <ArtLine />
   },
   {
-    title: '말투도 당신이 정합니다',
-    body: (
-      <p>
-        무엇을 말할지만이 아니라 <b>어떻게 말할지</b>까지.
-        자형과 색을 골라 목소리를 만듭니다.
-      </p>
-    ),
+    step: '2단계',
+    title: '말투와 색을 고릅니다',
+    body: <p>같은 말도 얼굴에 따라 다르게 들립니다.</p>,
     art: <ArtGlyphs />
   },
   {
-    title: '폰을 꽂으면 크게 떠오릅니다',
-    body: (
-      <p>
-        꽂혀 있는 동안 화면을 통째로. 최대 {EMPHASIS_SEC}초.
-      </p>
-    ),
+    step: '3단계',
+    title: '폰을 홈에 꽂습니다',
+    body: <p>벽을 보고 서서, 위쪽부터 세로로.</p>,
     art: <ArtDock />
   },
   {
-    title: '빼면 메아리로 남습니다',
+    step: '그러면',
+    title: '벽에 크게 떠오릅니다',
     body: (
       <p>
-        큰 목소리는 끝나고, 다른 말들 사이를 {STAY_DAYS}일간 떠다닙니다.
+        꽂혀 있는 동안 {WALL_W_M} × {WALL_H_M} m 화면을 통째로. 최대 {EMPHASIS_SEC}초.
       </p>
     ),
-    art: <ArtEcho />
+    art: <ArtBig />
   },
   {
-    title: '그리고 사라집니다',
+    step: '그리고',
+    title: '빼면 메아리로 남고, 사라집니다',
     body: (
       <>
-        <p>보관함은 없습니다. {STAY_DAYS}일 동안 떠 있는 동안이 전부입니다.</p>
+        <p>
+          {STAY_DAYS}일간 다른 말들 사이를 떠다니다 사라집니다. 보관함은 없습니다.
+        </p>
         <dl className="info-rules">
           <div>
             <dt>이름</dt>
@@ -162,7 +165,7 @@ const SLIDES: Array<{ title: string; body: ReactNode; art: ReactNode }> = [
         </dl>
       </>
     ),
-    art: <ArtFade />
+    art: <ArtEcho />
   }
 ];
 
@@ -197,16 +200,13 @@ function ArtWall() {
 function ArtLine() {
   return (
     <Art>
-      <rect x="30" y="18" width="180" height="92" strokeWidth="1.8" />
-      <g strokeWidth="7">
-        <line x1="62" y1="58" x2="118" y2="58" />
-        <line x1="126" y1="58" x2="150" y2="58" />
-        <line x1="158" y1="58" x2="178" y2="58" />
+      {/* 폰 화면 안의 한 줄 — 여기서는 아직 벽이 아니라 손 안이다 */}
+      <rect x="92" y="8" width="56" height="114" rx="7" strokeWidth="1.8" />
+      <line x1="112" y1="116" x2="128" y2="116" strokeWidth="2" />
+      <g strokeWidth="5">
+        <line x1="104" y1="52" x2="136" y2="52" />
       </g>
-      <g strokeWidth="1" opacity="0.35">
-        <line x1="30" y1="38" x2="210" y2="38" />
-        <line x1="30" y1="88" x2="210" y2="88" />
-      </g>
+      <line x1="104" y1="64" x2="120" y2="64" strokeWidth="1" opacity="0.4" />
     </Art>
   );
 }
@@ -214,20 +214,27 @@ function ArtLine() {
 function ArtGlyphs() {
   return (
     <Art>
-      {/* 네 칸, 네 획 — 같은 말이 네 얼굴을 가진다 */}
+      {/* 네 칸, 네 획 — 같은 말이 네 얼굴을 가진다. 그리고 색 */}
       <g strokeWidth="1">
-        <rect x="14" y="30" width="50" height="66" />
-        <rect x="70" y="30" width="50" height="66" />
-        <rect x="126" y="30" width="50" height="66" />
-        <rect x="182" y="30" width="50" height="66" />
+        <rect x="14" y="22" width="50" height="60" />
+        <rect x="70" y="22" width="50" height="60" />
+        <rect x="126" y="22" width="50" height="60" />
+        <rect x="182" y="22" width="50" height="60" />
       </g>
-      <path d="M26 74 C34 50 44 76 52 54" strokeWidth="2.4" strokeLinecap="round" />
-      <path d="M82 76 L96 46 L108 76 M86 62 L104 62" strokeWidth="2.4" />
-      <line x1="140" y1="63" x2="162" y2="63" strokeWidth="7" />
+      <path d="M26 66 C34 42 44 68 52 46" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M82 68 L96 38 L108 68 M86 54 L104 54" strokeWidth="2.4" />
+      <line x1="140" y1="55" x2="162" y2="55" strokeWidth="7" />
       <g strokeWidth="1.6">
-        <line x1="196" y1="46" x2="196" y2="80" />
-        <line x1="190" y1="46" x2="202" y2="46" />
-        <line x1="188" y1="80" x2="204" y2="80" />
+        <line x1="196" y1="38" x2="196" y2="72" />
+        <line x1="190" y1="38" x2="202" y2="38" />
+        <line x1="188" y1="72" x2="204" y2="72" />
+      </g>
+      {/* 색 — 흑백 원칙 안에서 색을 말하는 법: 채움의 밝기 */}
+      <g strokeWidth="1">
+        <rect x="14" y="96" width="30" height="16" fill="currentColor" />
+        <rect x="50" y="96" width="30" height="16" fill="currentColor" opacity="0.55" />
+        <rect x="86" y="96" width="30" height="16" fill="currentColor" opacity="0.25" />
+        <rect x="122" y="96" width="30" height="16" />
       </g>
     </Art>
   );
@@ -248,32 +255,30 @@ function ArtDock() {
   );
 }
 
-function ArtEcho() {
+function ArtBig() {
   return (
     <Art>
+      {/* 벽 전체를 한 줄이 차지한다 */}
       <rect x="30" y="18" width="180" height="92" strokeWidth="1.8" />
-      <line x1="86" y1="44" x2="154" y2="44" strokeWidth="6" />
-      <g strokeWidth="3" opacity="0.6">
-        <line x1="46" y1="70" x2="88" y2="70" />
-        <line x1="150" y1="70" x2="192" y2="70" />
-      </g>
-      <g strokeWidth="2" opacity="0.35">
-        <line x1="60" y1="92" x2="92" y2="92" />
-        <line x1="112" y1="92" x2="136" y2="92" />
-        <line x1="156" y1="92" x2="180" y2="92" />
-      </g>
+      <line x1="52" y1="64" x2="188" y2="64" strokeWidth="14" />
     </Art>
   );
 }
 
-function ArtFade() {
+function ArtEcho() {
   return (
     <Art>
+      {/* 굵던 한 줄이 가늘어져 이웃들 사이로 들어간다 */}
       <rect x="30" y="18" width="180" height="92" strokeWidth="1.8" />
-      <g strokeWidth="5">
-        <line x1="52" y1="42" x2="128" y2="42" opacity="0.8" />
-        <line x1="52" y1="64" x2="112" y2="64" opacity="0.4" />
-        <line x1="52" y1="86" x2="96" y2="86" opacity="0.15" />
+      <line x1="96" y1="44" x2="144" y2="44" strokeWidth="4" />
+      <g strokeWidth="3" opacity="0.6">
+        <line x1="46" y1="70" x2="88" y2="70" />
+        <line x1="150" y1="70" x2="192" y2="70" />
+      </g>
+      <g strokeWidth="2" opacity="0.3">
+        <line x1="60" y1="92" x2="92" y2="92" />
+        <line x1="112" y1="92" x2="136" y2="92" />
+        <line x1="156" y1="92" x2="180" y2="92" />
       </g>
     </Art>
   );

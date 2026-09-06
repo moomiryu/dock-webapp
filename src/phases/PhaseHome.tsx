@@ -97,7 +97,7 @@ export default function PhaseHome({ onStart }: Props) {
     return () => cancelAnimationFrame(raf);
   }, [info]); // 정보 덮개에서 돌아오면 워드마크가 다시 생기므로 루프도 다시 건다
 
-  if (info) return <InfoOverlay onClose={() => setInfo(false)} />;
+  if (info) return <InfoOverlay onClose={() => setInfo(false)} onStart={onStart} />;
 
   function handleDown(e: React.PointerEvent<HTMLHeadingElement>) {
     const b = body.current;
@@ -185,16 +185,19 @@ export default function PhaseHome({ onStart }: Props) {
             저 벽에 뜹니다
           </div>
 
-          {/* 규칙과 절차는 여기 늘어놓지 않는다. 홈에서 알아야 할 것은
-              '무엇을 할 수 있는가'와 '어디를 누르면 되는가' 둘뿐이고,
-              나머지는 아래 버튼 뒤에서 한 장씩 넘겨 본다. */}
-          <div className="home-actions">
-            <button className="home-cta" onClick={onStart}>
-              시작하기
-            </button>
-            <button className="home-info-btn" onClick={() => setInfo(true)}>
-              무슨 일이 일어나나요
-            </button>
+          {/* 첫 화면이 곧 문이다. '처음이세요?' 하나로 소개를 볼지 말지가
+              갈린다 — 처음인 사람은 여섯 장을 보고 그 끝에서 시작하고,
+              써 본 사람은 바로 쓴다. 규칙과 절차는 홈에 늘어놓지 않는다. */}
+          <div className="home-gate">
+            <span className="home-gate-q">메가폰트, 처음이세요?</span>
+            <div className="home-actions">
+              <button className="home-cta" onClick={() => setInfo(true)}>
+                처음이에요<em>어떻게 되는지 볼게요</em>
+              </button>
+              <button className="home-info-btn" onClick={onStart}>
+                써봤어요<em>바로 쓸게요</em>
+              </button>
+            </div>
           </div>
 
           <div className="home-footer">

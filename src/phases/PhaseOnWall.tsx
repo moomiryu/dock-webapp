@@ -71,7 +71,7 @@ export default function PhaseOnWall({ onDone }: Props) {
 
         {/* 끝내는 사람은 당신이다 — 이걸 말해주지 않으면 그냥 기다리게 된다 */}
         <p className="onwall-note">
-          폰을 빼면 거기서 큰 목소리가 끝나고,<br />
+          <b>폰을 빼면 끝납니다.</b><br />
           그 뒤로는 메아리로 남습니다.
         </p>
 

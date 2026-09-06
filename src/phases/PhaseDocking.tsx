@@ -26,11 +26,12 @@ export default function PhaseDocking({ messageId, onDocked, devNote }: Props) {
   return (
     <MegafontFrame phaseLabel="도킹">
       <div className="guide-hero">
-        <h1>이제 홈에 꽂아주세요</h1>
+        {/* 결과를 제목으로 올린다. 무엇이 일어날지 알면 지시는 한 줄이면 된다. */}
+        <h1>꽂으면, 저 벽에 크게 떠오릅니다</h1>
 
         <p>
           벽을 보고 서서, 폰 위쪽이 먼저 들어가도록<br />
-          세로로 밀어 넣어주세요.
+          홈에 세로로 밀어 넣어주세요.
         </p>
 
         <DockGuide />
@@ -39,12 +40,6 @@ export default function PhaseDocking({ messageId, onDocked, devNote }: Props) {
             그리고 끝내는 것도 사람이라는 것까지 미리 말해준다: 꽂아 두는 동안
             크게 떠 있고, 빼면 거기서 큰 목소리가 끝난다. */}
         <div className="dock-next">
-          <div className="dock-next-row">
-            <span className="dock-next-label">꽂으면</span>
-            <p>
-              당신의 한 줄이 저 벽 한가운데에 <b>크게</b> 떠오릅니다.
-            </p>
-          </div>
           <div className="dock-next-row">
             <span className="dock-next-label">빼면</span>
             <p>

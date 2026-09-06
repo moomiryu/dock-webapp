@@ -36,6 +36,13 @@ export default function PhaseCompose({
   const [moodIdx, setMoodIdx] = useState(initialPaletteIdx ?? 0);
 
   const renderRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // 이 화면의 첫 동작은 자판을 여는 것이다. 열 수 있는 곳에서는 열어 둔다.
+  // (iOS는 손짓 없이 자판을 올리지 않는다 — 그래서 안내 문구도 같이 둔다)
+  useEffect(() => {
+    inputRef.current?.focus({ preventScroll: true });
+  }, []);
 
   const mood = moods[moodIdx % moods.length];
   const empty = !text.trim();
@@ -110,7 +117,7 @@ export default function PhaseCompose({
     <div className="z-frame">
       <div className="z-header">
         <BackButton label="자형 다시 정하기" onClick={onBack} />
-        <span>2 / 3 · 메시지</span>
+        <span>2 / 3 · 한 줄</span>
       </div>
 
       <div className="proj-stage is-bleed">
@@ -142,6 +149,7 @@ export default function PhaseCompose({
 
             {/* 위층 — 보이지 않는 입력. 커서만 남는다 */}
             <textarea
+              ref={inputRef}
               className="live-input"
               value={text}
               maxLength={MAX}
@@ -163,30 +171,34 @@ export default function PhaseCompose({
             {text.length >= MAX && <span className="proj-meta-full"> 여기까지예요</span>}
           </span>
         </div>
+
+        {/* 색 — 액자 바로 아래에 붙인다. 바꾸는 대상 곁에 있어야 무엇을
+            바꾸는 버튼인지 보인다. 이름은 '색'이라고 그냥 쓴다. */}
+        <button
+          type="button"
+          className="z-cycle"
+          onClick={() => setMoodIdx((i) => (i + 1) % moods.length)}
+          aria-label={`색 바꾸기 — 지금 ${moodIdx + 1}번째, 모두 ${moods.length}가지`}
+        >
+          <span className="z-cycle-label">색 바꾸기</span>
+          <span className="z-cycle-count">
+            {String(moodIdx + 1).padStart(2, '0')}
+            <span> / {moods.length}</span>
+          </span>
+        </button>
       </div>
 
-      {/* 색 — 무대가 이미 색을 보여주므로 버튼은 몇 번째인지만 센다 */}
-      <button
-        type="button"
-        className="z-cycle"
-        onClick={() => setMoodIdx((i) => (i + 1) % moods.length)}
-        aria-label={`색 바꾸기 — 지금 ${moodIdx + 1}번째, 모두 ${moods.length}가지`}
-      >
-        <span className="z-cycle-count">
-          {String(moodIdx + 1).padStart(2, '0')}
-          <span> / {moods.length}</span>
-        </span>
-      </button>
-
       <button className="primary-action" disabled={empty} onClick={handleSubmit}>
-        <span>미리보기</span>
+        <span>
+          다음<em>벽에서 보기</em>
+        </span>
       </button>
 
       <div className="z-progress">
         <span className="dot on" />
         <span className="dot on" />
         <span className="dot" />
-        <span className="z-progress-label">자형 · 색 · 미리보기</span>
+        <span className="z-progress-label">말투 · 한 줄 · 벽에서 보기</span>
       </div>
     </div>
   );

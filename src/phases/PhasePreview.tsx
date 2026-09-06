@@ -122,7 +122,7 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
     <div className="z-frame">
       <div className="z-header">
         <BackButton label="다시 손보기" onClick={onBack} />
-        <span>3 / 3 · 미리보기</span>
+        <span>3 / 3 · 벽에서 보기</span>
       </div>
 
       <div className="proj-stage">
@@ -210,15 +210,16 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
         </div>
       </div>
 
+      {/* 행동이 그대로 드러나는 말. '맡기기'는 무엇이 일어나는지 숨겼다. */}
       <button className="primary-action" onClick={onConfirm}>
-        <span>이대로 맡기기</span>
+        <span>발화하기</span>
       </button>
 
       <div className="z-progress">
         <span className="dot on" />
         <span className="dot on" />
         <span className="dot on" />
-        <span className="z-progress-label">자형 · 색 · 미리보기</span>
+        <span className="z-progress-label">말투 · 한 줄 · 벽에서 보기</span>
       </div>
     </div>
   );

@@ -162,6 +162,14 @@
   display: block;
 }
 
+/* '다음' 뒤에 무엇이 오는지 — 버튼이 미리 답한다 */
+.primary-action em {
+  font-style: normal;
+  font-weight: 400;
+  opacity: 0.62;
+  margin-left: 10px;
+}
+
 /* 보조 동작 — 언제나 주 동작 아래, 회색 텍스트 */
 .home-link,
 .done-home-link {
@@ -287,11 +295,31 @@
   letter-spacing: -0.02em;
 }
 
+/* 첫 화면의 갈림길 — 처음이면 여섯 장을 보고 오고, 아니면 바로 쓴다 */
+.home-gate {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.home-gate-q {
+  font-size: 15px;
+  color: var(--muted);
+}
+
+/* 버튼 안의 두 번째 구절 — 누르면 무엇이 되는지 */
+.home-cta em,
+.home-info-btn em {
+  font-style: normal;
+  font-weight: 400;
+  opacity: 0.62;
+  margin-left: 10px;
+}
+
 .home-actions {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 6px;
 }
 
 .home-cta {
@@ -340,31 +368,58 @@
 
 /* ─── 자형 (glyph) ──────────────────────────────────────────── */
 
-/* 무대는 고른 것을 확인하는 자리지 이 화면의 주인공이 아니다.
-   주인공은 고르는 일 — 카드와 축이다. 그래서 무대에 상한을 둔다. */
+/* 무엇을 정하는 화면인지 제목이 먼저 말한다 */
+.z-ask {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: none;
+}
+
+.z-ask h1 {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.z-ask p {
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+/* 무대 — 고른 말투에 굵기·너비·기울기를 얹어 보는 자리.
+   테두리를 두지 않는다: 빈 상자는 입력창으로 읽힌다(2차 피드백).
+   주인공은 고르는 일이라 높이에 상한을 둔다. */
 .z-glyph-stage {
   flex: 0 0 auto;
-  height: 168px;
+  height: 132px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  border: 1px solid var(--line);
+  gap: 8px;
   overflow: hidden;
 }
 
 .z-glyph {
   line-height: 1;
   text-align: center;
-  transition: transform 200ms, font-size 200ms;
+  transition: transform 200ms, font-size 200ms, color 200ms;
   transform-origin: center;
 }
 
-.z-glyph-ask {
-  font-size: 15px;
+/* 고르기 전 — 중립 서체를 옅게. '여기에 뜬다'만 알린다 */
+.z-glyph-stage.no-face .z-glyph {
+  color: var(--line);
+  font-family: var(--ui-font);
+}
+
+.z-glyph-hint {
+  font-family: var(--label-font);
+  font-size: 11px;
+  letter-spacing: 0.02em;
   color: var(--muted);
-  text-align: center;
 }
 
 /* 자형 고르기 — 정도가 아니라 종류라서 슬라이더가 아니라 선택.
@@ -382,7 +437,7 @@
   background: var(--paper);
   border: none;
   border-radius: 0;
-  min-height: 62px;
+  min-height: 72px;
   justify-content: center;
   padding: 10px 4px;
   font-family: inherit;
@@ -399,8 +454,9 @@
   color: var(--paper);
 }
 
+/* 이름을 그 서체로 찍는다 — 라벨이 곧 견본이다 */
 .style-card-name {
-  font-size: 16px;
+  font-size: 19px;
   line-height: 1.15;
 }
 
@@ -416,93 +472,54 @@
   opacity: 0.6;
 }
 
-/* 조절 축 — 라벨 + 슬라이더 + 현재값 */
+/* 조절 축 — 셋 다 버튼이다.
+   슬라이더는 '연속으로 조절된다'를 약속하는데 실제로는 눈금 셋이었다.
+   그 어긋남이 당황을 불렀다(2차 피드백). 카드와 같은 손짓으로 통일한다. */
 .z-axes {
   display: flex;
   flex-direction: column;
   justify-content: space-evenly;
-  gap: 16px;
+  gap: 10px;
   flex: 1;
 }
 
 .z-axis-line {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  align-items: center;
+  gap: 10px;
 }
 
 .z-axis-label {
   font-family: var(--label-font);
   font-size: 12px;
   letter-spacing: 0.02em;
-  text-transform: uppercase;
   color: var(--muted);
 }
 
-.z-slider-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.z-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
 }
 
-.z-slider-stops {
-  display: flex;
-  justify-content: space-between;
-  gap: 4px;
-}
-
-.z-slider-stop {
-  background: none;
+.z-step {
+  background: var(--paper);
   border: none;
-  padding: 0;
+  border-radius: 0;
+  min-height: 40px;
+  padding: 0 4px;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
   cursor: pointer;
 }
 
-.z-slider-stop.on {
-  color: var(--ink);
-  font-weight: 600;
-}
-
-/* 슬라이더 — 선 하나와 점 하나 */
-.z-axis-line input[type='range'] {
-  width: 100%;
-  -webkit-appearance: none;
-  appearance: none;
-  background: transparent;
-  height: 22px;
-  margin: 0;
-  cursor: pointer;
-}
-
-.z-axis-line input[type='range']::-webkit-slider-runnable-track {
-  height: 1px;
+.z-step.on {
   background: var(--ink);
-}
-
-.z-axis-line input[type='range']::-moz-range-track {
-  height: 1px;
-  background: var(--ink);
-}
-
-.z-axis-line input[type='range']::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--ink);
-  margin-top: -6.5px;
-}
-
-.z-axis-line input[type='range']::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  border: none;
-  border-radius: 50%;
-  background: var(--ink);
+  color: var(--paper);
 }
 
 /* ─── 효과·색 (compose) / 미리보기 ──────────────────────────── */
@@ -531,7 +548,7 @@
 .live-placeholder {
   position: absolute;
   inset: 0;
-  opacity: 0.35;
+  opacity: 0.75;
   pointer-events: none;
 }
 
@@ -663,19 +680,39 @@
   color: var(--muted);
 }
 
-/* 색 — 누를 때마다 다음 조합으로. 이름 대신 색 자체를 보여준다. */
+/* 색 — 누를 때마다 다음 조합으로. 색 자체는 액자가 보여주고,
+   버튼은 이게 '색'이라는 것과 몇 번째인지만 말한다. 액자 바로 아래에
+   붙어 있어야 무엇을 바꾸는 버튼인지 보인다(2차 피드백). */
 .z-cycle {
   width: 100%;
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 0;
-  padding: 13px 12px;
+  padding: 12px 14px;
   font-family: inherit;
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 12px;
   flex: none;
+}
+
+.proj-stage.is-bleed .z-cycle {
+  width: auto;
+  margin: 0 20px;
+}
+
+.z-cycle-label {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.z-cycle-hint {
+  font-family: var(--label-font);
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: 8px;
 }
 
 .z-cycle-count {
@@ -883,6 +920,14 @@
   flex: 1 1 auto;
   min-height: 150px;
   display: flex;
+}
+
+.info-step-label {
+  font-family: var(--label-font);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  flex: none;
 }
 
 .info-slide h2 {
@@ -1293,6 +1338,12 @@
   font-size: 14px;
   line-height: 1.65;
   color: var(--muted);
+}
+
+/* 종료 방식은 이 화면에서 두 번째로 중요한 말이다 */
+.onwall-note b {
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .onwall .primary-action {

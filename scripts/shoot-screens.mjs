@@ -80,8 +80,8 @@ async function main() {
   // 01 Intro
   await shoot(page, '01-home');
 
-  // 01 프로젝트 정보 — 한 장씩 넘기는 덮개. 첫 장, 도킹 장, 마지막 장.
-  await page.getByRole('button', { name: '무슨 일이 일어나나요' }).click();
+  // 01 처음이세요? → 여섯 장. 첫 장, 도킹 장, 마지막 장.
+  await page.getByRole('button', { name: '처음이에요' }).click();
   await shoot(page, '01-info-1');
   for (let i = 0; i < 3; i++) {
     await page.getByRole('button', { name: '다음' }).click();
@@ -97,7 +97,7 @@ async function main() {
   // 02 자형 — 고르기 전(빈 무대)과 고른 뒤
   await page.goto(url('/?mock=1'), { waitUntil: 'load' });
   await settle(page);
-  await page.getByRole('button', { name: '시작하기', exact: true }).click();
+  await page.getByRole('button', { name: /써봤어요/ }).click();
   await shoot(page, '02-glyph-empty');
   await page.getByRole('button', { name: '당당한' }).click();
   await shoot(page, '02-glyph-picked');

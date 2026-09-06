@@ -17,9 +17,9 @@ const OUT = 'design/screens/faces';
 
 const FACES = [
   { label: '다정한', file: 'doran', kind: '손글씨' },
-  { label: '짓궂은', file: 'deulseok', kind: '탈네모' },
+  { label: '발랄한', file: 'deulseok', kind: '둥근고딕' },
   { label: '당당한', file: 'ttoryeot', kind: '고딕' },
-  { label: '정갈한', file: 'chabun', kind: '명조' }
+  { label: '차분한', file: 'chabun', kind: '명조' }
 ];
 
 const BROWSERS = [
@@ -42,7 +42,7 @@ const page = await (
 await page.goto(`${BASE}/`, { waitUntil: 'load' });
 await page.evaluate(() => document.fonts.ready);
 await page.waitForFunction(() => !document.querySelector('.splash'), { timeout: 12000 });
-await page.getByRole('button', { name: '시작하기', exact: true }).click();
+await page.getByRole('button', { name: /써봤어요/ }).click();
 
 console.log(`자형 무대 → ${OUT}/\n`);
 

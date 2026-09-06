@@ -19,12 +19,12 @@ export const palettes: Palette[] = [
 
 // 자형 4종 → 실제 서체. 키는 Firestore 호환을 위해 옛 이름 그대로 둔다.
 //   doran    다정한  손글씨   → jjgulwol       (임시 — 서예 쪽으로 기운다)
-//   deulseok 짓궂은  탈네모   → Sunflower      ⚠ 아래를 볼 것
+//   deulseok 발랄한  둥근고딕 → Sunflower      ⚠ 아래를 볼 것
 //   ttoryeot 당당한  고딕     → seoul-namsan
-//   chabun   정갈한  명조     → kim-jung-chul-myungjo
+//   chabun   차분한  명조     → kim-jung-chul-myungjo
 //
-// ⚠ deulseok의 부제는 '탈네모'인데 Sunflower는 탈네모가 아니다 —
-//   네모틀 안에 든 둥근 산세리프다. 그래서 짓궂은과 당당한이 골격을
+// ⚠ Sunflower는 네모틀 안에 든 둥근 산세리프다(한때 '탈네모'로 잘못 적었다).
+//   그래서 발랄한과 당당한이 골격을
 //   공유하고, 두 칸의 차이가 사실상 굵기 차이로만 읽힌다.
 //   굵기는 이미 별도 슬라이더가 하는 일이므로 이 겹침은 자형 축을 무너뜨린다.
 //   (2026-09-06 실제 렌더를 캡처해 확인 — design/screens/faces/)

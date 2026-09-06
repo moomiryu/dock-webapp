@@ -59,13 +59,13 @@ await settle(phone);
 
 console.log(`\n한 줄: ${STAMP}\n`);
 
-await phone.getByRole('button', { name: '시작하기', exact: true }).click();
+await phone.getByRole('button', { name: /써봤어요/ }).click();
 await phone.getByRole('button', { name: '당당한' }).click();
 await phone.locator('.primary-action').click();
 await phone.locator('.live-input').fill(STAMP);
-await phone.locator('.primary-action').click(); // 미리보기
+await phone.locator('.primary-action').click(); // 다음 · 벽에서 보기
 await phone.waitForTimeout(700);
-await phone.locator('.primary-action').click(); // 이대로 맡기기
+await phone.locator('.primary-action').click(); // 발화하기
 await phone.waitForSelector('.dock-guide', { timeout: 20000 });
 await phone.getByRole('button', { name: '꽂았어요' }).click();
 

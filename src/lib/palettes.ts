@@ -18,12 +18,20 @@ export const palettes: Palette[] = [
 ];
 
 // 자형 4종 → 실제 서체. 키는 Firestore 호환을 위해 옛 이름 그대로 둔다.
-//   doran    다정한  손글씨   — 임시. 손글씨 서체 조달 전
-//   deulseok 짓궂은  탈네모틀
-//   ttoryeot 당당한  고딕
-//   chabun   정갈한  명조
-// (botong/orbit은 UI 라벨 전용으로 빠졌고, 안상수체2012는 당당·정갈과
-//  인상이 겹쳐 자형 선택지에서 내렸다 — fontMap에는 옛 문서 렌더용으로 남긴다)
+//   doran    다정한  손글씨   → jjgulwol       (임시 — 서예 쪽으로 기운다)
+//   deulseok 짓궂은  탈네모   → Sunflower      ⚠ 아래를 볼 것
+//   ttoryeot 당당한  고딕     → seoul-namsan
+//   chabun   정갈한  명조     → kim-jung-chul-myungjo
+//
+// ⚠ deulseok의 부제는 '탈네모'인데 Sunflower는 탈네모가 아니다 —
+//   네모틀 안에 든 둥근 산세리프다. 그래서 짓궂은과 당당한이 골격을
+//   공유하고, 두 칸의 차이가 사실상 굵기 차이로만 읽힌다.
+//   굵기는 이미 별도 슬라이더가 하는 일이므로 이 겹침은 자형 축을 무너뜨린다.
+//   (2026-09-06 실제 렌더를 캡처해 확인 — design/screens/faces/)
+//
+// 안상수체2012는 당당·정갈과 인상이 겹쳐 선택지에서 내렸고, 그래서
+// deulseok 목록에서 Sunflower 뒤에 있다. 순서 실수가 아니라 그 결정의 흔적이다.
+// (botong/orbit은 UI 라벨 전용으로 빠졌다)
 export const fontMap: Record<string, string> = {
   doran: '"jjgulwol", "Noto Serif KR Variable", serif',
   chabun: '"kim-jung-chul-myungjo", "Noto Serif KR Variable", serif',

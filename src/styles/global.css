@@ -11,7 +11,9 @@
   font-display: swap;
 }
 
-/* Sunflower — Korean 탈네모틀(de-grid), used for 노래 SONG */
+/* Sunflower — 둥근 산세리프. 한때 '탈네모틀'로 적어 뒀는데 사실이 아니다:
+   네모틀 안에 든 글자다. 자형 '짓궂은' 칸이 이걸 쓰고 있어 부제(탈네모)와
+   그림이 어긋난다 — lib/palettes.ts의 경고를 볼 것 */
 @font-face {
   font-family: 'Sunflower';
   src: url('/fonts/Sunflower-Light.ttf') format('truetype');

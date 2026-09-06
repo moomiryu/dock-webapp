@@ -95,14 +95,15 @@ export default function InfoOverlay({ onClose }: Props) {
 
 // ─── 슬라이드 ────────────────────────────────────────────────
 // 삽화는 선 하나로만 그린다 (흑백 원칙). 색은 사용자가 만든 말에만 산다.
+// 본문은 장당 40자 안쪽. 넘기는 형식은 한 장에 한 생각일 때만 살아 있다 —
+// 두 생각이 들어가는 순간 이건 그냥 세로로 긴 글을 잘라 놓은 것이 된다.
 
 const SLIDES: Array<{ title: string; body: ReactNode; art: ReactNode }> = [
   {
     title: '벽에 화면이 하나 있습니다',
     body: (
       <p>
-        캠퍼스 건물에 걸린 {WALL_W_M} × {WALL_H_M} m짜리 화면입니다.
-        지나는 사람이면 누구나 읽습니다.
+        캠퍼스 건물에 걸린 {WALL_W_M} × {WALL_H_M} m 화면입니다. 누구나 읽습니다.
       </p>
     ),
     art: <ArtWall />
@@ -126,8 +127,7 @@ const SLIDES: Array<{ title: string; body: ReactNode; art: ReactNode }> = [
     title: '폰을 꽂으면 크게 떠오릅니다',
     body: (
       <p>
-        홈에 폰을 세로로 꽂는 동안, 그 한 줄이 화면을 통째로 차지합니다.
-        최대 {EMPHASIS_SEC}초.
+        꽂혀 있는 동안 화면을 통째로. 최대 {EMPHASIS_SEC}초.
       </p>
     ),
     art: <ArtDock />
@@ -136,8 +136,7 @@ const SLIDES: Array<{ title: string; body: ReactNode; art: ReactNode }> = [
     title: '빼면 메아리로 남습니다',
     body: (
       <p>
-        큰 목소리는 거기서 끝나고, 그 한 줄은 다른 말들 사이로 들어가
-        {STAY_DAYS}일간 천천히 떠다닙니다.
+        큰 목소리는 끝나고, 다른 말들 사이를 {STAY_DAYS}일간 떠다닙니다.
       </p>
     ),
     art: <ArtEcho />
@@ -146,7 +145,7 @@ const SLIDES: Array<{ title: string; body: ReactNode; art: ReactNode }> = [
     title: '그리고 사라집니다',
     body: (
       <>
-        <p>보관함은 없습니다. {STAY_DAYS}일 동안 떠 있는 동안이 이 말의 전부입니다.</p>
+        <p>보관함은 없습니다. {STAY_DAYS}일 동안 떠 있는 동안이 전부입니다.</p>
         <dl className="info-rules">
           <div>
             <dt>이름</dt>

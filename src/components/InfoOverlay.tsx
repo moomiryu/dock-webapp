@@ -1,99 +1,64 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import BackButton from './BackButton';
 import { EMPHASIS_SEC, STAY_DAYS, WALL_H_M, WALL_W_M } from '../lib/wall';
 
-interface Props {
-  onClose: () => void;
-  /** 마지막 장에서 곧바로 쓰러 간다 — 다 읽었으면 홈으로 되돌아올 이유가 없다 */
-  onStart: () => void;
-}
+interface Props { onClose: () => void; onStart: () => void; }
 
-// 처음 온 사람이 보는 여섯 장.
-//
-// 순서가 곧 내용이다: 이게 뭔지(의도) → 1 쓴다 → 2 말투와 색을 고른다 →
-// 3 꽂는다 → 그러면 크게 뜬다 → 빼면 메아리로 남고 사라진다.
-// 의도를 먼저 두는 이유는 그게 납득되면 나머지 단계가 설명 없이 따라오기
-// 때문이다. 규칙(익명·수정불가)은 마지막 장에만 모은다.
-//
-// 넘기기는 브라우저의 가로 스크롤 스냅에 맡긴다 — 미는 감각을 직접 구현하면
-// 기기마다 어긋난다.
+// Native vertical scrolling keeps every section readable, including enlarged text.
 export default function InfoOverlay({ onClose, onStart }: Props) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
-
-  const go = useCallback(
-    (delta: number) => {
-      const el = trackRef.current;
-      if (!el) return;
-      const next = Math.min(SLIDES.length - 1, Math.max(0, idx + delta));
-      el.scrollTo({ left: next * el.clientWidth, behavior: 'smooth' });
-    },
-    [idx]
-  );
-
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-      if (e.key === 'ArrowRight') go(1);
-      if (e.key === 'ArrowLeft') go(-1);
-    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
+    trackRef.current?.focus({ preventScroll: true });
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, go]);
+  }, [onClose]);
 
-  const onScroll = useCallback(() => {
+  function onScroll() {
     const el = trackRef.current;
-    if (!el || !el.clientWidth) return;
-    setIdx(Math.round(el.scrollLeft / el.clientWidth));
-  }, []);
-
-  const last = idx >= SLIDES.length - 1;
-
+    if (!el) return;
+    const slides = Array.from(el.children) as HTMLElement[];
+    const top = el.getBoundingClientRect().top;
+    let active = 0;
+    slides.forEach((slide, i) => {
+      if (slide.getBoundingClientRect().top - top <= el.clientHeight * 0.45) active = i;
+    });
+    setIdx(active);
+  }
+  function next() {
+    const el = trackRef.current;
+    const target = el?.children[Math.min(idx + 1, SLIDES.length - 1)];
+    if (!el || !target) return;
+    el.scrollTo({
+      top: el.scrollTop + target.getBoundingClientRect().top - el.getBoundingClientRect().top,
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+    });
+  }
   return (
-    <div className="info-overlay" role="dialog" aria-modal="true" aria-label="메가폰트 소개">
+    <div className="info-overlay" aria-label="메가폰트 소개">
       <div className="info-head">
-        <span>
-          {idx + 1} / {SLIDES.length}
-        </span>
-        <button type="button" className="info-close" onClick={onClose}>
-          닫기
-        </button>
+        <BackButton label="처음으로" onClick={onClose} />
+        <span>{idx + 1} / {SLIDES.length}</span>
       </div>
-
-      {/* 좌우 화살표로도 넘길 수 있지만, 스크롤 영역 자체가 초점을 받아야
-          키보드만 쓰는 사람이 여기 들어올 수 있다 */}
-      <div className="info-track" ref={trackRef} onScroll={onScroll} tabIndex={0}>
+      <div className="info-track" ref={trackRef} onScroll={onScroll} tabIndex={0} role="region" aria-label="메가폰트 사용 안내, 아래로 스크롤">
         {SLIDES.map((s, i) => (
           <section className="info-slide" key={i} aria-label={s.title}>
-            <div className="info-art" aria-hidden>
-              {s.art}
-            </div>
             <span className="info-step-label">{s.step}</span>
             <h2>{s.title}</h2>
             <div className="info-said">{s.body}</div>
+            <div className="info-art" aria-hidden>{s.art}</div>
           </section>
         ))}
       </div>
-
-      <div className="info-dots" aria-hidden>
-        {SLIDES.map((_, i) => (
-          <span key={i} className={i === idx ? 'on' : ''} />
-        ))}
-      </div>
-
       <div className="info-nav">
-        <button type="button" className="info-step" onClick={() => go(-1)} disabled={idx === 0}>
-          이전
+        <button type="button" className="info-scroll" onClick={next} disabled={idx === SLIDES.length - 1} aria-label="아래로 스크롤하여 다음 설명 보기">
+          <svg width="48" height="28" viewBox="0 0 48 28" fill="none" aria-hidden="true">
+            <path d="M6 8 L24 18 L42 8" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </button>
-        {last ? (
-          <button type="button" className="primary-action" onClick={onStart}>
-            <span>시작하기</span>
-          </button>
-        ) : (
-          <button type="button" className="primary-action" onClick={() => go(1)}>
-            <span>다음</span>
-          </button>
-        )}
+        <button type="button" className="primary-action" onClick={onStart}>시작하기</button>
       </div>
     </div>
   );

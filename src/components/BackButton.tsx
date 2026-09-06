@@ -8,13 +8,13 @@ interface Props {
 export default function BackButton({ label, onClick }: Props) {
   return (
     <button type="button" className="z-back" onClick={onClick} aria-label={label}>
-      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden focusable="false">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden focusable="false">
         <path
           d="M14.5 5 L7.5 12 L14.5 19"
           fill="none"
           stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="square"
+          strokeWidth="2.6"
+          strokeLinecap="round" strokeLinejoin="round"
         />
       </svg>
     </button>

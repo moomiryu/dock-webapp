@@ -1,12 +1,18 @@
 @import './tokens.css';
 
-/* === Local fonts (Pretendard & Noto Serif KR come from CDN in index.html) === */
-
-/* Orbit — geometric display, used for 선언 STATE */
+/* UI pairing: Latin/digits use Lineal VF, Korean uses local Pretendard. */
 @font-face {
-  font-family: 'Orbit';
-  src: url('/fonts/Orbit-Regular.ttf') format('truetype');
-  font-weight: 100 900;  /* single weight — browser uses Regular, faux-bolds the rest */
+  font-family: 'Lineal VF';
+  src: url('/fonts/LinealVF.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-024F;
+}
+@font-face {
+  font-family: 'Pretendard Variable';
+  src: url('/fonts/PretendardVariable.woff2') format('woff2');
+  font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
@@ -41,6 +47,8 @@
   margin: 0;
   padding: 0;
   -webkit-tap-highlight-color: transparent;
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -61,7 +69,7 @@ html,
 body,
 #root {
   height: 100%;
-  font-family: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Lineal VF', 'Pretendard Variable', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 body {

@@ -26,7 +26,7 @@ const DEFAULT = {
 //
 // 카드의 이름은 그 서체로 찍는다. 그래서 라벨이 곧 견본이다 — '다정한'이
 // 손글씨로, '당당한'이 고딕으로 쓰여 있으면 설명 없이도 넷이 왜 다른지 보인다.
-// 계열명은 늘 같이 둔다. 한 번 고른 뒤에야 보이면 고르기 전에는 단서가 없다.
+// 계열명은 생략하고 말투 이름 자체를 견본으로 쓴다.
 //
 // 어휘 (2026-09-06 2차 피드백 반영):
 //   '정갈한'은 음식에 붙는 말이라 어색하다는 지적 → 차분한
@@ -36,11 +36,11 @@ const DEFAULT = {
 //
 // ⚠ 발랄한(Sunflower)과 당당한(seoul-namsan)은 둘 다 네모틀 산세리프라
 //   골격이 겹친다. 서체 교체 전까지의 정직한 이름이 '둥근고딕'이다.
-const STYLE_OPTIONS: Array<{ val: ToneState['font']; label: string; kind: string }> = [
-  { val: 'doran', label: '다정한', kind: '손글씨' },
-  { val: 'deulseok', label: '발랄한', kind: '둥근고딕' },
-  { val: 'ttoryeot', label: '당당한', kind: '고딕' },
-  { val: 'chabun', label: '차분한', kind: '명조' }
+const STYLE_OPTIONS: Array<{ val: ToneState['font']; label: string }> = [
+  { val: 'doran', label: '다정한' },
+  { val: 'deulseok', label: '발랄한' },
+  { val: 'ttoryeot', label: '당당한' },
+  { val: 'chabun', label: '차분한' }
 ];
 
 // 세 축은 전부 버튼이다.
@@ -109,7 +109,6 @@ export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
               <span className="style-card-name" style={{ fontFamily: fontMap[s.val] }}>
                 {s.label}
               </span>
-              <span className="style-card-kind">{s.kind}</span>
             </button>
           );
         })}
@@ -129,7 +128,7 @@ export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
             fontWeight: tone.wght,
             fontVariationSettings: `"wght" ${tone.wght}`,
             transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)`,
-            fontSize: Math.round(tone.size * 2.6) + 'px'
+            fontSize: `min(${Math.round(tone.size * 2.6)}px, 28cqw)`
           }}
         >
           {SAMPLE_TEXT}

@@ -15,7 +15,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg', 'apple-touch-icon.png', 'pwa-64x64.png'],
+      includeAssets: ['icon.svg', 'apple-touch-icon.png', 'pwa-64x64.png', 'fonts/LinealVF.ttf'],
       manifest: {
         name: 'MEGAFONT',
         short_name: 'MEGAFONT',

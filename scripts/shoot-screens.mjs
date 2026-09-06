@@ -84,12 +84,12 @@ async function main() {
   await page.getByRole('button', { name: '처음이에요' }).click();
   await shoot(page, '01-info-1');
   for (let i = 0; i < 3; i++) {
-    await page.getByRole('button', { name: '다음' }).click();
+    await page.getByRole('button', { name: '아래로 스크롤하여 다음 설명 보기' }).click();
     await page.waitForTimeout(500);
   }
   await capture(page, '01-info-4');
   for (let i = 0; i < 2; i++) {
-    await page.getByRole('button', { name: '다음' }).click();
+    await page.getByRole('button', { name: '아래로 스크롤하여 다음 설명 보기' }).click();
     await page.waitForTimeout(500);
   }
   await capture(page, '01-info-6');

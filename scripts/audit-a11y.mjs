@@ -58,7 +58,7 @@ await audit('01 홈');
 await page.getByRole('button', { name: '처음이에요' }).click();
 await page.waitForTimeout(500);
 await audit('01 소개');
-await page.getByRole('button', { name: '닫기' }).click();
+await page.getByRole('button', { name: '처음으로', exact: true }).click();
 await page.waitForTimeout(400);
 
 await page.getByRole('button', { name: /써봤어요/ }).click();

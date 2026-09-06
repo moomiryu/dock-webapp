@@ -28,34 +28,19 @@
   --ink-press: #333333;
   --press-tint: rgba(0, 0, 0, 0.08);
 
-  /* ─── 활자 사다리 ───────────────────────────────────────────
-     한 번 갈아엎었다. 참조 문서의 표(H1 36/1.5 …)를 그대로 썼는데,
-     그 표는 문서 자신이 밝혀 뒀듯 개발 문서 *웹사이트*의 계산값이었다.
-     실제 제품 화면 51장을 재 보니 다른 값이 나왔다:
-
-       제목  잉크 20px · 줄 피치 31px  →  24 안팎 / 행간 ≈1.3
-       본문  줄 피치 26px             →  17 안팎 / 행간 ≈1.5
-
-     그래서 제목은 제품 쪽으로 내리고 행간을 1.3으로 좁혔다.
-     본문은 문서와 제품이 대체로 같아서 그대로 둔다.
-     (측정: scripts/measure-reference.py · 정리: design/reference-capture-analysis.md)
-
-     H1만 제품(24)보다 한 급 높은 28이다. 07은 폰을 홈에 꽂아 두고 몇 걸음
-     물러선 채 읽는 화면이라 — 토스에는 그런 자리가 없다 — 거기서만은
-     제품보다 커야 한다. 저장소의 사실이 참조보다 위다.
-     자간은 저 문서가 말하지 않으므로 지어내지 않는다. */
-  --fs-h1: 28px;
-  --fs-h2: 24px;
-  --fs-h3: 22px;
-  --fs-h4: 20px;
+  /* DESIGN.md hierarchy, paired at conventional weights pending optical tuning. */
+  --fs-h1: 36px;
+  --fs-h2: 30px;
+  --fs-h3: 24px;
+  --fs-h4: 22px;
   --fs-body: 16px;
   --fs-body-s: 14px;
-  /* 제목의 행간. 본문(1.5)과 다르다 — 제품이 그렇다 */
+  /* 기본 제목 행간. 홈·질문·튜토리얼은 읽기 편한 1.5를 쓴다. */
   --lh-head: 1.3;
   /* 아래 둘은 참조 문서에 없는 자리다 — 우리 확장이라고 적어 둔다.
      라벨·수치·캡션은 이 앱에 반드시 필요하고, 저쪽은 그 역할을 문서화하지 않았다. */
-  --fs-cap: 12px;
-  --fs-cap-s: 11px;
+  --fs-cap: 14px;
+  --fs-cap-s: 12px;
 
   /* ─── 간격 ──────────────────────────────────────────────────
      참조 문서가 관측한 군집: 4 · 6 · 8 · 16 · 24 · 32.
@@ -91,12 +76,8 @@
      이 앱은 접근성 감사를 통과한 상태이므로, 보이는 상자는 32로 두고
      ::after로 타격 범위만 48까지 넓힌다. */
 
-  --ui-font: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, sans-serif;
-  /* 라벨·수치용 — 기하학적 산세리프. 본문에는 쓰지 않는다 (얇아서 긴 글에 안 맞음) */
-  --label-font: 'Orbit', 'Pretendard Variable', sans-serif;
-  /* 워드마크 전용 고정폭. MEGAFONT 여덟 글자만 서브셋으로 받으므로
-     .home-mark 밖에서는 쓰지 말 것 — 다른 글자는 폴백으로 떨어진다 */
-  --mono-font: 'Space Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --ui-font: 'Lineal VF', 'Pretendard Variable', -apple-system, BlinkMacSystemFont, sans-serif;
+  --label-font: var(--ui-font);
 }
 
 /* ─── 공통 프레임 ────────────────────────────────────────────── */
@@ -183,12 +164,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   background: none;
-  border: 1px solid var(--line);
-  border-radius: 999px;
+  border: none;
+  border-radius: 0;
   color: var(--ink);
   cursor: pointer;
 }
@@ -352,9 +333,7 @@
   color: var(--ink);
 }
 
-/* ─── 홈 ────────────────────────────────────────────────────
-   위계: 이름이 먼저 화면을 차지하고, 조작이 그 위에 얹힌다.
-   워드마크는 가장자리에서 잘리도록 크게 둔다 — 액자에 맞추지 않는다. */
+/* ─── 홈: 인사말, 캐릭터, 시작 선택 ─── */
 
 .home-frame{
   position: relative;
@@ -363,54 +342,7 @@
   gap: 0;
 }
 
-.home-mark{
-  position: absolute;
-  top: 7vh;
-  left: -0.05em;
-  right: 0;
-  margin: 0;
-  font-family: var(--mono-font);
-  font-weight: 700;
-  /* 고정폭의 격자감이 남도록 자간은 거의 건드리지 않는다 */
-  font-size: min(46vw, 212px);
-  line-height: 0.86;
-  letter-spacing: -0.015em;
-  color: var(--ink);
-  user-select: none;
-  touch-action: none; /* 끌 때 페이지가 같이 움직이지 않게 */
-  cursor: grab;
-}
-
-.home-mark.is-dragging{
-  cursor: grabbing;
-}
-
-/* 표류와 튕김은 rAF가 h1의 transform에 직접 쓴다.
-   여기서는 아주 약한 기울임만 얹어 '떠 있는' 느낌을 만든다 */
-.home-mark-float{
-  display: block;
-  animation: markSway 19s ease-in-out infinite;
-}
-
-.home-mark.is-dragging .home-mark-float{
-  animation-play-state: paused;
-}
-
-@keyframes markSway {
-  0%,
-  100% { transform: rotate(0deg); }
-  33%  { transform: rotate(-0.5deg); }
-  66%  { transform: rotate(0.4deg); }
-}
-
-.home-mark span span{
-  display: block;
-}
-
-/* 조작층은 자기 요소만 클릭을 받는다 — 빈 자리에서는 워드마크를 끌 수 있게 */
-/* ─── 홈에 사는 캐릭터 ───────────────────────────────────────
-   워드마크와 아래 조작층 사이의 빈 띠. 위치는 rAF가 직접 쓴다
-   (components/HomeCharacter.tsx). z는 워드마크 위, 조작층 아래. */
+/* 캐릭터는 인사말과 시작 버튼 사이에서 움직인다. */
 
 .home-char {
   position: absolute;
@@ -463,35 +395,6 @@
   pointer-events: none;
 }
 
-.home-top,
-.home-bottom{
-  pointer-events: auto;
-}
-
-.home-top{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s4);
-}
-
-/* 아래층 워드마크와 겹치는 자리라 자기 바탕을 깔고 올라선다 */
-.home-bottom{
-  display: flex;
-  flex-direction: column;
-  gap: var(--s5);
-  background: var(--paper);
-  padding-top: 14px;
-}
-
-.home-eyebrow{
-  font-family: var(--label-font);
-  font-size: var(--fs-cap);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
 .home-headline{
   font-size: var(--fs-h1);
   font-weight: 700;
@@ -510,15 +413,6 @@
   font-size: var(--fs-body);
   line-height: 1.5;
   color: var(--muted);
-}
-
-/* 버튼 안의 두 번째 구절 — 누르면 무엇이 되는지 */
-.home-cta em,
-.home-info-btn em{
-  font-style: normal;
-  font-weight: 400;
-  opacity: 0.62;
-  margin-left: 10px;
 }
 
 .home-actions{
@@ -560,16 +454,7 @@
   justify-content: center;
 }
 
-.home-footer{
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s3);
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
-  font-family: var(--label-font);
-  font-size: var(--fs-cap);
-  color: var(--muted);
-}
+
 
 /* ─── 자형 (glyph) ──────────────────────────────────────────── */
 
@@ -672,17 +557,7 @@
   line-height: 1.15;
 }
 
-.style-card-kind{
-  font-family: var(--label-font);
-  font-size: var(--fs-cap-s);
-  letter-spacing: 0.02em;
-  color: var(--muted);
-}
 
-.style-card.on .style-card-kind{
-  color: var(--paper);
-  opacity: 0.6;
-}
 
 /* 조절 축 — 셋 다 버튼이다.
    슬라이더는 '연속으로 조절된다'를 약속하는데 실제로는 눈금 셋이었다.
@@ -1102,32 +977,23 @@
   border-color: var(--ink);
 }
 
-/* 한 장씩 넘긴다 — 미는 감각은 브라우저의 스크롤 스냅에 맡긴다 */
+/* Vertical sections use natural height; large text never gets trapped in a slide. */
 .info-track{
+  position: relative;
   flex: 1;
-  display: flex;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  margin: 0 -20px;
   min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
 }
-
-.info-track::-webkit-scrollbar{
-  display: none;
-}
-
 .info-slide{
-  flex: 0 0 100%;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: var(--s7) var(--s1);
   gap: var(--s5);
-  padding: 0 var(--pad-x);
-  overflow-y: auto;
 }
 
 .info-art{
@@ -1176,49 +1042,25 @@
   font-weight: 600;
 }
 
-.info-dots{
-  display: flex;
-  gap: var(--s2);
-  justify-content: center;
-  flex: none;
-}
-
-.info-dots span{
-  width: 20px;
-  height: 2px;
-  background: var(--line);
-}
-
-.info-dots span.on{
-  background: var(--ink);
-}
-
 .info-nav{
   display: flex;
+  flex-direction: column;
   gap: var(--s3);
-  align-items: stretch;
   flex: none;
 }
-
-.info-nav .primary-action{
-  flex: 1;
-}
-
-.info-step{
-  min-width: 84px;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: var(--r-l);
-  font-family: inherit;
-  font-size: var(--fs-body);
-  color: var(--ink);
+.info-scroll{
+  display: grid;
+  place-items: center;
+  align-self: center;
+  width: 64px;
+  min-height: 48px;
+  border: 0;
+  background: none;
+  color: var(--muted);
   cursor: pointer;
 }
-
-.info-step:disabled{
-  color: var(--line);
-  cursor: default;
-}
+.info-scroll:disabled{ visibility: hidden; }
+.info-scroll:hover{ color: var(--ink); }
 
 .info-rules{
   display: flex;
@@ -1375,7 +1217,7 @@
   .dock-arrow,
   .splash-bar i,
   .send-wave,
-  .home-mark-float {
+  .home-char {
     animation: none !important;
   }
   .send-wave {
@@ -1855,4 +1697,38 @@
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* 2026-09-07: participant typography and spacing refinement. */
+.home-layer{ padding-top: max(64px, 10dvh); }
+.home-headline{ font-size: var(--fs-h2); font-weight: 600; line-height: 1.5; }
+.home-gate{ gap: var(--s5); pointer-events: auto; }
+.home-char{ top: 46%; }
+.primary-action, .home-cta, .home-info-btn{ font-weight: 600; padding-block: var(--s3); }
+.z-ask{ gap: var(--s3); }
+.z-ask h1{ font-size: var(--fs-h2); line-height: 1.5; text-wrap: initial; }
+.z-ask p{ font-size: var(--fs-body); }
+.z1{ gap: var(--s6); }
+.z1 .z-header{ padding-bottom: 0; }
+.z1 .z-rail{ margin-top: calc(-1 * var(--s6)); }
+.style-cards{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); border: 0; background: none; border-radius: 0; overflow: visible; }
+.style-card{ min-height: 72px; border: 1px solid var(--line); border-radius: var(--r-l); padding: var(--s5); }
+.style-card.on{ border-color: var(--ink); }
+.style-card-name{ font-size: var(--fs-h3); line-height: 1.5; }
+.z-glyph-stage{ height: 160px; flex: none; container-type: inline-size; }
+.z-glyph-hint{ font-size: var(--fs-body-s); line-height: 1.5; }
+.z-axes{ flex: none; gap: var(--s5); justify-content: flex-start; }
+.z-axis-line{ grid-template-columns: 48px minmax(0, 1fr); gap: var(--s4); }
+.z-axis-label{ font-size: var(--fs-body-s); font-weight: 500; }
+.z1 > .primary-action{ margin-top: auto; }
+.info-overlay{ height: 100dvh; min-height: 0; gap: var(--s3); }
+.info-head{ border: 0; padding-bottom: 0; }
+.info-slide h2{ font-size: var(--fs-h2); line-height: 1.5; }
+.info-step-label{ font-size: var(--fs-body); font-weight: 600; letter-spacing: 0; }
+.info-said{ width: 100%; }
+.info-art{ border: 0; padding: var(--s5); width: min(100%, 320px); margin-block: auto; }
+.info-rules{ text-align: left; }
+@media (max-width: 359px){
+  .z-ask h1, .info-slide h2{ font-size: var(--fs-h3); }
+  .z-axis-line{ grid-template-columns: 40px minmax(0, 1fr); gap: var(--s3); }
 }

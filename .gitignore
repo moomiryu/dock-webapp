@@ -10,3 +10,6 @@ dist-ssr
 *.log
 .vercel
 *.tsbuildinfo
+
+# design-md 검사 리포트 (임시)
+design/_insp.json

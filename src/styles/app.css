@@ -353,31 +353,10 @@
   line-height: 0;
 }
 
-.home-char svg {
+.home-char-art > svg {
   display: block;
   width: 100%;
   height: auto;
-}
-
-/* 눈 깜빡임. 이 그림에서 원은 눈(흰자 둘·눈동자 둘)뿐이라
-   circle을 통째로 세로로 눌러 감으면 두 눈이 같이 감긴다.
-   깜빡이는 시간은 6.2초 중 3% — 사람이 눈 감는 시간과 비슷하다. */
-.home-char svg circle {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: mfBlink 6.2s infinite;
-}
-
-@keyframes mfBlink {
-  0%, 95.5%, 100% { transform: scaleY(1); }
-  97%             { transform: scaleY(0.06); }
-  98.5%           { transform: scaleY(1); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .home-char svg circle {
-    animation: none;
-  }
 }
 
 .home-layer{
@@ -1785,3 +1764,19 @@
 .home-headline > span{ font-size: 21cqw; }
 
 .sim-crowd-item{ font-size: 2.4cqw; max-width: 60cqw; white-space: normal; word-break: keep-all; }
+
+/* Direct manipulation: twice the original 44vw / 170px character size. */
+.home-char{ left: 0; top: 0; width: min(88vw, 340px); max-width: none; height: auto; aspect-ratio: 1; border: 0; padding: 0; margin: 0; background: none; color: inherit; cursor: grab; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; transform: translate(0, 0); will-change: transform; }
+.home-char[data-held="true"]{ cursor: grabbing; }
+.home-char-motion{ display: block; position: relative; width: 100%; height: 100%; transform: rotate(var(--char-tilt, 0deg)) scale(var(--char-stretch, 1), var(--char-squash, 1)); pointer-events: none; }
+.home-char-art{ position: absolute; inset: 0; display: block; pointer-events: none; animation: characterArrive 240ms ease-out both; }
+.home-char-art.is-leaving{ animation: characterLeave 240ms ease-out both; }
+.home-char-art > svg{ width: 100%; height: 100%; overflow: visible; }
+.home-char svg circle{ animation: none; }
+.home-layer{ z-index: 2; pointer-events: none; }
+.home-gate{ pointer-events: none; }
+.home-actions > button{ position: relative; pointer-events: auto; }
+.home-char:focus-visible{ outline: 2px dashed var(--brand-main); outline-offset: -12px; border-radius: 24px; }
+@keyframes characterArrive{ from{ opacity: 0; } to{ opacity: 1; } }
+@keyframes characterLeave{ from{ opacity: 1; } to{ opacity: 0; } }
+@media(prefers-reduced-motion: reduce){ .home-char-art{ animation: none; } }

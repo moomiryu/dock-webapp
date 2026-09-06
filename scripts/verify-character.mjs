@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import { chromium } from 'playwright-core';
+import { mkdirSync } from 'node:fs';
+mkdirSync('design/character',{recursive:true});
+const base=process.argv[2] ?? 'http://127.0.0.1:5173';
+const b=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
+const p=await b.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
+await p.goto(base+'/?mock=1');const char=p.locator('.home-char');await char.waitFor();await p.waitForTimeout(250);
+const box=await char.boundingBox();assert.equal(box.width,340);await p.screenshot({path:'design/character/home.png'});
+await p.mouse.move(box.x+box.width/2,box.y+box.height/2);await p.mouse.down();await p.mouse.move(195,785,{steps:12});
+assert.equal(await char.getAttribute('data-held'),'true');
+const hit=await p.evaluate(()=>document.elementFromPoint(195,735)?.closest('button')?.className);assert.equal(hit,'home-cta');
+await p.screenshot({path:'design/character/behind-buttons.png'});await p.mouse.up();assert.equal(await char.getAttribute('data-held'),'false');
+const state=await char.boundingBox();await p.waitForTimeout(400);assert.deepEqual(await char.boundingBox(),state);
+await char.evaluate(el=>el.focus({preventScroll:true}));await p.keyboard.press('ArrowUp');await p.waitForTimeout(50);const moved=await char.boundingBox();assert(moved.y<state.y);
+await p.emulateMedia({reducedMotion:'no-preference'});
+await p.mouse.move(moved.x+170,moved.y+170);await p.mouse.down();await p.mouse.move(195,160,{steps:7});await p.mouse.up();await p.waitForTimeout(1000);assert.equal(await char.getAttribute('data-held'),'false');
+await p.screenshot({path:'design/character/thrown.png'});
+await p.getByRole('button',{name:'처음이에요',exact:true}).click();await p.locator('.info-track').waitFor();await p.getByRole('button',{name:'처음으로',exact:true}).click();await char.waitFor();
+console.log('PASS doubled size, drag, button stacking, reduced motion, keyboard, throw, navigation');
+const touch=await b.newPage({viewport:{width:320,height:640},hasTouch:true,isMobile:true,reducedMotion:'reduce'});
+await touch.goto(base+'/?mock=1');const tc=touch.locator('.home-char');await tc.waitFor();await touch.waitForTimeout(100);
+const tb=await tc.boundingBox();assert(Math.abs(tb.width-281.6)<1);
+const cdp=await touch.context().newCDPSession(touch);
+await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:160,y:tb.y+tb.height/2}]});
+await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:160,y:180}]});
+assert.equal(await tc.getAttribute('data-held'),'true');
+await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
+assert.equal(await tc.getAttribute('data-held'),'false');
+await touch.setViewportSize({width:480,height:844});await touch.waitForTimeout(100);
+assert.equal((await tc.boundingBox()).width,340);assert.equal(await touch.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+await touch.close();console.log('PASS mobile touch, cancellation, 320px / 480px resize');
+// Render every supplied body / eye combination through the production composition code.
+if(!base.includes('127.0.0.1')){await b.close();process.exit(0);}
+const sheet=await p.evaluate(async()=>{const {POSES,EYES,characterArtwork}=await import('/src/lib/characterArtwork.ts');return {poses:POSES.map(p=>({name:p,svg:characterArtwork(p,'happy')})),eyes:EYES.map(e=>({name:e,svg:characterArtwork('Front',e)}))};});
+await p.setViewportSize({width:1000,height:1400});await p.setContent('<style>body{font:16px sans-serif;display:grid;grid-template-columns:repeat(5,1fr);gap:10px}figure{margin:0}svg{width:100%;height:180px}svg svg{width:revert-layer;height:revert-layer}figcaption{text-align:center}</style>'+[...sheet.poses,...sheet.eyes].map(item=>'<figure><img style="width:100%;height:200px" src="data:image/svg+xml,'+encodeURIComponent(item.svg)+'"><figcaption>'+item.name+'</figcaption></figure>').join(''));
+await p.screenshot({path:'design/character/poses-and-eyes.png',fullPage:true});await b.close();

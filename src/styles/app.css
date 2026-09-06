@@ -21,6 +21,10 @@
   --brand-main: #cf5b4c;
   --brand-sub: #3cced0;
   --brand-soft: rgb(207 91 76 / 8%);
+  /* 하드웨어에서 가져온 빨강은 흰 글자를 받치기엔 4.00:1 이라 AA(4.5)에 못 미친다.
+     실물 색은 그대로 두고, 흰 글자가 올라앉는 채움 버튼에만 이 한 톤을 쓴다 — 4.64:1.
+     캐릭터와 버튼은 홈에서 화면 절반쯤 떨어져 있어 두 빨강이 나란히 놓이지 않는다. */
+  --brand-strong: #ca4939;
 
   /* Neutral pressed state; brand controls use a brightness response. */
   --ink-press: #333333;
@@ -236,9 +240,9 @@
 .primary-action{
   width: 100%;
   min-height: var(--btn-xl);
-  background: var(--brand-main);
+  background: var(--brand-strong);
   color: var(--paper);
-  border: 1px solid var(--brand-main);
+  border: 1px solid var(--brand-strong);
   padding: 0 20px;   /* 참조가 명시한 xlarge 버튼 좌우 여백 */
   border-radius: var(--r-xl);
   font-family: inherit;
@@ -394,9 +398,9 @@
 .home-cta{
   width: 100%;
   min-height: var(--btn-xl);
-  background: var(--brand-main);
+  background: var(--brand-strong);
   color: var(--paper);
-  border: 1px solid var(--brand-main);
+  border: 1px solid var(--brand-strong);
   border-radius: var(--r-xl);
   font-family: inherit;
   font-size: 17px;

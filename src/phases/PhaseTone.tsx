@@ -39,7 +39,7 @@ export default function PhaseTone({ initialTone, onBack, onNext }: Props) {
     <div className="z-frame z1 tone-adjust">
       <div className="z-header">
         <BackButton label="말투 다시 고르기" onClick={() => onBack(tone)} />
-        <span>2 / 5 · 다듬기</span>
+        <span>Step 2 / 5 · Shape</span>
       </div>
       <StepRail step={2} />
       <div className="z-ask">
@@ -54,7 +54,7 @@ export default function PhaseTone({ initialTone, onBack, onNext }: Props) {
         <div className="z-glyph" style={{ fontFamily: fontMap[tone.font], fontWeight: tone.wght,
           fontVariationSettings: '"wght" ' + tone.wght,
           transform: 'scaleX(' + tone.tone + ') skewX(' + tone.slnt + 'deg)',
-          fontSize: 'min(' + Math.round(tone.size * 3) + 'px, 28cqw)' }}>발화</div>
+          fontSize: 'min(' + Math.round(tone.size * 1.8) + 'px, 20cqw)' }}><span>발화</span><span className="glyph-latin" lang="en">Public Voice</span></div>
       </div>
       <div className="z-axes">
         <StepPicker label={AXIS_LABELS.WGHT} stops={WGHT_STOPS} value={tone.wght} onPick={wght => setTone(t => ({ ...t, wght }))} />

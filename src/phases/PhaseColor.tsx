@@ -3,7 +3,7 @@ import BackButton from '../components/BackButton';
 import StepRail from '../components/StepRail';
 import { moods } from '../lib/palettes-v2';
 import { fontMap } from '../lib/palettes';
-import { fitFontSize } from '../lib/fit';
+import VoiceBubble from '../components/VoiceBubble';
 import type { ToneState } from '../types';
 
 interface Props {
@@ -21,22 +21,18 @@ export default function PhaseColor({ text, tone, onBack, onNext }: Props) {
     <div className="z-frame color-choice">
       <div className="z-header">
         <BackButton label="한 줄 다시 쓰기" onClick={() => onBack(current)} />
-        <span>4 / 5 · 색</span>
+        <span>Step 4 / 5 · Color</span>
       </div>
       <StepRail step={4} />
       <div className="z-ask">
         <h1>어떤 색으로 발화를 남겨볼까요?</h1>
       </div>
       <div className="color-preview-stage">
-        <div className="color-preview" style={{ background: selected.bg, color: selected.text }}>
-          <div className="color-preview-text" style={{
-            fontFamily: fontMap[tone.font],
-            fontWeight: tone.wght,
-            fontVariationSettings: `"wght" ${tone.wght}`,
-            fontSize: `calc(${fitFontSize(text, { min: 6, max: 130 })} / ${Math.max(1, tone.tone) + Math.abs(Math.tan(tone.slnt * Math.PI / 180))})`,
-            transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)`
-          }}>{text}</div>
+        <div className="color-preview">
+          <VoiceBubble text={text} bg={selected.bg} color={selected.text} fontFamily={fontMap[tone.font]}
+            weight={tone.wght} width={tone.tone} slant={tone.slnt} />
         </div>
+        <p className="screen-ratio-note">실제 스크린 비율이에요.</p>
       </div>
       <fieldset className="color-options">
         <legend className="sr-only">발화 색 조합</legend>

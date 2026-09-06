@@ -57,7 +57,7 @@ try {
   await check('color',4);
   await page.getByRole('radio', {name:'분홍 색 조합',exact:true}).focus();
   await page.keyboard.press('ArrowRight');
-  await page.waitForFunction(() => getComputedStyle(document.querySelector('.color-preview')).backgroundColor === 'rgb(228, 0, 43)');
+  await page.waitForFunction(() => getComputedStyle(document.querySelector('.color-preview .voice-bubble')).backgroundColor === 'rgb(228, 0, 43)');
   await next(); await check('preview',5);
   await page.getByRole('button',{name:'색 다시 고르기',exact:true}).click();
   assert.equal(await page.getByRole('radio',{name:'적기 색 조합',exact:true}).isChecked(),true);

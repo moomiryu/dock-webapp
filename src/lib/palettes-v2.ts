@@ -32,8 +32,8 @@ export const moods: Mood[] = [
     id: 'night',
     name: '밤',
     nameLatin: 'NIGHT',
-    bg: '#000000',
-    text: '#00FF88',
+    bg: '#00FF88',
+    text: '#000000',
     graphic: '#FF00AA',
     blend: 'screen',
     intent: '한밤 벽, 새벽 간판. 네온의 명상.'
@@ -62,8 +62,8 @@ export const moods: Mood[] = [
     id: 'mono',
     name: '흑백',
     nameLatin: 'MONO',
-    bg: '#000000',
-    text: '#FFFFFF',
+    bg: '#FFFFFF',
+    text: '#000000',
     graphic: '#FFFFFF',
     blend: 'screen',
     intent: '대자보의 먹과 종이. 가장 오래된 조합.'
@@ -92,8 +92,8 @@ export const moods: Mood[] = [
     id: 'neon',
     name: '분홍',
     nameLatin: 'HOTPINK',
-    bg: '#000000',
-    text: '#FF0080',
+    bg: '#FF0080',
+    text: '#000000',
     graphic: '#00FF88',
     blend: 'screen',
     intent: '유흥가 간판. 밤에 가장 멀리 간다.'

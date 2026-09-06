@@ -9,7 +9,7 @@ import { fontMap } from '../lib/palettes';
 import { palettes as legacyPalettes } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import { EMPHASIS_MS, STAY_MS } from '../lib/wall';
-import { brightestColor } from '../lib/wallColor';
+import VoiceBubble from '../components/VoiceBubble';
 import { SAMPLE_MESSAGES } from '../lib/samples';
 import {
   isFirebaseConfigured,
@@ -308,7 +308,7 @@ const WallBlock = memo(function WallBlock({ msg, index, total }: { msg: StoredMe
   const trackOffset = (index % TRACKS.length) / TRACKS.length;
   const phase = (posInTrack / countInTrack + trackOffset) % 1;
   const animDelay = -phase * track.duration;
-  const { crowdColor, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
+  const { bg, text, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
   const lines = useMemo(() => msg.text.split('\n'), [msg.text]);
 
   return (
@@ -316,22 +316,9 @@ const WallBlock = memo(function WallBlock({ msg, index, total }: { msg: StoredMe
       className={`wall-block track-${track.dir}`}
       style={{ top: `${track.y}%`, animationDuration: `${track.duration}s`, animationDelay: `${animDelay}s` }}
     >
-      <div
-        className="wall-block-inner"
-        style={{
-          color: crowdColor,
-          fontFamily,
-          fontWeight: wght,
-          fontVariationSettings: `"wght" ${wght}`,
-          transform: `scaleX(${scaleX}) skewX(${skew}deg)`
-        }}
-      >
-        {lines.map((line, li) => (
-          <div className="wall-line" key={li}>
-            {line}
-          </div>
-        ))}
-      </div>
+      <VoiceBubble text={msg.text} bg={bg} color={text} fontFamily={fontFamily} weight={wght}
+        width={scaleX} slant={skew}
+        fontSize={"min(3vw, " + (19 / Math.max(1, ...lines.map(l => Array.from(l).length))).toFixed(2) + "vw)"} />
     </div>
   );
 });
@@ -346,10 +333,12 @@ const WallShowMessage = memo(function WallShowMessage({ msg, closing }: { msg: S
   // Auto-fit: more text → smaller. Longest line fits the width, line count fits
   // the height; CSS min() takes whichever is more constrained.
   const longest = Math.max(1, ...lines.map((l) => Array.from(l).length));
-  const fitSize = `clamp(40px, min(${(88 / longest).toFixed(2)}vw, ${(82 / (lines.length * 1.25)).toFixed(2)}vh), 240px)`;
+  const allowance = Math.max(1, scaleX) + Math.abs(Math.tan(skew * Math.PI / 180));
+  const fitSize = `min(${(56 / longest / allowance).toFixed(2)}vw, ${(56 / (lines.length * 1.25) / allowance).toFixed(2)}vh, 180px)`;
 
   return (
-    <div className={`wall-show ${closing ? 'is-closing' : ''}`} style={{ background: bg, color: text }}>
+    <div className={`wall-show ${closing ? 'is-closing' : ''}`} style={{ background: '#000000', color: text }}>
+      <div className="voice-bubble" style={{ background: bg, color: text, fontSize: fitSize }}>
       <div
         className="wall-emphasis-text"
         style={{
@@ -373,6 +362,7 @@ const WallShowMessage = memo(function WallShowMessage({ msg, closing }: { msg: S
             })}
           </div>
         ))}
+      </div>
       </div>
     </div>
   );
@@ -398,7 +388,6 @@ function useDerivedStyle(msg: StoredMessage) {
     return {
       bg: pal.bg,
       text: pal.text,
-      crowdColor: brightestColor(pal),
       fontFamily,
       wght: tone?.wght ?? 400,
       scaleX: tone?.tone ?? 1.0,

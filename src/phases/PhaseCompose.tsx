@@ -118,24 +118,25 @@ export default function PhaseCompose({
     <div className="z-frame">
       <div className="z-header">
         <BackButton label="말투 다듬기로" onClick={() => onBack(text, { ...partialTone, paletteIdx: moodIdx, graphicIdx: GRAPHIC_OFF })} />
-        <span>3 / 5 · 한 줄</span>
+        <span>Step 3 / 5 · Write</span>
       </div>
       <StepRail step={3} />
 
       <div className="proj-stage is-bleed">
         {/* 미리보기 화면과 같은 16:10 액자. 여기서는 그 안에 직접 쓴다 */}
-        <div className="proj-frame" style={{ background: mood.bg, color: mood.text }}>
+        <div className="proj-frame" style={{ background: '#000000', color: mood.text }}>
           <div className="proj-tracks" aria-hidden>
             <span style={{ top: '20%' }} />
             <span style={{ top: '50%' }} />
             <span style={{ top: '80%' }} />
           </div>
 
+          <div className="compose-bubble" style={{ background: mood.bg }}>
           <div
             className="live-wrap"
             style={{
               fontFamily: fontMap[partialTone.font],
-              fontSize: fitSize,
+              fontSize: `calc(${fitSize} * 0.65 / ${Math.max(1, partialTone.tone) + Math.abs(Math.tan(partialTone.slnt * Math.PI / 180))})`,
               transform: `scaleX(${partialTone.tone}) skewX(${partialTone.slnt}deg)`,
               ['--wght-base' as string]: String(lowWght),
               ['--wght-active' as string]: String(partialTone.wght)
@@ -161,10 +162,11 @@ export default function PhaseCompose({
               onChange={(e) => setText(e.target.value.slice(0, MAX))}
             />
           </div>
+          </div>
         </div>
 
         <div className="proj-meta">
-          <span>벽에서 이렇게 보여요</span>
+          <span>실제 스크린 비율이에요.</span>
           {/* 한계에 가까워지면 미리 알린다 — 60자에서 조용히 잘리면
               어디까지 저장됐는지 알 수 없다 */}
           <span className={'proj-meta-end ' + (text.length >= MAX - 10 ? 'is-near' : '')}>

@@ -5,7 +5,6 @@ import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import { STAY_DAYS } from '../lib/wall';
 import { fitFontSize } from '../lib/fit';
-import { brightestColor } from '../lib/wallColor';
 import { SAMPLE_MESSAGES } from '../lib/samples';
 import type { ToneState } from '../types';
 
@@ -22,8 +21,7 @@ interface Props {
 //   빈 벽 → 아래에서 튀어올라 크게(꽂혀 있는 동안) → 작아져 풍경으로 들어감
 //   → 다른 말들과 함께 사흘을 떠다님
 //
-// 색 규칙도 실제와 같다: 강조 때는 고른 조합이 화면을 덮고, 풍경으로 돌아가면
-// 바탕은 검정, 글자는 그 조합의 밝은 쪽이 된다 (lib/wallColor).
+// 검정 스크린 위에서 메시지 박스의 배경색과 글자색을 유지한다.
 type Stage = 'empty' | 'burst' | 'hold' | 'settle' | 'ambient';
 
 const SCRIPT: Array<{ to: Stage; after: number }> = [
@@ -46,11 +44,10 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
   const [run, setRun] = useState(0);
 
   const mood = moods[tone.paletteIdx % moods.length];
-  const crowdColor = brightestColor(mood);
   const emphasised = stage === 'burst' || stage === 'hold';
 
   // 쓰기 화면과 같은 계산(lib/fit). 액자가 정해진 크기라 긴 문장은 작게 들어간다.
-  const fitSize = useMemo(() => fitFontSize(text), [text]);
+  const fitSize = useMemo(() => `calc(${fitFontSize(text)} * 0.65 / ${Math.max(1, tone.tone) + Math.abs(Math.tan(tone.slnt * Math.PI / 180))})`, [text, tone.tone, tone.slnt]);
 
   // 시퀀스. 모션을 끈 사용자에게는 읽을 수 있는 자리(크게 떠 있는 상태)에서 멈춘다 —
   // 풍경 크기로 줄여놓고 끝내면 자기 글을 못 읽는다.
@@ -123,7 +120,7 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
     <div className="z-frame">
       <div className="z-header">
         <BackButton label="색 다시 고르기" onClick={onBack} />
-        <span>5 / 5 · 벽에서 보기</span>
+        <span>Step 5 / 5 · Preview</span>
       </div>
       <StepRail step={5} />
 
@@ -132,7 +129,7 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
           {/* 실제 벽과 같은 16:10 액자 */}
           <div
             className="sim-frame"
-            style={{ background: emphasised ? mood.bg : '#000000' }}
+            style={{ background: '#000000' }}
           >
             <div className="sim-tracks" aria-hidden>
               {TRACK_Y.map((y) => (
@@ -160,7 +157,8 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
                   <span
                     className="sim-crowd-item"
                     style={{
-                      color: brightestColor(moods[s.tone.paletteIdx % moods.length]),
+                      color: moods[s.tone.paletteIdx % moods.length].text,
+                      background: moods[s.tone.paletteIdx % moods.length].bg,
                       fontFamily: fontMap[s.tone.font],
                       fontWeight: s.tone.wght
                     }}
@@ -174,7 +172,7 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
 
             {/* 내 한 줄 — 가로 흐름은 lane이, 등장·축소는 mine이 맡는다 */}
             <div className="sim-mine-lane">
-              <div className="sim-mine">
+              <div className="sim-mine voice-bubble" style={{ background: mood.bg, color: mood.text, fontSize: fitSize }}>
                 <div
                   className="sim-mine-tone"
                   style={{ transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)` }}
@@ -185,7 +183,7 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
                     style={{
                       fontFamily: fontMap[tone.font],
                       fontSize: fitSize,
-                      color: emphasised ? mood.text : crowdColor,
+                      color: mood.text,
                       ['--wght-base' as string]: String(lowWght),
                       ['--wght-active' as string]: String(tone.wght)
                     }}

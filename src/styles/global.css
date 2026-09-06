@@ -692,3 +692,9 @@ body.wall-mode {
   opacity: 0.55;
 }
 
+/* Shared message container: rounded ends with generous type-relative inset. */
+.voice-bubble{ display: inline-block; max-width: 88%; padding: 0.5em 1em; border-radius: 999px; box-sizing: border-box; }
+.voice-bubble-text{ white-space: pre-wrap; word-break: keep-all; text-align: center; line-height: 1.25; transform-origin: center; }
+.wall-block{ max-width: 29vw; transform: translateY(-50%); }
+.wall-block .voice-bubble{ max-width: 100%; }
+.wall-show .voice-bubble{ max-width: 88vw; }

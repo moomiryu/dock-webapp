@@ -70,7 +70,7 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
 
 const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNode }> = [
   {
-    step: '이게 뭔가요',
+    step: 'About',
     title: '학교 벽에 대고 크게 말하는 장치입니다',
     body: (
       <p>
@@ -81,35 +81,35 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
     art: <ArtWall />
   },
   {
-    step: '1단계',
+    step: 'Step 1',
     title: '말투를 고르고 다듬습니다',
     body: <p>마음에 드는 말투에 굵기, 너비, 기울기를 더해보세요.</p>,
     art: <ArtGlyphs />
   },
   {
-    step: '2단계',
+    step: 'Step 2',
     title: '한 줄을 쓰고 색을 고릅니다',
     body: <p>폰으로. 한 번에 60자까지.</p>,
     art: <ArtLine />
   },
   {
-    step: '3단계',
+    step: 'Step 3',
     title: '폰을 홈에 꽂습니다',
     body: <p>벽을 보고 서서, 위쪽부터 세로로.</p>,
     art: <ArtDock />
   },
   {
-    step: '그러면',
+    step: 'On the wall',
     title: '벽에 크게 떠오릅니다',
     body: (
       <p>
-        꽂혀 있는 동안 {WALL_W_M} × {WALL_H_M} m 화면을 통째로. 최대 {EMPHASIS_SEC}초.
+        꽂혀 있는 동안 {WALL_W_M} × {WALL_H_M} m 검정 화면 위에 크게. 최대 {EMPHASIS_SEC}초.
       </p>
     ),
     art: <ArtBig />
   },
   {
-    step: '그리고',
+    step: 'Afterwards',
     title: '빼면 메아리로 남고, 사라집니다',
     body: (
       <>

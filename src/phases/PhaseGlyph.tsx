@@ -15,12 +15,12 @@ export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
     <div className="z-frame z1 tone-choice">
       <div className="z-header">
         <BackButton label="처음으로" onClick={onBack} />
-        <span>1 / 5 · 말투</span>
+        <span>Step 1 / 5 · Voice</span>
       </div>
       <StepRail step={1} />
       <div className="z-ask">
-        <h1>어떤 말투로 말할까요?</h1>
-        <p>마음에 드는 말투를 하나 골라주세요.</p>
+        <h1>어떤 발화를 시작해볼까요?</h1>
+        <p>마음에 드는 성격을 하나 골라주세요.</p>
       </div>
       <div className="style-cards" role="group" aria-label="말투 고르기">
         {STYLE_OPTIONS.map(s => (

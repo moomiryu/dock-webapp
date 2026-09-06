@@ -18,6 +18,13 @@ interface Props {
   onRestart: () => void;
 }
 
+/** 전송 화면이 최소한 머무는 시간 (ms) */
+const FLOOR_MS = 800;
+/** 막대가 끝까지 찬 것을 보여주고 넘어가기까지 (ms) */
+const SETTLE_MS = 340;
+
+const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
 // 전송을 맡고, 그 상태에 따라 05(보내는 중)와 06(도킹)을 갈아 끼운다.
 // 두 화면은 각자 파일로 나뉘어 있고 여기는 순서만 정한다.
 export default function PhaseSubmit({ draft, onDocked, onRestart }: Props) {
@@ -32,11 +39,16 @@ export default function PhaseSubmit({ draft, onDocked, onRestart }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const id = await submitMessage(draft);
-        if (!cancelled) {
-          clearDraft();
-          setStatus({ kind: 'sent', id });
-        }
+        // 전송이 빠르면 이 화면이 한 프레임 스치고 사라진다. 그러면 보낸
+        // 사람은 무언가 일어났는지조차 알 수 없다. 최소 시간을 지키고,
+        // 응답이 온 뒤 막대를 끝까지 채워 '끝났다'를 눈으로 보여준 다음 넘긴다.
+        const [id] = await Promise.all([submitMessage(draft), wait(FLOOR_MS)]);
+        if (cancelled) return;
+        setProgress(1);
+        await wait(SETTLE_MS);
+        if (cancelled) return;
+        clearDraft();
+        setStatus({ kind: 'sent', id });
       } catch (err) {
         if (!cancelled) {
           setStatus({ kind: 'error', message: (err as Error).message });
@@ -54,7 +66,8 @@ export default function PhaseSubmit({ draft, onDocked, onRestart }: Props) {
     const startedAt = Date.now();
     const id = window.setInterval(() => {
       const t = (Date.now() - startedAt) / 1000;
-      setProgress(Math.min(0.9, 1 - Math.exp(-t / 1.3)));
+      // 응답이 와서 1로 채운 뒤에는 되감지 않는다
+      setProgress((p) => (p >= 1 ? p : Math.min(0.9, 1 - Math.exp(-t / 1.3))));
     }, 80);
     return () => clearInterval(id);
   }, [status.kind]);

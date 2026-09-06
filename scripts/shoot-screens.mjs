@@ -7,7 +7,6 @@
 // 시스템에 설치된 Chrome 또는 Edge를 그대로 쓴다 (브라우저 내려받지 않음).
 //
 // 파일 번호는 플로우 문서(00 Splash ~ 08 Done)를 따른다.
-// 못 찍는 화면: 05 Processing (mock 전송이 즉시 끝나 한 프레임도 남지 않음).
 
 import { chromium } from 'playwright-core';
 import { mkdir } from 'node:fs/promises';
@@ -101,9 +100,13 @@ async function main() {
   await page.locator('.primary-action').click();
   await shoot(page, '04-preview');
 
-  // 05 Processing은 mock에서 즉시 끝나 캡처되지 않는다 → 06으로
+  // 05 전송 중 — 최소 노출 시간이 있어 이제 잡힌다 (settle 없이 바로)
   await page.locator('.primary-action').click();
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(420);
+  await capture(page, '05-processing');
+
+  // 06 도킹
+  await page.waitForSelector('.dock-guide', { timeout: 10000 });
   await shoot(page, '06-docking');
 
   // 07 외벽에 떠 있는 동안 (실제 설치에서는 센서가 부르는 전환)

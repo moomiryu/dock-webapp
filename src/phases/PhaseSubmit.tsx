@@ -113,6 +113,7 @@ export default function PhaseSubmit({ draft, onDocked, onEdit, onRestart }: Prop
   if (status.kind === 'sent') {
     return (
       <PhaseDocking
+        messageId={status.id}
         onDocked={onDocked}
         devNote={
           isFirebaseConfigured()

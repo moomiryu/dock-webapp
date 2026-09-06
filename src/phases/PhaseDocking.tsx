@@ -1,7 +1,10 @@
 import MegafontFrame from '../components/MegafontFrame';
+import { raiseShowTrigger } from '../lib/firebase';
 import { EMPHASIS_SEC } from '../lib/wall';
 
 interface Props {
+  /** 방금 보낸 글의 id — 외벽이 '어느 글을 띄울지' 알아야 한다 */
+  messageId: string;
   /** 폰이 홈에 꽂혔을 때. 실제 설치에서는 NFC·센서가 이걸 부른다 */
   onDocked: () => void;
   /** Firebase 미연결일 때만 뜨는 개발 참고줄 */
@@ -12,7 +15,14 @@ interface Props {
 //
 // 지시만 하고 끝내면 사용자는 꽂은 뒤 무슨 일이 생기는지 모른 채 서 있게 된다.
 // 그래서 '무엇을 하라'와 '그러면 무엇이 일어난다'를 한 화면에 같이 둔다.
-export default function PhaseDocking({ onDocked, devNote }: Props) {
+export default function PhaseDocking({ messageId, onDocked, devNote }: Props) {
+  // 꽂힌 순간 외벽에 신호를 보낸다. 실패해도 화면은 넘어간다 —
+  // 외벽이 못 받았다고 사용자를 여기 붙잡아 둘 이유는 없다.
+  function handleDocked() {
+    void raiseShowTrigger(messageId);
+    onDocked();
+  }
+
   return (
     <MegafontFrame phaseLabel="도킹">
       <div className="guide-hero">
@@ -34,7 +44,7 @@ export default function PhaseDocking({ onDocked, devNote }: Props) {
           </p>
         </div>
 
-        <button className="primary-action" onClick={onDocked}>
+        <button className="primary-action" onClick={handleDocked}>
           <span>꽂았어요</span>
         </button>
 

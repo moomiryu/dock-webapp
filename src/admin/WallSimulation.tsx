@@ -14,7 +14,8 @@ import {
   submitMessage,
   subscribeMessages,
   subscribeShowTrigger,
-  resetShowTrigger
+  resetShowTrigger,
+  getMessage
 } from '../lib/firebase';
 import type { StoredMessage } from '../lib/firebase';
 import type { ToneState } from '../types';
@@ -132,33 +133,54 @@ export default function WallSimulation() {
   }, [messages, now]);
 
   const latestRef = useRef<StoredMessage | null>(null);
+  const listRef = useRef<StoredMessage[]>([]);
   useEffect(() => {
     latestRef.current = visible[0] ?? null;
+    listRef.current = visible;
   }, [visible]);
 
-  // Switch trigger → emphasize the latest, on the rising edge (false→true)
+  // Switch trigger → 지목된 글을 크게. 상승 엣지(false→true)에서만.
   const prevTriggerRef = useRef(false);
   const closeTimerRef = useRef(0);
   const hideTimerRef = useRef(0);
   useEffect(() => {
+    const show = (msg: StoredMessage) => {
+      clearTimeout(closeTimerRef.current);
+      clearTimeout(hideTimerRef.current);
+      setEmphClosing(false);
+      setEmphMsg(msg);
+      setEmphKey((k) => k + 1);
+      closeTimerRef.current = window.setTimeout(() => setEmphClosing(true), EMPHASIS_MS - 400);
+      hideTimerRef.current = window.setTimeout(() => {
+        setEmphMsg(null);
+        setEmphClosing(false);
+      }, EMPHASIS_MS);
+    };
+
     const unsub = subscribeShowTrigger(
-      (showTrigger) => {
+      (showTrigger, showId) => {
         const rising = showTrigger && !prevTriggerRef.current;
         prevTriggerRef.current = showTrigger;
         if (!rising) return;
         void resetShowTrigger();
+
+        // 방금 꽂은 사람의 글이 무엇인지 신호가 지목해준다.
+        // 목록은 60초마다 갱신되므로 그 안에 없을 수 있다 — 그러면 직접 가져온다.
+        // 여기서 '최신'으로 대충 넘기면 방금 쓴 사람이 앞사람 글을 보게 된다.
+        const known = showId ? listRef.current.find((m) => m.id === showId) : null;
+        if (known) {
+          show(known);
+          return;
+        }
+        if (showId) {
+          void getMessage(showId).then((fetched) => {
+            const msg = fetched ?? latestRef.current;
+            if (msg) show(msg);
+          });
+          return;
+        }
         const latest = latestRef.current;
-        if (!latest) return;
-        clearTimeout(closeTimerRef.current);
-        clearTimeout(hideTimerRef.current);
-        setEmphClosing(false);
-        setEmphMsg(latest);
-        setEmphKey((k) => k + 1);
-        closeTimerRef.current = window.setTimeout(() => setEmphClosing(true), EMPHASIS_MS - 400);
-        hideTimerRef.current = window.setTimeout(() => {
-          setEmphMsg(null);
-          setEmphClosing(false);
-        }, EMPHASIS_MS);
+        if (latest) show(latest);
       },
       () => {
         /* control read errors are non-fatal */

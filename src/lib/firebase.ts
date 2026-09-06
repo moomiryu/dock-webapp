@@ -286,7 +286,7 @@ export function isFirebaseConfigured(): boolean {
 const CONTROL_DOC = 'control/display';
 
 export function subscribeShowTrigger(
-  cb: (showTrigger: boolean) => void,
+  cb: (showTrigger: boolean, showId: string | null) => void,
   onError: (e: Error) => void
 ): () => void {
   if (!hasFirebaseEnv()) return () => {};
@@ -296,12 +296,16 @@ export function subscribeShowTrigger(
     try {
       const res = await withTimeout(fetch(`${FS_BASE}/${CONTROL_DOC}?key=${FS_KEY}`), 10000);
       if (res.status === 404) {
-        if (!cancelled) cb(false);
+        if (!cancelled) cb(false, null);
         return;
       }
       if (!res.ok) throw new Error(`control read ${res.status}`);
-      const json = (await res.json()) as { fields?: { showTrigger?: { booleanValue?: boolean } } };
-      if (!cancelled) cb(json.fields?.showTrigger?.booleanValue === true);
+      const json = (await res.json()) as {
+        fields?: { showTrigger?: { booleanValue?: boolean }; showId?: { stringValue?: string } };
+      };
+      if (!cancelled) {
+        cb(json.fields?.showTrigger?.booleanValue === true, json.fields?.showId?.stringValue || null);
+      }
     } catch (e) {
       if (!cancelled) onError(e as Error);
     }
@@ -313,6 +317,46 @@ export function subscribeShowTrigger(
     cancelled = true;
     clearInterval(id);
   };
+}
+
+/**
+ * 외벽에 "지금 이 글을 크게 띄워라"를 알린다.
+ *
+ * 물리 설치에서는 홈의 NFC·센서가 이 값을 올린다. 그 장치가 아직 없으므로
+ * 지금은 앱이 도킹 순간에 대신 올린다 — 이게 없으면 07 화면이 "지금 외벽에
+ * 떠 있어요"라고 말하는 동안 외벽에서는 아무 일도 일어나지 않는다.
+ */
+export async function raiseShowTrigger(messageId?: string): Promise<void> {
+  if (!hasFirebaseEnv()) return;
+  // 어느 글을 띄울지도 같이 보낸다. 신호가 목록 폴링보다 빨라서, id가 없으면
+  // 외벽이 '아직 아는 것 중 최신' — 즉 앞사람 글 — 을 띄울 수 있다.
+  const mask = 'updateMask.fieldPaths=showTrigger&updateMask.fieldPaths=showId';
+  await fetch(`${FS_BASE}/${CONTROL_DOC}?key=${FS_KEY}&${mask}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      fields: {
+        showTrigger: { booleanValue: true },
+        showId: { stringValue: messageId ?? '' }
+      }
+    })
+  }).catch(() => {});
+}
+
+/**
+ * 목록에 아직 안 들어온 글을 id로 직접 집어 온다.
+ * 풍경 목록은 60초마다 갱신되는데 도킹 신호는 몇 초면 닿는다 — 그 사이를
+ * 메우지 않으면 방금 쓴 사람이 남의 글을 자기 글로 보게 된다.
+ */
+export async function getMessage(id: string): Promise<StoredMessage | null> {
+  if (!hasFirebaseEnv() || !id) return null;
+  try {
+    const res = await withTimeout(fetch(`${FS_BASE}/messages/${id}?key=${FS_KEY}`), 8000);
+    if (!res.ok) return null;
+    return restDocToStored((await res.json()) as RestDoc);
+  } catch {
+    return null;
+  }
 }
 
 export async function resetShowTrigger(): Promise<void> {

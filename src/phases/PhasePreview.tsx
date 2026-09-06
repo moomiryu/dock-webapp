@@ -122,10 +122,10 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
   return (
     <div className="z-frame">
       <div className="z-header">
-        <BackButton label="다시 손보기" onClick={onBack} />
-        <span>4 / 4 · 벽에서 보기</span>
+        <BackButton label="색 다시 고르기" onClick={onBack} />
+        <span>5 / 5 · 벽에서 보기</span>
       </div>
-      <StepRail step={4} />
+      <StepRail step={5} />
 
       <div className="proj-stage">
         <div className={`sim is-${stage}`}>

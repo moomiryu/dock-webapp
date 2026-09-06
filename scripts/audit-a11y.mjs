@@ -75,7 +75,9 @@ await audit('03 한 줄 (채운 뒤)');
 
 await page.locator('.primary-action').click();
 await page.waitForTimeout(600);
-await audit('04 벽에서 보기');
+await audit('04 색');
+await page.locator('.color-choice .primary-action').click();
+await audit('05 벽에서 보기');
 
 await page.locator('.primary-action').click();
 await page.waitForSelector('.dock-guide', { timeout: 15000 });

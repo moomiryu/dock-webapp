@@ -237,7 +237,7 @@
   width: 100%;
   min-height: var(--btn-xl);
   background: var(--brand-main);
-  color: var(--ink);
+  color: var(--paper);
   border: 1px solid var(--brand-main);
   padding: 0 20px;   /* 참조가 명시한 xlarge 버튼 좌우 여백 */
   border-radius: var(--r-xl);
@@ -422,7 +422,7 @@
   width: 100%;
   min-height: var(--btn-xl);
   background: var(--brand-main);
-  color: var(--ink);
+  color: var(--paper);
   border: 1px solid var(--brand-main);
   border-radius: var(--r-xl);
   font-family: inherit;
@@ -1698,7 +1698,7 @@
 }
 
 /* 2026-09-07: participant typography and spacing refinement. */
-.home-layer{ padding-top: max(64px, 10dvh); }
+.home-layer{ padding-top: max(var(--s5), env(safe-area-inset-top, 0px)); }
 .home-headline{ font-size: var(--fs-h2); font-weight: 600; line-height: 1.5; }
 .home-gate{ gap: var(--s5); pointer-events: auto; }
 .home-char{ top: 46%; }
@@ -1747,3 +1747,24 @@
 .z-ask p, .guide-hero p, .info-said p, .send-copy p{ color: var(--body-text); }
 .z-rail i{ background: var(--brand-main); }
 .dock-arrow{ color: var(--brand-main); }
+
+/* Home wordmark: low-level axis setting supports Lineal's wght beyond CSS 1000. */
+.home-intro{ width: 100%; min-width: 0; }
+.home-intro .home-headline{ width: 100%; line-height: 1.2; letter-spacing: 0; }
+.home-headline > span{ display: inline-block; white-space: nowrap; font-family: 'Lineal VF', sans-serif; font-weight: 900; font-variation-settings: 'wght' 1150; font-size: 56px; }
+.home-subtitle{ margin-top: var(--s4); font-size: var(--fs-body); line-height: 1.5; color: var(--body-text); }
+.color-choice{ gap: var(--s6); }
+.color-choice .z-rail{ margin-top: calc(-1 * var(--s6)); }
+.color-preview-stage{ flex: 1; display: flex; align-items: center; min-height: 220px; padding-block: var(--s6); }
+.color-preview{ width: 100%; aspect-ratio: 2.4 / 1.5; container-type: size; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); }
+.color-preview-text{ max-width: 88%; white-space: pre-wrap; text-align: center; line-height: 1.25; transform-origin: center; }
+.color-options{ border: 0; min-width: 0; }
+.color-swatches{ display: flex; gap: var(--s4); overflow-x: auto; padding: var(--s3); scrollbar-width: thin; scroll-padding-inline: var(--s3); }
+.color-option{ position: relative; flex: 0 0 56px; width: 56px; height: 56px; display: grid; place-items: center; cursor: pointer; }
+.color-option input{ position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.color-swatch{ display: block; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--grey-300); pointer-events: none; }
+.color-option input:checked + .color-swatch{ outline: 3px solid var(--brand-main); outline-offset: 3px; }
+.color-option input:focus-visible + .color-swatch{ box-shadow: 0 0 0 8px var(--paper), 0 0 0 10px var(--ink); }
+.color-caption{ text-align: center; color: var(--muted); font-size: var(--fs-body-s); }
+.color-choice > .primary-action{ margin-top: var(--s5); }
+.sr-only{ position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }

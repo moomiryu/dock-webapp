@@ -6,6 +6,7 @@ import PhaseHome from './phases/PhaseHome';
 import PhaseGlyph from './phases/PhaseGlyph';
 import PhaseTone from './phases/PhaseTone';
 import PhaseCompose from './phases/PhaseCompose';
+import PhaseColor from './phases/PhaseColor';
 import PhasePreview from './phases/PhasePreview';
 import PhaseSubmit from './phases/PhaseSubmit';
 import PhaseOnWall from './phases/PhaseOnWall';
@@ -25,6 +26,7 @@ type Screen =
   | 'glyph'    // 02 자형
   | 'tone'     // 말투 세부 조절
   | 'compose'  // 03 메시지 (입력 = 미리보기) + 색
+  | 'color'    // 메시지 색 조합
   | 'preview'  // 04 최종 미리보기
   | 'submit'   // 05 전송 중 → 06 도킹 안내
   | 'onwall'   // 07 벽에 떠 있는 동안
@@ -126,7 +128,7 @@ export default function App() {
 
   function handleComposeSubmit(text: string, tone: ToneState) {
     saveCompose(text, tone);
-    setScreen('preview');
+    setScreen('color');
   }
 
   function handlePreviewConfirm() {
@@ -134,7 +136,7 @@ export default function App() {
   }
 
   function handlePreviewBack() {
-    setScreen('compose');
+    setScreen('color');
   }
 
   function handleRestart() {
@@ -187,6 +189,7 @@ export default function App() {
       );
     }
 
+    case 'color':
     case 'preview':
       if (!draft?.text || !draft.tone) {
         // 되살릴 초안이 없으면 플로우 첫 단계로.
@@ -197,6 +200,11 @@ export default function App() {
             onNext={handleGlyphNext}
           />
         );
+      }
+      if (screen === 'color') {
+        return <PhaseColor text={draft.text} tone={draft.tone}
+          onBack={(tone) => { saveCompose(draft.text, tone); setScreen('compose'); }}
+          onNext={(tone) => { saveCompose(draft.text, tone); setScreen('preview'); }} />;
       }
       return (
         <PhasePreview

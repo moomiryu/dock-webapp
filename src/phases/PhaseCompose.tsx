@@ -34,7 +34,7 @@ export default function PhaseCompose({
   onSubmit
 }: Props) {
   const [text, setText] = useState(initialText);
-  const [moodIdx, setMoodIdx] = useState(initialPaletteIdx ?? 0);
+  const moodIdx = initialPaletteIdx ?? 0;
 
   const renderRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -118,7 +118,7 @@ export default function PhaseCompose({
     <div className="z-frame">
       <div className="z-header">
         <BackButton label="말투 다듬기로" onClick={() => onBack(text, { ...partialTone, paletteIdx: moodIdx, graphicIdx: GRAPHIC_OFF })} />
-        <span>3 / 4 · 한 줄</span>
+        <span>3 / 5 · 한 줄</span>
       </div>
       <StepRail step={3} />
 
@@ -174,25 +174,12 @@ export default function PhaseCompose({
           </span>
         </div>
 
-        {/* 색 — 액자 바로 아래에 붙인다. 바꾸는 대상 곁에 있어야 무엇을
-            바꾸는 버튼인지 보인다. 이름은 '색'이라고 그냥 쓴다. */}
-        <button
-          type="button"
-          className="z-cycle"
-          onClick={() => setMoodIdx((i) => (i + 1) % moods.length)}
-          aria-label={`색 바꾸기 — 지금 ${moodIdx + 1}번째, 모두 ${moods.length}가지`}
-        >
-          <span className="z-cycle-label">색 바꾸기</span>
-          <span className="z-cycle-count">
-            {String(moodIdx + 1).padStart(2, '0')}
-            <span> / {moods.length}</span>
-          </span>
-        </button>
+
       </div>
 
       <button className="primary-action" disabled={empty} onClick={handleSubmit}>
         <span>
-          다음<em>벽에서 보기</em>
+          다음<em>색 고르기</em>
         </span>
       </button>
 

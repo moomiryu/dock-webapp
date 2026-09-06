@@ -15,7 +15,7 @@ export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
     <div className="z-frame z1 tone-choice">
       <div className="z-header">
         <BackButton label="처음으로" onClick={onBack} />
-        <span>1 / 4 · 말투</span>
+        <span>1 / 5 · 말투</span>
       </div>
       <StepRail step={1} />
       <div className="z-ask">

@@ -113,6 +113,8 @@ async function main() {
   // 04 최종 미리보기 — 여기서만은 모션이 곧 내용이라 세 시점을 찍는다.
   // (컨텍스트 전체는 모션을 꺼 두었으므로 이 화면에서만 잠깐 켠다)
   await page.locator('.primary-action').click();
+  await shoot(page, '04-color');
+  await page.locator('.color-choice .primary-action').click();
   await shoot(page, '04-preview');
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.getByRole('button', { name: '다시 보기' }).click();

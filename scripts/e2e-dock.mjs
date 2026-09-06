@@ -65,7 +65,8 @@ await phone.locator('.primary-action').click();
 await phone.locator('.tone-adjust .primary-action').click(); // 다듬기 → 한 줄
 
 await phone.locator('.live-input').fill(STAMP);
-await phone.locator('.primary-action').click(); // 다음 · 벽에서 보기
+await phone.locator('.primary-action').click(); // 다음 · 색
+await phone.locator('.color-choice .primary-action').click();
 await phone.waitForTimeout(700);
 await phone.locator('.primary-action').click(); // 발화하기
 await phone.waitForSelector('.dock-guide', { timeout: 20000 });

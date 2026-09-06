@@ -11,11 +11,19 @@ try {
   const next = () => page.locator('.z-frame > .primary-action').click();
   const check = async (stage, step) => {
    assert.equal(await page.getByRole('progressbar').getAttribute('aria-valuenow'),String(step));
-   assert.equal(await page.getByRole('progressbar').getAttribute('aria-valuemax'),'4');
+   assert.equal(await page.getByRole('progressbar').getAttribute('aria-valuemax'),'5');
    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),false);
    await page.screenshot({ path:`${out}/${stage}-${viewport.width}.png`, fullPage:true });
   };
   await page.goto(`${base}/?mock=1`);
+  await page.locator('.home-headline span').waitFor();
+  await page.evaluate(() => document.fonts.load('900 100px "Lineal VF"'));
+  await page.waitForTimeout(200);
+  const titleBounds = await page.locator('.home-headline span').evaluate(el => ({
+    width: el.getBoundingClientRect().width, available: el.parentElement.clientWidth
+  }));
+  assert(titleBounds.width <= titleBounds.available, JSON.stringify(titleBounds));
+  assert.equal(await page.locator('.home-headline span').evaluate(el=>getComputedStyle(el).fontVariationSettings),'"wght" 1150');
   await page.getByRole('button',{name:'써봤어요',exact:true}).click();
   assert.equal(await page.locator('.z-axes').count(),0);
   assert.equal(await page.locator('.z-glyph').count(),0);
@@ -28,8 +36,9 @@ try {
   await check('adjust',2);
   // Defaults can proceed without requiring any adjustment.
   await next(); await page.locator('.live-input').fill('한 번 고른 말투를 기억해요');
-  await page.locator('.z-cycle').click();
-  const palette = await page.locator('.z-cycle').getAttribute('aria-label');
+  await next();
+  await page.getByRole('radio', {name:'분홍 색 조합', exact:true}).check();
+  await page.getByRole('button', {name:'한 줄 다시 쓰기',exact:true}).click();
   await page.getByRole('button',{name:'말투 다듬기로',exact:true}).click();
   await page.getByRole('button',{name:'세게',exact:true}).click();
   await page.getByRole('button',{name:'느긋하게',exact:true}).click();
@@ -42,8 +51,17 @@ try {
   assert.equal(fits,true);
   await next();
   assert.equal(await page.locator('.live-input').inputValue(),'한 번 고른 말투를 기억해요');
-  assert.equal(await page.locator('.z-cycle').getAttribute('aria-label'),palette);
-  await check('compose',3); await next(); await check('preview',4);
+
+  await check('compose',3); await next();
+  assert.equal(await page.getByRole('radio', {name:'분홍 색 조합',exact:true}).isChecked(),true);
+  await check('color',4);
+  await page.getByRole('radio', {name:'분홍 색 조합',exact:true}).focus();
+  await page.keyboard.press('ArrowRight');
+  await page.waitForFunction(() => getComputedStyle(document.querySelector('.color-preview')).backgroundColor === 'rgb(228, 0, 43)');
+  await next(); await check('preview',5);
+  await page.getByRole('button',{name:'색 다시 고르기',exact:true}).click();
+  assert.equal(await page.getByRole('radio',{name:'적기 색 조합',exact:true}).isChecked(),true);
+  await next();
   const draft=await page.evaluate(()=>JSON.parse(localStorage.getItem('megafont.draft.v1')));
   assert.equal(draft.tone.font,'chabun');assert.equal(draft.tone.wght,700);assert.equal(draft.tone.tone,1.3);assert.equal(draft.tone.slnt,-24);
   await page.close(); console.log(`PASS ${viewport.width}: split, defaults, back navigation, tone/text/colour persistence, preview`);

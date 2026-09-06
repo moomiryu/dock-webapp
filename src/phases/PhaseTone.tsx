@@ -39,7 +39,7 @@ export default function PhaseTone({ initialTone, onBack, onNext }: Props) {
     <div className="z-frame z1 tone-adjust">
       <div className="z-header">
         <BackButton label="말투 다시 고르기" onClick={() => onBack(tone)} />
-        <span>2 / 4 · 다듬기</span>
+        <span>2 / 5 · 다듬기</span>
       </div>
       <StepRail step={2} />
       <div className="z-ask">

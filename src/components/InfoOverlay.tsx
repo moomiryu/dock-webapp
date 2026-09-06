@@ -60,7 +60,9 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
         </button>
       </div>
 
-      <div className="info-track" ref={trackRef} onScroll={onScroll}>
+      {/* 좌우 화살표로도 넘길 수 있지만, 스크롤 영역 자체가 초점을 받아야
+          키보드만 쓰는 사람이 여기 들어올 수 있다 */}
+      <div className="info-track" ref={trackRef} onScroll={onScroll} tabIndex={0}>
         {SLIDES.map((s, i) => (
           <section className="info-slide" key={i} aria-label={s.title}>
             <div className="info-art" aria-hidden>

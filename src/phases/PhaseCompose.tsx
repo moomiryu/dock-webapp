@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import BackButton from '../components/BackButton';
+import StepRail from '../components/StepRail';
 import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import { fitFontSize } from '../lib/fit';
@@ -119,6 +120,7 @@ export default function PhaseCompose({
         <BackButton label="자형 다시 정하기" onClick={onBack} />
         <span>2 / 3 · 한 줄</span>
       </div>
+      <StepRail step={2} />
 
       <div className="proj-stage is-bleed">
         {/* 미리보기 화면과 같은 16:10 액자. 여기서는 그 안에 직접 쓴다 */}
@@ -194,12 +196,6 @@ export default function PhaseCompose({
         </span>
       </button>
 
-      <div className="z-progress">
-        <span className="dot on" />
-        <span className="dot on" />
-        <span className="dot" />
-        <span className="z-progress-label">말투 · 한 줄 · 벽에서 보기</span>
-      </div>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import BackButton from '../components/BackButton';
+import StepRail from '../components/StepRail';
 import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import { STAY_DAYS } from '../lib/wall';
@@ -124,6 +125,7 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
         <BackButton label="다시 손보기" onClick={onBack} />
         <span>3 / 3 · 벽에서 보기</span>
       </div>
+      <StepRail step={3} />
 
       <div className="proj-stage">
         <div className={`sim is-${stage}`}>
@@ -215,12 +217,6 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
         <span>발화하기</span>
       </button>
 
-      <div className="z-progress">
-        <span className="dot on" />
-        <span className="dot on" />
-        <span className="dot on" />
-        <span className="z-progress-label">말투 · 한 줄 · 벽에서 보기</span>
-      </div>
     </div>
   );
 }

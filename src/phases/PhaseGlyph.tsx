@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import BackButton from '../components/BackButton';
+import StepRail from '../components/StepRail';
 import { fontMap } from '../lib/palettes';
 import type { ToneState } from '../types';
 
@@ -85,6 +86,7 @@ export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
         <BackButton label="처음으로" onClick={onBack} />
         <span>1 / 3 · 말투</span>
       </div>
+      <StepRail step={1} />
 
       {/* 무엇을 정하는 화면인지 제목이 먼저 말한다.
           카드가 갑자기 나오면 '다정한'이 무엇의 다정함인지 알 수 없다. */}
@@ -117,8 +119,11 @@ export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
           테두리를 두지 않는다: 빈 상자는 입력창으로 읽힌다.
           고르기 전에는 중립 서체를 옅게 두어 '여기에 뜬다'만 알린다. */}
       <div className={'z-glyph-stage ' + (font ? 'has-face' : 'no-face')} aria-live="polite">
+        {/* 고르기 전에는 이 글자가 아무것도 말하지 않는다 (옅은 중립 서체).
+            그때의 정보는 아래 힌트 줄이 지므로 낭독기에서는 숨긴다. */}
         <div
           className="z-glyph"
+          aria-hidden={!font}
           style={{
             fontFamily: font ? fontMap[font] : undefined,
             fontWeight: tone.wght,
@@ -164,12 +169,6 @@ export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
         </span>
       </button>
 
-      <div className="z-progress">
-        <span className="dot on" />
-        <span className="dot" />
-        <span className="dot" />
-        <span className="z-progress-label">말투 · 한 줄 · 벽에서 보기</span>
-      </div>
     </div>
   );
 }

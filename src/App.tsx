@@ -187,6 +187,7 @@ export default function App() {
         <PhaseSubmit
           draft={draft}
           onDocked={() => setScreen('onwall')}
+          onEdit={() => setScreen('preview')}
           onRestart={handleRestart}
         />
       );

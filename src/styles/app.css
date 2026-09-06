@@ -1038,6 +1038,16 @@
   margin-top: 4px;
 }
 
+/* ─── 전송 실패 ─────────────────────────────────────────────── */
+
+/* 실패했을 때 가장 먼저 안심시켜야 하는 것 — 쓴 글이 남아 있다는 사실 */
+.fail-keep {
+  color: var(--ink) !important;
+  border: 1px solid var(--line);
+  padding: 11px 13px;
+  font-size: 14px !important;
+}
+
 /* ─── 08 완료 ───────────────────────────────────────────────── */
 
 .done-lead {

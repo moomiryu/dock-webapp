@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import InfoOverlay from '../components/InfoOverlay';
-import FullscreenToggle from '../components/FullscreenToggle';
 
 interface Props {
   onStart: () => void;
@@ -174,7 +173,6 @@ export default function PhaseHome({ onStart }: Props) {
       <div className="home-layer">
         <div className="home-top">
           <span className="home-eyebrow">캠퍼스 공공 발화</span>
-          <FullscreenToggle />
         </div>
 
         <div className="home-bottom">

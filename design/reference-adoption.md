@@ -62,7 +62,7 @@ portable-core missing-primary-task
 ```
 xlarge  56 / 16   기본 액션, 홈 CTA
 large   48 / 14   보조 버튼, 축 버튼, 색 바꾸기, 세그먼트 그룹
-small   32 /  8   전체 화면, 다시 보기
+small   32 /  8   다시 보기
 ```
 
 좌우 여백 `0 20px`, 라벨 `17 / 600` 도 문서값 그대로다.

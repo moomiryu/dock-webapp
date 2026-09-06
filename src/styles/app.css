@@ -181,6 +181,23 @@
   border-color: var(--ink);
 }
 
+/* ─── 공통 타이포 ──────────────────────────────────────────────
+   한글은 낱말 안에서 끊지 않는다. balance만 켜면 브라우저가 줄 길이를
+   맞추려고 '크게'를 '크/게'로 쪼갠다 — keep-all이 그걸 막는다. */
+
+.guide-hero h1,
+.home-headline,
+.z-ask h1,
+.info-slide h2,
+.send-copy h1,
+.onwall h1,
+.onwall-look,
+.done h1,
+.done-lead,
+.z-glyph-hint {
+  word-break: keep-all;
+}
+
 /* ─── 공통 타이포 ────────────────────────────────────────────── */
 
 .guide-hero h1{
@@ -254,7 +271,6 @@
 .z-cycle:active,
 .z-step:active,
 .style-card:active,
-.fs-btn:active,
 .sim-replay:active,
 .info-close:active,
 .done-home-link:active,
@@ -269,12 +285,10 @@
 
 /* 32px 버튼은 손가락에 작다. 보이는 상자는 참조의 small 그대로 두고
    타격 범위만 넓힌다 — 접근성 감사를 통과한 상태를 지키기 위해서다. */
-.fs-btn,
 .sim-replay {
   position: relative;
 }
 
-.fs-btn::after,
 .sim-replay::after {
   content: '';
   position: absolute;
@@ -1280,10 +1294,11 @@
 }
 
 @keyframes dockDrop {
-  /* 끝에서 가속 — 마지막에 '팍' 들어간다 */
+  /* 끝에서 가속 — 마지막에 '팍' 들어간다. 78은 폰 한가운데(y=46)가
+     홈 선(y=124)에 닿는 거리다. 그 이상 내려가면 본체 아래로 삐져나온다. */
   0%, 16%   { transform: translateY(0); animation-timing-function: cubic-bezier(0.5, 0, 0.85, 0.9); }
-  54%       { transform: translateY(126px); }
-  100%      { transform: translateY(126px); }
+  54%       { transform: translateY(78px); }
+  100%      { transform: translateY(78px); }
 }
 
 .dock-arrow{
@@ -1309,6 +1324,10 @@
   }
   .splash-bar i {
     width: 100%;
+  }
+  /* 모션을 끈 사람에게는 목표 상태 — 반쯤 꽂힌 모습 — 을 그대로 보여준다 */
+  .dock-phone {
+    transform: translateY(78px);
   }
 }
 
@@ -1553,83 +1572,6 @@
 }
 
 
-
-
-/* ─── 전체 화면으로 보기 ─────────────────────────────────────
-   접속 주소는 QR로만 들어오게 길게 만들 예정이라, 아래 주소창에 그 주소가
-   계속 떠 있으면 눈에 거슬린다. 브라우저마다 지우는 방법이 달라서
-   가능한 쪽만 내민다 (lib/fullscreen.ts). */
-
-.fs-btn{
-  background: none;
-  border: 1px solid var(--line);
-  border-radius: var(--r-s);
-  padding: var(--s2) var(--s4);
-  font-family: var(--label-font);
-  font-size: var(--fs-body-s);
-  letter-spacing: 0.02em;
-  color: var(--muted);
-  cursor: pointer;
-  min-height: var(--btn-s);
-}
-
-.fs-btn:hover{
-  color: var(--ink);
-  border-color: var(--ink);
-}
-
-.fs-howto{
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.fs-howto-card{
-  width: 100%;
-  max-width: 480px;
-  background: var(--paper);
-  color: var(--ink);
-  padding: var(--s6) var(--pad-x) calc(var(--s6) + env(safe-area-inset-bottom, 0px));
-  display: flex;
-  flex-direction: column;
-  gap: var(--s4);
-  border-top: 1px solid var(--ink);
-  border-radius: var(--r-xl) var(--r-xl) 0 0;
-}
-
-.fs-howto-card h2{
-  font-size: var(--fs-h4);
-  line-height: 1.5;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.fs-howto-card p{
-  font-size: var(--fs-body);
-  line-height: 1.5;
-  color: var(--muted);
-}
-
-.fs-steps{
-  display: flex;
-  flex-direction: column;
-  gap: var(--s3);
-  padding-left: 18px;
-  font-size: var(--fs-body);
-  line-height: 1.5;
-}
-
-.fs-steps li{
-  list-style: decimal;
-}
-
-.fs-steps b{
-  font-weight: 600;
-}
 
 
 /* ─── 03 쓰기: 액자를 화면 끝까지 ────────────────────────────

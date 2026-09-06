@@ -105,9 +105,12 @@ await phone.waitForSelector('.done-after', { timeout: 10000 });
 check((await phone.locator('.dock-buried').count()) === 0, '뺀 사람의 08은 화면 전체를 쓴다');
 
 // ── 4. 풍경에 합류했는가 ──────────────────────────────────
+// 목록 폴링이 60초라 여기서만 오래 기다린다. 강조는 신호로 즉시 오지만
+// 풍경은 다음 폴링을 기다려야 한다 — 그 둘이 다른 경로라는 게 요점이다.
+console.log('  (풍경 합류는 목록 폴링 60초를 기다린다…)');
 let inCrowd = false;
-for (let i = 0; i < 5; i++) {
-  await wall.waitForTimeout(1200);
+for (let i = 0; i < 60; i++) {
+  await wall.waitForTimeout(1500);
   const t = await wall.locator('.wall').innerText().catch(() => '');
   if (bare(t).includes(bare(STAMP))) {
     inCrowd = true;

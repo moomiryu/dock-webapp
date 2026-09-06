@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import MegafontFrame from '../components/MegafontFrame';
 import PhaseProcessing from './PhaseProcessing';
 import PhaseDocking from './PhaseDocking';
@@ -60,6 +60,15 @@ export default function PhaseSubmit({ draft, onDocked, onEdit, onRestart }: Prop
   const [progress, setProgress] = useState(0);
   const [attempt, setAttempt] = useState(0);
 
+  // 한 번의 시도는 한 번만 보낸다.
+  //
+  // StrictMode는 개발에서 효과를 두 번 돌리고, 그때마다 submitMessage를
+  // 부르면 같은 한 줄이 벽에 두 번 뜬다(실제로 그렇게 됐다). cancelled
+  // 플래그는 상태 갱신만 막지 요청은 못 막는다. 그래서 시도 번호로
+  // 약속을 캐싱해 두 번째 실행이 같은 약속을 기다리게 한다 —
+  // 요청은 하나, 결과는 양쪽 다 받는다.
+  const sending = useRef<{ attempt: number; promise: Promise<string> } | null>(null);
+
   useEffect(() => {
     if (!draft || !draft.text) {
       setStatus({ kind: 'error', message: '보낼 글이 없어요. 처음부터 다시 시작해주세요.' });
@@ -73,7 +82,10 @@ export default function PhaseSubmit({ draft, onDocked, onEdit, onRestart }: Prop
         // 전송이 빠르면 이 화면이 한 프레임 스치고 사라진다. 그러면 보낸
         // 사람은 무언가 일어났는지조차 알 수 없다. 최소 시간을 지키고,
         // 응답이 온 뒤 막대를 끝까지 채워 '끝났다'를 눈으로 보여준 다음 넘긴다.
-        const [id] = await Promise.all([submitMessage(draft), wait(FLOOR_MS)]);
+        if (!sending.current || sending.current.attempt !== attempt) {
+          sending.current = { attempt, promise: submitMessage(draft) };
+        }
+        const [id] = await Promise.all([sending.current.promise, wait(FLOOR_MS)]);
         if (cancelled) return;
         setProgress(1);
         await wait(SETTLE_MS);

@@ -4,6 +4,7 @@ import WallSimulation from './admin/WallSimulation';
 import PhaseSplash from './phases/PhaseSplash';
 import PhaseHome from './phases/PhaseHome';
 import PhaseGlyph from './phases/PhaseGlyph';
+import PhaseTone from './phases/PhaseTone';
 import PhaseCompose from './phases/PhaseCompose';
 import PhasePreview from './phases/PhasePreview';
 import PhaseSubmit from './phases/PhaseSubmit';
@@ -22,6 +23,7 @@ import type { Draft, ToneState } from './types';
 type Screen =
   | 'home'     // 01 Intro
   | 'glyph'    // 02 자형
+  | 'tone'     // 말투 세부 조절
   | 'compose'  // 03 메시지 (입력 = 미리보기) + 색
   | 'preview'  // 04 최종 미리보기
   | 'submit'   // 05 전송 중 → 06 도킹 안내
@@ -56,6 +58,10 @@ export default function App() {
   const [ready, setReady] = useState(false);
   // 07에서 폰을 직접 뺐는지 — 08이 화면 전체를 쓸지 아래 절반만 쓸지 가른다
   const [pulled, setPulled] = useState(false);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [screen]);
 
   useEffect(() => {
     if (window.location.pathname.startsWith('/admin')) return;
@@ -97,19 +103,29 @@ export default function App() {
 
   function handleGlyphNext(partial: PartialTone) {
     setGlyphTone(partial);
+    setScreen('tone');
+  }
+
+  function handleToneNext(partial: PartialTone) {
+    setGlyphTone(partial);
     setScreen('compose');
   }
 
-  function handleComposeBack() {
-    setScreen('glyph');
+  function handleComposeBack(text: string, tone: ToneState) {
+    saveCompose(text, tone);
+    setScreen('tone');
   }
 
-  function handleComposeSubmit(text: string, tone: ToneState) {
+  function saveCompose(text: string, tone: ToneState) {
     const cur = loadDraft() ?? newDraft(text);
     const updated: Draft = { ...cur, text, tone };
     updateDraftText(text);
     const final = updateDraftTone(tone);
     setDraft(final ?? updated);
+  }
+
+  function handleComposeSubmit(text: string, tone: ToneState) {
+    saveCompose(text, tone);
     setScreen('preview');
   }
 
@@ -135,12 +151,13 @@ export default function App() {
     case 'glyph':
       return (
         <PhaseGlyph
-          initialTone={draft?.tone ? toPartial(draft.tone) : glyphTone}
+          initialTone={glyphTone ?? (draft?.tone ? toPartial(draft.tone) : null)}
           onBack={() => setScreen('home')}
           onNext={handleGlyphNext}
         />
       );
 
+    case 'tone':
     case 'compose': {
       const partial = glyphTone ?? (draft?.tone ? toPartial(draft.tone) : null);
       if (!partial) {
@@ -152,6 +169,12 @@ export default function App() {
             onNext={handleGlyphNext}
           />
         );
+      }
+      if (screen === 'tone') {
+        return <PhaseTone initialTone={partial} onNext={handleToneNext} onBack={(tone) => {
+          setGlyphTone(tone);
+          setScreen('glyph');
+        }} />;
       }
       return (
         <PhaseCompose

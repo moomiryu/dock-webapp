@@ -67,6 +67,8 @@ await page.getByRole('button', { name: '당당한' }).click();
 await audit('02 말투 (고른 뒤)');
 
 await page.locator('.primary-action').click();
+await page.locator('.tone-adjust .primary-action').click(); // 다듬기 → 한 줄
+
 await audit('03 한 줄 (빈 상태)');
 await page.locator('.live-input').fill('여기서 크게 말해본 적 없다');
 await audit('03 한 줄 (채운 뒤)');

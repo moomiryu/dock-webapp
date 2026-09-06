@@ -1,30 +1,28 @@
-/* === MEGAFONT — 참여자 폰 앱 (흑백 베이스) =========================
-   원칙:
-   1. 껍데기(chrome)는 흑백만. 색은 오직 *사용자가 만든 메시지*에만 산다.
-   2. 장식 금지 — 그레인·오프셋·이모지·그림자 없음.
-   3. 위계는 활자 사다리·간격 사다리·버튼 사다리로. 선은 1px 한 종류.
-
-   변경 기록 (2026-09-07):
-   · '라운드 없음'이 빠졌다. 참조 계약이 라운드를 버튼 계약의 일부로
-     묶어 두고(높이와 짝), 사용자가 그 사다리대로 도입하기로 정했다.
-     지시가 저장소 사실보다 위다.
-   · 활자를 여섯 역할로 묶었다 (그전에는 크기가 열아홉 가지였다).
-   · 간격을 일곱 칸으로 묶었다 (그전에는 열네 가지였다).
-   · 버튼에 pressed 상태가 생겼다 — 참조의 상태 계약에 있는데 없었다.
-
-   적용 범위: 참여자 폰 앱(00~08)뿐이다. /wall과 /admin은 이 계약 밖이고,
-   그 스타일은 global.css에 있다 — 여기서 건드리지 않는다.
-   =================================================================== */
+/* MEGAFONT participant UI: hardware brand accents, black headings, TDS greys.
+   Message artwork retains the participant's selected font and palette.
+   Grey source: https://tossmini-docs.toss.im/tds-react-native/foundation/colors/ */
 
 :root{
   --ink: #000000;
   --paper: #ffffff;
-  --muted: #767676;
-  --line: #d8d8d8;
+  --grey-50: #f9fafb;
+  --grey-100: #f2f4f6;
+  --grey-200: #e5e8eb;
+  --grey-300: #d1d6db;
+  --grey-400: #b0b8c1;
+  --grey-500: #8b95a1;
+  --grey-600: #6b7684;
+  --grey-700: #4e5968;
+  --grey-800: #333d4b;
+  --grey-900: #191f28;
+  --body-text: var(--grey-700);
+  --muted: var(--grey-600);
+  --line: var(--grey-200);
+  --brand-main: #cf5b4c;
+  --brand-sub: #3cced0;
+  --brand-soft: rgb(207 91 76 / 8%);
 
-  /* 눌린 상태. 참조 문서는 버튼의 상태 계약에 pressed를 못박아 두는데
-     우리에겐 그게 없었다. 원본은 파랑 위에 검정을 얹어 만들지만
-     여기 크롬은 흑백이라 잉크 한 단계와 옅은 먹칠로 옮긴다. */
+  /* Neutral pressed state; brand controls use a brightness response. */
   --ink-press: #333333;
   --press-tint: rgba(0, 0, 0, 0.08);
 
@@ -223,7 +221,7 @@
 .primary-action:focus-visible,
 .home-cta:focus-visible,
 .style-card.on:focus-visible{
-  outline-color: var(--paper);
+  outline-color: var(--ink);
   outline-offset: -5px;
 }
 
@@ -238,9 +236,9 @@
 .primary-action{
   width: 100%;
   min-height: var(--btn-xl);
-  background: var(--ink);
-  color: var(--paper);
-  border: 1px solid var(--ink);
+  background: var(--brand-main);
+  color: var(--ink);
+  border: 1px solid var(--brand-main);
   padding: 0 20px;   /* 참조가 명시한 xlarge 버튼 좌우 여백 */
   border-radius: var(--r-xl);
   font-family: inherit;
@@ -259,8 +257,7 @@
    loading은 이 앱에 제자리 로딩 버튼이 없어 해당 사항이 없다(05가 화면 전체를 쓴다). */
 .primary-action:active:not(:disabled),
 .home-cta:active {
-  background: var(--ink-press);
-  border-color: var(--ink-press);
+  filter: brightness(0.96);
 }
 
 .home-info-btn:active,
@@ -277,7 +274,7 @@
 
 .style-card.on:active,
 .z-step.on:active {
-  background: var(--ink-press);
+  filter: brightness(0.96);
 }
 
 /* 32px 버튼은 손가락에 작다. 보이는 상자는 참조의 small 그대로 두고
@@ -293,9 +290,9 @@
 }
 
 .primary-action:disabled{
-  background: var(--paper);
-  color: var(--line);
-  border-color: var(--line);
+  background: var(--grey-100);
+  color: var(--grey-500);
+  border-color: var(--grey-100);
   cursor: not-allowed;
 }
 
@@ -307,7 +304,7 @@
 .primary-action em{
   font-style: normal;
   font-weight: 400;
-  opacity: 0.62;
+  opacity: 1;
   margin-left: 10px;
 }
 
@@ -424,9 +421,9 @@
 .home-cta{
   width: 100%;
   min-height: var(--btn-xl);
-  background: var(--ink);
-  color: var(--paper);
-  border: 1px solid var(--ink);
+  background: var(--brand-main);
+  color: var(--ink);
+  border: 1px solid var(--brand-main);
   border-radius: var(--r-xl);
   font-family: inherit;
   font-size: 17px;
@@ -442,9 +439,9 @@
 .home-info-btn{
   width: 100%;
   min-height: var(--btn-l);
-  background: var(--paper);
+  background: var(--grey-100);
   color: var(--ink);
-  border: 1px solid var(--ink);
+  border: 1px solid var(--grey-100);
   border-radius: var(--r-l);
   font-family: inherit;
   font-size: var(--fs-body);
@@ -547,8 +544,8 @@
 }
 
 .style-card.on{
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--brand-soft);
+  color: var(--ink);
 }
 
 /* 이름을 그 서체로 찍는다 — 라벨이 곧 견본이다 */
@@ -607,8 +604,9 @@
 }
 
 .z-step.on{
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--brand-sub);
+  color: var(--ink);
+  font-weight: 600;
 }
 
 /* ─── 효과·색 (compose) / 미리보기 ──────────────────────────── */
@@ -1713,7 +1711,7 @@
 .z1 .z-rail{ margin-top: calc(-1 * var(--s6)); }
 .style-cards{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); border: 0; background: none; border-radius: 0; overflow: visible; }
 .style-card{ min-height: 72px; border: 1px solid var(--line); border-radius: var(--r-l); padding: var(--s5); }
-.style-card.on{ border-color: var(--ink); }
+.style-card.on{ border-color: var(--brand-main); }
 .style-card-name{ font-size: var(--fs-h3); line-height: 1.5; }
 .z-glyph-stage{ height: 160px; flex: none; container-type: inline-size; }
 .z-glyph-hint{ font-size: var(--fs-body-s); line-height: 1.5; }
@@ -1732,3 +1730,20 @@
   .z-ask h1, .info-slide h2{ font-size: var(--fs-h3); }
   .z-axis-line{ grid-template-columns: 40px minmax(0, 1fr); gap: var(--s3); }
 }
+
+/* Separate choosing a voice from adjusting its expression. */
+.tone-choice .style-cards{ margin-top: var(--s5); gap: var(--s4); }
+.tone-choice .style-card{ position: relative; min-height: clamp(132px, 21dvh, 184px); border-width: 2px; }
+.tone-choice .style-card-name{ font-size: var(--fs-h2); }
+.style-card-check{ position: absolute; top: var(--s4); right: var(--s4); display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--brand-main); color: var(--ink); visibility: hidden; }
+.style-card.on .style-card-check{ visibility: visible; }
+.tone-selected{ display: flex; align-items: center; justify-content: space-between; color: var(--body-text); font-size: var(--fs-body-s); }
+.tone-selected button{ border: 0; background: var(--grey-100); border-radius: var(--r-s); padding: var(--s3) var(--s5); min-height: 44px; color: var(--grey-700); font: inherit; cursor: pointer; }
+.tone-selected button:active{ background: var(--grey-200); }
+.tone-adjust .z-glyph-stage{ flex: 1 0 160px; }
+.tone-adjust .z-axes{ padding-bottom: var(--s3); }
+.z-steps{ background: var(--grey-100); border-color: var(--grey-100); gap: 4px; padding: 4px; }
+.z-step{ background: transparent; border-radius: 10px; color: var(--grey-700); }
+.z-ask p, .guide-hero p, .info-said p, .send-copy p{ color: var(--body-text); }
+.z-rail i{ background: var(--brand-main); }
+.dock-arrow{ color: var(--brand-main); }

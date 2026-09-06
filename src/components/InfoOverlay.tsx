@@ -82,15 +82,15 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
   },
   {
     step: '1단계',
-    title: '한 줄을 씁니다',
-    body: <p>폰으로. 한 번에 60자까지.</p>,
-    art: <ArtLine />
+    title: '말투를 고르고 다듬습니다',
+    body: <p>마음에 드는 말투에 굵기, 너비, 기울기를 더해보세요.</p>,
+    art: <ArtGlyphs />
   },
   {
     step: '2단계',
-    title: '말투와 색을 고릅니다',
-    body: <p>같은 말도 얼굴에 따라 다르게 들립니다.</p>,
-    art: <ArtGlyphs />
+    title: '한 줄을 쓰고 색을 고릅니다',
+    body: <p>폰으로. 한 번에 60자까지.</p>,
+    art: <ArtLine />
   },
   {
     step: '3단계',

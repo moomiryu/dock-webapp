@@ -22,6 +22,7 @@ for(const width of [320,390,480]){
  if(!await page.locator('.z1 > .primary-action').isDisabled())throw Error('empty selection enabled');
  await page.screenshot({path:`${out}/glyph-${width}.png`,fullPage:true});
  await page.getByRole('button',{name:'다정한',exact:true}).click();
+ await page.locator('.tone-choice .primary-action').click();
  await page.getByRole('button',{name:'세게',exact:true}).click();
  await page.getByRole('button',{name:'느긋하게',exact:true}).click();
  await page.getByRole('button',{name:'흘려',exact:true}).click();

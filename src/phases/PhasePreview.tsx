@@ -123,9 +123,9 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
     <div className="z-frame">
       <div className="z-header">
         <BackButton label="다시 손보기" onClick={onBack} />
-        <span>3 / 3 · 벽에서 보기</span>
+        <span>4 / 4 · 벽에서 보기</span>
       </div>
-      <StepRail step={3} />
+      <StepRail step={4} />
 
       <div className="proj-stage">
         <div className={`sim is-${stage}`}>

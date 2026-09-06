@@ -62,6 +62,8 @@ console.log(`\n한 줄: ${STAMP}\n`);
 await phone.getByRole('button', { name: /써봤어요/ }).click();
 await phone.getByRole('button', { name: '당당한' }).click();
 await phone.locator('.primary-action').click();
+await phone.locator('.tone-adjust .primary-action').click(); // 다듬기 → 한 줄
+
 await phone.locator('.live-input').fill(STAMP);
 await phone.locator('.primary-action').click(); // 다음 · 벽에서 보기
 await phone.waitForTimeout(700);

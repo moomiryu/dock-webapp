@@ -104,6 +104,8 @@ async function main() {
 
   // 03 메시지 — 빈 상태와 채운 상태
   await page.locator('.primary-action').click();
+  await page.locator('.tone-adjust .primary-action').click(); // 다듬기 → 한 줄
+
   await shoot(page, '03-message-empty');
   await page.locator('.live-input').fill(SAMPLE_TEXT);
   await shoot(page, '03-message-filled');

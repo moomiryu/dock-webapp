@@ -12,7 +12,7 @@ interface Props {
   initialText: string;
   partialTone: PartialTone;
   initialPaletteIdx?: number;
-  onBack: () => void;
+  onBack: (text: string, tone: ToneState) => void;
   onSubmit: (text: string, tone: ToneState) => void;
 }
 
@@ -117,10 +117,10 @@ export default function PhaseCompose({
   return (
     <div className="z-frame">
       <div className="z-header">
-        <BackButton label="자형 다시 정하기" onClick={onBack} />
-        <span>2 / 3 · 한 줄</span>
+        <BackButton label="말투 다듬기로" onClick={() => onBack(text, { ...partialTone, paletteIdx: moodIdx, graphicIdx: GRAPHIC_OFF })} />
+        <span>3 / 4 · 한 줄</span>
       </div>
-      <StepRail step={2} />
+      <StepRail step={3} />
 
       <div className="proj-stage is-bleed">
         {/* 미리보기 화면과 같은 16:10 액자. 여기서는 그 안에 직접 쓴다 */}

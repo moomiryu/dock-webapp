@@ -278,7 +278,13 @@ const WallBlock = memo(function WallBlock({ msg, index, total }: { msg: StoredMe
   const track = TRACKS[index % TRACKS.length];
   const posInTrack = Math.floor(index / TRACKS.length);
   const countInTrack = Math.max(1, Math.ceil(total / TRACKS.length));
-  const phase = posInTrack / countInTrack; // even spacing → constant gap, no overlap
+
+  // 한 트랙 안에서는 균등 간격이라 같은 속도끼리 겹치지 않는다.
+  // 거기에 트랙마다 시작점을 어긋내야 메시지가 적을 때도 화면이 고르게 찬다 —
+  // 이게 없으면 글이 세 개일 때 셋 다 위상 0에서 같이 출발해, 설치 첫날
+  // 외벽이 대부분 비어 있다가 한 덩어리가 지나가는 꼴이 된다.
+  const trackOffset = (index % TRACKS.length) / TRACKS.length;
+  const phase = (posInTrack / countInTrack + trackOffset) % 1;
   const animDelay = -phase * track.duration;
   const { crowdColor, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
   const lines = useMemo(() => msg.text.split('\n'), [msg.text]);

@@ -109,6 +109,28 @@
   color: var(--muted);
 }
 
+/* ─── 키보드 초점 ────────────────────────────────────────────
+   흑백이라 초점 표시가 바탕에 묻히기 쉽다. 밝은 면 위에서는 잉크로,
+   검은 면 위에서는 종이색으로 — 어느 쪽에서든 보이게 한다. */
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.primary-action:focus-visible,
+.home-cta:focus-visible,
+.style-card.on:focus-visible {
+  outline-color: var(--paper);
+  outline-offset: -5px;
+}
+
+/* 액자 안은 사용자가 고른 색이라 어느 쪽일지 알 수 없다 — 그 색을 따른다 */
+.live-input:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
+
 /* ─── 공통 버튼 ──────────────────────────────────────────────── */
 
 .primary-action {

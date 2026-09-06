@@ -121,6 +121,8 @@ export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
               max={SLNT_MAX}
               step={1}
               value={-tone.slnt}
+              aria-label={AXIS_LABELS.SLNT}
+              aria-valuetext={tone.slnt === 0 ? '또박또박' : `흘림 ${Math.round(-tone.slnt)}도`}
               onChange={(e) => setTone((t) => ({ ...t, slnt: -parseInt(e.target.value, 10) }))}
             />
             <div className="z-slider-stops">
@@ -175,6 +177,8 @@ function StepSlider({
           max={stops.length - 1}
           step={1}
           value={idx}
+          aria-label={AXIS_LABELS[axisKey]}
+          aria-valuetext={stops[idx].label}
           onChange={(e) => onPick(stops[parseInt(e.target.value, 10)].val)}
         />
         <div className="z-slider-stops">

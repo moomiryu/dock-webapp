@@ -13,3 +13,6 @@ dist-ssr
 
 # design-md 검사 리포트 (임시)
 design/_insp.json
+
+# 참조 캡처 원본 (개인 스크린샷)
+reference capture/

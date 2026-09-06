@@ -353,12 +353,6 @@
   line-height: 0;
 }
 
-.home-char-art > svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
 .home-layer{
   position: relative;
   z-index: 2;
@@ -1765,18 +1759,18 @@
 
 .sim-crowd-item{ font-size: 2.4cqw; max-width: 60cqw; white-space: normal; word-break: keep-all; }
 
-/* Direct manipulation: twice the original 44vw / 170px character size. */
-.home-char{ left: 0; top: 0; width: min(88vw, 340px); max-width: none; height: auto; aspect-ratio: 1; border: 0; padding: 0; margin: 0; background: none; color: inherit; cursor: grab; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; transform: translate(0, 0); will-change: transform; }
+/* 직접 만지는 크기. 340px에서 80%로 줄였다. */
+.home-char{ left: 0; top: 0; width: min(70vw, 272px); max-width: none; height: auto; aspect-ratio: 1; border: 0; padding: 0; margin: 0; background: none; color: inherit; cursor: grab; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; transform: translate(0, 0); will-change: transform; }
 .home-char[data-held="true"]{ cursor: grabbing; }
-.home-char-motion{ display: block; position: relative; width: 100%; height: 100%; transform: rotate(var(--char-tilt, 0deg)) scale(var(--char-stretch, 1), var(--char-squash, 1)); pointer-events: none; }
-.home-char-art{ position: absolute; inset: 0; display: block; pointer-events: none; animation: characterArrive 240ms ease-out both; }
-.home-char-art.is-leaving{ animation: characterLeave 240ms ease-out both; }
-.home-char-art > svg{ width: 100%; height: 100%; overflow: visible; }
+/* 회전은 --char-turn 이 가로로 한 번 좁혔다 편다. 기울기는 --char-tilt.
+   포즈끼리는 path를 직접 보간하므로 겹쳐 놓고 페이드할 그림이 없다. */
+.home-char-motion{ display: block; position: relative; width: 100%; height: 100%;
+  transform: rotate(var(--char-tilt, 0deg))
+             scale(calc(var(--char-stretch, 1) * var(--char-turn, 1)), var(--char-squash, 1));
+  pointer-events: none; }
+.home-char-motion > svg{ display: block; width: 100%; height: 100%; overflow: visible; }
 .home-char svg circle{ animation: none; }
 .home-layer{ z-index: 2; pointer-events: none; }
 .home-gate{ pointer-events: none; }
 .home-actions > button{ position: relative; pointer-events: auto; }
 .home-char:focus-visible{ outline: 2px dashed var(--brand-main); outline-offset: -12px; border-radius: 24px; }
-@keyframes characterArrive{ from{ opacity: 0; } to{ opacity: 1; } }
-@keyframes characterLeave{ from{ opacity: 1; } to{ opacity: 0; } }
-@media(prefers-reduced-motion: reduce){ .home-char-art{ animation: none; } }

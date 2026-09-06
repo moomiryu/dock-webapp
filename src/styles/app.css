@@ -258,7 +258,9 @@
 
 .home-top {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 /* 아래층 워드마크와 겹치는 자리라 자기 바탕을 깔고 올라선다 */
@@ -285,12 +287,6 @@
   letter-spacing: -0.02em;
 }
 
-.home-tagline {
-  font-size: 14px;
-  line-height: 1.7;
-  color: var(--muted);
-}
-
 .home-actions {
   display: flex;
   flex-direction: column;
@@ -314,6 +310,23 @@
   justify-content: center;
 }
 
+/* 정보는 '있으면 보는 것'이 아니라 처음 온 사람이 반드시 거쳐야 할 곳이라,
+   글자 링크가 아니라 시작하기와 같은 폭의 버튼으로 둔다. */
+.home-info-btn {
+  width: 100%;
+  min-height: 48px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  font-family: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .home-footer {
   display: flex;
   flex-wrap: wrap;
@@ -327,9 +340,11 @@
 
 /* ─── 자형 (glyph) ──────────────────────────────────────────── */
 
+/* 무대는 고른 것을 확인하는 자리지 이 화면의 주인공이 아니다.
+   주인공은 고르는 일 — 카드와 축이다. 그래서 무대에 상한을 둔다. */
 .z-glyph-stage {
-  flex: 1;
-  min-height: 180px;
+  flex: 0 0 auto;
+  height: 168px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -405,8 +420,9 @@
 .z-axes {
   display: flex;
   flex-direction: column;
+  justify-content: space-evenly;
   gap: 16px;
-  flex: none;
+  flex: 1;
 }
 
 .z-axis-line {
@@ -816,49 +832,127 @@
 }
 
 .info-close {
-  width: 34px;
-  height: 34px;
-  padding: 0;
+  min-height: 34px;
+  padding: 0 10px;
   background: none;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 0;
+  font-family: var(--label-font);
+  font-size: 11px;
+  letter-spacing: 0.02em;
   color: var(--ink);
-  font-size: 13px;
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .info-close:hover {
   border-color: var(--ink);
 }
 
-.info-body {
+/* 한 장씩 넘긴다 — 미는 감각은 브라우저의 스크롤 스냅에 맡긴다 */
+.info-track {
   flex: 1;
   display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  margin: 0 -20px;
+  min-height: 0;
+}
+
+.info-track::-webkit-scrollbar {
+  display: none;
+}
+
+.info-slide {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
+  padding: 0 20px;
   overflow-y: auto;
 }
 
-.info-body h2 {
+.info-art {
+  border: 1px solid var(--line);
+  padding: 14px;
+  color: var(--ink);
+  line-height: 0;
+  flex: 1 1 auto;
+  min-height: 150px;
+  display: flex;
+}
+
+.info-slide h2 {
   font-size: 22px;
   font-weight: 600;
   line-height: 1.35;
   letter-spacing: -0.02em;
   text-wrap: balance;
+  flex: none;
 }
 
-.info-body p {
+.info-said {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.info-said p {
   font-size: 15px;
   line-height: 1.7;
   color: var(--muted);
 }
 
-.info-body p b {
+.info-said b {
   color: var(--ink);
   font-weight: 600;
+}
+
+.info-dots {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex: none;
+}
+
+.info-dots span {
+  width: 20px;
+  height: 2px;
+  background: var(--line);
+}
+
+.info-dots span.on {
+  background: var(--ink);
+}
+
+.info-nav {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  flex: none;
+}
+
+.info-nav .primary-action {
+  flex: 1;
+}
+
+.info-step {
+  min-width: 84px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 0;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.info-step:disabled {
+  color: var(--line);
+  cursor: default;
 }
 
 .info-rules {
@@ -887,29 +981,87 @@
   line-height: 1.5;
 }
 
-.info-foot {
-  font-size: 13px;
+.info-rules {
+  margin-top: 2px;
 }
 
-.info-foot a {
+/* ─── 05 전송 중 ──────────────────────────────────────────────
+   00 스플래시와 같은 가로 막대를 쓰면 두 화면이 같은 사건으로 읽힌다.
+   여기는 '내 말이 벽으로 가는 중'이라 한 점에서 퍼지는 파문으로 둔다. */
+
+.send-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  text-align: center;
+}
+
+.send-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.send-copy h1 {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.send-copy p {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.send-ripple {
+  line-height: 0;
   color: var(--ink);
 }
 
-/* ─── 05 전송 중 ────────────────────────────────────────────── */
-
-.send-bar {
-  width: 100%;
-  height: 2px;
-  margin-top: 10px;
-  background: var(--line);
-  overflow: hidden;
+.send-track,
+.send-arc,
+.send-wave {
+  fill: none;
 }
 
-.send-bar i {
-  display: block;
-  height: 100%;
-  background: var(--ink);
-  transition: width 120ms linear;
+.send-track {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+/* 경과는 링이 채운다 — 12시에서 시작하도록 돌려 둔다 */
+.send-arc {
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linecap: butt;
+  transform: rotate(-90deg);
+  transform-origin: 60px 60px;
+  transition: stroke-dashoffset 120ms linear;
+}
+
+.send-core {
+  fill: var(--ink);
+}
+
+.send-wave {
+  stroke: var(--ink);
+  stroke-width: 1;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sendWave 2.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+}
+
+.send-wave.d2 { animation-delay: 0.8s; }
+.send-wave.d3 { animation-delay: 1.6s; }
+
+@keyframes sendWave {
+  0%   { transform: scale(0.4); opacity: 0; }
+  14%  { opacity: 0.85; }
+  100% { transform: scale(4); opacity: 0; }
 }
 
 .send-pct {
@@ -953,8 +1105,12 @@
   .dock-phone,
   .dock-arrow,
   .splash-bar i,
+  .send-wave,
   .home-mark-float {
     animation: none !important;
+  }
+  .send-wave {
+    opacity: 0.3;
   }
   .splash-bar i {
     width: 100%;
@@ -966,23 +1122,29 @@
 .dock-next {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 10px;
   padding: 13px 14px;
   border: 1px solid var(--line);
   margin-top: 4px;
+}
+
+.dock-next-row {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  align-items: baseline;
+  gap: 10px;
 }
 
 .dock-next-label {
   font-family: var(--label-font);
   font-size: 12px;
   letter-spacing: 0.02em;
-  text-transform: uppercase;
   color: var(--muted);
 }
 
 .dock-next p {
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 14.5px;
+  line-height: 1.55;
   color: var(--ink);
 }
 
@@ -990,45 +1152,124 @@
   font-weight: 600;
 }
 
-/* ─── 07 외벽에 떠 있는 동안 ────────────────────────────────
-   폰이 아니라 외벽을 보게 해야 하는 화면이라 요소를 최소로 둔다 */
+.dock-next-cap {
+  font-family: var(--label-font);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+/* ─── 07 · 08 폰이 꽂힌 채로 읽는 화면 ──────────────────────
+   폰은 위쪽부터 세로로 들어간다. 서 있는 사람에게는 아래 절반만 남는다.
+   그 절반 안에서 끝나야 하는 화면들이다. */
+
+.dock-frame {
+  width: 100%;
+  max-width: 480px;
+  min-height: 100dvh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--ui-font);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* 홈 안으로 들어가 보이지 않는 절반. 손에 들고 볼 때만 보이고,
+   그때는 왜 아래만 쓰는지에 대한 설명이 된다. */
+.dock-buried {
+  /* min-height 위에서는 %가 해석되지 않는다 — 뷰포트 단위로 못 박는다 */
+  flex: 0 0 50dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 18px 20px 10px;
+  border-bottom: 3px solid var(--ink);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0 8px,
+    rgba(0, 0, 0, 0.05) 8px 9px
+  );
+}
+
+.dock-buried-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--label-font);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.dock-buried-head > span:first-child {
+  color: var(--ink);
+}
+
+.dock-buried-label {
+  font-family: var(--label-font);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  text-align: center;
+}
+
+.dock-shown {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 20px 24px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* ─── 07 지금 벽에 떠 있는 동안 ─────────────────────────────
+   폰이 아니라 벽을 보게 해야 하는 화면이라 요소를 최소로 둔다 */
 
 .onwall {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 18px;
-  padding: 20px 0;
+  gap: 10px;
 }
 
-.onwall-head {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.onwall-head h1 {
-  font-size: 26px;
+.onwall h1 {
+  font-size: 24px;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.3;
 }
 
-.onwall-head p {
-  font-size: 16px;
+.onwall-look {
+  font-size: 15px;
   line-height: 1.6;
+}
+
+.onwall-meter {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 2px;
 }
 
 /* 멀리서 곁눈질로도 읽히는 크기 — 이 화면은 들여다보는 게 아니다 */
 .onwall-count {
   font-family: var(--label-font);
-  font-size: 108px;
+  font-size: 76px;
   line-height: 1;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  text-align: center;
-  padding: 8px 0;
+}
+
+.onwall-cap {
+  font-family: var(--label-font);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
 }
 
 .onwall-bar {
@@ -1046,18 +1287,12 @@
 
 .onwall-note {
   font-size: 14px;
-  line-height: 1.7;
+  line-height: 1.65;
   color: var(--muted);
 }
 
-.onwall-hold {
-  font-family: var(--label-font);
-  font-size: 12px;
-  letter-spacing: 0.02em;
-  color: var(--ink);
-  border-top: 1px solid var(--line);
-  padding-top: 12px;
-  margin-top: 4px;
+.onwall .primary-action {
+  margin-top: auto;
 }
 
 /* ─── 전송 실패 ─────────────────────────────────────────────── */
@@ -1072,34 +1307,340 @@
 
 /* ─── 08 완료 ───────────────────────────────────────────────── */
 
+.done {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.done h1 {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
 .done-lead {
-  font-size: 17px;
+  font-size: 16px;
   line-height: 1.6;
-  color: var(--ink) !important;
+  color: var(--ink);
 }
 
 .done-after {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 9px;
   border-top: 1px solid var(--line);
-  padding-top: 14px;
+  padding-top: 13px;
   margin-top: 6px;
-}
-
-/* ─── 홈: 무엇을 하게 되는지 미리 ───────────────────────────── */
-
-.home-steps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  font-family: var(--label-font);
-  font-size: 12px;
-  letter-spacing: 0.02em;
+  font-size: 13.5px;
+  line-height: 1.65;
   color: var(--muted);
 }
 
-.home-steps b {
+.done .done-home-link {
+  margin-top: auto;
+}
+
+
+
+
+/* ─── 전체 화면으로 보기 ─────────────────────────────────────
+   접속 주소는 QR로만 들어오게 길게 만들 예정이라, 아래 주소창에 그 주소가
+   계속 떠 있으면 눈에 거슬린다. 브라우저마다 지우는 방법이 달라서
+   가능한 쪽만 내민다 (lib/fullscreen.ts). */
+
+.fs-btn {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  padding: 6px 10px;
+  font-family: var(--label-font);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  cursor: pointer;
+  min-height: 32px;
+}
+
+.fs-btn:hover {
   color: var(--ink);
-  font-weight: 400;
+  border-color: var(--ink);
+}
+
+.fs-howto {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.fs-howto-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 22px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-top: 1px solid var(--ink);
+}
+
+.fs-howto-card h2 {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.fs-howto-card p {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.fs-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.fs-steps li {
+  list-style: decimal;
+}
+
+.fs-steps b {
+  font-weight: 600;
+}
+
+
+/* ─── 03 쓰기: 액자를 화면 끝까지 ────────────────────────────
+   가운데에 띠 하나만 액자인 그림은 '왜 여기만 화면이지'로 읽힌다.
+   양옆 여백을 없애 기기를 가로지르게 하면 그 띠가 곧 벽이 된다.
+   덤으로 쓰는 자리가 넓어져 글자가 커진다. */
+
+/* 쓰는 화면에서는 액자를 위로 붙인다 — 자판이 열리면 어차피 위로 밀리고,
+   가운데에 떠 있으면 '왜 여기만 화면이지'가 된다. */
+.proj-stage.is-bleed {
+  justify-content: flex-start;
+  margin-left: -20px;
+  margin-right: -20px;
+}
+
+.proj-stage.is-bleed .proj-frame {
+  border-left: 0;
+  border-right: 0;
+}
+
+.proj-stage.is-bleed .proj-meta {
+  padding: 0 20px;
+}
+
+/* ─── 04 벽 시뮬레이션 ───────────────────────────────────────
+   04가 03과 같은 그림이면 있을 이유가 없다. 여기서 보여줄 것은
+   '어떻게 생겼나'가 아니라 '어떻게 나타났다 사라지나'다.
+
+     빈 벽 → 아래에서 튀어올라 크게 → 작아져 풍경에 들어감 → 사흘을 떠다님
+
+   색도 실제와 같이 움직인다: 강조 때만 고른 조합이 화면을 덮고,
+   풍경으로 돌아가면 바탕은 검정이 된다. */
+
+.sim {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sim-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2.4 / 1.5;
+  overflow: hidden;
+  border: 1px solid var(--ink);
+  container-type: size;
+  transition: background-color 650ms ease;
+}
+
+.sim-tracks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 450ms ease;
+}
+
+.sim-tracks span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #ffffff;
+  opacity: 0.12;
+}
+
+/* 강조 중에는 풍경이 통째로 덮인다 — 실제 벽이 그렇다 */
+.is-burst .sim-tracks,
+.is-hold .sim-tracks {
+  opacity: 0;
+}
+
+.sim-crowd {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 900ms ease;
+  pointer-events: none;
+}
+
+.is-settle .sim-crowd,
+.is-ambient .sim-crowd {
+  opacity: 0.8;
+}
+
+.sim-lane {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  animation-name: simLane;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-play-state: paused;
+}
+
+.is-settle .sim-lane,
+.is-ambient .sim-lane {
+  animation-play-state: running;
+}
+
+.sim-crowd-item {
+  display: block;
+  white-space: nowrap;
+  transform: translateY(-50%);
+  font-size: 5.4cqw;
+  line-height: 1.2;
+}
+
+/* 양 끝은 화면 밖이라 되돌아가는 순간이 보이지 않는다 */
+@keyframes simLane {
+  from { transform: translateX(108cqw); }
+  to   { transform: translateX(-108cqw); }
+}
+
+/* 가로 흐름은 lane이, 등장·축소는 mine이 맡는다.
+   음수 지연으로 정확히 가운데에서 시작하게 해 두면
+   풍경에 합류할 때 튀지 않는다. */
+.sim-mine-lane {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 0 4%;
+  animation: simLane 34s linear infinite;
+  animation-delay: -17s;
+  animation-play-state: paused;
+}
+
+.is-ambient .sim-mine-lane {
+  animation-play-state: running;
+}
+
+.sim-mine {
+  max-width: 100%;
+  will-change: transform;
+}
+
+.sim-mine-tone {
+  transform-origin: center;
+}
+
+/* 세로 이동은 액자 높이 기준(cqh)이라야 글 길이와 무관하게 같은 자리에 선다 */
+.is-empty .sim-mine {
+  transform: translateY(62cqh);
+  opacity: 0;
+}
+
+.is-burst .sim-mine {
+  animation: simBurst 1050ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+
+.is-hold .sim-mine {
+  transform: none;
+  opacity: 1;
+}
+
+/* 내 글은 가운데 트랙에 앉는다 — 이웃들은 위아래 두 트랙을 쓴다 */
+.is-settle .sim-mine {
+  transform: translateY(0) scale(0.38);
+  opacity: 1;
+  transition: transform 950ms cubic-bezier(0.45, 0, 0.15, 1);
+}
+
+.is-ambient .sim-mine {
+  transform: translateY(0) scale(0.38);
+}
+
+/* 소리가 오는 모양 — 아래에서 한 번 넘치게 올라왔다 자리를 잡는다 */
+@keyframes simBurst {
+  0%   { transform: translateY(62cqh) scale(0.9); opacity: 0; }
+  30%  { opacity: 1; }
+  58%  { transform: translateY(-11cqh) scale(1.07); }
+  76%  { transform: translateY(4cqh) scale(0.97); }
+  90%  { transform: translateY(-1.5cqh) scale(1.01); }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* 모션에는 이름이 없다 — 지금 보고 있는 게 어느 시간인지 말해준다 */
+.sim-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--label-font);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.sim-legend span {
+  color: var(--line);
+  transition: color 300ms ease;
+}
+
+.sim-legend span.on {
+  color: var(--ink);
+}
+
+.sim-replay {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  padding: 5px 10px;
+  min-height: 30px;
+  font-family: var(--label-font);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.sim-replay:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sim-lane,
+  .sim-mine-lane,
+  .sim-mine {
+    animation: none !important;
+    transition: none !important;
+  }
 }

@@ -286,7 +286,7 @@ export function isFirebaseConfigured(): boolean {
 const CONTROL_DOC = 'control/display';
 
 export function subscribeShowTrigger(
-  cb: (showTrigger: boolean, showId: string | null) => void,
+  cb: (showTrigger: boolean, showId: string | null, docked: boolean) => void,
   onError: (e: Error) => void
 ): () => void {
   if (!hasFirebaseEnv()) return () => {};
@@ -296,15 +296,23 @@ export function subscribeShowTrigger(
     try {
       const res = await withTimeout(fetch(`${FS_BASE}/${CONTROL_DOC}?key=${FS_KEY}`), 10000);
       if (res.status === 404) {
-        if (!cancelled) cb(false, null);
+        if (!cancelled) cb(false, null, false);
         return;
       }
       if (!res.ok) throw new Error(`control read ${res.status}`);
       const json = (await res.json()) as {
-        fields?: { showTrigger?: { booleanValue?: boolean }; showId?: { stringValue?: string } };
+        fields?: {
+          showTrigger?: { booleanValue?: boolean };
+          showId?: { stringValue?: string };
+          docked?: { booleanValue?: boolean };
+        };
       };
       if (!cancelled) {
-        cb(json.fields?.showTrigger?.booleanValue === true, json.fields?.showId?.stringValue || null);
+        cb(
+          json.fields?.showTrigger?.booleanValue === true,
+          json.fields?.showId?.stringValue || null,
+          json.fields?.docked?.booleanValue === true
+        );
       }
     } catch (e) {
       if (!cancelled) onError(e as Error);
@@ -330,16 +338,34 @@ export async function raiseShowTrigger(messageId?: string): Promise<void> {
   if (!hasFirebaseEnv()) return;
   // 어느 글을 띄울지도 같이 보낸다. 신호가 목록 폴링보다 빨라서, id가 없으면
   // 외벽이 '아직 아는 것 중 최신' — 즉 앞사람 글 — 을 띄울 수 있다.
-  const mask = 'updateMask.fieldPaths=showTrigger&updateMask.fieldPaths=showId';
+  const mask =
+    'updateMask.fieldPaths=showTrigger&updateMask.fieldPaths=showId&updateMask.fieldPaths=docked';
   await fetch(`${FS_BASE}/${CONTROL_DOC}?key=${FS_KEY}&${mask}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       fields: {
         showTrigger: { booleanValue: true },
-        showId: { stringValue: messageId ?? '' }
+        showId: { stringValue: messageId ?? '' },
+        docked: { booleanValue: true }
       }
     })
+  }).catch(() => {});
+}
+
+/**
+ * 폰이 홈에서 빠졌다.
+ *
+ * 강조가 끝나는 것은 시간이 아니라 이 순간이다 — 벽은 이걸 보고 큰 목소리를
+ * 접고 그 한 줄을 풍경으로 돌려보낸다. showTrigger는 벽이 신호를 받자마자
+ * 스스로 내리기 때문에, 뺀 것을 알리려면 따로 든 깃발이 필요하다.
+ */
+export async function releaseDock(): Promise<void> {
+  if (!hasFirebaseEnv()) return;
+  await fetch(`${FS_BASE}/${CONTROL_DOC}?key=${FS_KEY}&updateMask.fieldPaths=docked`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: { docked: { booleanValue: false } } })
   }).catch(() => {});
 }
 

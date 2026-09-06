@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import InfoOverlay from '../components/InfoOverlay';
-import { STAY_DAYS } from '../lib/wall';
+import FullscreenToggle from '../components/FullscreenToggle';
 
 interface Props {
   onStart: () => void;
@@ -174,6 +174,7 @@ export default function PhaseHome({ onStart }: Props) {
       <div className="home-layer">
         <div className="home-top">
           <span className="home-eyebrow">캠퍼스 공공 발화 시스템</span>
+          <FullscreenToggle />
         </div>
 
         <div className="home-bottom">
@@ -182,31 +183,15 @@ export default function PhaseHome({ onStart }: Props) {
             당신의 형식
           </div>
 
-          <div className="home-tagline">
-            캠퍼스 외벽에 한 줄을 둡니다.<br />
-            {STAY_DAYS}일간 머무르고 사라집니다.
-          </div>
-
-          {/* 시작하기 전에 전체 과정을 한 줄로 — 처음 온 사람이
-              무엇을 하게 되는지 모른 채 첫 버튼을 누르지 않도록 */}
-          <div className="home-steps">
-            <span>
-              <b>1</b> 쓰기
-            </span>
-            <span>
-              <b>2</b> 홈에 꽂기
-            </span>
-            <span>
-              <b>3</b> 외벽에서 보기
-            </span>
-          </div>
-
+          {/* 규칙과 절차는 여기 늘어놓지 않는다. 홈에서 알아야 할 것은
+              '무엇을 할 수 있는가'와 '어디를 누르면 되는가' 둘뿐이고,
+              나머지는 아래 버튼 뒤에서 한 장씩 넘겨 본다. */}
           <div className="home-actions">
             <button className="home-cta" onClick={onStart}>
               시작하기
             </button>
-            <button className="home-link" onClick={() => setInfo(true)}>
-              프로젝트 정보
+            <button className="home-info-btn" onClick={() => setInfo(true)}>
+              무슨 일이 일어나나요
             </button>
           </div>
 

@@ -25,7 +25,7 @@ const BROWSERS = [
   'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
 ];
 
-const SAMPLE_TEXT = '오늘 못 한 말';
+const SAMPLE_TEXT = '여기서 크게 말해본 적 없다';
 
 function findBrowser() {
   const hit = BROWSERS.find((p) => existsSync(p));
@@ -78,9 +78,19 @@ async function main() {
   // 01 Intro
   await shoot(page, '01-home');
 
-  // 01 프로젝트 정보 덮개
-  await page.getByRole('button', { name: '프로젝트 정보' }).click();
-  await shoot(page, '01-info');
+  // 01 프로젝트 정보 — 한 장씩 넘기는 덮개. 첫 장, 도킹 장, 마지막 장.
+  await page.getByRole('button', { name: '무슨 일이 일어나나요' }).click();
+  await shoot(page, '01-info-1');
+  for (let i = 0; i < 3; i++) {
+    await page.getByRole('button', { name: '다음' }).click();
+    await page.waitForTimeout(500);
+  }
+  await capture(page, '01-info-4');
+  for (let i = 0; i < 2; i++) {
+    await page.getByRole('button', { name: '다음' }).click();
+    await page.waitForTimeout(500);
+  }
+  await capture(page, '01-info-6');
 
   // 02 자형 — 고르기 전(빈 무대)과 고른 뒤
   await page.goto(url('/?mock=1'), { waitUntil: 'load' });
@@ -96,9 +106,17 @@ async function main() {
   await page.locator('.live-input').fill(SAMPLE_TEXT);
   await shoot(page, '03-message-filled');
 
-  // 04 최종 미리보기
+  // 04 최종 미리보기 — 여기서만은 모션이 곧 내용이라 세 시점을 찍는다.
+  // (컨텍스트 전체는 모션을 꺼 두었으므로 이 화면에서만 잠깐 켠다)
   await page.locator('.primary-action').click();
   await shoot(page, '04-preview');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.getByRole('button', { name: '다시 보기' }).click();
+  await page.waitForTimeout(1250);
+  await capture(page, '04-preview-burst');
+  await page.waitForTimeout(3800);
+  await capture(page, '04-preview-echo');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
 
   // 05 전송 중 — 최소 노출 시간이 있어 이제 잡힌다 (settle 없이 바로)
   await page.locator('.primary-action').click();
@@ -113,8 +131,9 @@ async function main() {
   await page.getByRole('button', { name: '꽂았어요' }).click();
   await shoot(page, '07-onwall');
 
-  // 08 완료 — 카운트다운이 끝나기를 기다린다
-  await page.waitForSelector('.done-after', { timeout: 20000 });
+  // 08 완료 — 30초를 기다리지 않고, 실제로도 흔한 길인 '폰을 뺐다'로 넘어간다
+  await page.getByRole('button', { name: '폰을 뺐어요' }).click();
+  await page.waitForSelector('.done-after', { timeout: 10000 });
   await shoot(page, '08-done');
 
   await browser.close();

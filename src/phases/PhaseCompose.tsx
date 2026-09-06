@@ -16,7 +16,8 @@ interface Props {
 }
 
 const MAX = 60;
-const PLACEHOLDER = '여기에 말을 적어보세요';
+// 자판을 여는 것이 이 화면의 첫 동작이다. 안내는 그 동작을 그대로 말한다.
+const PLACEHOLDER = '여기를 눌러 쓰세요';
 
 // 효과(배경 그래픽) 기능은 걷어냈다 — 외벽 풍경에서는 렌더되지 않아
 // 머무는 내내가 아니라 10초만 보였고, 라벨(받치기·감싸기)이 약속하는 '글자에 하는 행위'와
@@ -112,7 +113,7 @@ export default function PhaseCompose({
         <span>2 / 3 · 메시지</span>
       </div>
 
-      <div className="proj-stage">
+      <div className="proj-stage is-bleed">
         {/* 미리보기 화면과 같은 16:10 액자. 여기서는 그 안에 직접 쓴다 */}
         <div className="proj-frame" style={{ background: mood.bg, color: mood.text }}>
           <div className="proj-tracks" aria-hidden>
@@ -144,7 +145,7 @@ export default function PhaseCompose({
               className="live-input"
               value={text}
               maxLength={MAX}
-              aria-label="외벽에 올릴 한 줄"
+              aria-label="벽에 올릴 한 줄"
               spellCheck={false}
               style={{ caretColor: mood.text }}
               onChange={(e) => setText(e.target.value.slice(0, MAX))}
@@ -153,7 +154,7 @@ export default function PhaseCompose({
         </div>
 
         <div className="proj-meta">
-          <span>외벽에서 이렇게 보여요</span>
+          <span>벽에서 이렇게 보여요</span>
           {/* 한계에 가까워지면 미리 알린다 — 60자에서 조용히 잘리면
               어디까지 저장됐는지 알 수 없다 */}
           <span className={'proj-meta-end ' + (text.length >= MAX - 10 ? 'is-near' : '')}>

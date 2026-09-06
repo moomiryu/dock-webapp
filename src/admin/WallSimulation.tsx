@@ -9,6 +9,8 @@ import { fontMap } from '../lib/palettes';
 import { palettes as legacyPalettes } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import { EMPHASIS_MS, STAY_MS } from '../lib/wall';
+import { brightestColor } from '../lib/wallColor';
+import { SAMPLE_MESSAGES } from '../lib/samples';
 import {
   isFirebaseConfigured,
   submitMessage,
@@ -18,7 +20,6 @@ import {
   getMessage
 } from '../lib/firebase';
 import type { StoredMessage } from '../lib/firebase';
-import type { ToneState } from '../types';
 
 // ─── Tunables ─────────────────────────────────────────────────────────
 const RECENT_N = 15;                            // fewer reads per poll (quota)
@@ -36,20 +37,6 @@ const TRACKS: ReadonlyArray<{ y: number; duration: number; dir: 'left' | 'right'
 const LANDSCAPE_N = 12; // recent messages in the drifting landscape (denser)
 
 // ─── Helpers ──────────────────────────────────────────────────────────
-
-function luminance(hex: string): number {
-  const h = hex.replace('#', '');
-  if (h.length !== 6) return 0;
-  const r = parseInt(h.slice(0, 2), 16) / 255;
-  const g = parseInt(h.slice(2, 4), 16) / 255;
-  const b = parseInt(h.slice(4, 6), 16) / 255;
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-// Brighter of the mood's two colors — readable on the black landscape.
-function brightestColor(p: { bg: string; text: string }): string {
-  return [p.bg, p.text].sort((a, b) => luminance(b) - luminance(a))[0];
-}
 
 // ─── Component ────────────────────────────────────────────────────────
 
@@ -141,6 +128,7 @@ export default function WallSimulation() {
 
   // Switch trigger → 지목된 글을 크게. 상승 엣지(false→true)에서만.
   const prevTriggerRef = useRef(false);
+  const dockedRef = useRef(false);
   const closeTimerRef = useRef(0);
   const hideTimerRef = useRef(0);
   useEffect(() => {
@@ -150,6 +138,7 @@ export default function WallSimulation() {
       setEmphClosing(false);
       setEmphMsg(msg);
       setEmphKey((k) => k + 1);
+      // EMPHASIS_MS는 상한이다. 대개는 아래 '폰이 빠졌다'가 먼저 끝낸다.
       closeTimerRef.current = window.setTimeout(() => setEmphClosing(true), EMPHASIS_MS - 400);
       hideTimerRef.current = window.setTimeout(() => {
         setEmphMsg(null);
@@ -157,8 +146,25 @@ export default function WallSimulation() {
       }, EMPHASIS_MS);
     };
 
+    const closeNow = () => {
+      clearTimeout(closeTimerRef.current);
+      clearTimeout(hideTimerRef.current);
+      setEmphClosing(true);
+      hideTimerRef.current = window.setTimeout(() => {
+        setEmphMsg(null);
+        setEmphClosing(false);
+      }, 400);
+    };
+
     const unsub = subscribeShowTrigger(
-      (showTrigger, showId) => {
+      (showTrigger, showId, docked) => {
+        // 폰이 빠지는 순간 큰 목소리가 끝나고 메아리로 남는다.
+        // 강조를 끝내는 건 타이머가 아니라 사람이다 — 타이머는 아무도 빼지
+        // 않았을 때를 위한 상한일 뿐이다.
+        const wasDocked = dockedRef.current;
+        dockedRef.current = docked;
+        if (wasDocked && !docked) closeNow();
+
         const rising = showTrigger && !prevTriggerRef.current;
         prevTriggerRef.current = showTrigger;
         if (!rising) return;
@@ -203,15 +209,9 @@ export default function WallSimulation() {
   async function seedSamples() {
     if (seeding) return;
     setSeeding(true);
-    const samples: Array<{ text: string; tone: ToneState }> = [
-      { text: '저는 과기대를 사랑하는데 총장님은 아니신가봐요', tone: { font: 'ttoryeot', tone: 1.0, wght: 700, slnt: 0, size: 56, paletteIdx: 0, graphicIdx: 0 } },
-      { text: '등록금 어디 쓰는지 알려줘', tone: { font: 'chabun', tone: 0.7, wght: 700, slnt: -8, size: 48, paletteIdx: 1, graphicIdx: 3 } },
-      { text: '내일 비 온대', tone: { font: 'doran', tone: 1.3, wght: 400, slnt: 0, size: 44, paletteIdx: 2, graphicIdx: 1 } },
-      { text: '오늘 못 한 말', tone: { font: 'ttoryeot', tone: 1.0, wght: 700, slnt: 0, size: 52, paletteIdx: 4, graphicIdx: 4 } },
-      { text: '여기에 누가 있다', tone: { font: 'deulseok', tone: 1.0, wght: 500, slnt: 0, size: 48, paletteIdx: 3, graphicIdx: -1 } }
-    ];
     try {
-      for (const s of samples) {
+      // 04 미리보기의 풍경과 같은 목록 (lib/samples)
+      for (const s of SAMPLE_MESSAGES) {
         await submitMessage({ text: s.text, tone: s.tone, startedAt: Date.now() });
       }
     } catch (err) {

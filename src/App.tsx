@@ -25,7 +25,7 @@ type Screen =
   | 'compose'  // 03 메시지 (입력 = 미리보기) + 색
   | 'preview'  // 04 최종 미리보기
   | 'submit'   // 05 전송 중 → 06 도킹 안내
-  | 'onwall'   // 07 외벽에 떠 있는 동안
+  | 'onwall'   // 07 벽에 떠 있는 동안
   | 'done';    // 08 완료 — 폰을 가져가는 자리
 
 type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
@@ -54,6 +54,8 @@ export default function App() {
     return d?.tone ? toPartial(d.tone) : null;
   });
   const [ready, setReady] = useState(false);
+  // 07에서 폰을 직접 뺐는지 — 08이 화면 전체를 쓸지 아래 절반만 쓸지 가른다
+  const [pulled, setPulled] = useState(false);
 
   useEffect(() => {
     if (window.location.pathname.startsWith('/admin')) return;
@@ -193,9 +195,16 @@ export default function App() {
       );
 
     case 'onwall':
-      return <PhaseOnWall onDone={() => setScreen('done')} />;
+      return (
+        <PhaseOnWall
+          onDone={(didPull) => {
+            setPulled(didPull);
+            setScreen('done');
+          }}
+        />
+      );
 
     case 'done':
-      return <PhaseDone onRestart={handleRestart} />;
+      return <PhaseDone stillDocked={!pulled} onRestart={handleRestart} />;
   }
 }

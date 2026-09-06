@@ -1,6 +1,6 @@
 import MegafontFrame from '../components/MegafontFrame';
 import { raiseShowTrigger } from '../lib/firebase';
-import { EMPHASIS_SEC } from '../lib/wall';
+import { EMPHASIS_SEC, STAY_DAYS } from '../lib/wall';
 
 interface Props {
   /** 방금 보낸 글의 id — 외벽이 '어느 글을 띄울지' 알아야 한다 */
@@ -35,13 +35,25 @@ export default function PhaseDocking({ messageId, onDocked, devNote }: Props) {
 
         <DockGuide />
 
-        {/* 행동 다음에 결과 — 꽂기 전에 무엇이 일어날지 미리 안다 */}
+        {/* 행동 다음에 결과 — 꽂기 전에 무엇이 일어날지 미리 안다.
+            그리고 끝내는 것도 사람이라는 것까지 미리 말해준다: 꽂아 두는 동안
+            크게 떠 있고, 빼면 거기서 큰 목소리가 끝난다. */}
         <div className="dock-next">
-          <span className="dock-next-label">꽂으면</span>
-          <p>
-            당신의 한 줄이 외벽 한가운데에<br />
-            <b>{EMPHASIS_SEC}초 동안 크게</b> 떠오릅니다.
-          </p>
+          <div className="dock-next-row">
+            <span className="dock-next-label">꽂으면</span>
+            <p>
+              당신의 한 줄이 벽 한가운데에 <b>크게</b> 떠오릅니다.
+            </p>
+          </div>
+          <div className="dock-next-row">
+            <span className="dock-next-label">빼면</span>
+            <p>
+              큰 목소리가 거기서 끝나고, <b>{STAY_DAYS}일간 메아리</b>로 남습니다.
+            </p>
+          </div>
+          <span className="dock-next-cap">
+            아무도 빼지 않으면 {EMPHASIS_SEC}초 뒤 저절로 끝납니다
+          </span>
         </div>
 
         <button className="primary-action" onClick={handleDocked}>

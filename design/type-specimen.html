@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>한글 후보 비교</title>
+<script>
+  (function(d){var c={kitId:'zhl0ile',scriptTimeout:3000,async:true},h=d.documentElement,
+  t=setTimeout(function(){h.className=h.className.replace(/\bwf-loading\b/g,'')+' wf-inactive';},c.scriptTimeout),
+  tk=d.createElement('script'),f=false,s=d.getElementsByTagName('script')[0],a;
+  h.className+=' wf-loading';tk.src='https://use.typekit.net/'+c.kitId+'.js';tk.async=true;
+  tk.onload=tk.onreadystatechange=function(){a=this.readyState;if(f||(a&&a!='complete'&&a!='loaded'))return;
+  f=true;clearTimeout(t);try{Typekit.load(c)}catch(e){}};s.parentNode.insertBefore(tk,s)})(document);
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@1.3.9/dist/web/variable/pretendardvariable.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sunflower:wght@300;500;700&amp;display=block">
+<style>
+  @font-face { font-family:'MaruBuri'; src:url('https://cdn.jsdelivr.net/gh/fonts-archive/MaruBuri@main/MaruBuri-Light.woff2') format('woff2'); font-weight:300; font-display:block }
+  @font-face { font-family:'MaruBuri'; src:url('https://cdn.jsdelivr.net/gh/fonts-archive/MaruBuri@main/MaruBuri-Regular.woff2') format('woff2'); font-weight:400; font-display:block }
+  @font-face { font-family:'MaruBuri'; src:url('https://cdn.jsdelivr.net/gh/fonts-archive/MaruBuri@main/MaruBuri-Bold.woff2') format('woff2'); font-weight:700; font-display:block }
+
+  @font-face { font-family:'NSRound'; src:url('https://cdn.jsdelivr.net/gh/fonts-archive/NanumSquareRound@main/NanumSquareRoundL.woff2') format('woff2'); font-weight:300; font-display:block }
+  @font-face { font-family:'NSRound'; src:url('https://cdn.jsdelivr.net/gh/fonts-archive/NanumSquareRound@main/NanumSquareRound.woff2') format('woff2'); font-weight:400; font-display:block }
+  @font-face { font-family:'NSRound'; src:url('https://cdn.jsdelivr.net/gh/fonts-archive/NanumSquareRound@main/NanumSquareRoundB.woff2') format('woff2'); font-weight:700; font-display:block }
+
+
+  * { box-sizing:border-box; margin:0 }
+  body { font-family:'Pretendard Variable',sans-serif; background:#fff; color:#000; padding:28px 32px 40px; width:1240px }
+  h1 { font-size:22px; font-weight:700; letter-spacing:-.02em }
+  .sub { font-size:13px; color:#767676; margin:6px 0 22px }
+  section { margin-bottom:26px }
+  h2 { font-size:13px; font-weight:600; color:#767676; letter-spacing:.02em;
+       border-bottom:1px solid #d8d8d8; padding-bottom:6px; margin-bottom:14px }
+  .row { display:grid; grid-template-columns:186px repeat(3,1fr); gap:0 14px;
+         align-items:center; padding:10px 0; border-bottom:1px solid #eee }
+  .meta { font-size:12px; line-height:1.45 }
+  .meta b { display:block; font-size:14px; font-weight:600; margin-bottom:3px }
+  .meta i { font-style:normal; color:#767676 }
+  .no { color:#c00; font-weight:600 }
+  .yes { color:#080; font-weight:600 }
+  .cell { font-size:44px; line-height:1.15; white-space:nowrap }
+  .wlab { font-size:10px; color:#aaa; letter-spacing:.04em }
+  .head { display:grid; grid-template-columns:186px repeat(3,1fr); gap:0 14px; padding-bottom:4px }
+  .line { font-size:19px; line-height:1.5; margin-top:2px }
+</style>
+</head>
+<body>
+<h1>말투 네 칸 — 한글 후보 비교</h1>
+<!-- 브라우저로 그냥 열면 된다. 폰트는 전부 공개 CDN과 Adobe 킷에서 온다.
+     산돌 계열은 라이선스가 있어야 실물을 붙일 수 있어 여기 없다. -->
+<div class="sub">조건: 3단계 굵기 · 같은 패밀리의 장체 · 웹폰트 임베딩 가능한 라이선스 &nbsp;|&nbsp; 표본 '발화' + 실제 문장</div>
+
+<section>
+  <h2>지금 쓰고 있는 넷</h2>
+  <div class="head"><span></span><span class="wlab">여리게 300</span><span class="wlab">보통 500</span><span class="wlab">세게 700</span></div>
+
+  <div class="row">
+    <div class="meta"><b>다정한 — jjgulwol</b><i>Adobe · 붓 손글씨</i><br><span class="no">굵기 2종</span> · 장체 <span class="no">없음</span></div>
+    <div class="cell" style="font-family:jjgulwol;font-weight:300">발화</div>
+    <div class="cell" style="font-family:jjgulwol;font-weight:500">발화</div>
+    <div class="cell" style="font-family:jjgulwol;font-weight:700">발화</div>
+  </div>
+  <div class="row">
+    <div class="meta"><b>발랄한 — Sunflower</b><i>둥근 산세리프</i><br>굵기 3종 · 장체 <span class="no">없음</span><br><span class="no">당당한과 골격 겹침</span></div>
+    <div class="cell" style="font-family:Sunflower;font-weight:300">발화</div>
+    <div class="cell" style="font-family:Sunflower;font-weight:500">발화</div>
+    <div class="cell" style="font-family:Sunflower;font-weight:700">발화</div>
+  </div>
+  <div class="row">
+    <div class="meta"><b>당당한 — 서울남산체</b><i>Adobe · 각진 고딕</i><br><span class="yes">굵기 4종</span> · 장체 <span class="yes">있음</span></div>
+    <div class="cell" style="font-family:seoul-namsan;font-weight:300">발화</div>
+    <div class="cell" style="font-family:seoul-namsan;font-weight:500">발화</div>
+    <div class="cell" style="font-family:seoul-namsan;font-weight:700">발화</div>
+  </div>
+  <div class="row">
+    <div class="meta"><b>차분한 — 김정철명조</b><i>Adobe · 붓 명조</i><br><span class="no">굵기 2종</span> · 장체 <span class="no">없음</span></div>
+    <div class="cell" style="font-family:kim-jung-chul-myungjo;font-weight:300">발화</div>
+    <div class="cell" style="font-family:kim-jung-chul-myungjo;font-weight:500">발화</div>
+    <div class="cell" style="font-family:kim-jung-chul-myungjo;font-weight:700">발화</div>
+  </div>
+</section>
+
+<section>
+  <h2>후보 — 무료 (웹폰트 임베딩 허용)</h2>
+  <div class="head"><span></span><span class="wlab">여리게</span><span class="wlab">보통</span><span class="wlab">세게</span></div>
+
+  <div class="row">
+    <div class="meta"><b>마루 부리</b><i>네이버 · 부리(명조)</i><br><span class="yes">굵기 5종</span> · 장체 <span class="no">없음</span><br><i>차분한 후보</i></div>
+    <div class="cell" style="font-family:MaruBuri;font-weight:300">발화</div>
+    <div class="cell" style="font-family:MaruBuri;font-weight:400">발화</div>
+    <div class="cell" style="font-family:MaruBuri;font-weight:700">발화</div>
+  </div>
+  <div class="row">
+    <div class="meta"><b>나눔스퀘어라운드</b><i>네이버 · 둥근 고딕</i><br><span class="yes">굵기 4종</span> · 장체 <span class="no">없음</span><br><i>발랄한 후보</i></div>
+    <div class="cell" style="font-family:NSRound;font-weight:300">발화</div>
+    <div class="cell" style="font-family:NSRound;font-weight:400">발화</div>
+    <div class="cell" style="font-family:NSRound;font-weight:700">발화</div>
+  </div>
+  <div class="row">
+    <div class="meta"><b>안상수체 2012</b><i>Adobe · 탈네모</i><br><span class="yes">굵기 3종</span> · 장체 <span class="no">없음</span><br><i>발랄한 후보</i></div>
+    <div class="cell" style="font-family:agahnsangsoo2012;font-weight:300">발화</div>
+    <div class="cell" style="font-family:agahnsangsoo2012;font-weight:500">발화</div>
+    <div class="cell" style="font-family:agahnsangsoo2012;font-weight:700">발화</div>
+  </div>
+</section>
+
+<section>
+  <h2>장체가 실제로 있는 것 — 서울남산체 정체 vs 장체</h2>
+  <div class="head"><span></span><span class="wlab">여리게 300</span><span class="wlab">보통 500</span><span class="wlab">세게 700</span></div>
+  <div class="row">
+    <div class="meta"><b>서울남산체 정체</b><i>가로폭 100%</i></div>
+    <div class="cell" style="font-family:seoul-namsan;font-weight:300">발화하기</div>
+    <div class="cell" style="font-family:seoul-namsan;font-weight:500">발화하기</div>
+    <div class="cell" style="font-family:seoul-namsan;font-weight:700">발화하기</div>
+  </div>
+  <div class="row">
+    <div class="meta"><b>서울남산체 장체</b><i>진짜 좁은 폭</i><br><span class="yes">획 굵기가 유지된다</span></div>
+    <div class="cell" style="font-family:seoul-namsan-condensed;font-weight:300">발화하기</div>
+    <div class="cell" style="font-family:seoul-namsan-condensed;font-weight:500">발화하기</div>
+    <div class="cell" style="font-family:seoul-namsan-condensed;font-weight:700">발화하기</div>
+  </div>
+  <div class="row">
+    <div class="meta"><b>지금 우리 방식</b><i>정체에 scaleX(0.7)</i><br><span class="no">세로획이 같이 얇아진다</span></div>
+    <div class="cell" style="font-family:seoul-namsan;font-weight:300;transform:scaleX(.7);transform-origin:left">발화하기</div>
+    <div class="cell" style="font-family:seoul-namsan;font-weight:500;transform:scaleX(.7);transform-origin:left">발화하기</div>
+    <div class="cell" style="font-family:seoul-namsan;font-weight:700;transform:scaleX(.7);transform-origin:left">발화하기</div>
+  </div>
+</section>
+
+<section>
+  <h2>문장으로</h2>
+  <div class="line" style="font-family:seoul-namsan;font-weight:500">서울남산체 &nbsp;— 여기서 크게 말해본 적 없다</div>
+  <div class="line" style="font-family:seoul-namsan-condensed;font-weight:500">서울남산 장체 — 여기서 크게 말해본 적 없다</div>
+  <div class="line" style="font-family:MaruBuri;font-weight:400">마루 부리 &nbsp;&nbsp;&nbsp;— 여기서 크게 말해본 적 없다</div>
+  <div class="line" style="font-family:NSRound;font-weight:400">나눔스퀘어라운드 — 여기서 크게 말해본 적 없다</div>
+  <div class="line" style="font-family:agahnsangsoo2012;font-weight:500">안상수체 2012 — 여기서 크게 말해본 적 없다</div>
+  <div class="line" style="font-family:jjgulwol;font-weight:300">jjgulwol &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— 여기서 크게 말해본 적 없다</div>
+  <div class="line" style="font-family:kim-jung-chul-myungjo;font-weight:300">김정철명조 &nbsp;&nbsp;— 여기서 크게 말해본 적 없다</div>
+</section>
+</body>
+</html>

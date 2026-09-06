@@ -926,3 +926,136 @@
     width: 100%;
   }
 }
+
+/* ─── 06 꽂기 전에 알려주는 결과 ────────────────────────────── */
+
+.dock-next {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  margin-top: 4px;
+}
+
+.dock-next-label {
+  font-family: var(--label-font);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.dock-next p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.dock-next b {
+  font-weight: 600;
+}
+
+/* ─── 07 외벽에 떠 있는 동안 ────────────────────────────────
+   폰이 아니라 외벽을 보게 해야 하는 화면이라 요소를 최소로 둔다 */
+
+.onwall {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  padding: 20px 0;
+}
+
+.onwall-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.onwall-head h1 {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.onwall-head p {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* 멀리서 곁눈질로도 읽히는 크기 — 이 화면은 들여다보는 게 아니다 */
+.onwall-count {
+  font-family: var(--label-font);
+  font-size: 108px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.onwall-bar {
+  height: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.onwall-bar i {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+  transition: width 120ms linear;
+}
+
+.onwall-note {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.onwall-hold {
+  font-family: var(--label-font);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  margin-top: 4px;
+}
+
+/* ─── 08 완료 ───────────────────────────────────────────────── */
+
+.done-lead {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink) !important;
+}
+
+.done-after {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  margin-top: 6px;
+}
+
+/* ─── 홈: 무엇을 하게 되는지 미리 ───────────────────────────── */
+
+.home-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-family: var(--label-font);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.home-steps b {
+  color: var(--ink);
+  font-weight: 400;
+}

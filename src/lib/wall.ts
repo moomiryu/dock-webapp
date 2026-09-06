@@ -11,3 +11,11 @@ export const WALL_H_M = 1.5;
  */
 export const STAY_DAYS = 3;
 export const STAY_MS = STAY_DAYS * 24 * 60 * 60 * 1000;
+
+/**
+ * 도킹 직후 그 한 줄만 외벽을 통째로 차지하는 시간.
+ * /wall의 강조 렌더와 앱의 '지금 떠 있어요' 화면이 같은 초를 세야 한다 —
+ * 폰이 10을 세는데 외벽이 8초 만에 끝나면 결과를 잘못 읽는다.
+ */
+export const EMPHASIS_MS = 10_000;
+export const EMPHASIS_SEC = EMPHASIS_MS / 1000;

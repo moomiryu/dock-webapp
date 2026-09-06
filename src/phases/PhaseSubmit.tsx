@@ -13,12 +13,14 @@ type Status =
 
 interface Props {
   draft: Draft | null;
+  /** 폰이 홈에 꽂혔을 때 — 다음은 외벽에 떠 있는 화면(07) */
+  onDocked: () => void;
   onRestart: () => void;
 }
 
 // 전송을 맡고, 그 상태에 따라 05(보내는 중)와 06(도킹)을 갈아 끼운다.
 // 두 화면은 각자 파일로 나뉘어 있고 여기는 순서만 정한다.
-export default function PhaseSubmit({ draft, onRestart }: Props) {
+export default function PhaseSubmit({ draft, onDocked, onRestart }: Props) {
   const [status, setStatus] = useState<Status>({ kind: 'sending' });
   const [progress, setProgress] = useState(0);
 
@@ -64,7 +66,7 @@ export default function PhaseSubmit({ draft, onRestart }: Props) {
   if (status.kind === 'sent') {
     return (
       <PhaseDocking
-        onRestart={onRestart}
+        onDocked={onDocked}
         devNote={
           isFirebaseConfigured()
             ? null

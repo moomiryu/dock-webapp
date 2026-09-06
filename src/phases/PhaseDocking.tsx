@@ -1,20 +1,23 @@
 import MegafontFrame from '../components/MegafontFrame';
-import { STAY_DAYS } from '../lib/wall';
+import { EMPHASIS_SEC } from '../lib/wall';
 
 interface Props {
-  onRestart: () => void;
+  /** 폰이 홈에 꽂혔을 때. 실제 설치에서는 NFC·센서가 이걸 부른다 */
+  onDocked: () => void;
   /** Firebase 미연결일 때만 뜨는 개발 참고줄 */
   devNote?: string | null;
 }
 
-// 06 Docking — 마지막 화면. 화면 밖으로 사용자를 내보낸다.
-// 글이 아니라 *동작*을 지시해야 해서, 문장 옆에 폰이 홈에 들어가는
-// 픽토그램을 반복 재생한다. (모션은 prefers-reduced-motion에서 멈춘다)
-export default function PhaseDocking({ onRestart, devNote }: Props) {
+// 06 Docking — 화면 밖으로 사용자를 내보내는 자리.
+//
+// 지시만 하고 끝내면 사용자는 꽂은 뒤 무슨 일이 생기는지 모른 채 서 있게 된다.
+// 그래서 '무엇을 하라'와 '그러면 무엇이 일어난다'를 한 화면에 같이 둔다.
+export default function PhaseDocking({ onDocked, devNote }: Props) {
   return (
     <MegafontFrame phaseLabel="도킹">
       <div className="guide-hero">
         <h1>이제 홈에 꽂아주세요</h1>
+
         <p>
           폰 위쪽이 먼저 들어가도록,<br />
           세로로 밀어 넣어주세요.
@@ -22,13 +25,24 @@ export default function PhaseDocking({ onRestart, devNote }: Props) {
 
         <DockGuide />
 
-        <p>외벽엔 {STAY_DAYS}일간 머무릅니다. 그 뒤에는 남지 않아요.</p>
+        {/* 행동 다음에 결과 — 꽂기 전에 무엇이 일어날지 미리 안다 */}
+        <div className="dock-next">
+          <span className="dock-next-label">꽂으면</span>
+          <p>
+            당신의 한 줄이 외벽 한가운데에<br />
+            <b>{EMPHASIS_SEC}초 동안 크게</b> 떠오릅니다.
+          </p>
+        </div>
+
+        <button className="primary-action" onClick={onDocked}>
+          <span>꽂았어요</span>
+        </button>
+
+        <p className="dev-note">
+          실제 설치에서는 꽂는 순간 저절로 넘어갑니다. 지금은 장치가 없어 버튼으로 대신해요.
+        </p>
 
         {devNote && <p className="dev-note">{devNote}</p>}
-
-        <button className="done-home-link" onClick={onRestart}>
-          처음으로
-        </button>
       </div>
     </MegafontFrame>
   );
@@ -40,7 +54,7 @@ export default function PhaseDocking({ onRestart, devNote }: Props) {
 function DockGuide() {
   return (
     <div className="dock-guide" aria-hidden>
-      <svg viewBox="0 0 140 190" width="126" height="171">
+      <svg viewBox="0 0 140 190" width="112" height="152">
         {/* 내려가는 폰 — 세로로, 위쪽(스피커 쪽)이 아래를 향한다 */}
         <g className="dock-phone">
           <rect

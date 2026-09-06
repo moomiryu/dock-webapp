@@ -187,6 +187,20 @@ export default function PhaseHome({ onStart }: Props) {
             {STAY_DAYS}일간 머무르고 사라집니다.
           </div>
 
+          {/* 시작하기 전에 전체 과정을 한 줄로 — 처음 온 사람이
+              무엇을 하게 되는지 모른 채 첫 버튼을 누르지 않도록 */}
+          <div className="home-steps">
+            <span>
+              <b>1</b> 쓰기
+            </span>
+            <span>
+              <b>2</b> 홈에 꽂기
+            </span>
+            <span>
+              <b>3</b> 외벽에서 보기
+            </span>
+          </div>
+
           <div className="home-actions">
             <button className="home-cta" onClick={onStart}>
               시작하기

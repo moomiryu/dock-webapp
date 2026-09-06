@@ -6,7 +6,7 @@
 // mock 모드(?mock=1)로 돌기 때문에 마지막 전송이 Firestore에 닿지 않는다.
 // 시스템에 설치된 Chrome 또는 Edge를 그대로 쓴다 (브라우저 내려받지 않음).
 //
-// 파일 번호는 플로우 문서(00 Splash ~ 06 Docking)를 따른다.
+// 파일 번호는 플로우 문서(00 Splash ~ 08 Done)를 따른다.
 // 못 찍는 화면: 05 Processing (mock 전송이 즉시 끝나 한 프레임도 남지 않음).
 
 import { chromium } from 'playwright-core';
@@ -105,6 +105,14 @@ async function main() {
   await page.locator('.primary-action').click();
   await page.waitForTimeout(1200);
   await shoot(page, '06-docking');
+
+  // 07 외벽에 떠 있는 동안 (실제 설치에서는 센서가 부르는 전환)
+  await page.getByRole('button', { name: '꽂았어요' }).click();
+  await shoot(page, '07-onwall');
+
+  // 08 완료 — 카운트다운이 끝나기를 기다린다
+  await page.waitForSelector('.done-after', { timeout: 20000 });
+  await shoot(page, '08-done');
 
   await browser.close();
   console.log('\n완료.');

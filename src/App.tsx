@@ -7,6 +7,8 @@ import PhaseGlyph from './phases/PhaseGlyph';
 import PhaseCompose from './phases/PhaseCompose';
 import PhasePreview from './phases/PhasePreview';
 import PhaseSubmit from './phases/PhaseSubmit';
+import PhaseOnWall from './phases/PhaseOnWall';
+import PhaseDone from './phases/PhaseDone';
 import {
   clearDraft,
   loadDraft,
@@ -22,7 +24,9 @@ type Screen =
   | 'glyph'    // 02 자형
   | 'compose'  // 03 메시지 (입력 = 미리보기) + 색
   | 'preview'  // 04 최종 미리보기
-  | 'submit';  // 05 전송 중 → 06 도킹
+  | 'submit'   // 05 전송 중 → 06 도킹 안내
+  | 'onwall'   // 07 외벽에 떠 있는 동안
+  | 'done';    // 08 완료 — 폰을 가져가는 자리
 
 type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
 
@@ -180,6 +184,18 @@ export default function App() {
       );
 
     case 'submit':
-      return <PhaseSubmit draft={draft} onRestart={handleRestart} />;
+      return (
+        <PhaseSubmit
+          draft={draft}
+          onDocked={() => setScreen('onwall')}
+          onRestart={handleRestart}
+        />
+      );
+
+    case 'onwall':
+      return <PhaseOnWall onDone={() => setScreen('done')} />;
+
+    case 'done':
+      return <PhaseDone onRestart={handleRestart} />;
   }
 }

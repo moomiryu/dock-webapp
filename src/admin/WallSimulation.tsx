@@ -8,7 +8,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fontMap } from '../lib/palettes';
 import { palettes as legacyPalettes } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
-import { STAY_MS } from '../lib/wall';
+import { EMPHASIS_MS, STAY_MS } from '../lib/wall';
 import {
   isFirebaseConfigured,
   submitMessage,
@@ -22,7 +22,6 @@ import type { ToneState } from '../types';
 // ─── Tunables ─────────────────────────────────────────────────────────
 const RECENT_N = 15;                            // fewer reads per poll (quota)
 // 체류 기간은 lib/wall.ts 한 곳에서 정한다 (아카이브가 따로 없으니 이게 수명 전부)
-const EMPHASIS_MS = 10_000; // how long a triggered message stays solo at center
 const LOAD_TIMEOUT_MS = 20000;
 
 // Three well-spaced tracks; blocks drift horizontally. Phase is distributed

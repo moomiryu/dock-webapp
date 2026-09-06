@@ -3,7 +3,7 @@ import type { Stage } from '../types';
 export function getStageFromUrl(): Stage {
   const params = new URLSearchParams(window.location.search);
   const raw = params.get('stage');
-  if (raw === 'enter' || raw === 'submit') return raw;
+  if (raw === 'enter') return raw;
   return null;
 }
 

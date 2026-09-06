@@ -601,6 +601,18 @@
   color: var(--muted);
 }
 
+.proj-meta-end.is-near {
+  font-weight: 600;
+}
+
+.proj-meta-end.is-near span {
+  color: var(--ink);
+}
+
+.proj-meta-full {
+  font-weight: 400;
+}
+
 .proj-meta {
   display: flex;
   flex-wrap: wrap;

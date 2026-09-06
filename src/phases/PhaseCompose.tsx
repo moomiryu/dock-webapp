@@ -154,9 +154,12 @@ export default function PhaseCompose({
 
         <div className="proj-meta">
           <span>외벽에서 이렇게 보여요</span>
-          <span className="proj-meta-end">
+          {/* 한계에 가까워지면 미리 알린다 — 60자에서 조용히 잘리면
+              어디까지 저장됐는지 알 수 없다 */}
+          <span className={'proj-meta-end ' + (text.length >= MAX - 10 ? 'is-near' : '')}>
             {text.length}
             <span>/{MAX}</span>
+            {text.length >= MAX && <span className="proj-meta-full"> 여기까지예요</span>}
           </span>
         </div>
       </div>

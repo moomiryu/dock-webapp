@@ -23,6 +23,13 @@ export interface Draft {
   text: string;
   tone: ToneState | null;
   startedAt: number;
+  /** 마지막으로 손댄 시각. 오래된 초안은 다음 사람에게 넘어가지 않는다 */
+  touchedAt?: number;
 }
 
-export type Stage = 'enter' | 'submit' | null;
+/**
+ * NFC 진입만 남긴다. 'submit'은 물리 도킹이 없던 시절의 우회로였는데,
+ * 이제 06→07→08이 실제 결과를 다루므로 그걸 통째로 건너뛰는 입구는
+ * 플로우에 구멍만 낸다.
+ */
+export type Stage = 'enter' | null;

@@ -38,7 +38,6 @@ function toPartial(tone: ToneState): PartialTone {
 }
 
 function pickInitialScreen(stage: ReturnType<typeof getStageFromUrl>, draft: Draft | null): Screen {
-  if (stage === 'submit') return 'submit';
   if (stage === 'enter') {
     // NFC arrival — bypass home. Resume at preview if a full draft exists.
     if (draft && draft.tone && draft.text) return 'preview';

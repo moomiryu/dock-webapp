@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { registerSW } from 'virtual:pwa-register';
+import { trackViewport } from './lib/viewport';
 import './styles/global.css';
 import './styles/app.css';
 
@@ -20,6 +21,9 @@ if (isDisplaySurface) {
 } else {
   registerSW({ immediate: true });
 }
+
+// 자판이 올라온 동안 실제로 보이는 높이를 CSS 변수로 흘려보낸다
+trackViewport();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

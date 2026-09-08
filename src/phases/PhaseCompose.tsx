@@ -115,7 +115,7 @@ export default function PhaseCompose({
   const lowWght = Math.max(100, Math.round(partialTone.wght * 0.5));
 
   return (
-    <div className="z-frame">
+    <div className="z-frame compose-screen">
       <div className="z-header">
         <BackButton label="말하는 법으로" onClick={() => onBack(text, { ...partialTone, paletteIdx: moodIdx, graphicIdx: GRAPHIC_OFF })} />
         <span>3 / 5 · 한 줄</span>
@@ -123,8 +123,22 @@ export default function PhaseCompose({
       <StepRail step={3} />
 
       <div className="proj-stage is-bleed">
-        {/* 미리보기 화면과 같은 16:10 액자. 여기서는 그 안에 직접 쓴다 */}
-        <div className="proj-frame" style={{ background: '#000000', color: mood.text }}>
+        {/* 미리보기 화면과 같은 16:10 액자. 여기서는 그 안에 직접 쓴다.
+            proj-fit이 남은 세로를 재고, 액자는 그 안에 비율을 지킨 채 들어간다 —
+            자판이 올라와 자리가 좁아지면 액자가 접히고 버튼은 화면에 남는다. */}
+        <div className="proj-fit">
+        <div
+          className="proj-frame"
+          style={{ background: '#000000', color: mood.text }}
+          onPointerDown={(e) => {
+            // 검은 화면 어디를 눌러도 쓸 수 있어야 한다. 캡슐만 입력이면
+            // 그 밖을 누른 사람은 아무 일도 일어나지 않는 걸 보게 된다.
+            if (e.target !== inputRef.current) {
+              e.preventDefault();
+              inputRef.current?.focus({ preventScroll: true });
+            }
+          }}
+        >
           <div className="proj-tracks" aria-hidden>
             <span style={{ top: '20%' }} />
             <span style={{ top: '50%' }} />
@@ -163,6 +177,7 @@ export default function PhaseCompose({
             />
           </div>
           </div>
+        </div>
         </div>
 
         <div className="proj-meta">

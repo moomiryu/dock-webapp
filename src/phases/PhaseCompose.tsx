@@ -117,8 +117,8 @@ export default function PhaseCompose({
   return (
     <div className="z-frame">
       <div className="z-header">
-        <BackButton label="말투 다듬기로" onClick={() => onBack(text, { ...partialTone, paletteIdx: moodIdx, graphicIdx: GRAPHIC_OFF })} />
-        <span>Step 3 / 5 · Write</span>
+        <BackButton label="말하는 법으로" onClick={() => onBack(text, { ...partialTone, paletteIdx: moodIdx, graphicIdx: GRAPHIC_OFF })} />
+        <span>3 / 5 · 한 줄</span>
       </div>
       <StepRail step={3} />
 
@@ -180,9 +180,7 @@ export default function PhaseCompose({
       </div>
 
       <button className="primary-action" disabled={empty} onClick={handleSubmit}>
-        <span>
-          다음<em>색 고르기</em>
-        </span>
+        <span>다 썼어요</span>
       </button>
 
     </div>

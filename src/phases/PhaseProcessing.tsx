@@ -17,11 +17,11 @@ const CIRC = 2 * Math.PI * R;
 export default function PhaseProcessing({ progress }: Props) {
   const pct = Math.round(progress * 100);
   return (
-    <MegafontFrame phaseLabel="보내는 중">
+    <MegafontFrame phaseLabel="벽으로 가는 중">
       <div className="send-hero">
         <div className="send-copy">
-          <h1>벽으로 보내는 중</h1>
-          <p>한 줄이 벽에 닿는 중입니다.</p>
+          <h1>벽으로 가는 중</h1>
+          <p>한 줄이 먼저 도착하고 있어요.</p>
         </div>
 
         <div
@@ -30,7 +30,7 @@ export default function PhaseProcessing({ progress }: Props) {
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={pct}
-          aria-label="벽으로 보내는 중"
+          aria-label="벽으로 가는 중"
         >
           <svg viewBox="0 0 120 120" width="176" height="176" aria-hidden>
             <g className="send-waves">

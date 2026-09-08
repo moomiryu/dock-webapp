@@ -15,7 +15,7 @@ export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
     <div className="z-frame z1 tone-choice">
       <div className="z-header">
         <BackButton label="처음으로" onClick={onBack} />
-        <span>Step 1 / 5 · Voice</span>
+        <span>1 / 5 · 말투</span>
       </div>
       <StepRail step={1} />
       <div className="z-ask">
@@ -34,7 +34,7 @@ export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
         ))}
       </div>
       <button className="primary-action" disabled={!font}
-        onClick={() => font && onNext({ ...(initialTone ?? DEFAULT_TONE), font })}>다음</button>
+        onClick={() => font && onNext({ ...(initialTone ?? DEFAULT_TONE), font })}>이 말투로 할게요</button>
     </div>
   );
 }

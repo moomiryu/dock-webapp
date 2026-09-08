@@ -151,7 +151,7 @@ export default function PhaseSubmit({ draft, onDocked, onEdit, onRestart }: Prop
         {hasDraft ? (
           <>
             <button className="primary-action" onClick={retry}>
-              <span>다시 보내기</span>
+              <span>다시 보낼게요</span>
             </button>
             <button className="done-home-link" onClick={onEdit}>
               고쳐 쓰기

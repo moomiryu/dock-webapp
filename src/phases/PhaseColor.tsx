@@ -21,7 +21,7 @@ export default function PhaseColor({ text, tone, onBack, onNext }: Props) {
     <div className="z-frame color-choice">
       <div className="z-header">
         <BackButton label="한 줄 다시 쓰기" onClick={() => onBack(current)} />
-        <span>Step 4 / 5 · Color</span>
+        <span>4 / 5 · 색</span>
       </div>
       <StepRail step={4} />
       <div className="z-ask">

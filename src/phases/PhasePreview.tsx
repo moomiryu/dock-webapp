@@ -120,7 +120,7 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
     <div className="z-frame">
       <div className="z-header">
         <BackButton label="색 다시 고르기" onClick={onBack} />
-        <span>Step 5 / 5 · Preview</span>
+        <span>5 / 5 · 벽에서 보기</span>
       </div>
       <StepRail step={5} />
 
@@ -210,9 +210,10 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
         </div>
       </div>
 
-      {/* 행동이 그대로 드러나는 말. '맡기기'는 무엇이 일어나는지 숨겼다. */}
+      {/* 이 버튼만 사람을 일으켜 세운다. 발화는 여기서 일어나지 않는다 --
+          꽂아야 일어난다. 그래서 이름이 다음에 할 몸짓을 그대로 말한다. */}
       <button className="primary-action" onClick={onConfirm}>
-        <span>발화하기</span>
+        <span>꽂으러 갈게요</span>
       </button>
 
     </div>

@@ -21,14 +21,17 @@ const TONE_STOPS = [
 // 기울기 — 저장값은 음수 skewX (예전 방향 그대로)
 const SLNT_STOPS = [
   { val: 0, label: '또박또박' },
-  { val: -12, label: '기울여' },
+  { val: -12, label: '편하게' },
   { val: -24, label: '흘려' }
 ];
 
+// 축 이름은 도구 이름이 아니라 말하는 방식이다.
+// 굵기·너비·기울기는 활자를 다루는 사람의 말이고, 여기 선 사람은
+// 폰트를 조작하는 게 아니라 어떻게 말할지를 정하는 중이다.
 const AXIS_LABELS = {
-  WGHT: '굵기',
-  TONE: '너비',
-  SLNT: '기울기'
+  WGHT: '목소리',
+  TONE: '속도',
+  SLNT: '말끝'
 } as const;
 
 
@@ -39,12 +42,12 @@ export default function PhaseTone({ initialTone, onBack, onNext }: Props) {
     <div className="z-frame z1 tone-adjust">
       <div className="z-header">
         <BackButton label="말투 다시 고르기" onClick={() => onBack(tone)} />
-        <span>Step 2 / 5 · Shape</span>
+        <span>2 / 5 · 말하는 법</span>
       </div>
       <StepRail step={2} />
       <div className="z-ask">
-        <h1>말투를 조금 다듬어볼까요?</h1>
-        <p>지금 모습 그대로 넘어가도 좋아요.</p>
+        <h1>어떻게 말할까요?</h1>
+        <p>그대로 두어도 괜찮아요.</p>
       </div>
       <div className="tone-selected">
         <span>{label} 말투</span>
@@ -61,7 +64,7 @@ export default function PhaseTone({ initialTone, onBack, onNext }: Props) {
         <StepPicker label={AXIS_LABELS.TONE} stops={TONE_STOPS} value={tone.tone} onPick={value => setTone(t => ({ ...t, tone: value }))} />
         <StepPicker label={AXIS_LABELS.SLNT} stops={SLNT_STOPS} value={tone.slnt} onPick={slnt => setTone(t => ({ ...t, slnt }))} />
       </div>
-      <button className="primary-action" onClick={() => onNext(tone)}>다음</button>
+      <button className="primary-action" onClick={() => onNext(tone)}>이렇게 말할게요</button>
     </div>
   );
 }

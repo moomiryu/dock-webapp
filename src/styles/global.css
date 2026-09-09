@@ -692,9 +692,61 @@ body.wall-mode {
   opacity: 0.55;
 }
 
-/* Shared message container: rounded ends with generous type-relative inset. */
-.voice-bubble{ display: inline-block; max-width: 88%; padding: 0.5em 1em; border-radius: 999px; box-sizing: border-box; }
-.voice-bubble-text{ white-space: pre-wrap; word-break: keep-all; text-align: center; line-height: 1.25; transform-origin: center; }
+/* 말풍선의 몸은 더 이상 캡슐이 아니다.
+   전에는 둥근 사각형 하나가 배경이었고, 줄이 어떻게 바뀌든 그 사각형은
+   그대로였다 -- 글이 짧아도 상자는 상자였다. 지금은 글자 자신을 살찌워
+   뭉친 것이 곧 몸이다. 줄이 짧으면 거기가 좁아지고, 낱말 사이가 뜨면
+   잘록해진다. 형태가 글을 따라간다.
+
+   두 층이 같은 상자를 정확히 나눠 쓴다: 아래층은 필터를 먹은 덩어리,
+   위층은 읽는 글자. 둘 다 같은 폰트·크기·정렬을 물려받아야 어긋나지 않으므로
+   그 값들은 .voice-bubble 한 곳에서만 정한다. */
+.voice-bubble{
+  display: inline-block;
+  position: relative;
+  max-width: 88%;
+  padding: 0.34em 0.5em;
+  box-sizing: border-box;
+  background: none;
+  border-radius: 0;
+}
+
+.voice-bubble-text{
+  position: relative;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  text-align: center;
+  line-height: 1.25;
+  transform-origin: center;
+}
+
+/* 아래층. inset:0 이라 위층과 같은 상자를 받고, 같은 규칙으로 줄이 바뀐다.
+
+   색은 여기서 한 번만 정하고 안쪽이 물려받는다. 안쪽 글자에 직접 걸면
+   화면마다 글자를 담는 클래스가 달라서(.voice-bubble-text / .wall-emphasis-text)
+   한 군데는 빠진다 -- 그러면 덩어리가 글자색 그대로 뭉쳐 검정 위에서
+   통째로 사라진다. color · -webkit-text-stroke-color · paint-order 셋 다
+   상속되는 속성이라 이 자리가 맞다.
+
+   paint-order를 뒤집어야 두꺼워진 획이 글자 속을 먹지 않고 바깥으로만
+   자란다. 두께는 컴포넌트가 em으로 넣는다. */
+.voice-blob{
+  position: absolute;
+  inset: 0;
+  padding: inherit;
+  pointer-events: none;
+  color: var(--blob);
+  -webkit-text-stroke-color: var(--blob);
+  paint-order: stroke fill;
+}
+
+/* 필터를 담아 두는 자리. 그림이 아니라 정의라서 크기를 갖지 않는다. */
+.mf-defs{
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
 .wall-block{ max-width: 29vw; transform: translateY(-50%); }
 .wall-block .voice-bubble{ max-width: 100%; }
 .wall-show .voice-bubble{ max-width: 88vw; }

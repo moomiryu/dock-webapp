@@ -4,6 +4,7 @@ import StepRail from '../components/StepRail';
 import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import { fitFontSize } from '../lib/fit';
+import MetaballFilter, { STROKE_EM, useGoo } from '../components/MetaballFilter';
 import type { ToneState } from '../types';
 
 type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
@@ -37,7 +38,11 @@ export default function PhaseCompose({
   const moodIdx = initialPaletteIdx ?? 0;
 
   const renderRef = useRef<HTMLDivElement>(null);
+  const blobRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // 쓰는 동안 덩어리가 글을 따라온다. 여기는 고요하다 -- 글자를 고르는
+  // 중에 바닥이 일렁이면 읽기가 어렵다. 물결은 벽과 미리보기의 몫이다.
+  const goo = useGoo(0);
 
   // 이 화면의 첫 동작은 자판을 여는 것이다. 열 수 있는 곳에서는 열어 둔다.
   // (iOS는 손짓 없이 자판을 올리지 않는다 — 그래서 안내 문구도 같이 둔다)
@@ -65,9 +70,10 @@ export default function PhaseCompose({
     const visible = text.trim();
     if (!visible) {
       el.innerHTML = '';
+      if (blobRef.current) blobRef.current.innerHTML = '';
       return;
     }
-    el.innerHTML = visible
+    const markup = visible
       .split('\n')
       .map((line) =>
         line
@@ -77,6 +83,8 @@ export default function PhaseCompose({
           .join(' ')
       )
       .join('<br>');
+    el.innerHTML = markup;
+    if (blobRef.current) blobRef.current.innerHTML = markup;
     const spans = el.querySelectorAll<HTMLSpanElement>('.word');
 
     let curTop: number | null = null;
@@ -145,12 +153,38 @@ export default function PhaseCompose({
             <span style={{ top: '80%' }} />
           </div>
 
-          <div className="compose-bubble" style={{ background: mood.bg }}>
+          <div
+            ref={goo.hostRef}
+            className="compose-bubble"
+            style={{
+              ['--blob' as string]: mood.bg,
+              fontSize: `calc(${fitSize} * 0.65 / ${Math.max(1, partialTone.tone) + Math.abs(Math.tan(partialTone.slnt * Math.PI / 180))})`
+            }}
+          >
+          <MetaballFilter id={goo.filterId} blur={goo.blur} />
+
+          {/* 아래층 -- 쓰는 대로 자라는 덩어리. 위층과 같은 낱말 조각을
+              받아 같은 자리에서 같은 규칙으로 줄이 바뀐다. */}
+          <div className="voice-blob" style={{ filter: `url(#${goo.filterId})` }} aria-hidden>
+            <div
+              className="live-wrap"
+              style={{
+                fontFamily: fontMap[partialTone.font],
+                transform: `scaleX(${partialTone.tone}) skewX(${partialTone.slnt}deg)`,
+                WebkitTextStrokeWidth: `${STROKE_EM}em`,
+                ['--wght-base' as string]: String(partialTone.wght),
+                ['--wght-active' as string]: String(partialTone.wght)
+              }}
+            >
+              <div className="live-text" ref={blobRef} />
+              {empty && <div className="live-placeholder">{PLACEHOLDER}</div>}
+            </div>
+          </div>
+
           <div
             className="live-wrap"
             style={{
               fontFamily: fontMap[partialTone.font],
-              fontSize: `calc(${fitSize} * 0.65 / ${Math.max(1, partialTone.tone) + Math.abs(Math.tan(partialTone.slnt * Math.PI / 180))})`,
               transform: `scaleX(${partialTone.tone}) skewX(${partialTone.slnt}deg)`,
               ['--wght-base' as string]: String(lowWght),
               ['--wght-active' as string]: String(partialTone.wght)

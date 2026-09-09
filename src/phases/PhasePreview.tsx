@@ -5,6 +5,7 @@ import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import { STAY_DAYS } from '../lib/wall';
 import { fitFontSize } from '../lib/fit';
+import MetaballFilter, { STROKE_EM, useGoo } from '../components/MetaballFilter';
 import { SAMPLE_MESSAGES } from '../lib/samples';
 import type { ToneState } from '../types';
 
@@ -38,8 +39,15 @@ const CROWD_TRACKS = [20, 80];
 /** 트랙마다 같은 속도로 돌리고 위상을 균등하게 갈라 서로 겹치지 않게 한다 */
 const CROWD_DURATION = [30, 38];
 
+/** 미리보기에서 윤곽이 일렁이는 폭 — 벽에서 벌어질 일을 여기서 미리 보여준다 */
+const PREVIEW_WAVE_RATIO = 0.22;
+
 export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
   const previewRef = useRef<HTMLDivElement>(null);
+  // 아래층은 위층과 같은 낱말 조각을 그대로 받아 쓴다. 두 층이 다른 글을
+  // 담으면 덩어리가 글자를 놓친다.
+  const blobRef = useRef<HTMLDivElement>(null);
+  const goo = useGoo(PREVIEW_WAVE_RATIO);
   const [stage, setStage] = useState<Stage>('empty');
   const [run, setRun] = useState(0);
 
@@ -75,9 +83,10 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
     const visible = text.trim();
     if (!visible) {
       el.innerHTML = '';
+      if (blobRef.current) blobRef.current.innerHTML = '';
       return;
     }
-    el.innerHTML = visible
+    const markup = visible
       .split('\n')
       .map((line) =>
         line
@@ -87,6 +96,8 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
           .join(' ')
       )
       .join('<br>');
+    el.innerHTML = markup;
+    if (blobRef.current) blobRef.current.innerHTML = markup;
     const spans = el.querySelectorAll<HTMLSpanElement>('.word');
 
     let curTop: number | null = null;
@@ -172,7 +183,35 @@ export default function PhasePreview({ text, tone, onConfirm, onBack }: Props) {
 
             {/* 내 한 줄 — 가로 흐름은 lane이, 등장·축소는 mine이 맡는다 */}
             <div className="sim-mine-lane">
-              <div className="sim-mine voice-bubble" style={{ background: mood.bg, color: mood.text, fontSize: fitSize }}>
+              <div
+                ref={goo.hostRef}
+                className="sim-mine voice-bubble"
+                style={{ ['--blob' as string]: mood.bg, color: mood.text, fontSize: fitSize }}
+              >
+                <MetaballFilter id={goo.filterId} blur={goo.blur} wave={goo.wave} freq={goo.freq} />
+
+                {/* 아래층 -- 덩어리. 줄 펄스는 위층만 타므로 여기는 늘 굵은
+                    쪽으로 고정한다. 얇은 쪽에 맞춰 두면 펄스가 지나갈 때
+                    글자가 덩어리보다 굵어져 밖으로 삐져나온다. */}
+                <div className="voice-blob" style={{ filter: `url(#${goo.filterId})` }} aria-hidden>
+                  <div
+                    className="sim-mine-tone"
+                    style={{ transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)` }}
+                  >
+                    <div
+                      className="proj-text"
+                      ref={blobRef}
+                      style={{
+                        fontFamily: fontMap[tone.font],
+                        fontSize: fitSize,
+                        WebkitTextStrokeWidth: `${STROKE_EM}em`,
+                        ['--wght-base' as string]: String(tone.wght),
+                        ['--wght-active' as string]: String(tone.wght)
+                      }}
+                    />
+                  </div>
+                </div>
+
                 <div
                   className="sim-mine-tone"
                   style={{ transform: `scaleX(${tone.tone}) skewX(${tone.slnt}deg)` }}

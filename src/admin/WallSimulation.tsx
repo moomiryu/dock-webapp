@@ -10,6 +10,7 @@ import { palettes as legacyPalettes } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import { EMPHASIS_MS, STAY_MS } from '../lib/wall';
 import VoiceBubble from '../components/VoiceBubble';
+import MetaballFilter, { STROKE_EM, useGoo } from '../components/MetaballFilter';
 import { SAMPLE_MESSAGES } from '../lib/samples';
 import {
   isFirebaseConfigured,
@@ -35,6 +36,9 @@ const TRACKS: ReadonlyArray<{ y: number; duration: number; dir: 'left' | 'right'
   { y: 80, duration: 165, dir: 'left' }
 ];
 const LANDSCAPE_N = 12; // recent messages in the drifting landscape (denser)
+
+/** 벽에서 꽂힌 글의 윤곽이 일렁이는 폭 — 글자 크기에 대한 비율 */
+const WALL_WAVE_RATIO = 0.28;
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 
@@ -328,7 +332,10 @@ const WallBlock = memo(function WallBlock({ msg, index, total }: { msg: StoredMe
 const WallShowMessage = memo(function WallShowMessage({ msg, closing }: { msg: StoredMessage; closing: boolean }) {
   const { bg, text, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
   const lines = useMemo(() => msg.text.split('\n'), [msg.text]);
-  let charIdx = 0;
+  // 꽂은 순간의 한 글이다. 윤곽이 일렁이는 것은 여기뿐이다 — 풍경의 열두
+  // 개가 다 같이 끓으면 벽이 시끄러워지고, 투사기를 물린 브라우저가 감당하지도
+  // 못한다. 물에 잠긴 글자는 이 한 번이면 된다.
+  const goo = useGoo(WALL_WAVE_RATIO);
 
   // Auto-fit: more text → smaller. Longest line fits the width, line count fits
   // the height; CSS min() takes whichever is more constrained.
@@ -336,33 +343,49 @@ const WallShowMessage = memo(function WallShowMessage({ msg, closing }: { msg: S
   const allowance = Math.max(1, scaleX) + Math.abs(Math.tan(skew * Math.PI / 180));
   const fitSize = `min(${(56 / longest / allowance).toFixed(2)}vw, ${(56 / (lines.length * 1.25) / allowance).toFixed(2)}vh, 180px)`;
 
+  // 글자가 하나씩 찍히는 순서. 두 층이 같은 순서로 나타나야 덩어리가 글을
+  // 따라 자란다 — 그래서 지연값을 미리 세어 두고 양쪽이 같은 값을 쓴다.
+  const delays = useMemo(() => {
+    let n = 0;
+    return lines.map((line) => Array.from(line).map(() => n++ * 0.1));
+  }, [lines]);
+
+  const body = (stroked: boolean) => (
+    <div
+      className="wall-emphasis-text"
+      style={{
+        fontSize: fitSize,
+        transform: `scaleX(${scaleX}) skewX(${skew}deg)`,
+        fontFamily,
+        fontWeight: wght,
+        fontVariationSettings: `"wght" ${wght}`,
+        ...(stroked ? { WebkitTextStrokeWidth: `${STROKE_EM}em` } : null)
+      }}
+    >
+      {lines.map((line, li) => (
+        <div className="wall-line" key={li}>
+          {Array.from(line).map((ch, ci) => (
+            <span key={ci} className="wall-char" style={{ animationDelay: `${delays[li][ci]}s` }}>
+              {ch === ' ' ? ' ' : ch}
+            </span>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className={`wall-show ${closing ? 'is-closing' : ''}`} style={{ background: '#000000', color: text }}>
-      <div className="voice-bubble" style={{ background: bg, color: text, fontSize: fitSize }}>
       <div
-        className="wall-emphasis-text"
-        style={{
-          fontSize: fitSize,
-          transform: `scaleX(${scaleX}) skewX(${skew}deg)`,
-          fontFamily,
-          fontWeight: wght,
-          fontVariationSettings: `"wght" ${wght}`
-        }}
+        ref={goo.hostRef}
+        className="voice-bubble"
+        style={{ ['--blob' as string]: bg, color: text, fontSize: fitSize }}
       >
-        {lines.map((line, li) => (
-          <div className="wall-line" key={li}>
-            {Array.from(line).map((ch, ci) => {
-              const delay = charIdx * 0.1;
-              charIdx += 1;
-              return (
-                <span key={ci} className="wall-char" style={{ animationDelay: `${delay}s` }}>
-                  {ch === ' ' ? ' ' : ch}
-                </span>
-              );
-            })}
-          </div>
-        ))}
-      </div>
+        <MetaballFilter id={goo.filterId} blur={goo.blur} wave={goo.wave} freq={goo.freq} wavePeriod={7} />
+        <div className="voice-blob" style={{ filter: `url(#${goo.filterId})` }} aria-hidden>
+          {body(true)}
+        </div>
+        {body(false)}
       </div>
     </div>
   );

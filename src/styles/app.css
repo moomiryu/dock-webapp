@@ -229,16 +229,15 @@
   outline-offset: -5px;
 }
 
-/* 캡슐이 곧 쓰는 자리다. 포커스는 캡슐 둘레에 밝은 링으로 표시한다 --
-   검은 여백 위라 흰 선이 가장 잘 읽힌다.
-   텍스트에어리어 자신의 외곽선은 캡슐 *안*에 상자를 하나 더 그려서
-   어디가 입력인지 오히려 흐렸다. 그래서 링은 캡슐 하나만 두른다. */
+/* 쓰는 자리는 검은 액자 전체다 -- 어디를 눌러도 입력이 잡힌다. 그래서
+   포커스도 액자의 밝은 헤어라인이 굵어지는 것으로 알린다.
+   글 둘레에 링을 두르면 방금 없앤 둥근 사각형이 도로 보인다. */
 .live-input:focus-visible{
   outline: none;
 }
 
-.compose-bubble:focus-within{
-  box-shadow: 0 0 0 3px rgb(255 255 255 / 82%);
+.proj-frame:focus-within{
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 88%);
 }
 
 /* ─── 공통 버튼 ──────────────────────────────────────────────── */
@@ -1763,7 +1762,10 @@
 .color-preview-stage{ flex-direction: column; justify-content: center; gap: var(--s4); }
 .color-preview{ background: #000; }
 .screen-ratio-note{ color: var(--muted); font-size: var(--fs-body-s); align-self: flex-start; line-height: 1.5; }
-.compose-bubble{ width: 82%; padding: var(--s5) var(--s6); border-radius: 999px; }
+/* 더 이상 배경을 가진 캡슐이 아니다. 두 층(덩어리 · 읽는 글자)을 겹쳐 놓는
+   자리일 뿐이라 배경도 라운드도 없다. 글자 크기를 여기서 정하는 것은
+   useGoo가 이 상자를 재서 번짐 반경을 잡기 때문이다. */
+.compose-bubble{ position: relative; width: 82%; padding: var(--s5) var(--s6); }
 .proj-tracks, .sim-tracks{ display: none; }
 .sim-mine.voice-bubble{ max-width: 88%; }
 .sim-crowd-item{ padding: 0.5em 1em; border-radius: 999px; }

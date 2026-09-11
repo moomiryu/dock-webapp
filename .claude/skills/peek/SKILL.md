@@ -53,8 +53,14 @@ await close();
 스크래치패드는 프로젝트 밖이라 `drive.mjs`를 **`file:///` URL로** 부른다.
 Windows 절대경로(`C:/...`)를 그냥 쓰면 ESM 로더가 거부한다.
 
+경로를 손으로 적지 않는다 — 프로젝트 폴더 이름이 바뀌면 그 줄이 죽는다.
+`node`를 프로젝트 루트에서 부르므로 `cwd`에서 만들어 쓴다.
+
 ```js
-import { open, toCompose } from 'file:///C:/dev/dock-webapp/scripts/lib/drive.mjs';
+import { pathToFileURL } from 'node:url';
+const { open, toCompose } = await import(
+  pathToFileURL(`${process.cwd()}/scripts/lib/drive.mjs`).href
+);
 ```
 
 ## 눈으로 판정하지 않는다

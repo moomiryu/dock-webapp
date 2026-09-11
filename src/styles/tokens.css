@@ -1,134 +1,131 @@
-/* === MEGAFONT Design Tokens ======================================
-   v2 토대 — 모든 스케일이 여기서 시작.
-   화면별 CSS는 이 토큰만 참조. 하드코드된 px/ms는 안 됨.
+/* === MEGAFONT 토큰 — 이 파일 하나가 전부다 ==========================
 
-   설계 원칙:
-   - 간격: 4px 베이스 (한글의 정밀도에 맞춰 fine-grained)
-   - 타입: 1.25 모듈러 스케일 (작은 변화로 위계 만듦)
-   - 모션: 5단계 (instant / fast / base / slow / long), 통일된 easing
-   - 색: 팔레트는 palettes-v2.ts에서 동적으로, 중립 톤만 여기서
-   ================================================================ */
+   색·간격·글자 크기·라운드·모션은 여기 있는 변수만 쓴다.
+   하드코딩된 hex나 px는 넣지 않는다. 필요한 값이 없으면 여기 먼저
+   토큰을 만들고 쓴다.
 
-:root {
-  /* ─── Space (4px base) ───────────────────────────────── */
-  --sp-0: 0;
-  --sp-1: 4px;
-  --sp-2: 8px;
+   예외가 하나 있다: 메시지의 색은 토큰이 아니다. 그건 사용자가 고르는
+   내용이라 `src/lib/palettes-v2.ts`가 데이터로 들고 있다. 앱이 사용자에게
+   말할 때의 색이 여기 있는 것이고, 사용자가 벽으로 보내는 색은 저기 있다.
+
+   ─── 왜 한 파일인가 ─────────────────────────────────────────────
+   2026-09-11까지 토큰이 두 군데 있었다. 이 파일에 76개, app.css에 45개.
+   그런데 이 파일의 76개 중 **아홉 개만 살아 있었다** — 나머지 67개는
+   아무도 참조하지 않았고, 그중 일부(--c-brand-*)는 죽은 것끼리만 서로를
+   불러서 살아 있는 것처럼 보였다. 실제 시스템은 app.css 쪽 45개(참조 364회)
+   였고, 이 파일은 참조 16회짜리 화석이었다.
+
+   문제는 이 파일 머리에 "화면별 CSS는 이 토큰만 참조. 하드코드는 안 됨"
+   이라고 **규칙이 이미 적혀 있었다**는 것이다. 규칙이 없어서 안 지켜진 게
+   아니라, 규칙이 적힌 파일이 죽어서 안 지켜졌다. 새로 온 사람이 여기에
+   토큰을 추가하면 아무 일도 일어나지 않았을 것이다.
+
+   그래서 합쳤다. 토큰이 두 곳에 있으면 그중 하나는 반드시 죽는다.
+   ================================================================= */
+
+:root{
+  /* ─── 색: 무채 ─────────────────────────────────────────────
+     Grey 출처: https://tossmini-docs.toss.im/tds-react-native/foundation/colors/
+     50·400·800·900은 지금 쓰이는 데가 없지만 사다리에 구멍을 내지 않는다. */
+  --ink: #000000;
+  --paper: #ffffff;
+  --grey-50: #f9fafb;
+  --grey-100: #f2f4f6;
+  --grey-200: #e5e8eb;
+  --grey-300: #d1d6db;
+  --grey-400: #b0b8c1;
+  --grey-500: #8b95a1;
+  --grey-600: #6b7684;
+  --grey-700: #4e5968;
+  --grey-800: #333d4b;
+  --grey-900: #191f28;
+
+  /* 역할 이름. 화면 CSS는 되도록 이쪽을 부른다 — 회색 사다리의 어느
+     칸인지보다 무슨 역할인지가 읽기 쉽다. */
+  --body-text: var(--grey-700);
+  --muted: var(--grey-600);
+  --line: var(--grey-200);
+
+  /* ─── 색: 브랜드 ───────────────────────────────────────────
+     실물 하드웨어에서 가져온 빨강. 캐릭터 SVG도 같은 값이다. */
+  --brand-main: #cf5b4c;
+  --brand-sub: #3cced0;
+  --brand-soft: rgb(207 91 76 / 8%);
+  /* 그 빨강은 흰 글자를 받치기엔 4.00:1 이라 AA(4.5)에 못 미친다.
+     실물 색은 그대로 두고, 흰 글자가 올라앉는 채움 버튼에만 이 한 톤을
+     쓴다 — 4.64:1. 캐릭터와 버튼은 홈에서 화면 절반쯤 떨어져 있어
+     두 빨강이 나란히 놓이지 않는다. */
+  --brand-strong: #ca4939;
+
+  /* 눌린 상태. 브랜드 컨트롤은 brightness로 답하고, 중립 표면은 이 틴트. */
+  --ink-press: #333333;
+  --press-tint: rgba(0, 0, 0, 0.08);
+
+  /* ─── 활자 ─────────────────────────────────────────────────
+     DESIGN.md의 위계. 광학 조정 전이라 관습적인 굵기와 짝지어 둔다. */
+  --fs-h1: 36px;
+  --fs-h2: 30px;
+  --fs-h3: 24px;
+  --fs-h4: 22px;
+  --fs-body: 16px;
+  --fs-body-s: 14px;
+  /* 기본 제목 행간. 홈·질문·튜토리얼은 읽기 편한 1.5를 쓴다. */
+  --lh-head: 1.3;
+  /* 아래 둘은 참조 문서에 없는 자리다 — 우리 확장이라고 적어 둔다.
+     라벨·수치·캡션은 이 앱에 반드시 필요하고, 저쪽은 그 역할을
+     문서화하지 않았다. */
+  --fs-cap: 14px;
+  --fs-cap-s: 12px;
+
+  /* ─── 간격 ─────────────────────────────────────────────────
+     참조 문서가 관측한 군집: 4 · 6 · 8 · 16 · 24 · 32.
+     그 문서 스스로 "모든 토큰의 증거는 아니다"라고 하므로 12를 한 칸
+     보태 쓴다 — 이건 우리 확장이다. 10·14·18·20·26은 전부 걷어냈다. */
+  --s1: 4px;
+  --s2: 6px;
+  --s3: 8px;
+  --s4: 12px;   /* 로컬 확장 */
+  --s5: 16px;
+  --s6: 24px;
+  --s7: 32px;
+
+  /* 화면 좌우 여백. 문서의 군집(4·6·8·16·24·32)에는 20이 아예 없는데,
+     제품 화면 51장 중 36장이 20이었다. 제품을 따른다. */
+  --pad-x: 20px;
+
+  /* ─── 버튼 사다리 ──────────────────────────────────────────
+     문서는 높이와 라운드를 한 짝으로 묶는다:
+       small 32/8 · medium 38/10 · large 48/14 · xlarge 56/16
+     높이는 실측과 정확히 맞았다 — 기본 버튼 56px, 34장 중 34장.
+     라운드는 안 맞았다. 제품은 34장 중 30장이 14다. 즉 높이는 xlarge를,
+     라운드는 large의 값을 쓴다. 짝을 깨는 쪽이 제품이므로 제품을 따른다. */
+  --btn-xl: 56px;   --r-xl: 14px;
+  --btn-l: 48px;    --r-l: 14px;
+  --btn-s: 32px;    --r-s: 8px;
+
+  /* 작은 표면은 4·6px 군집. 문서 크롬에서 관측된 값이다. */
+  --r-surface: 6px;
+  --r-surface-s: 4px;
+
+  /* ─── 글꼴 ─────────────────────────────────────────────── */
+  --ui-font: 'Lineal VF', 'Pretendard Variable', -apple-system, BlinkMacSystemFont, sans-serif;
+  --label-font: var(--ui-font);
+
+  /* ─── 벽 전용 ──────────────────────────────────────────────
+     여기 아래 아홉 개만 옛 토큰 체계에서 살아남았다. 전부 global.css의
+     /wall 렌더가 쓴다 — 강조 등장 애니메이션, 층위, 벽 캡션.
+
+     이름이 위쪽 체계와 어긋난다(--sp-3 vs --s4, --fs-xs vs --fs-cap-s).
+     지금 고치지 않은 이유는 이번 통합을 '이름은 한 글자도 안 바꾼다'로
+     묶어서 계산값 대조만으로 무위험을 증명하려 했기 때문이다.
+     벽 CSS를 손볼 일이 생기면 그때 위 체계로 흡수한다. */
   --sp-3: 12px;
   --sp-4: 16px;
-  --sp-5: 20px;
-  --sp-6: 24px;
-  --sp-8: 32px;
-  --sp-10: 40px;
-  --sp-12: 48px;
-  --sp-16: 64px;
-  --sp-20: 80px;
-
-  /* ─── Type scale (1.25 ratio, base 14) ──────────────── */
-  --fs-xs: 10px;     /* tiny labels, system text */
-  --fs-sm: 12px;     /* controls, captions */
-  --fs-base: 14px;   /* body */
-  --fs-md: 16px;     /* interactive body */
-  --fs-lg: 20px;     /* small heading */
-  --fs-xl: 28px;     /* heading */
-  --fs-2xl: 40px;    /* display heading */
-  --fs-3xl: 64px;    /* hero text */
-  --fs-mega: 240px;  /* giant glyph anchor (overridden per viewport) */
-
-  /* ─── Type weights ───────────────────────────────────── */
-  --fw-thin: 100;
-  --fw-light: 300;
-  --fw-regular: 400;
-  --fw-medium: 500;
-  --fw-bold: 700;
-  --fw-black: 900;
-
-  /* ─── Line height ────────────────────────────────────── */
-  --lh-tight: 0.9;    /* large display */
-  --lh-snug: 1.15;    /* headings */
-  --lh-base: 1.4;     /* body */
-  --lh-loose: 1.7;    /* legible paragraph */
-
-  /* ─── Letter spacing ─────────────────────────────────── */
-  --ls-tight: -0.04em;  /* display */
-  --ls-base: -0.01em;   /* body */
-  --ls-mono: 0.08em;    /* mono labels */
-  --ls-mono-loose: 0.18em; /* spaced caps */
-
-  /* ─── Motion ─────────────────────────────────────────── */
-  --t-instant: 100ms;   /* no perceived delay */
-  --t-fast: 150ms;      /* button feedback */
-  --t-base: 250ms;      /* transitions, color */
-  --t-slow: 400ms;      /* reveal animations */
-  --t-long: 600ms;      /* orchestrated transitions */
-
+  --fs-xs: 10px;
+  --ls-mono-loose: 0.18em;
+  --t-slow: 400ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
-
-  /* ─── Border / radius ────────────────────────────────── */
-  --bw-hair: 1px;
-  --bw-thin: 1.5px;
-  --bw-base: 2px;
-  --bw-thick: 4px;
-
-  --radius-none: 0;
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 8px;
-  --radius-pill: 999px;
-
-  /* ─── Z-index ────────────────────────────────────────── */
-  --z-base: 0;
   --z-content: 1;
   --z-elevated: 2;
-  --z-overlay: 100;
-  --z-modal: 200;
-  --z-toast: 300;
-
-  /* ─── Neutral tones (palettes-v2 has the color triads) ─ */
-  --c-black: #000000;
-  --c-white: #ffffff;
-  --c-paper: #f5f4ed;  /* PRINT bg, also a "paper" neutral */
-
-  /* ─── Brand palette (warm Korean earth — used in 액자/frame screens:
-         Home, Phase 05b, Phase 06. The /wall + Z1/Z2 message content
-         keeps its own user-chosen moods. Layered model:
-            MEGAFONT가 사용자에게 말하는 톤 → warm (these tokens)
-            사용자가 벽으로 보내는 톤   → loud (palettes-v2.ts moods)
-         Source: 단청·한지·캠퍼스 벽돌 / 70-20-10 시스템 */
-  --c-honey: #E8A53A;       /* 꿀 노랑 — base 70% (옵션 A) */
-  --c-tangerine: #E5612E;   /* 선명한 귤 — accent (참조용) */
-  --c-persimmon: #C8392E;   /* 감빛 빨강 — base 70% (옵션 C) */
-  --c-cream: #F5E1B5;       /* 크림 버터 — base 70% (옵션 B) ★ MEGAFONT 기본 bg */
-  --c-brick: #8B2419;       /* 깊은 벽돌 — main 20% ★ 텍스트·강조 */
-  --c-ink: #1F3E5C;         /* 잉크 네이비 — accent 10% */
-
-  /* Apple-minimal monochrome chrome — color lives only in the message content
-     (preview / wall). Chrome = ink on white, no accent hue. */
-  --c-ink-900: #1d1d1f;   /* near-black ink (Apple) */
-  --c-gray-500: #6e6e73;  /* secondary gray */
-  --c-parchment: #f5f5f7; /* off-white surface */
-
-  /* Brand role aliases — change here to swap base variation */
-  --c-brand-bg: #ffffff;
-  --c-brand-text: var(--c-ink-900);
-  --c-brand-accent: var(--c-ink-900);
-  --c-brand-deep: var(--c-gray-500);
-
-  /* ─── Texture / noise opacity ────────────────────────── */
-  --o-grain: 0.05;       /* Riso grain — much subtler than v1's 0.12 */
-  --o-grain-strong: 0.10;
-
-  /* ─── Layout ─────────────────────────────────────────── */
-  --frame-max: 480px;    /* phone column max-width */
 }
-
-/* === Korean-English label pairing reference =========================
-   Sulki-and-Min style idea-pairing:
-     활자  FONT
-     무게  WGHT
-     결    TONE
-     기울기 SLNT
-     크기  SIZE
-   See component CSS for usage.
-   ===================================================================== */

@@ -106,9 +106,16 @@ Adobe Fonts 킷(`zhl0ile`)에서 오고, Sunflower·Orbit·Pretendard는
 | 문서 | 내용 |
 |:--|:--|
 | [design/instructions.md](design/instructions.md) | 안내판 문안, 앱 인스트럭션 원칙, 어휘 규칙 |
-| [design/working-note-v1.md](design/working-note-v1.md) | 프로젝트를 설치 작업으로 보는 관점 |
-| [design/flow-diagram-v16.md](design/flow-diagram-v16.md) | v16 시점 기록 (지금과 다름 — 이력용) |
-| [design/tokens.md](design/tokens.md) · [design/references.md](design/references.md) | 디자인 토큰 · 레퍼런스 |
+| [design/direction-v0.md](design/direction-v0.md) | 절대원칙 — 편집권은 발화자에게, 시스템은 추천하지 않는다 |
+| [design/reference-adoption.md](design/reference-adoption.md) | 참조 디자인 채택 기록 + 검사 스크립트 돌리는 법 |
+| [design/references.md](design/references.md) | 레퍼런스 |
+
+**디자인 토큰은 문서가 아니라 [src/styles/tokens.css](src/styles/tokens.css)에 있다.**
+`design/tokens.md`는 2026-05 시점의 옛 체계를 적어 둔 기록이다.
+
+`design/` 안에서 맨 위에 `> **날짜 시점의 기록이다**` 가 붙은 문서는 그때의
+결정을 남긴 것이고, 거기 적힌 화면 이름·버튼 문구·수치는 지금과 다르다.
+왜 그렇게 정했는지를 볼 때만 읽는다.
 
 ## 아직 안 된 것
 

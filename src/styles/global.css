@@ -720,26 +720,6 @@ body.wall-mode {
   transform-origin: center;
 }
 
-/* 아래층. inset:0 이라 위층과 같은 상자를 받고, 같은 규칙으로 줄이 바뀐다.
-
-   색은 여기서 한 번만 정하고 안쪽이 물려받는다. 안쪽 글자에 직접 걸면
-   화면마다 글자를 담는 클래스가 달라서(.voice-bubble-text / .wall-emphasis-text)
-   한 군데는 빠진다 -- 그러면 덩어리가 글자색 그대로 뭉쳐 검정 위에서
-   통째로 사라진다. color · -webkit-text-stroke-color · paint-order 셋 다
-   상속되는 속성이라 이 자리가 맞다.
-
-   paint-order를 뒤집어야 두꺼워진 획이 글자 속을 먹지 않고 바깥으로만
-   자란다. 두께는 컴포넌트가 em으로 넣는다. */
-.voice-blob{
-  position: absolute;
-  inset: 0;
-  padding: inherit;
-  pointer-events: none;
-  color: var(--blob);
-  -webkit-text-stroke-color: var(--blob);
-  paint-order: stroke fill;
-}
-
 /* 필터를 담아 두는 자리. 그림이 아니라 정의라서 크기를 갖지 않는다. */
 .mf-defs{
   position: absolute;

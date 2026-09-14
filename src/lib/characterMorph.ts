@@ -3,24 +3,29 @@ import { scopeSvg } from './svgAsset';
 // 포즈 사이를 페이드로 갈아끼우면 두 그림이 겹쳐 보이면서 '바뀌었다'가 된다.
 // 캐릭터가 돌아본 것처럼 보이려면 형태가 이어져야 한다.
 //
-// 다행히 작가가 그린 열 포즈가 전부 같은 뼈대다: 큰 삼각형(몸) 하나와
+// 다행히 작가가 그린 아홉 포즈가 전부 같은 뼈대다: 큰 삼각형(몸) 하나와
 // 작은 삼각형(부리) 하나. 상대좌표를 절대좌표로 펴면 둘 다 예외 없이
 //     M · L · C · L · C · L · C · Z   = 점 13개
 // 라서 점끼리 짝지어 보간할 수 있다. 그래서 진짜로 모핑이 된다.
 //
-// Light 두 포즈만 그라디언트 속도선이 한 겹 더 있다. 그건 보간하지 않고
+// _light 두 포즈만 그라디언트 속도선이 한 겹 더 있다. 그건 보간하지 않고
 // 투명도로 얹었다 뺀다 — 빠르게 지나갈 때만 나오는 겹이라 그걸로 충분하다.
+//
+// 2026-09-15에 그림이 Renewal_v1으로 바뀌었다. 옛 그림은 파일마다 화판이
+// 달라서 포즈마다 가운데를 다시 맞춰야 했는데, 새 그림은 아홉 장이 전부
+// 같은 1920×1080 화면 안에 들어 있다. 그래서 여기서는 그 화면에서 창
+// 하나를 오려 내기만 한다 — 포즈별 보정은 _light 둘뿐이다.
 
-const files = import.meta.glob('../../by_moomiryu/*.svg', {
+const files = import.meta.glob('../../by_moomiryu/Renewal_v1/*.svg', {
   query: '?raw',
   import: 'default',
   eager: true
 }) as Record<string, string>;
 
 export const POSES = [
-  'Front', 'Left', 'Right', 'Back Left', 'Back Right',
-  'Vertical Front', 'Vertical Left', 'Vertical Right',
-  'Light Left', 'Light Right'
+  'front_center', 'front_left', 'front_right',
+  'left', 'right', 'back_left', 'back_right',
+  'left_light', 'right_light'
 ] as const;
 export const EYES = [
   'general', 'happy', 'surprise', 'angry', 'sad',
@@ -29,14 +34,25 @@ export const EYES = [
 export type Pose = (typeof POSES)[number];
 export type Eyes = (typeof EYES)[number];
 
-/** 열 포즈를 한 좌표계에 모으는 정사각 화판 */
-export const CANVAS = 1210.42;
-const EYE_R = 86.21;
-const EYE_BOX = 172.44;
-const EYE_PAIR = 412.12;
+/**
+ * 아홉 포즈를 한 좌표계에 모으는 정사각 화판.
+ *
+ * 그림이 놓인 1920×1080에서 (960, 539.5)를 가운데로 한 정사각형을 오려 낸다.
+ * 607은 재서 나온 값이다 — 앞모습이 607.1 넓고 옆모습이 606.7 높다.
+ * 화판을 그 둘의 큰 쪽에 맞추면 어느 포즈로 돌아도 같은 덩치로 보인다.
+ */
+export const CANVAS = 607;
+const ORIGIN_X = 960 - CANVAS / 2;
+const ORIGIN_Y = 539.5 - CANVAS / 2;
+/** 눈 원의 반지름·한 눈의 사각·두 눈을 합친 사각. 그림에서 잰 값이다. */
+const EYE_R = 43.11;
+const EYE_BOX = 86.22;
+const EYE_PAIR = 206.06;
+/** 부리 색. 몸(#cf5b4c)과 이걸로 갈라낸다 */
+const HAT_FILL = '#2ce9f7';
 
 const read = (name: string) =>
-  new DOMParser().parseFromString(files[`../../by_moomiryu/${name}.svg`], 'image/svg+xml')
+  new DOMParser().parseFromString(files[`../../by_moomiryu/Renewal_v1/${name}.svg`], 'image/svg+xml')
     .documentElement;
 
 /** `.cls-3 { fill: #cf5b4c }` 같은 내부 스타일을 클래스→색 표로 바꾼다 */
@@ -127,15 +143,6 @@ export function poseGeometry(pose: Pose): PoseGeo {
 
   const root = read(pose);
   const fills = fillTable(root);
-  const [, , vw, vh] = root.getAttribute('viewBox')!.split(/\s+/).map(Number);
-
-  // Light 포즈는 캔버스가 속도선까지 품느라 넓다. 캐릭터 본체만 가운데 맞춘다.
-  const light = pose.startsWith('Light');
-  const dx = light
-    ? (CANVAS - 763.19) / 2 - (pose === 'Light Right' ? 918.14 : 0)
-    : (CANVAS - vw) / 2;
-  const dy = light ? 0 : (CANVAS - vh) / 2;
-  const shift = (pts: number[]) => pts.map((n, k) => n + (k % 2 ? dy : dx));
 
   const paths = Array.from(root.querySelectorAll('path'));
   const solid = paths.filter((p) => {
@@ -144,13 +151,24 @@ export function poseGeometry(pose: Pose): PoseGeo {
   });
   const trailEl = paths.find((p) => (fills[p.getAttribute('class') ?? ''] ?? '').startsWith('url('));
 
-  const colored = solid.map((p) => ({
-    pts: shift(flatten(p.getAttribute('d')!)),
+  const raw = solid.map((p) => ({
+    pts: flatten(p.getAttribute('d')!),
     fill: fills[p.getAttribute('class') ?? ''] ?? '#000'
   }));
+
+  // _light 포즈는 속도선이 한쪽으로 길게 뻗느라 몸이 화면 가운데에서 비켜나
+  // 앉아 있다. 그대로 두면 빨라지는 순간 캐릭터가 옆으로 순간이동한 것처럼
+  // 보인다. 그래서 그 둘만 몸을 다시 가운데로 끌어온다.
+  const light = pose.endsWith('_light');
+  const bodyXs = raw.flatMap((c) => c.pts.filter((_, k) => k % 2 === 0));
+  const dx = -ORIGIN_X + (light ? 960 - (Math.min(...bodyXs) + Math.max(...bodyXs)) / 2 : 0);
+  const dy = -ORIGIN_Y;
+  const shift = (pts: number[]) => pts.map((n, k) => n + (k % 2 ? dy : dx));
+
+  const colored = raw.map((c) => ({ pts: shift(c.pts), fill: c.fill }));
   // 빨강이 몸, 청록이 부리. 파일마다 클래스 번호가 달라서 색으로 고른다.
-  const body = colored.find((c) => c.fill.toLowerCase() !== '#3cced0') ?? colored[0];
-  const hat = colored.find((c) => c.fill.toLowerCase() === '#3cced0') ?? colored[1];
+  const body = colored.find((c) => c.fill.toLowerCase() !== HAT_FILL) ?? colored[0];
+  const hat = colored.find((c) => c.fill.toLowerCase() === HAT_FILL) ?? colored[1];
 
   const circles = Array.from(root.querySelectorAll('circle'));
   const whites = circles.filter((c) => (fills[c.getAttribute('class') ?? ''] ?? '').toLowerCase() === '#fff');
@@ -163,10 +181,18 @@ export function poseGeometry(pose: Pose): PoseGeo {
       })()
     : null;
 
-  // 흰자가 없는 포즈의 큰 원은 눈이 아니라 뒤통수 점이다.
+  // 흰자가 없는 포즈(뒷모습)에서 큰 원은 눈이 아니라 실루엣에 얹힌 혹이다.
+  // 두 개가 그려져 있지만 가장자리에 걸친 하나만 밖으로 비어져 나온다 —
+  // 가운데에서 먼 쪽이 그것이다. 안쪽 하나는 몸과 같은 색이라 보이지 않는다.
   const dotEl = whites.length
     ? null
-    : circles.find((c) => Number(c.getAttribute('r')) > 70);
+    : circles
+        .filter((c) => Number(c.getAttribute('r')) > EYE_R * 0.9)
+        .sort(
+          (a, b) =>
+            Math.abs(Number(b.getAttribute('cx')) - 960) -
+            Math.abs(Number(a.getAttribute('cx')) - 960)
+        )[0];
   const centre = { cx: CANVAS / 2, cy: CANVAS / 2 };
   const dot = dotEl
     ? {
@@ -176,15 +202,25 @@ export function poseGeometry(pose: Pose): PoseGeo {
       }
     : { ...centre, r: 0 };
 
+  // 속도선은 보간하지 않는다. 좌표를 펴는 대신 원본을 통째로 옮겨 놓는다 —
+  // 그라디언트가 userSpaceOnUse라 같은 무리 안에 있어야 색이 안 어긋나고,
+  // 속도선 옆의 작은 막대(rect)는 제 회전을 들고 있어 점으로 못 편다.
   let trail: string | null = null;
   if (trailEl) {
     const defs = root.querySelector('defs')?.cloneNode(true) as Element | null;
     defs?.querySelectorAll('style').forEach((s) => s.remove());
-    const d = toPathD(shift(flatten(trailEl.getAttribute('d')!)));
-    const fill = fills[trailEl.getAttribute('class') ?? ''] ?? 'none';
+    const drawn = [trailEl, ...Array.from(root.querySelectorAll('rect'))]
+      .map((el) => {
+        const copy = el.cloneNode(true) as Element;
+        copy.setAttribute('fill', fills[copy.getAttribute('class') ?? ''] ?? 'none');
+        copy.removeAttribute('class');
+        return copy.outerHTML;
+      })
+      .join('');
     trail = scopeSvg(
-      `${defs ? defs.outerHTML : ''}<path d="${d}" fill="${fill}"/>`,
-      pose.replace(/\s+/g, '-')
+      `${defs ? defs.outerHTML : ''}` +
+        `<g transform="translate(${dx.toFixed(2)} ${dy.toFixed(2)})">${drawn}</g>`,
+      pose.replace(/[^a-z0-9]+/gi, '-')
     );
   }
 
@@ -196,9 +232,11 @@ export function poseGeometry(pose: Pose): PoseGeo {
     dot,
     eye,
     trail,
-    span: light || pose.startsWith('Vertical')
+    // 옆을 보면 세로로 길고, 앞을 보면 가로로 넓다. 재서 나온 값이다:
+    // 앞모습 607.1 × 381.6, 옆모습 418.4 × 606.7.
+    span: light || pose === 'left' || pose === 'right'
       ? { x: 0.7, y: 1 }
-      : { x: 1, y: 763.19 / CANVAS }
+      : { x: 1, y: 381.6 / CANVAS }
   };
   geoCache.set(pose, geo);
   return geo;
@@ -266,14 +304,12 @@ export function eyeMarkup(eyes: Eyes): string {
 
 /**
  * 두 포즈가 어떤 종류의 회전인가.
- * 좌우를 도는가(수직축 회전), 눕거나 서는가(굴러가는 회전).
+ *
+ * 새 그림의 아홉 포즈는 전부 한 축 위에 있다 — 등을 보인 왼쪽에서 왼쪽,
+ * 앞쪽 왼쪽, 정면, 앞쪽 오른쪽, 오른쪽, 등을 보인 오른쪽. 그래서 회전은
+ * 좌우로 도는 것 하나뿐이다. (옛 그림에는 눕고 서는 포즈가 따로 있어서
+ * 'roll'이 하나 더 있었는데, 그 포즈들이 없어졌다.)
  */
-export function turnKind(from: Pose, to: Pose): 'spin' | 'roll' | 'none' {
-  const upright = (p: Pose) => p.startsWith('Vertical');
-  if (upright(from) !== upright(to)) return 'roll';
-  const side = (p: Pose) =>
-    /Left/.test(p) ? -1 : /Right/.test(p) ? 1 : 0;
-  const back = (p: Pose) => (p.startsWith('Back') ? 1 : 0);
-  if (side(from) !== side(to) || back(from) !== back(to)) return 'spin';
-  return 'none';
+export function turnKind(from: Pose, to: Pose): 'spin' | 'none' {
+  return from === to ? 'none' : 'spin';
 }

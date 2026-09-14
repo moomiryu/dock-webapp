@@ -10,7 +10,7 @@ export default function PhaseHome({ onStart }: Props) {
       <HomeCharacter />
       <div className="home-layer">
         <div className="home-intro">
-          <h1 className="home-headline"><span>MegaFont.</span></h1>
+          <h1 className="home-headline"><span>MegaFont</span></h1>
           <p className="home-subtitle">밤에만 보이는 조용한 공공발화.</p>
         </div>
         <div className="home-gate">

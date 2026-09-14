@@ -39,12 +39,11 @@ export default function HomeCharacter() {
     const media = matchMedia('(prefers-reduced-motion: reduce)');
     let reduced = media.matches;
 
-    let pose: Pose = 'Front';
+    let pose: Pose = 'front_center';
     let from: PoseGeo = poseGeometry(pose);
     let to: PoseGeo = from;
     let now0 = 0;              // 이번 회전이 시작된 시각
-    let turn: 'spin' | 'roll' | 'none' = 'none';
-    let turnDir = 1;
+    let turn: 'spin' | 'none' = 'none';
     let geo: PoseGeo = from;   // 지금 이 순간의 형태
 
     let w = 0, h = 0, size = 0, x = 0, y = 0;
@@ -68,7 +67,6 @@ export default function HomeCharacter() {
       if (x < (size * shape.x) / 2 || x > w - (size * shape.x) / 2 ||
           y < (size * shape.y) / 2 || y > h - (size * shape.y) / 2) return;
       turn = turnKind(pose, next);
-      turnDir = /Left/.test(next) ? -1 : 1;
       from = geo;                    // 돌던 도중이면 지금 모습에서 이어서 돈다
       to = poseGeometry(next);
       now0 = now;
@@ -131,14 +129,22 @@ export default function HomeCharacter() {
       paint(1);
     };
 
-    /** 어느 쪽으로 가고 있느냐가 어느 쪽을 보느냐를 정한다 */
+    /**
+     * 어느 쪽으로 가고 있느냐가 어느 쪽을 보느냐를 정한다.
+     *
+     * 문턱을 둘로 나눈 이유: 조금 흐를 때 몸까지 틀면 가만히 떠 있는 동안
+     * 계속 좌우로 꺾인다. 그래서 느리면 눈만 그쪽으로 보내고(front_left·
+     * front_right), 확실히 그쪽으로 갈 때만 몸을 튼다.
+     * 위로 멀어질 때는 등을 보인다 — 뒷모습에는 눈이 없다.
+     */
     const facing = (): Pose => {
-      if (Math.abs(vy) > Math.abs(vx) * 1.5)
-        return vy < 0 ? 'Vertical Front' : vx < 0 ? 'Vertical Left' : 'Vertical Right';
-      if (Math.hypot(vx, vy) > 360) return vx < 0 ? 'Light Right' : 'Light Left';
-      if (vx < -12) return 'Left';
-      if (vx > 12) return 'Front';
-      return pose;
+      if (Math.hypot(vx, vy) > 360) return vx < 0 ? 'left_light' : 'right_light';
+      if (vy < -40 && Math.abs(vy) > Math.abs(vx)) return vx < 0 ? 'back_left' : 'back_right';
+      if (vx < -60) return 'left';
+      if (vx > 60) return 'right';
+      if (vx < -12) return 'front_left';
+      if (vx > 12) return 'front_right';
+      return 'front_center';
     };
 
     const step = (t: number) => {
@@ -188,13 +194,12 @@ export default function HomeCharacter() {
       geo = raw >= 1 ? to : blendGeo(from, to, p);
 
       squash *= Math.exp(-dt * 12);
-      // 회전의 결을 몸짓으로 거든다: 좌우로 돌면 가로로 한 번 좁아지고,
-      // 눕거나 서면 그쪽으로 한 번 기운다. 형태 변화만으로는 방향이 안 읽힌다.
+      // 회전의 결을 몸짓으로 거든다: 좌우로 돌 때 가로로 한 번 좁아진다.
+      // 형태 변화만으로는 방향이 안 읽힌다.
       const swing = raw > 0 && raw < 1 ? Math.sin(Math.PI * raw) : 0;
       const spin = turn === 'spin' ? swing * 0.22 : 0;
-      const roll = turn === 'roll' ? swing * 10 * turnDir : 0;
       const drift = reduced ? 0 : clamp(vx / 70, -4, 4);
-      tilt += (drift + roll - tilt) * (1 - Math.exp(-dt * 6));
+      tilt += (drift - tilt) * (1 - Math.exp(-dt * 6));
       el.style.setProperty('--char-turn', String(1 - spin));
 
       paint(p);

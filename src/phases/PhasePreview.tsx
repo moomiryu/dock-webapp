@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import BackButton from '../components/BackButton';
-import StepRail from '../components/StepRail';
 import VoiceBubble from '../components/VoiceBubble';
 import { fontMap } from '../lib/palettes';
 import { messageColors } from '../lib/messageStyle';
@@ -24,7 +23,7 @@ export default function PhasePreview({ text, tone, onConfirm, onBack, busy = fal
         return;
     } setStage('empty'); const timers = [setTimeout(() => setStage('burst'), 600), setTimeout(() => setStage('hold'), 1650), setTimeout(() => setStage('settle'), 3250), setTimeout(() => setStage('ambient'), 4200)]; return () => timers.forEach(clearTimeout); }, [run]);
     return <div className="z-frame preview-screen"><div className="z-header"><BackButton label="색 다시 고르기" onClick={() => { if (!busy)
-        onBack(); }}/><span>5 / 5 · 미리보기</span></div><StepRail step={5}/>
+        onBack(); }}/></div>
  <div className="z-ask"><h1>이렇게 보여요</h1></div><div className="proj-stage"><div className={'sim is-' + stage}><div className="sim-frame">
  <div className="sim-crowd" aria-hidden>{SAMPLE_MESSAGES.map((s, i) => { const m = messageColors(s.tone); return <div key={i} className="sim-lane" style={{ top: (i % 2 ? 80 : 20) + '%', animationDuration: '34s', animationDelay: -(i * 5) + 's' }}><span className="sim-crowd-item" style={{ background: m.bg, color: m.text, fontFamily: fontMap[s.tone.font] }}>{s.text}</span></div>; })}</div>
  <div className="sim-mine-lane"><div className="sim-mine"><VoiceBubble text={text} bg={colors.bg} color={colors.text} fontFamily={fontMap[tone.font]} weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size}/></div></div>

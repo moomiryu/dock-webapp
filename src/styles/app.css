@@ -32,38 +32,21 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--s4);
-  padding-bottom: var(--s4);
   font-family: var(--label-font);
   font-size: var(--fs-cap);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--muted);
   flex: none;
-  min-height: 56px;
+  /* 44 = 56 - 12. 단계 막대가 있던 동안은 그 밑 12px이 막대 자리였다.
+     막대가 빠지면서 그만큼 줄인다 — 그래야 제목 잉크가 스케치의 78.5px에
+     선다(재 보니 79). */
+  min-height: 44px;
 }
 
 /* 05·06처럼 번호 붙은 단계가 아닌 화면은 밑줄로 끝난다 */
 .mf-header {
   border-bottom: 1px solid var(--line);
-}
-
-/* 단계 진행 — 구분선이 곧 진행 막대다.
-   그전에는 점 세 개가 기본 버튼 *아래*에 있었는데, 참조 계약에서
-   xlarge 버튼은 화면의 마지막 요소다. 그 아래에는 아무것도 두지 않는다.
-   (참조 문서에 진행 컴포넌트는 없다 — 이건 우리 확장이다.) */
-.z-rail {
-  height: 2px;
-  background: var(--line);
-  flex: none;
-  margin-top: calc(var(--s5) * -1);
-  overflow: hidden;
-}
-
-.z-rail i {
-  display: block;
-  height: 100%;
-  background: var(--ink);
-  transition: width 250ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .mf-header > span:first-child,
@@ -1616,12 +1599,15 @@
 .home-char{ top: 46%; }
 .primary-action, .home-cta, .home-info-btn{ font-weight: 600; padding-block: var(--s3); }
 .z-ask{ gap: var(--s3); }
-.z-ask h1{ font-size: var(--fs-h2); line-height: 1.5; text-wrap: initial; }
+/* 2026-09-15 스케치: 제목 두 줄 사이가 33px이다. 30px 활자에 1.1 —
+   1.5(45px)로는 두 줄이 한 덩어리로 안 읽히고 따로 논다. */
+.z-ask h1{ font-size: var(--fs-h2); line-height: 1.1; text-wrap: initial; }
 .z-ask p{ font-size: var(--fs-body); }
-.z1{ gap: var(--s6); }
+/* 24였다. 단계 막대가 빠지면서 제목이 8px 내려앉았다 — 16으로 줄여
+   스케치의 잉크 78.5px 자리로 되돌린다. */
+.z1{ gap: var(--s5); }
 .z1 .z-header{ padding-bottom: 0; }
-.z1 .z-rail{ margin-top: calc(-1 * var(--s6)); }
-.style-cards{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); border: 0; background: none; border-radius: 0; overflow: visible; }
+.style-cards{ grid-template-columns: minmax(0, 1fr); gap: var(--s3); border: 0; background: none; border-radius: 0; overflow: visible; }
 .style-card{ min-height: 72px; border: 1px solid var(--line); border-radius: var(--r-l); padding: var(--s5); }
 .style-card.on{ border-color: var(--brand-main); }
 .style-card-name{ font-size: var(--fs-h3); line-height: 1.5; }
@@ -1644,29 +1630,63 @@
 }
 
 /* Separate choosing a voice from adjusting its expression. */
-.tone-choice .style-cards{ margin-top: var(--s5); gap: var(--s4); }
-.tone-choice .style-card{ position: relative; min-height: clamp(132px, 21dvh, 184px); border-width: 2px; }
-.tone-choice .style-card-name{ font-size: var(--fs-h2); }
-.style-card-check{ position: absolute; top: var(--s4); right: var(--s4); display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--brand-main); color: var(--ink); visibility: hidden; }
-.style-card.on .style-card-check{ visibility: visible; }
+
+/* 2026-09-15 스케치: 성격은 카드 격자가 아니라 화면 폭을 꽉 채운 네 줄이다.
+   이름이 곧 견본이므로 카드 테두리가 먹던 자리를 글자에 준다 — 30px에서
+   36px로. 네 줄은 남는 높이를 똑같이 나눠 갖는다(390×844에서 한 줄 137px,
+   스케치의 121px보다 넉넉하다). */
+.tone-choice .style-cards{ margin-top: 0; gap: 0; grid-auto-rows: 1fr; flex: 1; margin-inline: calc(var(--pad-x) * -1); }
+/* 격자로 두는 이유: 한글과 영문은 베이스라인을 맞추고(align-items),
+   그 한 줄 전체는 칸 가운데 두어야 한다(align-content). flex로는 둘을
+   동시에 못 한다 — baseline이 줄을 칸 맨 위에 붙여 버린다. */
+.tone-choice .style-card{ position: relative; min-height: 0; border: 0; border-radius: 0; display: grid; grid-auto-flow: column; grid-template-columns: 112px auto; justify-content: start; align-content: center; align-items: baseline; gap: var(--s5); padding: 0 var(--pad-x); background: var(--paper); text-align: left; }
+/* 줄 사이를 선으로 가르면 견본 넷 위에 다섯 번째 선이 생긴다.
+   홀수 줄만 옅게 깔아 경계를 만든다. */
+.tone-choice .style-card:nth-child(odd){ background: var(--brand-soft); }
+/* 고른 줄은 빨강이 줄 전체를 먹는다. 스케치는 #CF5B4C이지만 그 위의 흰
+   글자는 4.00:1 — 22px 영문이 AA(4.5)에 못 미친다. 채움 버튼과 같은
+   --brand-strong(4.64:1)을 쓴다. */
+.tone-choice .style-card.on{ background: var(--brand-strong); color: var(--paper); border-color: var(--brand-strong); }
+/* 112 + 16 = 128. 스케치에서 영문이 시작하는 자리(잉크 148.1 - 좌여백 20)다.
+   이름 넷이 서체가 달라 폭이 94.8~105.1로 들쭉날쭉한데, 칸을 고정하지
+   않으면 영문 넷이 그만큼 어긋난다. */
+.tone-choice .style-card-name{ font-size: var(--fs-h1); line-height: 1.15; }
+.style-card-en{ font-size: var(--fs-h4); line-height: 1.15; }
 .tone-selected{ display: flex; align-items: center; justify-content: space-between; color: var(--body-text); font-size: var(--fs-body-s); }
 .tone-selected button{ border: 0; background: var(--grey-100); border-radius: var(--r-s); padding: var(--s3) var(--s5); min-height: 44px; color: var(--grey-700); font: inherit; cursor: pointer; }
 .tone-selected button:active{ background: var(--grey-200); }
-.tone-adjust .z-glyph-stage{ flex: 1 0 160px; }
+/* 2026-09-15 스케치: 견본이 빨간 면 위에서 화면 위쪽을 통째로 쓴다.
+   제목도 설명도 없앴다 — 무슨 화면인지는 견본이 말하고, 무엇을 만지는지는
+   아래 세 라벨이 말한다. 그래서 면은 가장자리까지, 위로는 맨 끝까지 간다. */
+.tone-adjust{ padding-top: 0; }
+.tone-adjust .z-glyph-stage{
+  flex: 1 0 320px;
+  position: relative;
+  height: auto;
+  margin-inline: calc(var(--pad-x) * -1);
+  padding: 0 var(--pad-x);
+  background: var(--brand-main);
+  color: var(--paper);
+}
+/* 뒤로 가기는 빨간 면 위에 떠 있다. 흐름에 끼우면 견본이 그만큼 내려앉는다 */
+.tone-adjust .z-glyph-stage > .z-header{ position: absolute; top: var(--s5); left: var(--pad-x); right: var(--pad-x); }
+.tone-adjust .z-glyph-stage .z-back{ color: var(--paper); }
+.tone-adjust .z-glyph-stage .z-back:active{ background: rgb(255 255 255 / 16%); }
 .tone-adjust .z-axes{ padding-bottom: var(--s3); }
 .z-steps{ background: var(--grey-100); border-color: var(--grey-100); gap: 4px; padding: 4px; }
 .z-step{ background: transparent; border-radius: 10px; color: var(--grey-700); }
 .z-ask p, .guide-hero p, .info-said p, .send-copy p{ color: var(--body-text); }
-.z-rail i{ background: var(--brand-main); }
 .dock-arrow{ color: var(--brand-main); }
 
 /* Home wordmark: low-level axis setting supports Lineal's wght beyond CSS 1000. */
 .home-intro{ width: 100%; min-width: 0; }
 .home-intro .home-headline{ width: 100%; line-height: 1.2; letter-spacing: 0; }
-.home-headline > span{ display: inline-block; white-space: nowrap; font-family: 'Lineal VF', sans-serif; font-weight: 900; font-variation-settings: 'wght' 1150; font-size: 56px; }
+/* 워드마크는 브랜드 빨강이다 (2026-09-15 스케치). 흰 글자를 받치는 자리가
+   아니라 흰 바탕 위의 글자라, 채움 버튼용 --brand-strong이 아니라 실물
+   하드웨어의 색 그대로를 쓴다. */
+.home-headline > span{ display: inline-block; white-space: nowrap; font-family: 'Lineal VF', sans-serif; font-weight: 900; font-variation-settings: 'wght' 1150; font-size: 56px; color: var(--brand-main); }
 .home-subtitle{ margin-top: var(--s4); font-size: var(--fs-body); line-height: 1.5; color: var(--body-text); }
 .color-choice{ gap: var(--s6); }
-.color-choice .z-rail{ margin-top: calc(-1 * var(--s6)); }
 .color-preview-stage{ flex: 1; display: flex; align-items: center; min-height: 220px; padding-block: var(--s6); }
 .color-preview{ width: 100%; aspect-ratio: 2.4 / 1.5; container-type: size; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); }
 .color-preview-text{ max-width: 88%; white-space: pre-wrap; text-align: center; line-height: 1.25; transform-origin: center; }
@@ -1682,7 +1702,10 @@
 .sr-only{ position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 /* Bilingual specimen and a consistent black screen for message previews. */
 .z-glyph > span{ display: block; }
-.z-glyph .glyph-latin{ font-family: 'Lineal VF', sans-serif; font-size: 0.43em; margin-top: 0.55em; white-space: nowrap; }
+/* 2026-09-15 스케치: Public / Voice 두 줄이다. 한 줄로 두면 라틴이
+   '발화'보다 넓어져 견본의 주인이 바뀐다. 비율은 스케치에서 잰 것 —
+   발화 133px일 때 라틴 44.6px(0.335em), 두 줄 잉크 88px, 사이 44.3px. */
+.z-glyph .glyph-latin{ font-family: 'Lineal VF', sans-serif; font-size: 0.335em; line-height: 1.26; margin-top: 0.33em; }
 .info-step-label{ text-transform: none; font-weight: 600; }
 .color-preview-stage{ flex-direction: column; justify-content: center; gap: var(--s4); }
 .color-preview{ background: #000; }
@@ -1757,10 +1780,71 @@
 .line-bubble-text { white-space: pre-wrap; line-height: 1.5; }
 .message-line { white-space: pre-wrap; overflow-wrap: anywhere; }
 .message-line-fill { background: var(--line-bg); border-radius: var(--r-xl); padding: var(--s1) var(--s3); box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+/* 라벨은 제 칸 가운데 — 스케치에서 셋 다 x=49.7에 맞춰져 있다.
+   왼쪽에 붙이면 '크기'(두 자)와 '빠르기'(세 자)가 서로 어긋나 보인다. */
 .tone-slider { display:grid; grid-template-columns: var(--btn-l) minmax(0,1fr); gap:var(--s4); align-items:center; font-size:var(--fs-body-s); color:var(--body-text); }
+.tone-slider > span:first-child { text-align: center; }
 .tone-slider-control { display:flex; flex-direction:column; gap:var(--s1); }
 .tone-slider-labels { display:flex; justify-content:space-between; }
 .tone-slider input { width:100%; min-height:var(--btn-s); accent-color:var(--brand-strong); cursor:pointer; }
+/* 2026-09-15 스케치: 쓰는 자리가 화면을 통째로 쓴다. 뒤로 가기와 정렬·기울기는
+   그 위에 떠 있고, 글자 수는 자리의 오른쪽 아래에 앉는다. 16:10 액자를 벗는
+   대신 60자를 채워도 18px로 읽힌다 — 벽 비율은 미리보기(05)가 맡는다. */
+.compose-screen{ padding-top: 0; }
+.compose-screen .proj-fit > .proj-frame{ width: 100%; height: 100%; aspect-ratio: auto; border: 0; box-shadow: none; }
+.compose-chrome{ position: absolute; top: var(--s5); left: var(--pad-x); right: var(--pad-x); display: flex; align-items: center; justify-content: space-between; gap: var(--s4); z-index: 1; }
+.compose-chrome .z-back{ color: var(--paper); }
+.compose-chrome .z-back:active{ background: rgb(255 255 255 / 16%); }
+/* 검은 자리 위에서는 흰 알약 두 개가 글보다 먼저 눈에 든다. 테두리만 남긴다. */
+.compose-chrome .format-button{ background: none; border-color: rgb(255 255 255 / 34%); color: var(--paper); }
+.compose-chrome .format-button[aria-pressed=true]{ background: var(--brand-sub); border-color: var(--brand-sub); color: var(--ink); }
+/* 검은 자리 위라 --muted(4.49:1)로는 AA에 한 끗 모자란다. 한 칸 밝게. */
+.compose-count{ position: absolute; right: var(--pad-x); bottom: var(--s6); font-family: var(--label-font); font-size: var(--fs-cap); letter-spacing: 0.02em; color: var(--grey-500); font-variant-numeric: tabular-nums; }
+.compose-count.is-full{ color: var(--paper); }
+
+/* ─── 60자 — 화면이 물러선다 ───────────────────────────────────
+   다 찼다는 말을 숫자가 아니라 크기로 한다. 쓰던 자리가 줄어들어 한 덩이가
+   되고, 그 가장자리에서 물결이 번진다. 화면을 누르면 도로 들어온다.
+
+   수치는 참고 자료(motion reference_2.gif)를 프레임마다 재서 나온 것이다.
+   PhaseCompose의 Ripple 주석에 그 표가 있다. */
+/* minmax(0,1fr)이 있어야 한다. 격자의 기본 칸은 max-content라, 60자를 한 줄로
+   편 너비(1012px)까지 칸이 부풀고 글이 판 밖으로 흘러 나간다. */
+.compose-pane{ position: relative; width: 100%; height: 100%; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center;
+  transition: width 420ms var(--ease-emphasized), height 420ms var(--ease-emphasized), border-radius 420ms var(--ease-emphasized); }
+/* 316 × 1.174(물결이 가장 멀리 갔을 때) = 371 — 스케치에서 형태가 차지한 370이다 */
+.compose-editor.is-pulled .compose-pane{ width: min(80vw, 316px); height: min(80vw, 316px); background: var(--pane-bg); border-radius: 17%; }
+.compose-editor.is-pulled .voice-bubble{ transform: scale(0.62); transform-origin: center; }
+.compose-editor.is-pulled .compose-count{ opacity: 0; }
+
+/* 자리 잡을 때까지는 없는 것과 같다 — 물러선 뒤에만 보인다. 240 화판에
+   200짜리 네모를 그려 두었으므로 판을 120%로 키우면 네모가 판에 꼭 맞는다. */
+/* inset:0 + margin:auto로는 가운데에 못 온다 — 판보다 큰 상자라 그 규칙은
+   왼쪽에 붙여 버린다. 가운데를 직접 잡는다. */
+.compose-ripple{ position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 120%; height: 120%; opacity: 0; pointer-events: none;
+  transition: opacity 240ms; overflow: visible; }
+.compose-editor.is-pulled .compose-ripple{ opacity: 1; }
+/* 741.6 = 둘레. 네 토막으로 끊고(185.4마다) 변 한가운데에 34짜리 틈을 둔다 */
+.compose-ripple-ring{ stroke-dasharray: 151.4 34; stroke-dashoffset: 102.4; stroke-linecap: round;
+  transform-box: fill-box; transform-origin: center; animation: composeRipple 600ms linear infinite; }
+@keyframes composeRipple {
+  0%   { transform: scale(1.028); stroke-width: 3.8px; opacity: 1; }
+  78%  { opacity: 1; }
+  100% { transform: scale(1.174); stroke-width: 0.9px; opacity: 0; }
+}
+/* 물결이 떨어져 나가는 순간 몸통이 그만큼 여윈다 — 한 변으로 2.2% */
+.compose-editor.is-pulled .compose-pane{ animation: composeCore 600ms linear infinite; }
+@keyframes composeCore {
+  0%   { transform: scale(0.978); }
+  100% { transform: scale(1); }
+}
+.compose-count{ transition: opacity 240ms; }
+@media (prefers-reduced-motion: reduce) {
+  .compose-ripple-ring, .compose-editor.is-pulled .compose-pane { animation: none; }
+  .compose-ripple-ring { stroke-width: 3.8px; }
+}
+.compose-count > span{ color: var(--grey-600); }
+.compose-count.is-full > span{ color: var(--grey-400); }
 .compose-toolbar { display:flex; justify-content:flex-end; gap:var(--s3); }
 .format-button { display:grid; place-items:center; width:var(--btn-l); height:var(--btn-l); border:1px solid var(--line); border-radius:var(--r-s); background:var(--paper); color:var(--ink); }
 .format-button[aria-pressed=true] { background:var(--brand-sub); }

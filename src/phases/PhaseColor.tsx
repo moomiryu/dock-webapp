@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import BackButton from '../components/BackButton';
-import StepRail from '../components/StepRail';
 import VoiceBubble from '../components/VoiceBubble';
 import { fontMap } from '../lib/palettes';
 import { MESSAGE_COLORS, messageColors } from '../lib/messageStyle';
@@ -16,7 +15,7 @@ export default function PhaseColor({ text, tone, onBack, onNext }: Props) {
     const [bg, setBg] = useState(initial.bg);
     const [fg, setFg] = useState(initial.text);
     const current = { ...tone, backgroundColor: bg, textColor: fg };
-    return <div className="z-frame color-choice"><div className="z-header"><BackButton label="한 줄 다시 쓰기" onClick={() => onBack(current)}/><span>4 / 5 · 색</span></div><StepRail step={4}/>
+    return <div className="z-frame color-choice"><div className="z-header"><BackButton label="한 줄 다시 쓰기" onClick={() => onBack(current)}/></div>
  <div className="z-ask"><h1>발화의 색을 골라주세요.</h1></div>
  <div className="color-preview-stage"><div className="color-preview"><VoiceBubble text={text} bg={bg} color={fg} fontFamily={fontMap[tone.font]} weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size}/></div><p className="screen-ratio-note">실제 스크린 비율이에요.</p></div>
  <div className="color-reels"><ColorReel label="글자색" value={fg} blocked={bg} onChange={setFg}/><ColorReel label="배경색" value={bg} blocked={fg} noBlack onChange={setBg}/></div>

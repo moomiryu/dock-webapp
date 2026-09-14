@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import BackButton from './BackButton';
 import { morphSvg, scopeSvg } from '../lib/svgAsset';
-import { EMPHASIS_SEC, STAY_DAYS, WALL_H_M, WALL_W_M } from '../lib/wall';
+import { EMPHASIS_SEC, STAY_DAYS } from '../lib/wall';
 
 // 작가가 삽화를 짝으로 준다 — 한 군데만 다른 두 컷이다. 그 사이를 오간다.
 //
@@ -19,8 +19,10 @@ import { EMPHASIS_SEC, STAY_DAYS, WALL_H_M, WALL_W_M } from '../lib/wall';
 // 않는다 — 268KB짜리고, 화면이 아니라 지시서다.
 import artAboutFrom from '../../by_moomiryu/Renewal_v1/example_about_3.svg?raw';
 import artAboutTo from '../../by_moomiryu/Renewal_v1/example_about_1.svg?raw';
-import artGlyphsFrom from '../../by_moomiryu/Renewal_v1/example_step1_2.svg?raw';
-import artGlyphsTo from '../../by_moomiryu/Renewal_v1/example_step1_1.svg?raw';
+// Step 1은 세 컷이다 — 1 → 2 → 3으로 이어 돈다 (작가가 _3을 덧붙였다)
+import artGlyphs1 from '../../by_moomiryu/Renewal_v1/example_step1_1.svg?raw';
+import artGlyphs2 from '../../by_moomiryu/Renewal_v1/example_step1_2.svg?raw';
+import artGlyphs3 from '../../by_moomiryu/Renewal_v1/example_step1_3.svg?raw';
 import artDockFrom from '../../by_moomiryu/Renewal_v1/example_step3_1.svg?raw';
 import artDockTo from '../../by_moomiryu/Renewal_v1/example_step3_2.svg?raw';
 
@@ -97,22 +99,22 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
 // 짝지어 온 삽화. 한 번 만들어 두고 다시 쓴다 — 매 렌더마다 두 장을 파싱해
 // 뼈대를 맞출 이유가 없다. 모션을 끈 사람에게는 나중 컷만 준다.
 const morphed = new Map<string, string>();
-function Morphing({ from, to, name, crop }: { from: string; to: string; name: string; crop?: string }) {
+function Morphing({ from, to, then, name, crop }: { from: string; to: string; then?: string; name: string; crop?: string }) {
   const still = typeof matchMedia !== 'undefined'
     && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const key = still ? `${name}-still` : name;
-  if (!morphed.has(key)) morphed.set(key, still ? scopeSvg(to, key) : morphSvg(from, to, key, 4.2, crop));
+  if (!morphed.has(key)) morphed.set(key, still ? scopeSvg(then ?? to, key) : morphSvg(from, to, key, 4.2, crop, then));
   return <span dangerouslySetInnerHTML={{ __html: morphed.get(key)! }} />;
 }
 
 const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNode; artClass?: string }> = [
   {
     step: 'About',
-    title: '학교 벽에 대고 크게 말하는 장치입니다',
+    title: '오밤중, 벽에 띄우는 나의 한마디',
     body: (
       <p>
-        누구나 한 줄을 캠퍼스 벽에 띄울 수 있습니다.
-        무엇을, <b>어떻게</b> 말할지는 당신이 정합니다.
+        누구나 공평하게 메시지를 전할 수 있습니다.<br />
+        시끄럽지 않아도, 충분히 눈에 띕니다.
       </p>
     ),
     // 1920×1080 화판에서 장면은 x 318~1603, y 260~820만 쓴다. 나머지는 빈
@@ -122,54 +124,71 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
   },
   {
     step: 'Step 1',
-    title: '성격을 고르고 다듬습니다',
-    body: <p>마음에 드는 성격에 크기, 무게, 빠르기를 더해보세요.</p>,
-    art: <Morphing from={artGlyphsFrom} to={artGlyphsTo} name="glyphs" />,
+    title: '발화의 성격을 고르고 다듬습니다.',
+    body: (
+      <p>
+        크기와 빠르기, 무게를 조절하며<br />
+        나만의 목소리를 만들어보세요.
+      </p>
+    ),
+    // 순서는 파일 번호가 아니라 이야기다. 작가가 그린 세 컷을 보면
+    // _2가 얇고 작은 '가'(잣대 셋이 다 아래), _1이 굵고 큰 '가', _3이
+    // 거기서 기울어진 '가'다. 지침도 그 순서다 — 굵고 커지고, 그다음
+    // 빠르기가 올라가며 기운다. 그래서 2 → 1 → 3으로 돈다.
+    art: <Morphing from={artGlyphs2} to={artGlyphs1} then={artGlyphs3} name="glyphs" />,
     artClass: 'is-wide'
   },
   {
     step: 'Step 2',
-    title: '한 줄을 쓰고 색을 고릅니다',
-    body: <p>폰으로. 한 번에 60자까지.</p>,
+    title: '메시지를 작성합니다.',
+    body: (
+      <p>
+        최대 60자까지 작성할 수 있습니다.<br />
+        <b>비속어 및 타인을 해치는 표현은 사용할 수 없습니다.</b>
+      </p>
+    ),
     art: <ArtLine />
   },
   {
     step: 'Step 3',
-    title: '폰을 홈에 꽂습니다',
-    body: <p>벽을 보고 서서, 위쪽부터 세로로.</p>,
+    title: '완료 후, 폰을 홈에 꽂습니다.',
+    body: (
+      <p>
+        앞쪽 홈에 폰을 세로로, 위쪽부터 밀어 넣어<br />
+        메가폰트를 작동시키세요.
+      </p>
+    ),
     art: <Morphing from={artDockFrom} to={artDockTo} name="dock" />,
     artClass: 'is-figure'
   },
   {
-    step: 'On the wall',
-    title: '벽에 크게 떠오릅니다',
-    body: (
-      <p>
-        꽂혀 있는 동안 {WALL_W_M} × {WALL_H_M} m 검정 화면 위에 크게. 최대 {EMPHASIS_SEC}초.
-      </p>
-    ),
+    step: 'Step 4',
+    title: '당신의 한마디가 외쳐집니다.',
+    body: <p>최대 {EMPHASIS_SEC}초 동안 나타납니다.</p>,
     art: <ArtBig />
   },
   {
-    step: 'Afterwards',
-    title: '빼면 메아리로 남고, 사라집니다',
+    step: 'Step 5',
+    title: '발화는 메아리처럼 남았다가 사라집니다.',
     body: (
       <>
+        {/* 3일·30초 같은 수치는 여기 적지 않고 wall.ts에서 받아 온다.
+            체류 기간을 바꾸면 이 문장이 같이 따라와야 하기 때문이다. */}
         <p>
-          {STAY_DAYS}일간 다른 말들 사이를 떠다니다 사라집니다. 보관함은 없습니다.
+          발화는 <b>{STAY_DAYS}일간 남아 있다가 사라집니다.</b>
         </p>
         <dl className="info-rules">
           <div>
-            <dt>이름</dt>
-            <dd>누가 썼는지 남지 않습니다</dd>
+            <dt>익명성</dt>
+            <dd>누가 썼는지는 남지 않습니다.</dd>
           </div>
           <div>
-            <dt>수정</dt>
-            <dd>보낸 뒤에는 고칠 수 없습니다</dd>
+            <dt>불변성</dt>
+            <dd>보낸 뒤에는 수정할 수 없습니다.</dd>
           </div>
           <div>
-            <dt>삭제</dt>
-            <dd>문제가 되는 글은 관리자가 내립니다</dd>
+            <dt>운영 원칙</dt>
+            <dd>타인에게 피해를 주거나 문제가 되는 글은 관리자가 삭제할 수 있습니다.</dd>
           </div>
         </dl>
       </>

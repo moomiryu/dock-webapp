@@ -460,8 +460,13 @@ export default function HomeCharacter() {
           <path ref={bodyRef} />
           <path ref={hatRef} />
           <circle ref={dotRef} r="0" />
+          {/* 눈은 몸통 SVG 안의 중첩 svg 한 장이다. 그래서 눈알을 하나씩
+              찾을 것도 없이 이 한 장을 세로로 눌러 감으면 된다(.mf-eye).
+              x·y·폭·높이는 매 프레임 JS가 다시 쓰지만 transform은 안 건드리므로
+              깜빡임과 다투지 않는다. */}
           <svg
             ref={eyeRef}
+            className="mf-eye"
             viewBox="0 0 412.12 172.44"
             preserveAspectRatio="none"
             overflow="visible"

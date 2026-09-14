@@ -892,6 +892,7 @@
 /* ─── 프로젝트 정보 덮개 ────────────────────────────────────── */
 
 .info-overlay{
+  position: relative;   /* 바닥 그라데이션(::after)이 걸릴 자리 */
   width: 100%;
   max-width: 480px;
   min-height: 100dvh;
@@ -1760,6 +1761,9 @@
    깔아 둔 것이다 — 위는 투명, 60% 지점에서 제 색이 되고 거기부터 아래로는
    그대로 간다. 액자 전체 폭을 쓰므로 좌우 여백 바깥까지 나간다.
    견본 넷 위로 덮이고 버튼 아래로 깔린다(스케치 02b의 칠 순서). */
+/* 홈과 소개 화면도 같은 기운을 받는다 — 다섯 단계에만 있으면 들어올 때와
+   나갈 때만 바닥이 차가워서, 그 둘이 이 앱이 아닌 것처럼 읽힌다. */
+.home-frame::after, .info-overlay::after,
 .tone-choice::after, .tone-adjust::after, .compose-screen::after,
 .color-choice::after, .preview-screen::after{
   content: '';
@@ -1776,6 +1780,8 @@
 .tone-choice > .primary-action, .tone-adjust > .primary-action,
 .compose-screen > .primary-action, .color-choice > .primary-action,
 .preview-screen > .primary-action{ position: relative; z-index: 2; }
+/* 홈의 두 버튼과 소개의 발치 줄은 그 기운 위에 앉는다 */
+.home-frame .home-gate, .info-overlay > .info-nav{ position: relative; z-index: 2; }
 .tone-selected{ display: flex; align-items: center; justify-content: space-between; color: var(--body-text); font-size: var(--fs-body-s); }
 .tone-selected button{ border: 0; background: var(--grey-100); border-radius: var(--r-s); padding: var(--s3) var(--s5); min-height: 44px; color: var(--grey-700); font: inherit; cursor: pointer; }
 .tone-selected button:active{ background: var(--grey-200); }
@@ -2049,6 +2055,47 @@
 /* .compose-editor는 여기서 빠졌다 — 이제 액자 자체가 고른 색을 입는다.
    검정은 물러섰을 때만 드러난다(.is-pulled). */
 .sim-frame { background:var(--ink); }
+/* 세 컷짜리 삽화의 마지막 컷에만 있는 주인공이 흔들린다.
+   Step 1에서는 기울어진 '가'다 — 빠르기가 올라가자 기우는 것까지는 작가가
+   그렸고, 그 상태로 가만히 서 있으면 기울기가 자세가 아니라 오타로 보인다.
+   조율 화면의 견본에 맞바람을 준 것과 같은 이유다.
+
+   흔드는 구간은 62~76% — 마지막 컷에 머무는 동안이다(animate3의 keyTimes와
+   같은 자리). 한 바퀴 길이는 SVG 쪽에서 인라인 style로 넣어 준다.
+   SMIL과 CSS가 서로의 시계를 모르므로 숫자가 두 곳에 있으면 반드시 어긋난다. */
+@keyframes mfGlyphShake{
+  0%, 62%, 76%, 100% { transform: translateX(0) rotate(0deg); }
+  65%                { transform: translateX(-2.5%) rotate(-1.2deg); }
+  68.5%              { transform: translateX(2%)    rotate(0.9deg); }
+  72%                { transform: translateX(-1.4%) rotate(-0.6deg); }
+}
+.mf-shake{
+  transform-box: fill-box;
+  transform-origin: center;
+  animation-name: mfGlyphShake;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+@media (prefers-reduced-motion: reduce){ .mf-shake{ animation: none; } }
+
+/* 캐릭터가 눈을 깜빡인다.
+   5.4초에 한 번, 감는 데 0.09초. 사람이 5초에 한 번쯤 깜빡이고 한 번이
+   0.1초 남짓이라 그 박자를 그대로 쓴다. 눈마다 시작이 어긋나 있다
+   (svgAsset의 markEyes가 animation-delay를 인라인으로 준다) — 넷이
+   한꺼번에 감으면 캐릭터가 깜빡인 게 아니라 화면이 한 번 꺼진 것으로 보인다.
+   fill-box를 쓰는 이유: SVG 도형의 transform 원점은 기본이 화판 (0,0)이라
+   그냥 scaleY를 걸면 눈이 감기는 게 아니라 화판 위로 날아간다. */
+@keyframes mfBlink{
+  0%, 96.5%, 100% { transform: scaleY(1); }
+  98.2%           { transform: scaleY(0.06); }
+}
+.mf-eye{
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mfBlink 5.4s linear infinite;
+}
+@media (prefers-reduced-motion: reduce){ .mf-eye{ animation: none; } }
+
 /* ─── 04 색: 아래에서 올라오는 색판 ─────────────────────────────
    화면은 03과 같다. 달라지는 것은 이 판 하나뿐이라, 단계가 넘어간 게
    아니라 색만 꺼내 든 것으로 읽힌다. 그래서 '두둥' 올라온다. */

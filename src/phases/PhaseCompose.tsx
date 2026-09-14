@@ -20,34 +20,41 @@ export default function PhaseCompose({ initialText, partialTone, initialPaletteI
     const tone: ToneState = { ...partialTone, align, slnt, paletteIdx: initialPaletteIdx ?? 0, graphicIdx: -1 };
     const colors = messageColors(tone);
     const empty = !text.trim();
-    // 60자에 닿으면 화면이 물러선다 — 다 찼다는 말을 글자 수가 아니라 크기로 한다.
-    // 한 번 물러선 뒤에는 화면을 눌러 다시 들어온다. 지웠다 다시 채우면 또 물러선다.
+    // 물러서는 계기는 **자판을 내리는 것**이다.
+    //
+    // 스케치 04a→04c가 말하는 건 한 문장이다: "글을 적던 그 화면이, 자판을
+    // 내리고 보니 파동하고 있는 소리였다." 그러니 물러섬은 특별한 사건이
+    // 아니라 쓰기를 멈추는 동작에 딸려 와야 한다 — 자판이 내려가면 가려져
+    // 있던 아래쪽이 드러나고, 그제야 형태가 통째로 보인다.
+    //
+    // 2026-09-15까지는 '정확히 60자'가 유일한 계기였다. 59자에서는 아무 일도
+    // 없고 60자에서 갑자기 물러서니, 흐름이 아니라 경고로 읽혔다. 60자는
+    // 이제 계기가 아니라 **자판을 내리는 손**이다 — 다 찼으니 자판을 내려
+    // 주고, 물러서는 일은 그 뒤에 저절로 따라온다. 결과는 같고 이유가 다르다.
     const full = text.length === 60;
     const [pulled, setPulled] = useState(false);
-    useEffect(() => { setPulled(full); }, [full]);
-    useEffect(() => {
-        if (pulled) input.current?.blur();            // 자판을 내려야 형태가 다 보인다
-        else input.current?.focus({ preventScroll: true });
-    }, [pulled]);
+    useEffect(() => { input.current?.focus({ preventScroll: true }); }, []);
+    useEffect(() => { if (full) input.current?.blur(); }, [full]);
     const cycle = () => setAlign(a => a === 'left' ? 'center' : a === 'center' ? 'right' : 'left');
     return <div className="z-frame compose-screen">
   <div className="proj-stage is-bleed"><div className="proj-fit"><div className={'proj-frame compose-editor' + (pulled ? ' is-pulled' : '')} onPointerDown={e => { if (e.target !== input.current) {
-        e.preventDefault();
-        if (pulled) setPulled(false);
-        else input.current?.focus({ preventScroll: true });
+        e.preventDefault();                           // 눌러도 지금 초점이 풀리지 않게
+        input.current?.focus({ preventScroll: true }); // 누르면 다시 들어간다(줌인)
     } }}>
    <div className="compose-chrome">
     <BackButton label="특성 조절로" onClick={() => onBack(text, tone)}/>
     <span className="z-step-of">3 / 5 · 한 줄</span>
     <div className="compose-toolbar">
-     <button type="button" className="format-button" onClick={cycle} aria-label={`정렬: ${align === 'left' ? '왼쪽' : align === 'right' ? '오른쪽' : '중앙'}. 다음 정렬로 변경`}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 5h18M3 13h18"/><path d={align === 'left' ? 'M3 9h11M3 17h11' : align === 'right' ? 'M10 9h11M10 17h11' : 'M6.5 9h11M6.5 17h11'}/></svg></button>
-     <button type="button" className="format-button" aria-label="기울기" aria-pressed={slnt !== 0} onClick={() => setSlnt(s => s ? 0 : -12)}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 4h10M4 20h10M15 4L9 20"/></svg></button>
+     <button type="button" className="format-button" onPointerDown={e => e.preventDefault()} onClick={cycle} aria-label={`정렬: ${align === 'left' ? '왼쪽' : align === 'right' ? '오른쪽' : '중앙'}. 다음 정렬로 변경`}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 5h18M3 13h18"/><path d={align === 'left' ? 'M3 9h11M3 17h11' : align === 'right' ? 'M10 9h11M10 17h11' : 'M6.5 9h11M6.5 17h11'}/></svg></button>
+     <button type="button" className="format-button" onPointerDown={e => e.preventDefault()} aria-label="기울기" aria-pressed={slnt !== 0} onClick={() => setSlnt(s => s ? 0 : -12)}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 4h10M4 20h10M15 4L9 20"/></svg></button>
     </div>
    </div>
    <div className="compose-pane" style={{ '--pane-bg': colors.bg } as CSSProperties}>
     <Ripple color={colors.bg}/>
     <VoiceBubble text={empty ? '여기를 눌러 쓰세요' : text} bg={colors.bg} color={colors.text} fontFamily={fontMap[tone.font]} weight={tone.wght} width={tone.tone} slant={tone.slnt} align={align} size={tone.size} fontSize={composeFontSize(text.length || 1, tone)}>
-    <textarea ref={input} className="live-input compose-input" aria-label="벽에 올릴 한 줄" value={text} maxLength={60} spellCheck={false} onChange={e => setText(e.target.value.slice(0, 60))}/></VoiceBubble>
+    <textarea ref={input} className="live-input compose-input" aria-label="벽에 올릴 한 줄" value={text} maxLength={60} spellCheck={false}
+      onFocus={() => setPulled(false)} onBlur={() => setPulled(true)}
+      onChange={e => setText(e.target.value.slice(0, 60))}/></VoiceBubble>
    </div>
    <span className={'compose-count' + (full ? ' is-full' : '')}>{text.length}<span>/60</span></span>
   </div></div></div>

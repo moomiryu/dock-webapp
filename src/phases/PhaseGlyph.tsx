@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import BackButton from '../components/BackButton';
-import { fontMap } from '../lib/palettes';
+import { fontMap, opticalFix } from '../lib/palettes';
 import { DEFAULT_TONE, STYLE_OPTIONS, type PartialTone } from '../lib/tone';
 import type { ToneState } from '../types';
 interface Props {
@@ -25,8 +25,15 @@ export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
         {STYLE_OPTIONS.map(s => (
           <button key={s.val} type="button" className={'style-card ' + (font === s.val ? 'on' : '')}
             aria-pressed={font === s.val} onClick={() => setFont(s.val)}>
-            <span className="style-card-name" style={{ fontFamily: fontMap[s.val] }}>{s.label}</span>
-            <span className="style-card-en" lang="en" style={{ fontFamily: fontMap[s.val] }}>{s.en}</span>
+            {/* 서체마다 잉크가 차지하는 높이도 굵기도 달라 같은 크기·같은
+                굵기로 안 보인다. 잰 값은 palettes.ts에 있다. */}
+            <span className="style-card-name" style={{
+              fontFamily: fontMap[s.val],
+              '--optical': opticalFix[s.val]?.scale ?? 1,
+              '--optical-stroke': (opticalFix[s.val]?.stroke ?? 0) + 'em'
+            } as CSSProperties}>
+              {s.label}
+            </span>
           </button>
         ))}
       </div>

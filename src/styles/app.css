@@ -1599,9 +1599,12 @@
 .home-char{ top: 46%; }
 .primary-action, .home-cta, .home-info-btn{ font-weight: 600; padding-block: var(--s3); }
 .z-ask{ gap: var(--s3); }
-/* 2026-09-15 스케치: 제목 두 줄 사이가 33px이다. 30px 활자에 1.1 —
-   1.5(45px)로는 두 줄이 한 덩어리로 안 읽히고 따로 논다. */
-.z-ask h1{ font-size: var(--fs-h2); line-height: 1.1; text-wrap: initial; }
+/* 제목 행간은 토스 실측을 따른다 — 1.3(--lh-head). 51장에서 잰 피치가
+   31px, 24px 활자에 1.3이었다(reference-capture-analysis.md).
+   2026-09-15 스케치는 33/28 = 1.18이라 조금 더 좁았는데, 조판은 스케치가
+   아니라 그 문서를 기준으로 두기로 했다. 1.5(45px)로 돌아가지는 않는다 —
+   그건 문서 사이트의 데스크톱 값이고 실측이 아니다. */
+.z-ask h1{ font-size: var(--fs-h2); line-height: var(--lh-head); text-wrap: initial; }
 .z-ask p{ font-size: var(--fs-body); }
 /* 24였다. 단계 막대가 빠지면서 제목이 8px 내려앉았다 — 16으로 줄여
    스케치의 잉크 78.5px 자리로 되돌린다. */
@@ -1619,10 +1622,36 @@
 .z1 > .primary-action{ margin-top: auto; }
 .info-overlay{ height: 100dvh; min-height: 0; gap: var(--s3); }
 .info-head{ border: 0; padding-bottom: 0; }
+
+/* 좌우 여백을 덮개에서 안쪽 셋으로 옮긴다 (2026-09-15).
+   삽화를 가장자리까지 내보내려고 음수 여백을 줬는데도 흰 띠가 남았다.
+   범인은 스크롤 상자였다 — .info-track이 가로 스크롤을 막으려고 걸어 둔
+   overflow-x: hidden이, 20~370 밖으로 나간 삽화를 도로 잘라내고 있었다.
+   상자를 화면 끝까지 넓히고 여백은 그 안의 내용이 지게 한다. */
+.info-overlay{ padding-inline: 0; }
+.info-head, .info-nav{ padding-inline: var(--pad-x); }
+.info-slide{ padding-inline: calc(var(--pad-x) + var(--s1)); }
 .info-slide h2{ font-size: var(--fs-h2); line-height: 1.5; }
 .info-step-label{ font-size: var(--fs-body); font-weight: 600; letter-spacing: 0; }
 .info-said{ width: 100%; }
 .info-art{ border: 0; padding: var(--s5); width: min(100%, 320px); margin-block: auto; }
+
+/* 2026-09-15 작가 삽화 셋. 선 그림과 달리 제 화면비를 들고 오므로 240/130을
+   벗긴다 — 안 벗기면 About(416×360)이 가로로 찌그러진다. */
+.info-art.is-bleed,
+.info-art.is-wide,
+.info-art.is-figure{ aspect-ratio: auto; padding: 0; }
+.info-art.is-bleed,
+.info-art.is-wide{ width: 100%; }
+.info-art.is-figure{ width: min(100%, 320px); }
+/* 가장자리까지 나가려면 덮개(--pad-x)와 장(--s1) 두 겹의 여백을 되물린다.
+   그러고도 흰 띠가 남았다: About의 검은 판이 제 화판(416) 안에서 x 15~405만
+   차지해서, 390 화면에서 왼쪽 14px·오른쪽 10px이 비쳤다. 그림을 잘라 내는
+   대신(그러면 가장자리로 흘러나간 두 그림자가 잘린다) 자리에 같은 검정을
+   깔아 이음매를 없앤다 — 판의 검정도 순검정이라 경계가 안 보인다. */
+.info-art.is-bleed{ align-self: stretch; margin-inline: calc((var(--pad-x) + var(--s1)) * -1); width: auto; background: var(--ink); }
+.info-art > span{ display: block; width: 100%; }
+.info-art svg{ display: block; width: 100%; height: auto; }
 .info-rules{ text-align: left; }
 @media (max-width: 359px){
   .z-ask h1, .info-slide h2{ font-size: var(--fs-h3); }
@@ -1679,13 +1708,24 @@
 .dock-arrow{ color: var(--brand-main); }
 
 /* Home wordmark: low-level axis setting supports Lineal's wght beyond CSS 1000. */
-.home-intro{ width: 100%; min-width: 0; }
+/* 2026-09-15 스케치: 워드마크와 설명이 가운데로 선다. 스케치 넉 장 모두
+   워드마크 잉크가 41.8~350.4 — 좌우가 거의 같고(41.8 / 39.6) 폭이 308.6이다.
+   왼쪽에 붙어 있던 것을 그 자리로 옮긴다. */
+.home-intro{ width: 100%; min-width: 0; text-align: center; }
 .home-intro .home-headline{ width: 100%; line-height: 1.2; letter-spacing: 0; }
 /* 워드마크는 브랜드 빨강이다 (2026-09-15 스케치). 흰 글자를 받치는 자리가
    아니라 흰 바탕 위의 글자라, 채움 버튼용 --brand-strong이 아니라 실물
    하드웨어의 색 그대로를 쓴다. */
 .home-headline > span{ display: inline-block; white-space: nowrap; font-family: 'Lineal VF', sans-serif; font-weight: 900; font-variation-settings: 'wght' 1150; font-size: 56px; color: var(--brand-main); }
-.home-subtitle{ margin-top: var(--s4); font-size: var(--fs-body); line-height: 1.5; color: var(--body-text); }
+/* 24px 작은 제목으로 한 번 올렸다가 본문 칸으로 돌아왔다 (2026-09-15).
+   위계를 올리는 대신 굵기만 한 칸 —— 400에서 500으로. 500은 이 프로젝트가
+   '보조 라벨'에 쓰는 굵기고(typography-revision-2026-09-07), 크기를 건드리지
+   않으므로 본문 칸에 그대로 머문다. */
+.home-subtitle{ margin-top: var(--s4); font-size: var(--fs-body); font-weight: 500; line-height: 1.5; color: var(--body-text); }
+/* 홈의 두 버튼은 직선 없이 완전히 둥글다 (2026-09-15). 스케치는 56 높이에
+   rx 28, 48 높이에 rx 24 — 높이의 절반이다. 높이가 바뀌어도 알약을 지키려고
+   토큰 사다리(14)가 아니라 999px을 쓴다. 이 둘만의 예외다. */
+.home-cta, .home-info-btn{ border-radius: 999px; }
 .color-choice{ gap: var(--s6); }
 .color-preview-stage{ flex: 1; display: flex; align-items: center; min-height: 220px; padding-block: var(--s6); }
 .color-preview{ width: 100%; aspect-ratio: 2.4 / 1.5; container-type: size; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); }
@@ -1720,7 +1760,8 @@
 
 .is-settle .sim-crowd, .is-ambient .sim-crowd{ opacity: 1; }
 .home-intro .home-headline{ container-type: inline-size; }
-.home-headline > span{ font-size: 21cqw; }
+/* 21cqw는 잉크 328px이었다. 스케치가 308.6이라 한 급 줄인다 — 19.8cqw. */
+.home-headline > span{ font-size: 19.8cqw; }
 
 .sim-crowd-item{ font-size: 2.4cqw; max-width: 60cqw; white-space: normal; word-break: keep-all; }
 
@@ -1769,6 +1810,40 @@
              scale(calc(var(--char-stretch, 1) * var(--char-turn, 1)), var(--char-squash, 1));
   pointer-events: none; }
 .home-char-motion > svg{ display: block; width: 100%; height: 100%; overflow: visible; }
+/* 가끔 뱉는 글자 (2026-09-15 홈_4 스케치).
+   몸 바깥에 둔다 — 몸이 기울고 눌릴 때 같이 일그러지면 글자로 안 읽힌다.
+   상자에 걸린 scale은 같이 받으므로 멀리 있으면 글자도 작다.
+   크기는 스케치의 발자국을 따랐다: 상자 312에 폭 109.6 = 0.35배. */
+.home-char-say{
+  position: absolute;
+  /* 실루엣 윗변(--say-floor)에서 한 뼘 띄우고 그 위에 앉힌다. translate로
+     제 높이만큼 끌어올리므로 글자 상자가 몸에 닿지 않는다. */
+  top: calc(var(--say-floor, 0px) - var(--char-box, 272px) * 0.08);
+  translate: 0 -100%;
+  /* 라틴은 워드마크와 같은 얼굴로, 한글은 Lineal에 없으니 UI 얼굴로 떨어진다.
+     성격 서체 넷 중 하나를 쓰면 고르기도 전에 한 톤을 내민 꼴이 된다. */
+  font-family: 'Lineal VF', 'Pretendard Variable', sans-serif;
+  font-weight: 900;
+  font-size: calc(var(--char-box, 272px) * 0.12);
+  line-height: 1;
+  color: var(--brand-main);
+  white-space: nowrap;
+  pointer-events: none;
+  transform-origin: center bottom;
+  animation: charSay 1600ms var(--ease-standard) both;
+}
+/* 가운데선에서 한쪽으로 뻗는다. 몸 위에 있으므로 옆으로는 겹칠 일이 없다. */
+.home-char-say[data-side='right']{ left: 50%; }
+.home-char-say[data-side='left']{ right: 50%; }
+
+/* translate가 이미 세로를 맡고 있어서 transform에 다시 쓰면 덮어쓴다.
+   회전과 크기만 transform에 둔다. */
+@keyframes charSay {
+  0%   { opacity: 0; transform: rotate(var(--say-tilt, 0deg)) scale(0.72); }
+  14%  { opacity: 1; transform: rotate(var(--say-tilt, 0deg)) scale(1); }
+  74%  { opacity: 1; transform: rotate(var(--say-tilt, 0deg)) scale(1); }
+  100% { opacity: 0; transform: rotate(var(--say-tilt, 0deg)) scale(1.12); }
+}
 .home-char svg circle{ animation: none; }
 .home-layer{ z-index: 2; pointer-events: none; }
 .home-gate{ pointer-events: none; }
@@ -1875,3 +1950,121 @@
 .done-simple .done-home-link { flex:none; margin-top:var(--s7); }
 
 .compose-input { padding:0 var(--s3); box-sizing:border-box; }
+
+/* ─── 단계 표시 (2026-09-15 되살림) ────────────────────────────
+   스케치가 오른쪽 위에 '2 / 5 · 조율'을 둔다. 숫자를 Lineal로 찍으면
+   워드마크와 같은 얼굴이라 먼저 눈에 든다 — 본문 얼굴로 적어 물러나게 한다.
+   단계 이름도 스케치를 따라 2를 '특성'에서 '조율'로 바꿨다. */
+.z-step-of{
+  margin-left: auto;
+  font-family: 'Pretendard Variable', sans-serif;
+  font-size: var(--fs-cap);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+  white-space: nowrap;
+}
+/* .z-header의 마지막 칸을 잉크색으로 올리는 규칙보다 뒤에 와야 한다 */
+.z-header > .z-step-of{ color: var(--muted); }
+/* 어두운 면 위에서는 회색이 묻힌다. --muted(#6b7684)는 검정 위 4.49:1로
+   AA에 한 끗 모자라서 한 칸 밝게 간다. */
+.compose-chrome .z-step-of{ color: var(--grey-500); }
+.tone-adjust .z-glyph-stage .z-step-of{ color: var(--paper); }
+
+/* ─── 성격: 손가락이 닿는 순간 ─────────────────────────────────
+   누르고 떼야 색이 바뀌면 고른 것이 한 박자 늦게 온다. 닿는 순간
+   고른 모습을 미리 보여 준다 — 어차피 떼면 그게 선택이다.
+   줄무늬(:nth-child)가 .style-card:active보다 특정성이 높아 공용 누름
+   규칙이 먹지 않았다. 그래서 여기서 같은 무게로 다시 쓴다. */
+.tone-choice .style-card:active{ background: var(--brand-strong); color: var(--paper); }
+/* 마우스가 있는 기기에서만. 폰에서 hover를 켜면 누른 뒤에도 색이 남는다 */
+@media (hover: hover) {
+  .tone-choice .style-card:hover:not(.on){ background: var(--brand-soft); }
+  .tone-choice .style-card:nth-child(odd):hover:not(.on){ background: rgb(207 91 76 / 16%); }
+}
+
+/* ─── 03 조율 — 2026-09-15 스케치(_3) ──────────────────────────
+   빨간 면이 위로 올라와 제목까지 덮는다. 제목·설명·단계 표시가 전부 그 위에
+   흰 글자로 앉고, 그 아래 흰 바탕에 알약 셋이 선다.
+
+   면 색을 --brand-main(#cf5b4c)에서 --brand-strong으로 옮겼다. 스케치의
+   빨강 위에 흰 14px을 올리면 4.00:1 — 제목은 큰 글자라 통과하지만 단계
+   표시가 AA(4.5)에 못 미친다. 채움 버튼이 같은 이유로 쓰는 색을 그대로 쓴다.
+
+   치수는 스케치에서 잰 것: 면 390×488(57.8%), 알약 252×50 rx 25,
+   세로 간격 64, 라벨 잉크 28px. */
+.tone-adjust .z-glyph-stage{ background: var(--brand-strong); justify-content: flex-start; padding-top: var(--s5); gap: 0; }
+.tone-adjust .z-glyph-stage > .z-header{ position: static; align-self: stretch; }
+.tone-adjust .z-glyph-stage .z-ask{ align-self: stretch; text-align: left; }
+.tone-adjust .z-glyph-stage .z-ask h1{ color: var(--paper); }
+.tone-adjust .z-glyph-stage .z-ask p{ color: rgb(255 255 255 / 86%); }
+/* 견본은 제목 아래 남은 자리의 한가운데 */
+.tone-adjust .z-glyph{ margin-block: auto; }
+
+.tone-adjust .z-axes{ align-items: center; gap: var(--s5); flex: none; padding-block: var(--s6); }
+/* 알약 하나가 통째로 트랙이다. 가운데 글자는 눈금이 아니라 지금 어느
+   잣대 쪽에 와 있는지를 말한다 — 한가운데를 넘으면 낱말이 바뀐다. */
+.tone-pill{
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(100%, 252px);
+  /* 스케치는 50인데 버튼 사다리에 그 칸이 없다. large(48)로 내린다 */
+  height: var(--btn-l);
+  border-radius: 999px;
+  background: var(--grey-200);
+  color: var(--body-text);
+  font-size: var(--fs-h2);
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  flex: none;
+}
+/* 손잡이가 한가운데를 지날 때 글자를 덮는다. 참조한 도구는 덮게 두지만
+   거기 적힌 건 숫자고 여기 적힌 건 낱말이라, 가려지면 읽을 수가 없다.
+   글자를 손잡이 위로 올린다. */
+.tone-pill-word{ grid-area: 1 / 1; position: relative; z-index: 1; pointer-events: none; }
+/* 진짜 입력은 알약을 통째로 덮는다. 트랙은 알약이 이미 그리고 있으므로
+   여기서는 손잡이만 보이게 둔다. */
+.tone-pill input[type='range']{
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: none;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+.tone-pill input[type='range']::-webkit-slider-runnable-track{ height: 100%; background: none; }
+.tone-pill input[type='range']::-moz-range-track{ height: 100%; background: none; }
+/* 손잡이 — Slider Sketch.svg 비례 그대로. 흰 알약 몸(27×49 → 24×44)에
+   청록 막대가 박혀 있다. 원형은 쓰지 않는다. */
+.tone-pill input[type='range']::-webkit-slider-thumb{
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  width: 24px;
+  height: 44px;
+  border-radius: 12px;
+  border: 7px solid var(--paper);
+  background: var(--brand-sub);
+  box-shadow: 0 0 0 1px var(--grey-300);
+}
+.tone-pill input[type='range']::-moz-range-thumb{
+  box-sizing: border-box;
+  width: 24px;
+  height: 44px;
+  border-radius: 12px;
+  border: 7px solid var(--paper);
+  background: var(--brand-sub);
+  box-shadow: 0 0 0 1px var(--grey-300);
+}
+.tone-pill:active{ background: var(--grey-300); }
+
+/* About의 벽에 켜지는 한 줄. 작가 파일에는 93.35px로 들어 있는데, 1439
+   화판을 390 화면에 놓으면 16px로 떨어져 벽에 붙은 얼룩처럼 보인다.
+   왼쪽 끝이 고정된 글이라 벽 오른쪽 끝(화면 322)에 닿기 직전까지만 키운다 —
+   140px에서 화면 24px, 벽 폭의 72%다. */
+.info-art.is-bleed text{ font-size: 140px; }

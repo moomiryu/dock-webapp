@@ -17,27 +17,21 @@
   font-display: swap;
 }
 
-/* Sunflower — 둥근 산세리프. 한때 '탈네모틀'로 적어 뒀는데 사실이 아니다:
-   네모틀 안에 든 글자다. 말투 '발랄한' 칸이 이걸 쓴다(부제 '둥근고딕').
-   '당당한'(서울남산)과 골격이 겹치는 문제는 lib/palettes.ts의 경고를 볼 것 */
+/* OG 르네상스 비밀 — 말투 '발랄한' 칸. 2026-09-15에 Sunflower에서 갈아탔다.
+
+   Sunflower는 네모틀 안에 든 둥근 산세리프라 '당당한'(서울남산)과 골격이
+   겹쳤고, 그래서 네 칸의 차이가 사실상 굵기로만 읽혔다 — 굵기는 이미 별도
+   축이 하는 일이다. README의 '아직 안 된 것'에 그게 사용자 테스트의 선결
+   조건으로 적혀 있었다.
+
+   정적 글꼴이다 (fvar 없음, usWeightClass 400). 그래서 이 칸에서만 무게 축이
+   진짜 굵기가 아니라 브라우저의 합성 굵기로 답한다. 파일 하나에 100~900을
+   통째로 걸어 두는 이유가 그것이다 — 걸지 않으면 굵은 쪽에서 아예 다른
+   글꼴로 떨어진다. */
 @font-face {
-  font-family: 'Sunflower';
-  src: url('/fonts/Sunflower-Light.ttf') format('truetype');
-  font-weight: 100 349;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Sunflower';
-  src: url('/fonts/Sunflower-Medium.ttf') format('truetype');
-  font-weight: 350 649;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Sunflower';
-  src: url('/fonts/Sunflower-Bold.ttf') format('truetype');
-  font-weight: 650 900;
+  font-family: 'OG Renaissance Secret';
+  src: url('/fonts/OG%20%EB%A5%B4%EB%84%A4%EC%83%81%EC%8A%A4%20%EB%B9%84%EB%B0%80.ttf') format('truetype');
+  font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }

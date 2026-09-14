@@ -16,11 +16,24 @@ import { scopeSvg } from './svgAsset';
 // 같은 1920×1080 화면 안에 들어 있다. 그래서 여기서는 그 화면에서 창
 // 하나를 오려 내기만 한다 — 포즈별 보정은 _light 둘뿐이다.
 
-const files = import.meta.glob('../../by_moomiryu/Renewal_v1/*.svg', {
-  query: '?raw',
-  import: 'default',
-  eager: true
-}) as Record<string, string>;
+// 이 폴더에 캐릭터만 있는 게 아니다 — 작가가 화면 스케치와 삽화 견본도
+// 같이 넣는다. 폴더를 통째로 끌어오면 그것까지 번들에 실려 나간다.
+// 두 번 겪었다: 홈 스케치가 들어왔을 때 219KB→296KB, example_*가 들어왔을
+// 때 227KB→525KB(example_full 한 장이 268KB다).
+//
+// 그래서 '아닌 것을 빼는' 대신 **필요한 이름만 부른다.** 포즈 아홉과 눈
+// 아홉의 이름 족보가 이게 전부고, 새 파일이 들어와도 여기 안 걸리면
+// 따라 들어오지 않는다.
+const files = import.meta.glob(
+  [
+    '../../by_moomiryu/Renewal_v1/front_*.svg',
+    '../../by_moomiryu/Renewal_v1/back_*.svg',
+    '../../by_moomiryu/Renewal_v1/left*.svg',
+    '../../by_moomiryu/Renewal_v1/right*.svg',
+    '../../by_moomiryu/Renewal_v1/eye_*.svg'
+  ],
+  { query: '?raw', import: 'default', eager: true }
+) as Record<string, string>;
 
 export const POSES = [
   'front_center', 'front_left', 'front_right',

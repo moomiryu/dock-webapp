@@ -11,7 +11,7 @@ export default function PhaseHome({ onStart }: Props) {
       <div className="home-layer">
         <div className="home-intro">
           <h1 className="home-headline"><span>MegaFont</span></h1>
-          <p className="home-subtitle">밤에만 보이는 조용한 공공발화.</p>
+          <p className="home-subtitle">대학 내 공공발화를 위한 카트, 메가폰트</p>
         </div>
         <div className="home-gate">
           <div className="home-actions">

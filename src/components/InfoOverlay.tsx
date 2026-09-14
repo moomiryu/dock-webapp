@@ -1,7 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import BackButton from './BackButton';
+import { morphSvg, scopeSvg } from '../lib/svgAsset';
 import { EMPHASIS_SEC, STAY_DAYS, WALL_H_M, WALL_W_M } from '../lib/wall';
+
+// 작가가 삽화를 짝으로 준다 — 한 군데만 다른 두 컷이다. 그 사이를 오간다.
+//
+//   Step 1  크기 손잡이가 아래→위, 그에 따라 '가'가 작게→크게
+//   Step 3  느낌표가 없다→있다
+//
+//   About   벽이 꺼졌다(_3) 켜진다(_1). 켜지면 "내 생각은…"이 뜨고 발광이 돈다.
+//
+// About의 짝은 _1과 _3이다. _2는 같은 장면을 다른 화판(416×360)에 다시 그린
+// 것이라 대응할 요소가 없다 — 모프에는 못 쓴다.
+//
+// 어느 컷이 '나중'인지는 작가가 같은 폴더에 넣어 둔 example_full.svg
+// (소개 여섯 장을 통째로 그린 시안)가 정한다. 그 시안 자체는 번들에 넣지
+// 않는다 — 268KB짜리고, 화면이 아니라 지시서다.
+import artAboutFrom from '../../by_moomiryu/Renewal_v1/example_about_3.svg?raw';
+import artAboutTo from '../../by_moomiryu/Renewal_v1/example_about_1.svg?raw';
+import artGlyphsFrom from '../../by_moomiryu/Renewal_v1/example_step1_2.svg?raw';
+import artGlyphsTo from '../../by_moomiryu/Renewal_v1/example_step1_1.svg?raw';
+import artDockFrom from '../../by_moomiryu/Renewal_v1/example_step3_1.svg?raw';
+import artDockTo from '../../by_moomiryu/Renewal_v1/example_step3_2.svg?raw';
 
 interface Props { onClose: () => void; onStart: () => void; }
 
@@ -48,7 +69,7 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
             <span className="info-step-label">{s.step}</span>
             <h2>{s.title}</h2>
             <div className="info-said">{s.body}</div>
-            <div className="info-art" aria-hidden>{s.art}</div>
+            <div className={'info-art ' + (s.artClass ?? '')} aria-hidden>{s.art}</div>
           </section>
         ))}
       </div>
@@ -65,10 +86,26 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
 }
 
 // ─── 슬라이드 ────────────────────────────────────────────────
-// 삽화는 선 하나로만 그린다 (흑백 원칙). 색은 사용자가 만든 말에만 산다.
 // 본문은 장당 40자 안쪽. 넘기는 형식은 한 장에 한 생각일 때만 살아 있다.
+//
+// 삽화는 한동안 선 하나로만 그렸다 — "색은 사용자가 만든 말에만 산다"는
+// 이유였다. 2026-09-15에 작가가 About·Step 1·Step 3 셋을 색 있는 그림으로
+// 그려 오면서 그 원칙은 이 화면에서 풀렸다. 나머지 셋(Step 2 · On the wall ·
+// Afterwards)은 아직 선 그림이라, 지금 이 화면은 두 결이 섞여 있다.
 
-const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNode }> = [
+
+// 짝지어 온 삽화. 한 번 만들어 두고 다시 쓴다 — 매 렌더마다 두 장을 파싱해
+// 뼈대를 맞출 이유가 없다. 모션을 끈 사람에게는 나중 컷만 준다.
+const morphed = new Map<string, string>();
+function Morphing({ from, to, name, crop }: { from: string; to: string; name: string; crop?: string }) {
+  const still = typeof matchMedia !== 'undefined'
+    && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const key = still ? `${name}-still` : name;
+  if (!morphed.has(key)) morphed.set(key, still ? scopeSvg(to, key) : morphSvg(from, to, key, 4.2, crop));
+  return <span dangerouslySetInnerHTML={{ __html: morphed.get(key)! }} />;
+}
+
+const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNode; artClass?: string }> = [
   {
     step: 'About',
     title: '학교 벽에 대고 크게 말하는 장치입니다',
@@ -78,13 +115,17 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
         무엇을, <b>어떻게</b> 말할지는 당신이 정합니다.
       </p>
     ),
-    art: <ArtWall />
+    // 1920×1080 화판에서 장면은 x 318~1603, y 260~820만 쓴다. 나머지는 빈
+    // 검정이라, 장면 둘레로 6%만 남기고 당긴다.
+    art: <Morphing from={artAboutFrom} to={artAboutTo} name="about" crop="241 183 1439 714" />,
+    artClass: 'is-bleed'
   },
   {
     step: 'Step 1',
     title: '성격을 고르고 다듬습니다',
     body: <p>마음에 드는 성격에 크기, 무게, 빠르기를 더해보세요.</p>,
-    art: <ArtGlyphs />
+    art: <Morphing from={artGlyphsFrom} to={artGlyphsTo} name="glyphs" />,
+    artClass: 'is-wide'
   },
   {
     step: 'Step 2',
@@ -96,7 +137,8 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
     step: 'Step 3',
     title: '폰을 홈에 꽂습니다',
     body: <p>벽을 보고 서서, 위쪽부터 세로로.</p>,
-    art: <ArtDock />
+    art: <Morphing from={artDockFrom} to={artDockTo} name="dock" />,
+    artClass: 'is-figure'
   },
   {
     step: 'On the wall',
@@ -146,23 +188,6 @@ function Art({ children }: { children: ReactNode }) {
   );
 }
 
-function ArtWall() {
-  return (
-    <Art>
-      {/* 건물, 그 안의 화면, 그리고 사람 — 크기를 짐작하게 하는 유일한 방법 */}
-      <rect x="26" y="10" width="150" height="98" strokeWidth="1" />
-      <rect x="52" y="30" width="98" height="61" strokeWidth="1.8" />
-      <line x1="6" y1="108" x2="234" y2="108" strokeWidth="1" />
-      <g strokeWidth="1.4">
-        <circle cx="200" cy="76" r="5" />
-        <line x1="200" y1="82" x2="200" y2="99" />
-        <line x1="200" y1="99" x2="194" y2="108" />
-        <line x1="200" y1="99" x2="206" y2="108" />
-        <line x1="193" y1="90" x2="207" y2="90" />
-      </g>
-    </Art>
-  );
-}
 
 function ArtLine() {
   return (
@@ -178,49 +203,7 @@ function ArtLine() {
   );
 }
 
-function ArtGlyphs() {
-  return (
-    <Art>
-      {/* 네 칸, 네 획 — 같은 말이 네 얼굴을 가진다. 그리고 색 */}
-      <g strokeWidth="1">
-        <rect x="14" y="22" width="50" height="60" />
-        <rect x="70" y="22" width="50" height="60" />
-        <rect x="126" y="22" width="50" height="60" />
-        <rect x="182" y="22" width="50" height="60" />
-      </g>
-      <path d="M26 66 C34 42 44 68 52 46" strokeWidth="2.4" strokeLinecap="round" />
-      <path d="M82 68 L96 38 L108 68 M86 54 L104 54" strokeWidth="2.4" />
-      <line x1="140" y1="55" x2="162" y2="55" strokeWidth="7" />
-      <g strokeWidth="1.6">
-        <line x1="196" y1="38" x2="196" y2="72" />
-        <line x1="190" y1="38" x2="202" y2="38" />
-        <line x1="188" y1="72" x2="204" y2="72" />
-      </g>
-      {/* 색 — 흑백 원칙 안에서 색을 말하는 법: 채움의 밝기 */}
-      <g strokeWidth="1">
-        <rect x="14" y="96" width="30" height="16" fill="currentColor" />
-        <rect x="50" y="96" width="30" height="16" fill="currentColor" opacity="0.55" />
-        <rect x="86" y="96" width="30" height="16" fill="currentColor" opacity="0.25" />
-        <rect x="122" y="96" width="30" height="16" />
-      </g>
-    </Art>
-  );
-}
 
-function ArtDock() {
-  return (
-    <Art>
-      <rect x="102" y="6" width="36" height="52" rx="5" strokeWidth="1.8" />
-      <line x1="112" y1="52" x2="128" y2="52" strokeWidth="2.4" />
-      <g strokeWidth="1.4">
-        <line x1="120" y1="64" x2="120" y2="80" />
-        <polyline points="113,74 120,81 127,74" />
-      </g>
-      <rect x="52" y="88" width="136" height="34" strokeWidth="1.5" />
-      <line x1="104" y1="94" x2="136" y2="94" strokeWidth="5" />
-    </Art>
-  );
-}
 
 function ArtBig() {
   return (

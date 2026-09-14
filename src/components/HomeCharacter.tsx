@@ -11,6 +11,49 @@ const FACE_HOLD = 2000;
 /** 포즈가 방향을 따라 바뀌더라도 이 간격보다 자주 바뀌지 않는다 (ms) */
 const POSE_DWELL = 900;
 
+/**
+ * 멀고 가까움. 상자(272px)를 1로 놓은 배수다.
+ *
+ * 2026-09-15 스케치 넉 장에서 캐릭터를 눈 지름으로 재서 나온 값이다 —
+ * 홈_3이 상자 170px, 홈_1이 390px, 홈_2가 607px(화면에 잘려 나갈 만큼 가깝다).
+ * 272로 나누면 0.63 · 1.43 · 2.23. 그 폭을 그대로 쓴다.
+ */
+/**
+ * 크기는 제자리(1)가 기본이고, 가끔 한 번씩 커졌다 금세 돌아온다.
+ *
+ * 계속 오가게 두면 '크기가 계속 변하는 것'이 되어 버린다. 기본이 있고
+ * 거기서 벗어났다 돌아와야 벗어난 것이 사건으로 읽힌다. 그래서 목표를
+ * 따라가는 대신 한 번의 움직임으로 다룬다 — 부풀고, 잠깐 머물고, 돌아온다.
+ */
+const BURST_MAX = 2.35;
+const BURST_MIN = 1.45;
+const BURST_UP = 340;     // 부푸는 데 (ms)
+const BURST_HOLD = 380;   // 그 크기로 머무는 동안
+const BURST_BACK = 300;   // 돌아오는 데 — 올 때보다 빠르다
+
+/**
+ * 가끔 캐릭터가 한 마디를 뱉는다.
+ *
+ * 홈_4 스케치에서 'AaBbCc'가 캐릭터 옆에 비스듬히 떠 있었다(잉크 109.6×50.9,
+ * 상자 312 기준 높이의 0.163배). 거기서 자란 목록이다.
+ *
+ * 두 갈래다. **견본**은 글자로 된 것이 글자를 보여주는 것이고, **혼잣말**은
+ * 말이 되다 만 것이다. 둘 다 'AaBbCc'와 'I think…' 만한 분량으로 묶었다 —
+ * 더 길면 읽는 동안 1.6초가 끝나고, 더 짧으면 뭐가 지나갔는지 모른다.
+ *
+ * 권유는 넣지 않는다. `design/instructions.md`가 "참여해보세요 같은 권유는
+ * 쓰지 않는다"고 못박아 두었고, 무엇을 쓰라는 말도 넣지 않는다 — 편집권은
+ * 발화자에게 있다. 이건 캐릭터의 군소리지 안내가 아니다.
+ *
+ * 말끝도 붙이지 않는다. 어휘 원칙의 해요체·합니다체는 장치가 사용자에게
+ * 말할 때의 것이고, 이건 혼잣말이라 토막으로 둔다.
+ */
+const SAY_POOL = [
+  'AaBbCc', '가나다라', '한글 Aa', 'Rr Ss Tt', '0123',
+  'I think…', '음…', '그러니까', '있잖아', '아 맞다', '어?', '!'
+];
+const SAY_MS = 1600;
+
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 const random = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
@@ -26,6 +69,9 @@ export default function HomeCharacter() {
   // 표정만 React가 들고 있다. 벽에 닿을 때만 바뀌고 최소 2초를 버티므로
   // 리렌더가 드물다. 포즈와 위치는 매 프레임이라 DOM을 직접 만진다.
   const [eyes, setEyes] = useState<Eyes>('general');
+  // 뱉은 글자. 표정과 같은 이유로 React가 들고 있다 — 몇 초에 한 번뿐이라
+  // 리렌더가 드물다. 자리와 크기는 매 프레임이라 여전히 DOM을 직접 만진다.
+  const [say, setSay] = useState<{ text: string; side: 'left' | 'right'; tilt: number } | null>(null);
   const api = useRef<{
     down: (e: React.PointerEvent) => void;
     move: (e: React.PointerEvent) => void;
@@ -47,10 +93,16 @@ export default function HomeCharacter() {
     let geo: PoseGeo = from;   // 지금 이 순간의 형태
 
     let w = 0, h = 0, size = 0, x = 0, y = 0;
+    /** 워드마크·설명이 끝나는 높이. 글자는 그 아래에서만 뜬다 */
+    let introBottom = 0;
     let vx = random(-25, 25), vy = 28, targetX = vx, targetY = vy;
     let held = false, pointer = -1, grabX = 0, grabY = 0, lastX = 0, lastY = 0, lastMove = 0;
     let nextWander = 0, lastPose = 0, lastBounce = 0, faceUntil = 0;
     let squash = 0, tilt = 0, raf = 0, lastTime = 0;
+    let depth = 1;
+    // 한 번 부푸는 동안의 상태. burstAt는 시작 시각, burstTo는 이번에 갈 크기.
+    let burstAt = 0, burstTo = 1, nextBurst = 0;
+    let nextSay = 0, sayUntil = 0;
     let initialized = false, visible = !document.hidden;
 
     /** 표정은 사건이 있을 때만 바뀐다. 한 번 바뀌면 2초는 그 얼굴로 있는다. */
@@ -64,8 +116,8 @@ export default function HomeCharacter() {
       if (next === pose) return;
       const shape = poseGeometry(next).span;
       // 벽에 붙어 있을 때 더 큰 포즈로 바꾸면 안쪽으로 순간이동한 것처럼 보인다.
-      if (x < (size * shape.x) / 2 || x > w - (size * shape.x) / 2 ||
-          y < (size * shape.y) / 2 || y > h - (size * shape.y) / 2) return;
+      if (x < (size * depth * shape.x) / 2 || x > w - (size * depth * shape.x) / 2 ||
+          y < (size * depth * shape.y) / 2 || y > h - (size * depth * shape.y) / 2) return;
       turn = turnKind(pose, next);
       from = geo;                    // 돌던 도중이면 지금 모습에서 이어서 돈다
       to = poseGeometry(next);
@@ -75,8 +127,8 @@ export default function HomeCharacter() {
     };
 
     const bounds = () => ({
-      rx: Math.min(w / 2, (size * geo.span.x) / 2 + 2),
-      ry: Math.min(h / 2, (size * geo.span.y) / 2 + 2)
+      rx: Math.min(w / 2, (size * depth * geo.span.x) / 2 + 2),
+      ry: Math.min(h / 2, (size * depth * geo.span.y) / 2 + 2)
     });
     const contain = () => {
       const { rx, ry } = bounds();
@@ -112,7 +164,12 @@ export default function HomeCharacter() {
         trail.dataset.key = wanted;
       }
 
-      el.style.transform = `translate(${x - size / 2}px, ${y - size / 2}px)`;
+      // 글자가 앉을 선 — 실루엣의 맨 윗변. 포즈마다 다르므로 매 프레임 준다.
+      // 앞모습은 상자의 18.5% 지점, 옆모습은 상자 꼭대기(0)다.
+      el.style.setProperty('--say-floor', `${size * (0.5 - geo.span.y / 2)}px`);
+
+      // scale이 translate 뒤에 와야 상자 가운데를 붙든 채 커진다.
+      el.style.transform = `translate(${x - size / 2}px, ${y - size / 2}px) scale(${depth.toFixed(3)})`;
       el.style.setProperty('--char-tilt', `${tilt}deg`);
       el.style.setProperty('--char-squash', String(1 - squash));
       el.style.setProperty('--char-stretch', String(1 + squash * 0.45));
@@ -124,6 +181,11 @@ export default function HomeCharacter() {
       w = frame.clientWidth;
       h = frame.clientHeight;
       size = el.offsetWidth;
+      el.style.setProperty('--char-box', `${size}px`);
+      const intro = frame.querySelector('.home-intro');
+      introBottom = intro
+        ? intro.getBoundingClientRect().bottom - frame.getBoundingClientRect().top
+        : 0;
       if (!initialized) { x = w / 2; y = h * 0.46; initialized = true; }
       contain();
       paint(1);
@@ -158,6 +220,31 @@ export default function HomeCharacter() {
           targetY = Math.sin(angle) * random(18, 38);
           nextWander = t + random(2800, 5200);
         }
+        // 다음 부풀기는 언제 올지 모른다. 규칙적이면 사건이 아니라 박자가 된다.
+        // 글자를 뱉는 동안에는 부풀지 않는다 — 글자가 몸을 따라 위로 밀려
+        // 화면 밖으로 나가고, 한 번에 두 가지가 일어나 둘 다 흐려진다.
+        if (!burstAt && !sayUntil && t > nextBurst) {
+          burstAt = t;
+          burstTo = random(BURST_MIN, BURST_MAX);
+        }
+        // 글자가 뜰 자리가 있어야 뱉는다. 셋을 본다:
+        //   · 부푸는 중이면 참는다 — 뱉는 사이에 몸이 커져 글자를 밀어 올린다
+        //   · 상자가 화면보다 넓으면 어디에 두든 한쪽이 잘린다
+        //   · 몸 위로 글자 한 줄이 들어갈 자리가 워드마크 아래에 남아 있어야 한다
+        //     (--say-floor 위로 여백 0.08 + 글자 높이 0.12 ≒ 상자의 0.2)
+        const roomAbove = y - (size * depth * geo.span.y) / 2 - size * depth * 0.2;
+        if (t > nextSay && !sayUntil &&
+            (burstAt || size * depth > w * 0.98 || roomAbove < introBottom + 8)) {
+          nextSay = t + 1500;
+        } else if (t > nextSay && !sayUntil) {
+          // 어느 쪽에 뱉을지는 취향이 아니라 자리 문제다 — 화면 가운데 쪽으로.
+          setSay({
+            text: SAY_POOL[Math.floor(Math.random() * SAY_POOL.length)],
+            side: x < w / 2 ? 'right' : 'left',
+            tilt: random(-14, 6)
+          });
+          sayUntil = t + SAY_MS;
+        }
         const ease = 1 - Math.exp(-dt * 0.8);
         vx += (targetX - vx) * ease;
         vy += (targetY - vy) * ease;
@@ -187,11 +274,33 @@ export default function HomeCharacter() {
         faceUntil = 0;
         setEyes('general');
       }
+      // 글자는 제 시간을 다 살면 사라지고, 다음 것은 한참 뒤에 온다
+      if (sayUntil && t > sayUntil) {
+        sayUntil = 0;
+        nextSay = t + random(7000, 15000);
+        setSay(null);
+      }
 
       // 형태 보간
       const raw = to === from ? 1 : clamp((t - now0) / TURN_MS, 0, 1);
       const p = easeInOut(raw);
       geo = raw >= 1 ? to : blendGeo(from, to, p);
+
+      // 부풀기는 목표를 쫓아가는 게 아니라 한 번 지나가는 것이다.
+      // 시간으로 끊어야 '금세 돌아온다'가 지켜진다.
+      if (reduced) { depth = 1; burstAt = 0; }
+      else if (burstAt) {
+        const age = t - burstAt;
+        if (age < BURST_UP) depth = 1 + (burstTo - 1) * easeInOut(age / BURST_UP);
+        else if (age < BURST_UP + BURST_HOLD) depth = burstTo;
+        else if (age < BURST_UP + BURST_HOLD + BURST_BACK) {
+          depth = burstTo + (1 - burstTo) * easeInOut((age - BURST_UP - BURST_HOLD) / BURST_BACK);
+        } else {
+          depth = 1;
+          burstAt = 0;
+          nextBurst = t + random(5000, 16000);
+        }
+      }
 
       squash *= Math.exp(-dt * 12);
       // 회전의 결을 몸짓으로 거든다: 좌우로 돌 때 가로로 한 번 좁아진다.
@@ -263,7 +372,12 @@ export default function HomeCharacter() {
     resize.observe(el);
     measure();
     const onVisibility = () => { visible = !document.hidden; lastTime = 0; };
-    const onReduced = () => { reduced = media.matches; vx = vy = tilt = squash = 0; paint(1); };
+    const onReduced = () => {
+      reduced = media.matches;
+      vx = vy = tilt = squash = 0;
+      if (reduced) { depth = 1; burstAt = 0; }
+      paint(1);
+    };
     document.addEventListener('visibilitychange', onVisibility);
     media.addEventListener('change', onReduced);
     raf = requestAnimationFrame(step);
@@ -290,6 +404,10 @@ export default function HomeCharacter() {
       onLostPointerCapture={(e) => api.current?.up(e, true)}
       onKeyDown={(e) => api.current?.key(e)}
     >
+      {say && !matchMedia('(prefers-reduced-motion: reduce)').matches && (
+        <span className="home-char-say" data-side={say.side} aria-hidden="true"
+          style={{ '--say-tilt': `${say.tilt.toFixed(1)}deg` } as React.CSSProperties}>{say.text}</span>
+      )}
       <span className="home-char-motion" aria-hidden="true">
         <svg viewBox={`0 0 ${CANVAS} ${CANVAS}`}>
           <g ref={trailRef} />

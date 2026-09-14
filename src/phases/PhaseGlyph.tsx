@@ -13,7 +13,7 @@ export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
   return (
     <div className="z-frame z1 tone-choice">
       <div className="z-header">
-        <BackButton label="처음으로" onClick={onBack} />
+        <BackButton label="처음으로" onClick={onBack} /><span className="z-step-of">1 / 5 · 성격</span>
       </div>
       <div className="z-ask">
         {/* 줄바꿈 자리는 스케치가 정해 준 것이다 — 한 줄에 다 들어가지만

@@ -38,6 +38,7 @@ export default function PhaseCompose({ initialText, partialTone, initialPaletteI
     } }}>
    <div className="compose-chrome">
     <BackButton label="특성 조절로" onClick={() => onBack(text, tone)}/>
+    <span className="z-step-of">3 / 5 · 한 줄</span>
     <div className="compose-toolbar">
      <button type="button" className="format-button" onClick={cycle} aria-label={`정렬: ${align === 'left' ? '왼쪽' : align === 'right' ? '오른쪽' : '중앙'}. 다음 정렬로 변경`}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 5h18M3 13h18"/><path d={align === 'left' ? 'M3 9h11M3 17h11' : align === 'right' ? 'M10 9h11M10 17h11' : 'M6.5 9h11M6.5 17h11'}/></svg></button>
      <button type="button" className="format-button" aria-label="기울기" aria-pressed={slnt !== 0} onClick={() => setSlnt(s => s ? 0 : -12)}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 4h10M4 20h10M15 4L9 20"/></svg></button>

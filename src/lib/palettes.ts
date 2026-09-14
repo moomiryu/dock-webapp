@@ -58,16 +58,6 @@ export const fontMap: Record<string, string> = {
  *   em 박스가 아니라 잉크로 재는 이유: 눈이 읽는 것은 글자가 실제로
  *   차지한 높이지 글꼴이 선언한 em이 아니다.
  *
- * stroke — 잉크 비율(칠해진 화소 / 잉크 상자 넓이). 같은 조건에서:
- *   당당한 0.2605 · 차분한 0.2642 · 다정한 0.2248 · 발랄한 0.1918
- *   앞 셋 평균 0.2498. 200px 견본에 획을 0.5px씩 더해 가며 재니
- *   2px에서 0.2442, 2.5px에서 0.2577 — 목표는 그 사이 2.21px이다.
- *   크기를 따라가야 하므로 em으로 적는다: 2.21 / 200 = 0.011em.
- *
- *   이 획이 필요한 까닭: 'OG 르네상스 비밀'은 굵기 축이 없는 정적 글꼴인데
- *   @font-face가 100~900을 통째로 걸고 있다(global.css). 그래서 이 칸만
- *   무게를 아무리 올려도 획이 굵어지지 않는다 — 합성 굵기조차 안 걸린다.
- *
  * shift — 베이스라인. 네 이름은 각자 제 칸 한가운데에 놓이는데, 글꼴마다
  *   선언한 어센더·디센더가 달라 '가운데'가 곧 같은 베이스라인이 아니다.
  *   칸 한가운데에서 베이스라인까지를 재니 (390 화면, 36px):
@@ -78,12 +68,59 @@ export const fontMap: Record<string, string> = {
  *
  * 여기 없는 키는 보정하지 않는다.
  */
-export const opticalFix: Record<string, { scale?: number; stroke?: number; shift?: number }> = {
+export const opticalFix: Record<string, { scale?: number; shift?: number }> = {
   ttoryeot: { shift: 0.0348 },
   chabun: { shift: -0.0486 },
   doran: { shift: 0.0209 },
-  deulseok: { scale: 1.122, stroke: 0.011, shift: -0.0063 }
+  deulseok: { scale: 1.122, shift: -0.0063 }
 };
+
+/**
+ * 획 보정 — 무게 축이 이 글꼴만 못 움직여서, 획을 덧대 대신 답하게 한다.
+ *
+ * '발랄한'(OG 르네상스 비밀)은 굵기 축이 없는 정적 글꼴인데 @font-face가
+ * 100~900을 통째로 걸고 있다(global.css). 그래서 무게를 아무리 올려도
+ * 획이 굵어지지 않는다 — 합성 굵기조차 안 걸린다. 무게 다섯 칸을 재 보면:
+ *
+ *   당당한 0.216 0.287 0.287 0.339 0.400   ← 잉크 비율(칠해진 화소 / 잉크 상자)
+ *   차분한 0.236 0.301 0.301 0.424 0.424
+ *   다정한 0.195 0.263 0.263 0.398 0.398
+ *   발랄한 0.192 0.192 0.192 0.192 0.192   ← 다섯 칸이 한 값이다
+ *
+ * (canvas, '발화'를 200px로, 2026-09-15. 네 서체에 **같은 글자**를 준다 —
+ *  서체마다 제 이름을 쓰면 글자가 달라 잉크도 달라지고, 그건 서체의 굵기가
+ *  아니라 글자의 굵기를 잰 것이 된다.)
+ *
+ * 앞 셋의 평균을 목표로 두고 발랄한에 획을 0.1px씩 더해 가며 맞췄다:
+ *   300 → 0.006em · 400·500 → 0.023em · 600 → 0.0545em · 700 → 0.063em
+ *
+ * 그런데 위 두 칸은 그대로 쓸 수 없다. 획은 글자 바깥으로도 자라서
+ * 속공간을 메운다 — 0.010em부터 0.070em까지 한 장에 놓고 보니
+ * **0.050em에서 '발'의 ㅂ이 닫히고** 그 위로는 글자가 덩어리가 된다.
+ * 32도가 기울기의 마지막 자리였던 것과 같은 종류의 한계다.
+ * 그래서 꼭대기를 0.045em으로 자르고, 0.023em 위쪽을 그 비율(0.55)로 눌렀다.
+ *
+ * 400과 500이 같은 값인 것은 발랄한의 사정이 아니다 — 서울남산도 김정철도
+ * 그 두 칸이 같은 파일로 떨어진다(가진 굵기가 300·500·600·700뿐이다).
+ * 진짜 서체가 안 움직이는 자리를 발랄한만 움직이게 하면 그게 더 어긋난다.
+ */
+const STROKE_LADDER: Record<string, Record<number, number>> = {
+  deulseok: { 300: 0.006, 400: 0.023, 500: 0.023, 600: 0.04, 700: 0.045 }
+};
+
+/**
+ * 그 서체를 그 무게로 찍을 때 덧댈 획. 보정이 없는 서체는 '0'이라
+ * -webkit-text-stroke가 아무 일도 하지 않는다.
+ *
+ * 저장된 무게가 눈금에 정확히 없을 수 있다(옛 메시지) — 제일 가까운 칸으로 읽는다.
+ */
+export function opticalStroke(font: string, wght: number): string {
+  const ladder = STROKE_LADDER[font];
+  if (!ladder) return '0';
+  const stops = Object.keys(ladder).map(Number);
+  const at = stops.reduce((best, s) => (Math.abs(s - wght) < Math.abs(best - wght) ? s : best), stops[0]);
+  return ladder[at] + 'em';
+}
 
 export const graphics: string[] = [
   // sphere with rotating grid

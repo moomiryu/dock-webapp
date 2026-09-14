@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import BackButton from './BackButton';
+import HomeButton from './HomeButton';
 
 interface Props {
   phaseLabel: string;
@@ -11,13 +12,21 @@ interface Props {
    * 로고를 세워 두면 돌아갈 데가 없는 화면처럼 보인다.
    */
   onBack?: () => void;
+  /**
+   * 같은 자리에 '처음으로'. 뒤로 갈 데가 없는 화면(도킹)이 쓴다 —
+   * 글은 이미 보내졌고, 앞 화면으로 돌아가면 같은 글을 또 보낼 수 있었다.
+   * onBack과 같이 주면 onBack이 이긴다.
+   */
+  onHome?: () => void;
 }
 
-export default function MegafontFrame({ phaseLabel, children, style, onBack }: Props) {
+export default function MegafontFrame({ phaseLabel, children, style, onBack, onHome }: Props) {
   return (
     <div className="mf-frame" style={style}>
       <div className="mf-header">
-        {onBack ? <BackButton label="이전" onClick={onBack}/> : <span>MEGAFONT</span>}
+        {onBack ? <BackButton label="이전" onClick={onBack}/>
+          : onHome ? <HomeButton label="처음으로" onClick={onHome}/>
+          : <span>MEGAFONT</span>}
         <span>{phaseLabel}</span>
       </div>
       {children}

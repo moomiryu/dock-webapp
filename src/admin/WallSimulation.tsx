@@ -319,7 +319,7 @@ const WallBlock = memo(function WallBlock({ msg, index, total }: { msg: StoredMe
       className={`wall-block track-${track.dir}`}
       style={{ top: `${track.y}%`, animationDuration: `${track.duration}s`, animationDelay: `${animDelay}s` }}
     >
-      <VoiceBubble text={msg.text} bg={bg} color={text} fontFamily={fontFamily} weight={wght}
+      <VoiceBubble text={msg.text} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght}
         width={scaleX} slant={skew} align={msg.tone?.align} size={msg.tone?.size}
         fontSize={"min(" + (3*sizeScale(msg.tone?.size??44)).toFixed(2) + "vw, " + (19*sizeScale(msg.tone?.size??44) / Math.max(1, ...lines.map(l => Array.from(l).length))).toFixed(2) + "vw)"} />
     </div>
@@ -333,7 +333,7 @@ const WallShowMessage = memo(function WallShowMessage({msg,closing}:{msg:StoredM
  const lines=msg.text.split('\n');const longest=Math.max(1,...lines.map(l=>Array.from(l).length));
  const factor=sizeScale(msg.tone?.size??44);
  const fitSize=`min(${(48/longest/Math.max(1,scaleX)*factor).toFixed(2)}vw, ${(48/(lines.length*1.5)*factor).toFixed(2)}vh, 180px)`;
- return <div className={`wall-show ${closing?'is-closing':''}`} style={{background:'var(--ink)',color:text}}><VoiceBubble text={msg.text} bg={bg} color={text} fontFamily={fontFamily} weight={wght} width={scaleX} slant={skew} align={msg.tone?.align} size={msg.tone?.size} fontSize={fitSize}/></div>;
+ return <div className={`wall-show ${closing?'is-closing':''}`} style={{background:'var(--ink)',color:text}}><VoiceBubble text={msg.text} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght} width={scaleX} slant={skew} align={msg.tone?.align} size={msg.tone?.size} fontSize={fitSize}/></div>;
 });
 
 // ─── Shared style derivation ─────────────────────────────────────────

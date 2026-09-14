@@ -30,8 +30,10 @@ export default function PhaseSubmit({ draft, onDocked, onEdit, onRestart }: Prop
         locked.current = false;
         setBusy(false);
     } }
+    // 보내진 뒤에는 뒤(onEdit)가 아니라 처음(onRestart)으로만 나갈 수 있다 —
+    // 미리보기로 돌아가면 같은 글을 또 보낼 수 있었다.
     if (id)
-        return <PhaseDocking messageId={id} onDocked={onDocked} onBack={onEdit}/>;
+        return <PhaseDocking messageId={id} onDocked={onDocked} onHome={onRestart}/>;
     if (!draft?.text || !draft.tone)
         return <MegafontFrame phaseLabel="보내지 못함"><div className="guide-hero"><h1>아직 벽에 닿지 않았어요</h1><p>보낼 글이 없어요. 처음부터 다시 시작해주세요.</p><button className="primary-action" onClick={onRestart}>처음부터</button></div></MegafontFrame>;
     return <PhasePreview text={draft.text} tone={draft.tone} onBack={onEdit} onConfirm={send} busy={busy} error={error}/>;

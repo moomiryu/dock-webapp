@@ -460,18 +460,26 @@ export default function HomeCharacter() {
           <path ref={bodyRef} />
           <path ref={hatRef} />
           <circle ref={dotRef} r="0" />
-          {/* 눈은 몸통 SVG 안의 중첩 svg 한 장이다. 그래서 눈알을 하나씩
-              찾을 것도 없이 이 한 장을 세로로 눌러 감으면 된다(.mf-eye).
-              x·y·폭·높이는 매 프레임 JS가 다시 쓰지만 transform은 안 건드리므로
-              깜빡임과 다투지 않는다. */}
+          {/* 눈은 몸통 SVG 안의 중첩 svg 한 장이다. x·y·폭·높이는 매 프레임
+              JS가 다시 쓴다.
+
+              그 안에 표정이 두 겹으로 들어 있다 — 지금 짓고 있는 얼굴과,
+              깜빡일 때의 얼굴(twinkle) 하나. 깜빡임은 둘을 **갈아 끼우는**
+              것이다. 전에는 이 판을 통째로 세로로 눌렀는데(.mf-eye), 그건
+              눈을 감은 게 아니라 눈이 납작해진 것으로 보였다 — 작가의 그림에서
+              감은 눈은 눌린 동그라미가 아니라 아래로 굽은 활이다.
+
+              두 겹을 미리 그려 두고 CSS가 투명도만 바꾸므로, 깜빡이는 동안
+              React가 다시 그리지 않는다. 표정이 무엇이든 그 위로 깜빡인다. */}
           <svg
             ref={eyeRef}
-            className="mf-eye"
             viewBox="0 0 412.12 172.44"
             preserveAspectRatio="none"
             overflow="visible"
-            dangerouslySetInnerHTML={{ __html: eyeMarkup(eyes) }}
-          />
+          >
+            <g className="mf-eye-face" dangerouslySetInnerHTML={{ __html: eyeMarkup(eyes) }} />
+            <g className="mf-eye-wink" dangerouslySetInnerHTML={{ __html: eyeMarkup('twinkle') }} />
+          </svg>
         </svg>
       </span>
     </button>

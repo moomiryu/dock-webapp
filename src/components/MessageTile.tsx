@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { fontMap } from '../lib/palettes';
+import { fontMap, opticalStroke } from '../lib/palettes';
 import { messageColors } from '../lib/messageStyle';
 import type { ToneState } from '../types';
 
@@ -97,7 +97,10 @@ export default function MessageTile({ text, tone }: Props) {
             fontSize: Math.min(t.size, 30) + 'px',
             transform: `scaleX(${t.tone}) skewX(${t.slnt}deg)`,
             ['--wght-base' as string]: String(low),
-            ['--wght-active' as string]: String(t.wght)
+            ['--wght-active' as string]: String(t.wght),
+            // 줄마다 무게가 오갈 때 '발랄한'만 꿈쩍도 않는다 — 획이 같이 오간다
+            ['--stroke-base' as string]: opticalStroke(t.font, low),
+            ['--stroke-active' as string]: opticalStroke(t.font, t.wght)
           }}
         />
       </div>

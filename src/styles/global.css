@@ -123,17 +123,23 @@ body.themed {
   user-select: text;
   font-weight: var(--wght-base, 400);
   font-variation-settings: 'wght' var(--wght-base, 400);
+  /* 획 보정 — .voice-bubble과 같은 이유다(벽 타일은 그 컴포넌트를 안 쓴다) */
+  -webkit-text-stroke: var(--stroke-base, 0) currentColor;
+  paint-order: stroke fill;
 }
 
 .preview-text .word {
   display: inline-block;
-  transition: font-weight 0.9s ease-in-out, font-variation-settings 0.9s ease-in-out;
+  transition: font-weight 0.9s ease-in-out, font-variation-settings 0.9s ease-in-out,
+              -webkit-text-stroke-width 0.9s ease-in-out;
   font-weight: inherit;
 }
 
 .preview-text .word.active {
   font-weight: var(--wght-active, 400);
   font-variation-settings: 'wght' var(--wght-active, 400);
+  /* 무게가 오갈 때 '발랄한'만 꿈쩍도 않는다 — 획이 같이 오간다 */
+  -webkit-text-stroke-width: var(--stroke-active, 0);
 }
 
 .preview-text:focus {
@@ -703,6 +709,17 @@ body.wall-mode {
   box-sizing: border-box;
   background: none;
   border-radius: 0;
+  /* 획 보정 — 무게 축이 '발랄한'만 못 움직여서 획이 대신 답한다.
+     값은 palettes.ts의 사다리가 정하고, 보정이 없는 서체에는 '0'이 와서
+     아무 일도 일어나지 않는다. 물려받는 속성이라 여기 한 번이면 아래로 간다.
+
+     paint-order가 있어야 획이 글자 뒤로 깔린다 — 앞에 오면 획이 글자를
+     안쪽부터 먹어 속공간이 훨씬 일찍 닫힌다.
+
+     덧대는 색이 currentColor라, 글자색을 투명으로 두는 입력칸(.live-input)
+     에서는 저절로 아무것도 그려지지 않는다. 따로 끌 필요가 없다. */
+  -webkit-text-stroke: var(--optical-stroke, 0) currentColor;
+  paint-order: stroke fill;
 }
 
 .voice-bubble-text{

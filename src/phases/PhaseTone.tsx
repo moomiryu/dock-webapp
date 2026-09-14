@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import BackButton from '../components/BackButton';
-import { fontMap } from '../lib/palettes';
+import { fontMap, opticalStroke } from '../lib/palettes';
 import { type PartialTone } from '../lib/tone';
 interface Props {
     initialTone: PartialTone;
@@ -104,7 +104,9 @@ export default function PhaseTone({ initialTone, onBack, onNext }: Props) {
   </div>
   {/* 글자를 낱자로 쪼갠다 — 한 덩어리로 두면 '발화'가 판때기처럼 떠다닌다.
       바깥 span이 통째로 두둥실 뜨고, 그 안에서 낱자가 제각기 조금씩 기운다. */}
-  <div className={'z-glyph' + (tone.slnt ? ' is-gust' : '')} style={{ fontFamily: fontMap[tone.font], fontWeight: tone.wght, fontVariationSettings: '"wght" ' + tone.wght, transform: 'scaleX(' + tone.tone + ')', fontStyle: tone.slnt ? `oblique ${Math.abs(tone.slnt)}deg` : 'normal', fontSize: tone.size * GLYPH_SCALE + 'px' }}>
+  {/* --optical-stroke: 무게가 이 글꼴만 못 움직여서 획으로 대신 답한다.
+      보정이 없는 서체는 '0'이라 아무 일도 일어나지 않는다(palettes.ts). */}
+  <div className={'z-glyph' + (tone.slnt ? ' is-gust' : '')} style={{ fontFamily: fontMap[tone.font], fontWeight: tone.wght, fontVariationSettings: '"wght" ' + tone.wght, transform: 'scaleX(' + tone.tone + ')', fontStyle: tone.slnt ? `oblique ${Math.abs(tone.slnt)}deg` : 'normal', fontSize: tone.size * GLYPH_SCALE + 'px', '--optical-stroke': opticalStroke(tone.font, tone.wght) } as CSSProperties}>
    <span>{['발', '화'].map((c, i) => <b key={i} className="z-glyph-char" style={{ animationDelay: i * -1.7 + 's' }}>{c}</b>)}</span>
   </div>
  </div>

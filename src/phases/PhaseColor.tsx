@@ -40,9 +40,14 @@ export default function PhaseColor({ text, tone, onBack, onNext }: Props) {
     <BackButton label="한 줄 다시 쓰기" onClick={() => onBack(current)}/>
     <span className="z-step-of">4 / 5 · 색</span>
    </div>
+   {/* 03에서 자판을 내렸을 때 선 제목이 그 자리 그대로 글자만 바뀐다.
+       화면이 갈린 게 아니라 묻는 것이 바뀐 것으로 읽혀야 한다. */}
+   <div className="z-ask compose-ask">
+    <h1>발화의 색을 정해주세요</h1>
+   </div>
    <div className="compose-pane">
     <Ripple color={bg}/>
-    <VoiceBubble text={text} bg={bg} color={fg} fontFamily={fontMap[tone.font]} weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size} fontSize={composeFontSize(text.length || 1, tone)}/>
+    <VoiceBubble text={text} bg={bg} color={fg} fontFamily={fontMap[tone.font]} font={tone.font} weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size} fontSize={composeFontSize(text.length || 1, tone)}/>
    </div>
   </div>
  </div></div>

@@ -55,9 +55,16 @@ export default function PhaseCompose({ initialText, partialTone, initialPaletteI
     <BackButton label="특성 조절로" onClick={() => onBack(text, tone)}/>
     <span className="z-step-of">3 / 5 · 한 줄</span>
    </div>
+   {/* 자판을 내리면 그제야 제목이 선다. 쓰는 동안은 화면이 통째로 종이라
+       제목이 설 자리가 없고, 물러선 뒤에는 02·03과 같은 자리(머리줄 아래)에
+       같은 얼굴로 온다. 항상 그려 두고 투명도만 바꾼다 — 화면이 물러서는
+       420ms에 같이 떠오르려면 그 순간에 이미 자리에 있어야 한다. */}
+   <div className="z-ask compose-ask" aria-hidden={!pulled}>
+    <h1>메시지를 작성해주세요.</h1>
+   </div>
    <div className="compose-pane">
     <Ripple color={colors.bg}/>
-    <VoiceBubble text={empty ? '여기를 눌러 쓰세요' : text} bg={colors.bg} color={colors.text} fontFamily={fontMap[tone.font]} weight={tone.wght} width={tone.tone} slant={tone.slnt} align={align} size={tone.size} fontSize={composeFontSize(text.length || 1, tone)}>
+    <VoiceBubble text={empty ? '여기를 눌러 쓰세요' : text} bg={colors.bg} color={colors.text} fontFamily={fontMap[tone.font]} font={tone.font} weight={tone.wght} width={tone.tone} slant={tone.slnt} align={align} size={tone.size} fontSize={composeFontSize(text.length || 1, tone)}>
     <textarea ref={input} className="live-input compose-input" aria-label="벽에 올릴 한 줄" value={text} maxLength={60} spellCheck={false}
       onFocus={() => setPulled(false)} onBlur={() => setPulled(true)}
       onChange={e => setText(e.target.value.slice(0, 60))}/></VoiceBubble>

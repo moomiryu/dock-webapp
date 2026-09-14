@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import BackButton from '../components/BackButton';
-import { fontMap, opticalFix } from '../lib/palettes';
+import { fontMap, opticalFix, opticalStroke } from '../lib/palettes';
 import { DEFAULT_TONE, STYLE_OPTIONS, type PartialTone } from '../lib/tone';
 import type { ToneState } from '../types';
 interface Props {
@@ -30,7 +30,9 @@ export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
             <span className="style-card-name" style={{
               fontFamily: fontMap[s.val],
               '--optical': opticalFix[s.val]?.scale ?? 1,
-              '--optical-stroke': (opticalFix[s.val]?.stroke ?? 0) + 'em',
+              /* 이 카드는 무게를 고르는 자리가 아니다 — CSS가 400으로 찍는다.
+                 사다리의 400 칸을 그대로 가져온다. */
+              '--optical-stroke': opticalStroke(s.val, 400),
               '--optical-shift': (opticalFix[s.val]?.shift ?? 0) + 'em'
             } as CSSProperties}>
               {s.label}

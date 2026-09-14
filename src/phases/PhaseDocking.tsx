@@ -8,15 +8,22 @@ interface Props {
   onDocked: () => void;
   /** Firebase 미연결일 때만 뜨는 개발 참고줄 */
   devNote?: string | null;
-  /** 머리줄 왼쪽 '이전'. 다른 화면과 같은 자리, 같은 아이콘 */
-  onBack?: () => void;
+  /**
+   * 머리줄 왼쪽 '처음으로'. 다른 화면에서 '이전'이 서는 그 자리다.
+   *
+   * 여기엔 뒤가 없다 — 글은 이미 벽으로 갔다. 전에는 이 자리가 '이전'이라
+   * 미리보기로 돌아갈 수 있었고, 거기서 '준비됐어요'를 다시 누르면 같은 글이
+   * 한 번 더 올라갔다. 05에 "마지막 단계"라고 말로만 적어 두었던 것을
+   * 이제 문 자체가 지킨다.
+   */
+  onHome?: () => void;
 }
 
 // 06 Docking — 화면 밖으로 사용자를 내보내는 자리.
 //
 // 지시만 하고 끝내면 사용자는 꽂은 뒤 무슨 일이 생기는지 모른 채 서 있게 된다.
 // 그래서 '무엇을 하라'와 '그러면 무엇이 일어난다'를 한 화면에 같이 둔다.
-export default function PhaseDocking({ messageId, onDocked, onBack }: Props) {
+export default function PhaseDocking({ messageId, onDocked, onHome }: Props) {
   // 꽂힌 순간 벽에 신호를 보낸다. 실패해도 화면은 넘어간다 —
   // 벽이 못 받았다고 사용자를 여기 붙잡아 둘 이유는 없다.
   function handleDocked() {
@@ -24,7 +31,7 @@ export default function PhaseDocking({ messageId, onDocked, onBack }: Props) {
     onDocked();
   }
 
-  return (<MegafontFrame phaseLabel="도킹" onBack={onBack}><div className="guide-hero docking-simple"><h1>앞쪽 홈에 폰을 꽂으면 발화가 시작됩니다.</h1><p>세로로, 윗부분을 먼저 넣어주세요.</p><DockGuide/><button className="dock-test-link" onClick={handleDocked}>꽂았어요</button></div></MegafontFrame>);
+  return (<MegafontFrame phaseLabel="도킹" onHome={onHome}><div className="guide-hero docking-simple"><h1>앞쪽 홈에 폰을 꽂으면 발화가 시작됩니다.</h1><p>세로로, 윗부분을 먼저 넣어주세요.</p><DockGuide/><button className="dock-test-link" onClick={handleDocked}>꽂았어요</button></div></MegafontFrame>);
 }
 
 // 폰 → 홈. 말로 설명하기 어려운 동작이라 그림이 대신한다.

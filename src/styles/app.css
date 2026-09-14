@@ -1709,7 +1709,8 @@
    깔아 둔 것이다 — 위는 투명, 60% 지점에서 제 색이 되고 거기부터 아래로는
    그대로 간다. 액자 전체 폭을 쓰므로 좌우 여백 바깥까지 나간다.
    견본 넷 위로 덮이고 버튼 아래로 깔린다(스케치 02b의 칠 순서). */
-.tone-choice::after{
+.tone-choice::after, .tone-adjust::after, .compose-screen::after,
+.color-choice::after, .preview-screen::after{
   content: '';
   position: absolute;
   inset-inline: 0;
@@ -1717,10 +1718,13 @@
   height: 125px;
   background: linear-gradient(to bottom, transparent, var(--brand-scrim) 60%);
   pointer-events: none;
+  z-index: 1;
 }
 /* 버튼은 그 기운 위에 또렷이 앉는다. 올려 두지 않으면 ::after가 나중에
    칠해져 버튼까지 덮는다 — 회색 비활성 버튼이 분홍으로 흐려졌다. */
-.tone-choice > .primary-action{ position: relative; z-index: 1; }
+.tone-choice > .primary-action, .tone-adjust > .primary-action,
+.compose-screen > .primary-action, .color-choice > .primary-action,
+.preview-screen > .primary-action{ position: relative; z-index: 2; }
 .tone-selected{ display: flex; align-items: center; justify-content: space-between; color: var(--body-text); font-size: var(--fs-body-s); }
 .tone-selected button{ border: 0; background: var(--grey-100); border-radius: var(--r-s); padding: var(--s3) var(--s5); min-height: 44px; color: var(--grey-700); font: inherit; cursor: pointer; }
 .tone-selected button:active{ background: var(--grey-200); }
@@ -1777,10 +1781,6 @@
    '보조 라벨'에 쓰는 굵기고(typography-revision-2026-09-07), 크기를 건드리지
    않으므로 본문 칸에 그대로 머문다. */
 .home-subtitle{ margin-top: var(--s4); font-size: var(--fs-body); font-weight: 500; line-height: 1.5; color: var(--body-text); }
-.color-choice{ gap: var(--s6); }
-.color-preview-stage{ flex: 1; display: flex; align-items: center; min-height: 220px; padding-block: var(--s6); }
-.color-preview{ width: 100%; aspect-ratio: 2.4 / 1.5; container-type: size; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); }
-.color-preview-text{ max-width: 88%; white-space: pre-wrap; text-align: center; line-height: 1.25; transform-origin: center; }
 .color-options{ border: 0; min-width: 0; }
 .color-swatches{ display: flex; gap: var(--s4); overflow-x: auto; padding: var(--s3); scrollbar-width: thin; scroll-padding-inline: var(--s3); }
 .color-option{ position: relative; flex: 0 0 56px; width: 56px; height: 56px; display: grid; place-items: center; cursor: pointer; }
@@ -1789,7 +1789,6 @@
 .color-option input:checked + .color-swatch{ outline: 3px solid var(--brand-main); outline-offset: 3px; }
 .color-option input:focus-visible + .color-swatch{ box-shadow: 0 0 0 8px var(--paper), 0 0 0 10px var(--ink); }
 .color-caption{ text-align: center; color: var(--muted); font-size: var(--fs-body-s); }
-.color-choice > .primary-action{ margin-top: var(--s5); }
 .sr-only{ position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 /* Bilingual specimen and a consistent black screen for message previews. */
 .z-glyph > span{ display: block; }
@@ -1939,7 +1938,27 @@
 .compose-pane{ position: relative; width: 100%; height: 100%; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center;
   transition: width 420ms var(--ease-emphasized), height 420ms var(--ease-emphasized), border-radius 420ms var(--ease-emphasized); }
 /* 316 × 1.174(물결이 가장 멀리 갔을 때) = 371 — 스케치에서 형태가 차지한 370이다 */
-.compose-editor.is-pulled .compose-pane{ width: min(80vw, 316px); height: min(80vw, 316px); background: var(--pane-bg); border-radius: 17%; }
+.compose-editor.is-pulled .compose-pane{ width: min(80vw, 316px); height: min(80vw, 316px); border-radius: 17%; }
+/* 고른 색은 글자 뒤에 깔린 알약이 아니라 **배경 전체**다 (스케치 04a).
+   쓰는 동안에는 액자가 통째로 그 색이고, 물러서면 그 색이 한 덩이로
+   줄어든다 — 검정이 드러나는 건 물러선 뒤뿐이다. */
+.compose-editor{ background: var(--pane-bg); transition: background 420ms var(--ease-emphasized); }
+.compose-editor.is-pulled{ background: var(--ink); }
+.compose-pane{ background: var(--pane-bg); }
+/* 줄마다 두르던 둥근 사각형은 배경이 통째로 그 색이 되면 할 일이 없다.
+   남겨 두면 같은 색이 두 겹으로 겹쳐 가장자리에 테가 보인다. */
+.compose-pane .message-line-fill{ background: none; padding-inline: 0; }
+/* 머리줄은 흰색 붙박이였다 — 배경이 형광색이 되면 읽히지 않는다.
+   메시지의 글자색을 그대로 쓴다. 그 색은 배경과 대비되도록 고른 값이다. */
+.compose-editor .compose-chrome .z-back,
+.compose-editor .compose-chrome .format-button,
+.compose-editor .compose-chrome .z-step-of{ color: var(--chrome-ink, var(--paper)); }
+.compose-editor .compose-chrome .format-button{ border-color: color-mix(in srgb, var(--chrome-ink, var(--paper)) 34%, transparent); }
+.compose-editor .compose-count{ color: var(--chrome-ink, var(--grey-500)); opacity: 0.7; }
+.compose-editor.is-pulled .compose-chrome .z-back,
+.compose-editor.is-pulled .compose-chrome .format-button,
+.compose-editor.is-pulled .compose-chrome .z-step-of{ color: var(--paper); }
+.compose-editor.is-pulled .compose-chrome .format-button{ border-color: rgb(255 255 255 / 34%); }
 .compose-editor.is-pulled .voice-bubble{ transform: scale(0.62); transform-origin: center; }
 .compose-editor.is-pulled .compose-count{ opacity: 0; }
 
@@ -1966,7 +1985,8 @@
 }
 .compose-count{ transition: opacity 240ms; }
 @media (prefers-reduced-motion: reduce) {
-  .compose-ripple-ring, .compose-editor.is-pulled .compose-pane { animation: none; }
+  .compose-ripple-ring, .compose-editor.is-pulled .compose-pane,
+  .tone-adjust .z-glyph > span { animation: none; }
   .compose-ripple-ring { stroke-width: 3.8px; }
 }
 .compose-count > span{ color: var(--grey-600); }
@@ -1974,7 +1994,50 @@
 .compose-toolbar { display:flex; justify-content:flex-end; gap:var(--s3); }
 .format-button { display:grid; place-items:center; width:var(--btn-l); height:var(--btn-l); border:1px solid var(--line); border-radius:var(--r-s); background:var(--paper); color:var(--ink); }
 .format-button[aria-pressed=true] { background:var(--brand-sub); }
-.compose-editor, .sim-frame { background:var(--ink); }
+/* .compose-editor는 여기서 빠졌다 — 이제 액자 자체가 고른 색을 입는다.
+   검정은 물러섰을 때만 드러난다(.is-pulled). */
+.sim-frame { background:var(--ink); }
+/* ─── 04 색: 아래에서 올라오는 색판 ─────────────────────────────
+   화면은 03과 같다. 달라지는 것은 이 판 하나뿐이라, 단계가 넘어간 게
+   아니라 색만 꺼내 든 것으로 읽힌다. 그래서 '두둥' 올라온다. */
+.color-tray{
+  position: relative;
+  z-index: 2;
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--s3);
+  padding-block: var(--s5) var(--s3);
+  animation: trayRise 460ms var(--ease-emphasized) both;
+}
+@keyframes trayRise{
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+/* 네모 하나가 한 조합이다 — 바탕이 배경색, 안의 글자가 글자색.
+   정사각이라 색 면이 제일 넓게 보인다. */
+.color-chip{
+  aspect-ratio: 1;
+  border: 1px solid var(--grey-700);
+  border-radius: var(--r-s);
+  display: grid;
+  place-items: center;
+  font-family: inherit;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+/* 고른 것은 검은 바탕 위에서 흰 테로 답한다. 조합마다 색이 달라
+   색으로 표시하면 어떤 조합에서는 안 보인다. */
+.color-chip.on{ outline: 3px solid var(--paper); outline-offset: 2px; }
+.color-chip:active{ filter: brightness(0.92); }
+@media (prefers-reduced-motion: reduce){ .color-tray{ animation: none; } }
+
+/* 한 줄 화면의 바탕은 검정이다. 액자 아래 버튼이 서는 띠까지 검정으로
+   깔고, 그 위에 빨강 그라데이션, 그 위에 버튼 — 세 겹의 차례다. */
+.compose-screen{ background: var(--ink); }
+.color-choice .z-step-of{ color: var(--chrome-ink, var(--paper)); }
 .compose-input { cursor:text; caret-color:var(--paper); color:transparent; font-family:inherit; }
 .compose-input:focus-visible { outline:none; }
 .sim-mine { width:100%; display:grid; place-items:center; }
@@ -2054,6 +2117,23 @@
 .tone-adjust .z-glyph-stage .z-ask p{ color: rgb(255 255 255 / 86%); }
 /* 견본은 제목 아래 남은 자리의 한가운데 */
 .tone-adjust .z-glyph{ margin-block: auto; }
+/* 견본이 제자리에서 두둥실 뜬다. 가만히 있으면 죽은 그림으로 읽힌다 —
+   이 화면에서 '발화'는 지금 만지고 있는 살아 있는 물건이어야 한다.
+
+   판(.z-glyph)이 아니라 그 안의 글자(span)를 움직인다. 판에는 장평
+   scaleX가 인라인으로 붙어 있는데, 애니메이션의 transform은 인라인보다
+   세서 그 장평을 통째로 지워 버린다.
+
+   6.5초 한 바퀴에 최대 8px — 24px 글자였다면 과하지만 100px 안팎이라
+   이 폭이 '숨 쉰다'로 읽히는 하한이다. 기울기는 0.5도를 넘기지 않는다.
+   그 위로는 흔들리는 것처럼 보이지 떠 있는 것처럼 안 보인다. */
+@keyframes glyphFloat{
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25%      { transform: translate(2px, -5px) rotate(-0.4deg); }
+  50%      { transform: translate(0, -8px) rotate(0.3deg); }
+  75%      { transform: translate(-2px, -4px) rotate(0.5deg); }
+}
+.tone-adjust .z-glyph > span{ animation: glyphFloat 6.5s ease-in-out infinite; will-change: transform; }
 
 /* align-items: center였다 — 알약이 252px 고정폭이라 가운데 세웠다.
    눈금 줄은 화면 폭을 다 쓴다(다섯 칸을 나눠야 해서). stretch로 되돌린다. */

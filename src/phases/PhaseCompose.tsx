@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import BackButton from '../components/BackButton';
 import VoiceBubble from '../components/VoiceBubble';
 import { fontMap } from '../lib/palettes';
-import { messageColors } from '../lib/messageStyle';
+import { DRAFT_COLORS, messageColors } from '../lib/messageStyle';
 import type { ToneState } from '../types';
 type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
 interface Props {
@@ -17,7 +17,11 @@ export default function PhaseCompose({ initialText, partialTone, initialPaletteI
     const [align, setAlign] = useState<ToneState['align']>(partialTone.align ?? 'center');
     const [slnt, setSlnt] = useState(partialTone.slnt ? -12 : 0);
     const input = useRef<HTMLTextAreaElement>(null);
-    const tone: ToneState = { ...partialTone, align, slnt, paletteIdx: initialPaletteIdx ?? 0, graphicIdx: -1 };
+    // 아직 한 번도 색을 고르지 않았을 때만 작업용 바탕을 깐다. 04에서
+    // 고르고 돌아오면 partialTone이 그 색을 들고 있으므로 건드리지 않는다.
+    const untouched = initialPaletteIdx === undefined && !partialTone.backgroundColor;
+    const tone: ToneState = { ...partialTone, align, slnt, paletteIdx: initialPaletteIdx ?? 0, graphicIdx: -1,
+        ...(untouched ? DRAFT_COLORS : null) };
     const colors = messageColors(tone);
     const empty = !text.trim();
     // 물러서는 계기는 **자판을 내리는 것**이다.
@@ -37,7 +41,8 @@ export default function PhaseCompose({ initialText, partialTone, initialPaletteI
     useEffect(() => { if (full) input.current?.blur(); }, [full]);
     const cycle = () => setAlign(a => a === 'left' ? 'center' : a === 'center' ? 'right' : 'left');
     return <div className="z-frame compose-screen">
-  <div className="proj-stage is-bleed"><div className="proj-fit"><div className={'proj-frame compose-editor' + (pulled ? ' is-pulled' : '')} onPointerDown={e => { if (e.target !== input.current) {
+  <div className="proj-stage is-bleed"><div className="proj-fit"><div className={'proj-frame compose-editor' + (pulled ? ' is-pulled' : '')}
+    style={{ '--pane-bg': colors.bg, '--chrome-ink': colors.text } as CSSProperties} onPointerDown={e => { if (e.target !== input.current) {
         e.preventDefault();                           // 눌러도 지금 초점이 풀리지 않게
         input.current?.focus({ preventScroll: true }); // 누르면 다시 들어간다(줌인)
     } }}>
@@ -49,7 +54,7 @@ export default function PhaseCompose({ initialText, partialTone, initialPaletteI
      <button type="button" className="format-button" onPointerDown={e => e.preventDefault()} aria-label="기울기" aria-pressed={slnt !== 0} onClick={() => setSlnt(s => s ? 0 : -12)}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 4h10M4 20h10M15 4L9 20"/></svg></button>
     </div>
    </div>
-   <div className="compose-pane" style={{ '--pane-bg': colors.bg } as CSSProperties}>
+   <div className="compose-pane">
     <Ripple color={colors.bg}/>
     <VoiceBubble text={empty ? '여기를 눌러 쓰세요' : text} bg={colors.bg} color={colors.text} fontFamily={fontMap[tone.font]} weight={tone.wght} width={tone.tone} slant={tone.slnt} align={align} size={tone.size} fontSize={composeFontSize(text.length || 1, tone)}>
     <textarea ref={input} className="live-input compose-input" aria-label="벽에 올릴 한 줄" value={text} maxLength={60} spellCheck={false}

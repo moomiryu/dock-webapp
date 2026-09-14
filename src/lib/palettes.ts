@@ -68,10 +68,21 @@ export const fontMap: Record<string, string> = {
  *   @font-face가 100~900을 통째로 걸고 있다(global.css). 그래서 이 칸만
  *   무게를 아무리 올려도 획이 굵어지지 않는다 — 합성 굵기조차 안 걸린다.
  *
+ * shift — 베이스라인. 네 이름은 각자 제 칸 한가운데에 놓이는데, 글꼴마다
+ *   선언한 어센더·디센더가 달라 '가운데'가 곧 같은 베이스라인이 아니다.
+ *   칸 한가운데에서 베이스라인까지를 재니 (390 화면, 36px):
+ *     당당한 10.49 · 차분한 13.49 · 다정한 10.99 · 발랄한 12.00
+ *   당당한과 차분한이 3.00px 어긋나 있었다 — 나란히 놓인 두 칸이라
+ *   그 3px이 '줄이 안 맞는다'로 읽힌다. 네 값의 평균(11.744)에 맞춘다.
+ *   글자 크기를 따라가야 하므로 em으로 적는다.
+ *
  * 여기 없는 키는 보정하지 않는다.
  */
-export const opticalFix: Record<string, { scale?: number; stroke?: number }> = {
-  deulseok: { scale: 1.122, stroke: 0.011 }
+export const opticalFix: Record<string, { scale?: number; stroke?: number; shift?: number }> = {
+  ttoryeot: { shift: 0.0348 },
+  chabun: { shift: -0.0486 },
+  doran: { shift: 0.0209 },
+  deulseok: { scale: 1.122, stroke: 0.011, shift: -0.0063 }
 };
 
 export const graphics: string[] = [

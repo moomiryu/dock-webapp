@@ -54,6 +54,22 @@ const SAY_POOL = [
 ];
 const SAY_MS = 1600;
 
+/**
+ * 첫인사. 캐릭터가 떠오르고 자리를 잡는 동안만 나온다.
+ *
+ * 여기서만 캐릭터가 **정해진 대로** 움직인다 — 정면을 보고, 웃는 눈으로,
+ * 세 마디를 양옆으로 번갈아 하나씩 띄운다. 나머지 시간의 SAY_POOL은
+ * 혼잣말이라 무엇이 언제 나올지 모르는 것이 요점인데, 처음 만나는
+ * 순간까지 그러면 인사가 아니라 잡음이 된다. 환영은 정해져 있어야 한다.
+ *
+ * 세 나라 말인 이유: 캠퍼스에 한국어만 쓰는 사람만 있지 않다.
+ */
+const WELCOME = ['안녕하세요', 'こんにちは', 'Hello'];
+/** 한 마디가 떠 있는 시간 · 다음 마디까지의 틈 */
+const WELCOME_MS = 1250, WELCOME_GAP = 220;
+/** 떠오르고 자리를 잡을 틈. 곧바로 말하면 인사가 등장에 묻힌다 */
+const WELCOME_DELAY = 650;
+
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 const random = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
@@ -103,6 +119,8 @@ export default function HomeCharacter() {
     // 한 번 부푸는 동안의 상태. burstAt는 시작 시각, burstTo는 이번에 갈 크기.
     let burstAt = 0, burstTo = 1, nextBurst = 0;
     let nextSay = 0, sayUntil = 0;
+    // 첫인사 — 세 마디를 다 하면 끝나고, 그 뒤로는 평소대로 논다.
+    let welcomeIdx = 0, welcomeNext = 0, welcoming = true;
     let initialized = false, visible = !document.hidden;
 
     /** 표정은 사건이 있을 때만 바뀐다. 한 번 바뀌면 2초는 그 얼굴로 있는다. */
@@ -213,7 +231,35 @@ export default function HomeCharacter() {
       const dt = Math.min((t - (lastTime || t)) / 1000, 0.035);
       lastTime = t;
 
-      if (visible && !held && !reduced) {
+      // ── 첫인사 ───────────────────────────────────────────────
+      // 정면·웃는 눈으로 묶어 두고 세 마디를 차례로 띄운다. 이 동안에는
+      // 부풀기도 혼잣말도 돌지 않는다 — 한 번에 두 가지가 일어나면 둘 다
+      // 흐려진다(부풀기와 혼잣말을 서로 막아 두는 것과 같은 이유다).
+      if (welcoming && !reduced) {
+        if (!welcomeNext) welcomeNext = t + WELCOME_DELAY;
+        setPose('front_center', t);
+        faceUntil = 0;
+        setEyes('happy');
+        if (!sayUntil && t > welcomeNext) {
+          if (welcomeIdx >= WELCOME.length) {
+            welcoming = false;
+            setEyes('general');
+            nextSay = t + 1200;
+            nextBurst = t + 900;
+          } else {
+            // 양옆으로 번갈아. 두 마디가 같은 쪽에 서면 차례로 온 것이
+            // 아니라 한 자리에서 글자만 바뀐 것으로 보인다.
+            setSay({ text: WELCOME[welcomeIdx], side: welcomeIdx % 2 ? 'left' : 'right', tilt: welcomeIdx % 2 ? 5 : -5 });
+            sayUntil = t + WELCOME_MS;
+            welcomeNext = t + WELCOME_MS + WELCOME_GAP;
+            welcomeIdx++;
+          }
+        }
+      } else if (welcoming && reduced) {
+        welcoming = false;
+      }
+
+      if (visible && !held && !reduced && !welcoming) {
         if (t > nextWander) {
           const angle = random(0, Math.PI * 2);
           targetX = Math.cos(angle) * random(18, 38);

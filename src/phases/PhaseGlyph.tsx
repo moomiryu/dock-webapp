@@ -30,7 +30,8 @@ export default function PhaseGlyph({ initialTone, onBack, onNext }: Props) {
             <span className="style-card-name" style={{
               fontFamily: fontMap[s.val],
               '--optical': opticalFix[s.val]?.scale ?? 1,
-              '--optical-stroke': (opticalFix[s.val]?.stroke ?? 0) + 'em'
+              '--optical-stroke': (opticalFix[s.val]?.stroke ?? 0) + 'em',
+              '--optical-shift': (opticalFix[s.val]?.shift ?? 0) + 'em'
             } as CSSProperties}>
               {s.label}
             </span>

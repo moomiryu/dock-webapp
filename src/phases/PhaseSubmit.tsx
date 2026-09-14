@@ -31,7 +31,7 @@ export default function PhaseSubmit({ draft, onDocked, onEdit, onRestart }: Prop
         setBusy(false);
     } }
     if (id)
-        return <PhaseDocking messageId={id} onDocked={onDocked}/>;
+        return <PhaseDocking messageId={id} onDocked={onDocked} onBack={onEdit}/>;
     if (!draft?.text || !draft.tone)
         return <MegafontFrame phaseLabel="보내지 못함"><div className="guide-hero"><h1>아직 벽에 닿지 않았어요</h1><p>보낼 글이 없어요. 처음부터 다시 시작해주세요.</p><button className="primary-action" onClick={onRestart}>처음부터</button></div></MegafontFrame>;
     return <PhasePreview text={draft.text} tone={draft.tone} onBack={onEdit} onConfirm={send} busy={busy} error={error}/>;

@@ -4,7 +4,6 @@
 export default function PhaseSplash() {
   return (
     <div className="splash">
-      <div className="splash-mark">MEGAFONT</div>
       <div className="splash-bar" role="progressbar" aria-label="준비 중">
         <i />
       </div>

@@ -52,6 +52,17 @@ const AXES = [
     }
 ] as const;
 
+/**
+ * 기울기는 이제 제 축이 아니다 — 빠르기가 함께 정한다.
+ *
+ * 04에 정렬·기울기 버튼 둘이 따로 서 있었는데, 기울기는 '빠르게 말하기'와
+ * 같은 것을 다른 손짓으로 두 번 묻고 있었다. 빠르게 말하면 글자가 좁아지고
+ * (장평 0.7) 앞으로 기운다 — 한 동작이다. 그래서 빠른 쪽 두 칸에만 기울기가
+ * 붙는다: 아주 빠르게 24도, 빠르게 12도, 나머지 0. 값(0 · -12 · -24)은
+ * 예전 기울기 축이 쓰던 눈금 그대로라 이미 보낸 글이 그대로 읽힌다.
+ */
+const slantFor = (tone: number) => (tone <= 0.75 ? -24 : tone <= 0.9 ? -12 : 0);
+
 /** 저장된 값이 눈금에 정확히 없을 수 있다 — 제일 가까운 칸으로 읽는다 */
 const nearest = (stops: readonly number[], v: number) =>
     stops.reduce((best, s, i) => (Math.abs(s - v) < Math.abs(stops[best] - v) ? i : best), 0);
@@ -65,7 +76,11 @@ export default function PhaseTone({ initialTone, onBack, onNext }: Props) {
    <h1>전하고 싶은 느낌으로<br />조절해보세요</h1>
    <p>발화의 크기, 빠르기, 무게를 정해봐요.</p>
   </div>
-  <div className="z-glyph" style={{ fontFamily: fontMap[tone.font], fontWeight: tone.wght, fontVariationSettings: '"wght" ' + tone.wght, transform: 'scaleX(' + tone.tone + ')', fontSize: tone.size * GLYPH_SCALE + 'px' }}><span>발화</span></div>
+  {/* 글자를 낱자로 쪼갠다 — 한 덩어리로 두면 '발화'가 판때기처럼 떠다닌다.
+      바깥 span이 통째로 두둥실 뜨고, 그 안에서 낱자가 제각기 조금씩 기운다. */}
+  <div className={'z-glyph' + (tone.slnt ? ' is-gust' : '')} style={{ fontFamily: fontMap[tone.font], fontWeight: tone.wght, fontVariationSettings: '"wght" ' + tone.wght, transform: 'scaleX(' + tone.tone + ')', fontStyle: tone.slnt ? `oblique ${Math.abs(tone.slnt)}deg` : 'normal', fontSize: tone.size * GLYPH_SCALE + 'px' }}>
+   <span>{['발', '화'].map((c, i) => <b key={i} className="z-glyph-char" style={{ animationDelay: i * -1.7 + 's' }}>{c}</b>)}</span>
+  </div>
  </div>
  <div className="z-axes">
   {AXES.map(a => {
@@ -79,7 +94,7 @@ export default function PhaseTone({ initialTone, onBack, onNext }: Props) {
           {a.stops.map((s, i) =>
             <button key={i} type="button" className={'z-step ' + (i === at ? 'on' : '')}
               aria-pressed={i === at} aria-label={`${a.label} ${a.names[i]}`}
-              onClick={() => setTone(t => ({ ...t, [a.key]: s }))}>
+              onClick={() => setTone(t => ({ ...t, [a.key]: s, ...(a.key === 'tone' ? { slnt: slantFor(s) } : null) }))}>
               {/* 점이 커지는 것만으로 "왼쪽이 적고 오른쪽이 많다"를 말한다.
                   칸 안에 글자를 넣으면 좁은 화면에서 잣대 이름이 잘린다. */}
               <span className="z-step-dot" style={{ width: 6 + i * 3, height: 6 + i * 3 }}/>

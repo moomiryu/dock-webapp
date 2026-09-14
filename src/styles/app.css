@@ -384,7 +384,14 @@
 .z-glyph{
   line-height: 1;
   text-align: center;
-  transition: transform 200ms, font-size 200ms, color 200ms;
+  /* 무게·장평·크기가 눈금에서 눈금으로 건너뛴다. 값이 다섯 칸뿐이라
+     그냥 두면 한 칸에 100씩 튀어 딱딱 끊긴다. 260ms를 물려 획이
+     자라는 것으로 보이게 한다 — font-variation-settings는 같은 축이면
+     보간된다(가변 글꼴 셋에서만. '발랄한'은 정적이라 해당 없음). */
+  transition: transform 260ms var(--ease-standard), font-size 260ms var(--ease-standard),
+              font-variation-settings 260ms var(--ease-standard),
+              font-weight 260ms var(--ease-standard), font-style 260ms var(--ease-standard),
+              color 200ms;
   transform-origin: center;
 }
 
@@ -808,16 +815,15 @@
   gap: var(--s5);
 }
 
-.splash-mark{
-  font-family: var(--label-font);
-  font-size: var(--fs-h4);
-  letter-spacing: 0.1em;
-}
-
+/* 워드마크가 빠졌다 — 이 화면이 하는 말은 '기다려 달라' 하나뿐인데
+   그 위에 이름이 서 있으면 기다림이 아니라 표지로 읽힌다.
+   그래서 막대가 화면의 주인공이 되도록 키웠다: 140x1 → 200x6.
+   1px은 선이지 막대가 아니었다. */
 .splash-bar{
-  width: 140px;
-  height: 1px;
-  background: var(--line);
+  width: 200px;
+  height: 6px;
+  background: var(--grey-200);
+  border-radius: var(--r-full);
   overflow: hidden;
 }
 
@@ -825,7 +831,8 @@
   display: block;
   width: 40%;
   height: 100%;
-  background: var(--ink);
+  background: var(--brand-strong);
+  border-radius: var(--r-full);
   animation: splashSlide 1.1s ease-in-out infinite;
 }
 
@@ -1704,7 +1711,9 @@
    굵기 축이 없는 글꼴이라 font-weight로는 답이 안 나온다. 보정이 없는
    서체는 0em이라 아무 일도 일어나지 않는다. */
 .tone-choice .style-card-name{ font-size: calc(min(var(--fs-h1), 29cqw) * var(--optical, 1)); line-height: 1.15;
-  -webkit-text-stroke: var(--optical-stroke, 0) currentColor; paint-order: stroke fill; }
+  -webkit-text-stroke: var(--optical-stroke, 0) currentColor; paint-order: stroke fill;
+  /* --optical-shift: 베이스라인 보정. 네 칸의 베이스라인이 3px 어긋나 있었다. */
+  translate: 0 var(--optical-shift, 0); }
 /* 바닥에서 올라오는 더운 기운. 스케치 02a가 화면 맨 아래 125px(844-719)에
    깔아 둔 것이다 — 위는 투명, 60% 지점에서 제 색이 되고 거기부터 아래로는
    그대로 간다. 액자 전체 폭을 쓰므로 좌우 여백 바깥까지 나간다.
@@ -1986,7 +1995,7 @@
 .compose-count{ transition: opacity 240ms; }
 @media (prefers-reduced-motion: reduce) {
   .compose-ripple-ring, .compose-editor.is-pulled .compose-pane,
-  .tone-adjust .z-glyph > span { animation: none; }
+  .tone-adjust .z-glyph > span, .tone-adjust .z-glyph-char { animation: none; }
   .compose-ripple-ring { stroke-width: 3.8px; }
 }
 .compose-count > span{ color: var(--grey-600); }
@@ -2140,6 +2149,27 @@
   75%      { transform: translate(-2px, -4px) rotate(0.5deg); }
 }
 .tone-adjust .z-glyph > span{ animation: glyphFloat 6.5s ease-in-out infinite; will-change: transform; }
+/* 낱자는 그 위에서 제각기 조금씩 돈다. 한 덩어리로 뜨기만 하면 판때기가
+   뜬 것으로 보인다 — 두 글자가 서로 다른 박자로 기울어야 살아 있는
+   것처럼 읽힌다. 1.8도를 넘기지 않는다. 그 위로는 자유분방이 아니라
+   조판이 틀어진 것으로 보인다. 박자는 -1.7초씩 어긋나게 준다. */
+@keyframes glyphTilt{
+  0%, 100% { transform: rotate(-1.8deg) translateY(1px); }
+  50%      { transform: rotate(1.8deg)  translateY(-2px); }
+}
+.tone-adjust .z-glyph-char{ display: inline-block; font-weight: inherit; font-style: inherit;
+  animation: glyphTilt 5.2s ease-in-out infinite; }
+/* 빠른 쪽 두 칸에서는 글자가 기운다. 그때는 느긋한 기울임 대신 맞바람을
+   맞는 것처럼 짧게 버틴다 — 앞으로 기운 글자가 가만히 있으면 기울기가
+   자세가 아니라 오타로 보인다. 한 요소에 transform 애니메이션은 하나만
+   걸 수 있어서, 같은 자리의 애니메이션을 갈아 끼운다. */
+@keyframes glyphGust{
+  0%, 100% { transform: translateX(0)    rotate(0deg); }
+  20%      { transform: translateX(-2px) rotate(-1deg); }
+  45%      { transform: translateX(1.5px) rotate(0.7deg); }
+  70%      { transform: translateX(-1px) rotate(-0.5deg); }
+}
+.tone-adjust .z-glyph.is-gust .z-glyph-char{ animation: glyphGust 0.75s ease-in-out infinite; }
 
 /* align-items: center였다 — 알약이 252px 고정폭이라 가운데 세웠다.
    눈금 줄은 화면 폭을 다 쓴다(다섯 칸을 나눠야 해서). stretch로 되돌린다. */

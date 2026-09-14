@@ -14,8 +14,11 @@ interface Props {
 }
 export default function PhaseCompose({ initialText, partialTone, initialPaletteIdx, onBack, onSubmit }: Props) {
     const [text, setText] = useState(initialText);
-    const [align, setAlign] = useState<ToneState['align']>(partialTone.align ?? 'center');
-    const [slnt, setSlnt] = useState(partialTone.slnt ? -12 : 0);
+    // 정렬과 기울기는 이 화면에서 빠졌다. 기울기는 03의 '빠르기'가 함께
+    // 정하고(빠르게 말하면 기운다), 정렬은 가운데로 고정한다 — 한 줄짜리
+    // 글에서 정렬 셋은 고를 것이 있는 척만 하고 결과가 거의 같았다.
+    const align: ToneState['align'] = partialTone.align ?? 'center';
+    const slnt = partialTone.slnt ?? 0;
     const input = useRef<HTMLTextAreaElement>(null);
     // 아직 한 번도 색을 고르지 않았을 때만 작업용 바탕을 깐다. 04에서
     // 고르고 돌아오면 partialTone이 그 색을 들고 있으므로 건드리지 않는다.
@@ -39,7 +42,6 @@ export default function PhaseCompose({ initialText, partialTone, initialPaletteI
     const [pulled, setPulled] = useState(false);
     useEffect(() => { input.current?.focus({ preventScroll: true }); }, []);
     useEffect(() => { if (full) input.current?.blur(); }, [full]);
-    const cycle = () => setAlign(a => a === 'left' ? 'center' : a === 'center' ? 'right' : 'left');
     // 색은 액자가 아니라 **화면**이 입는다 — 버튼이 서는 아래 띠까지가
     // 그 색이고, 빨강 그라데이션은 그 위에 얹힌다. 물러서면 화면째 검정이
     // 되고, 그제야 한 덩이만 색으로 남는다.
@@ -52,10 +54,6 @@ export default function PhaseCompose({ initialText, partialTone, initialPaletteI
    <div className="compose-chrome">
     <BackButton label="특성 조절로" onClick={() => onBack(text, tone)}/>
     <span className="z-step-of">3 / 5 · 한 줄</span>
-    <div className="compose-toolbar">
-     <button type="button" className="format-button" onPointerDown={e => e.preventDefault()} onClick={cycle} aria-label={`정렬: ${align === 'left' ? '왼쪽' : align === 'right' ? '오른쪽' : '중앙'}. 다음 정렬로 변경`}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 5h18M3 13h18"/><path d={align === 'left' ? 'M3 9h11M3 17h11' : align === 'right' ? 'M10 9h11M10 17h11' : 'M6.5 9h11M6.5 17h11'}/></svg></button>
-     <button type="button" className="format-button" onPointerDown={e => e.preventDefault()} aria-label="기울기" aria-pressed={slnt !== 0} onClick={() => setSlnt(s => s ? 0 : -12)}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 4h10M4 20h10M15 4L9 20"/></svg></button>
-    </div>
    </div>
    <div className="compose-pane">
     <Ripple color={colors.bg}/>

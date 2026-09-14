@@ -2030,13 +2030,19 @@
 }
 /* 고른 것은 검은 바탕 위에서 흰 테로 답한다. 조합마다 색이 달라
    색으로 표시하면 어떤 조합에서는 안 보인다. */
+/* 04는 물러선 화면이라 바탕이 검정이다 — 테는 흰색이 제일 안전하다.
+   조합마다 색이 달라, 테를 조합의 색으로 주면 어떤 것에서는 안 보인다. */
 .color-chip.on{ outline: 3px solid var(--paper); outline-offset: 2px; }
 .color-chip:active{ filter: brightness(0.92); }
 @media (prefers-reduced-motion: reduce){ .color-tray{ animation: none; } }
 
-/* 한 줄 화면의 바탕은 검정이다. 액자 아래 버튼이 서는 띠까지 검정으로
-   깔고, 그 위에 빨강 그라데이션, 그 위에 버튼 — 세 겹의 차례다. */
-.compose-screen{ background: var(--ink); }
+/* 고른 색은 액자가 아니라 화면 전체다. 액자 아래 버튼이 서는 띠까지
+   같은 색으로 깔고, 그 위에 빨강 그라데이션, 그 위에 버튼 — 세 겹의
+   차례다. 검정으로 깔았더니 안 쓰는 검은 띠가 하나 더 생겼고,
+   '배경 전체'가 화면이 아니라 액자까지만 가리키게 됐다.
+   물러서면 화면째 검정이 되고 한 덩이만 색으로 남는다(스케치 04c). */
+.compose-screen{ background: var(--pane-bg, var(--ink)); transition: background 420ms var(--ease-emphasized); }
+.compose-screen.is-pulled{ background: var(--ink); }
 .color-choice .z-step-of{ color: var(--chrome-ink, var(--paper)); }
 .compose-input { cursor:text; caret-color:var(--paper); color:transparent; font-family:inherit; }
 .compose-input:focus-visible { outline:none; }

@@ -40,9 +40,12 @@ export default function PhaseCompose({ initialText, partialTone, initialPaletteI
     useEffect(() => { input.current?.focus({ preventScroll: true }); }, []);
     useEffect(() => { if (full) input.current?.blur(); }, [full]);
     const cycle = () => setAlign(a => a === 'left' ? 'center' : a === 'center' ? 'right' : 'left');
-    return <div className="z-frame compose-screen">
-  <div className="proj-stage is-bleed"><div className="proj-fit"><div className={'proj-frame compose-editor' + (pulled ? ' is-pulled' : '')}
-    style={{ '--pane-bg': colors.bg, '--chrome-ink': colors.text } as CSSProperties} onPointerDown={e => { if (e.target !== input.current) {
+    // 색은 액자가 아니라 **화면**이 입는다 — 버튼이 서는 아래 띠까지가
+    // 그 색이고, 빨강 그라데이션은 그 위에 얹힌다. 물러서면 화면째 검정이
+    // 되고, 그제야 한 덩이만 색으로 남는다.
+    return <div className={'z-frame compose-screen' + (pulled ? ' is-pulled' : '')}
+      style={{ '--pane-bg': colors.bg, '--chrome-ink': colors.text } as CSSProperties}>
+  <div className="proj-stage is-bleed"><div className="proj-fit"><div className={'proj-frame compose-editor' + (pulled ? ' is-pulled' : '')} onPointerDown={e => { if (e.target !== input.current) {
         e.preventDefault();                           // 눌러도 지금 초점이 풀리지 않게
         input.current?.focus({ preventScroll: true }); // 누르면 다시 들어간다(줌인)
     } }}>
@@ -84,7 +87,7 @@ export default function PhaseCompose({ initialText, partialTone, initialPaletteI
  * 끊긴 자리는 점선(stroke-dasharray)으로 낸다. 네 토막을 따로 그리면
  * 모서리 반지름이 바뀔 때마다 네 경로를 다시 계산해야 한다.
  */
-function Ripple({ color }: { color: string }) {
+export function Ripple({ color }: { color: string }) {
     return <svg className="compose-ripple" viewBox="0 0 240 240" aria-hidden="true" focusable="false">
   <rect className="compose-ripple-ring" x="20" y="20" width="200" height="200" rx="34" fill="none" stroke={color}/>
  </svg>;
@@ -101,7 +104,7 @@ function Ripple({ color }: { color: string }) {
  *
  * 벽에서 정말 어떻게 보이는지는 미리보기(05)가 16:10 액자로 맡는다.
  */
-function composeFontSize(length: number, tone: ToneState): string {
+export function composeFontSize(length: number, tone: ToneState): string {
     const perLine = 88 / Math.min(length, 20);          // cqw — 액자 폭의 88%
     const scale = Math.min(60, Math.max(28, tone.size)) / 44;
     const widen = Math.max(1, tone.tone);               // 장평이 넓어지면 그만큼 줄인다

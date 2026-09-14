@@ -24,7 +24,9 @@ export default function PhasePreview({ text, tone, onConfirm, onBack, busy = fal
     } setStage('empty'); const timers = [setTimeout(() => setStage('burst'), 600), setTimeout(() => setStage('hold'), 1650), setTimeout(() => setStage('settle'), 3250), setTimeout(() => setStage('ambient'), 4200)]; return () => timers.forEach(clearTimeout); }, [run]);
     return <div className="z-frame preview-screen"><div className="z-header"><BackButton label="색 다시 고르기" onClick={() => { if (!busy)
         onBack(); }}/><span className="z-step-of">5 / 5 · 미리보기</span></div>
- <div className="z-ask"><h1>이렇게 보여요</h1></div><div className="proj-stage"><div className={'sim is-' + stage}><div className="sim-frame">
+ {/* 여기가 마지막이라는 것을 말로 해 둔다. 이 뒤(도킹)에서 뒤로 오면
+     글은 이미 보내진 뒤라 고칠 수 있는 자리가 아니다. */}
+ <div className="z-ask"><h1>이렇게 보여요</h1><p>메시지를 수정할 수 있는 마지막 단계에요.</p></div><div className="proj-stage"><div className={'sim is-' + stage}><div className="sim-frame">
  <div className="sim-crowd" aria-hidden>{SAMPLE_MESSAGES.map((s, i) => { const m = messageColors(s.tone); return <div key={i} className="sim-lane" style={{ top: (i % 2 ? 80 : 20) + '%', animationDuration: '34s', animationDelay: -(i * 5) + 's' }}><span className="sim-crowd-item" style={{ background: m.bg, color: m.text, fontFamily: fontMap[s.tone.font] }}>{s.text}</span></div>; })}</div>
  <div className="sim-mine-lane"><div className="sim-mine"><VoiceBubble text={text} bg={colors.bg} color={colors.text} fontFamily={fontMap[tone.font]} weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size}/></div></div>
  </div><div className="sim-legend"><span className={stage === 'hold' || stage === 'burst' ? 'on' : ''}>꽂혀 있는 동안</span><span className={stage === 'ambient' || stage === 'settle' ? 'on' : ''}>그 뒤 {STAY_DAYS}일</span><button type="button" className="sim-replay" onClick={() => setRun(r => r + 1)}>다시 보기</button></div></div></div>

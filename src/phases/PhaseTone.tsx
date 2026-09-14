@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import BackButton from '../components/BackButton';
 import { fontMap } from '../lib/palettes';
 import { type PartialTone } from '../lib/tone';
@@ -63,12 +63,28 @@ const AXES = [
  */
 const slantFor = (tone: number) => (tone <= 0.75 ? -24 : tone <= 0.9 ? -12 : 0);
 
+type Axis = (typeof AXES)[number];
+
 /** 저장된 값이 눈금에 정확히 없을 수 있다 — 제일 가까운 칸으로 읽는다 */
 const nearest = (stops: readonly number[], v: number) =>
     stops.reduce((best, s, i) => (Math.abs(s - v) < Math.abs(stops[best] - v) ? i : best), 0);
 
 export default function PhaseTone({ initialTone, onBack, onNext }: Props) {
     const [tone, setTone] = useState<PartialTone>(initialTone);
+    /**
+     * 끌고 있는 축과 손가락이 지금 가 있는 자리(0~1).
+     *
+     * 손잡이는 손가락을 그대로 따라가고 값은 제일 가까운 눈금으로 붙는다.
+     * 손을 떼면 이 상태가 사라지면서 손잡이가 그 눈금 자리로 미끄러진다 —
+     * 자석이 당기는 것처럼 보이는 건 그 미끄러짐이다(CSS transition).
+     * 끄는 동안에는 그 transition을 꺼야 손가락이 늦게 따라온다.
+     */
+    const [drag, setDrag] = useState<{ key: string; at: number } | null>(null);
+    /** 한 축을 i번 눈금으로. '빠르기'는 기울기도 같이 가져간다 */
+    const pick = (a: Axis, i: number) => {
+        const v = a.stops[i];
+        setTone(t => ({ ...t, [a.key]: v, ...(a.key === 'tone' ? { slnt: slantFor(v) } : null) }));
+    };
     return <div className="z-frame z1 tone-adjust">
  <div className="z-glyph-stage has-face">
   <div className="z-header"><BackButton label="성격 다시 고르기" onClick={() => onBack(tone)}/><span className="z-step-of">2 / 5 · 조율</span></div>
@@ -84,22 +100,39 @@ export default function PhaseTone({ initialTone, onBack, onNext }: Props) {
  </div>
  <div className="z-axes">
   {AXES.map(a => {
-      const at = nearest(a.stops, tone[a.key]);
+      const at = nearest(a.stops, tone[a.key]);          // 값이 붙어 있는 눈금
+      const last = a.stops.length - 1;
+      // 손잡이 자리: 끄는 동안은 손가락, 놓으면 눈금
+      const pos = drag?.key === a.key ? drag.at : at / last;
       return <div key={a.key} className="z-axis-line" role="group" aria-label={a.label}>
         <div className="z-axis-head">
           <span className="z-axis-label">{a.label}</span>
           <span className="z-axis-value">{a.names[at]}</span>
         </div>
-        <div className="z-steps">
-          {a.stops.map((s, i) =>
-            <button key={i} type="button" className={'z-step ' + (i === at ? 'on' : '')}
-              aria-pressed={i === at} aria-label={`${a.label} ${a.names[i]}`}
-              onClick={() => setTone(t => ({ ...t, [a.key]: s, ...(a.key === 'tone' ? { slnt: slantFor(s) } : null) }))}>
-              {/* 점이 커지는 것만으로 "왼쪽이 적고 오른쪽이 많다"를 말한다.
-                  칸 안에 글자를 넣으면 좁은 화면에서 잣대 이름이 잘린다. */}
-              <span className="z-step-dot" style={{ width: 6 + i * 3, height: 6 + i * 3 }}/>
-            </button>
+        <div className={'z-steps' + (drag?.key === a.key ? ' is-dragging' : '')}
+          style={{ '--at': pos } as CSSProperties}>
+          <span className="z-steps-thumb" aria-hidden="true"/>
+          {/* 점이 커지는 것만으로 "왼쪽이 적고 오른쪽이 많다"를 말한다.
+              눈금 안에 글자를 넣으면 좁은 화면에서 잣대 이름이 잘린다. */}
+          {a.stops.map((_, i) =>
+            <span key={i} className={'z-step-dot' + (i === at ? ' on' : '')}
+              style={{ width: 6 + i * 3, height: 6 + i * 3 }} aria-hidden="true"/>
           )}
+          <input type="range" className="z-steps-input" min={0} max={1} step={0.001} value={pos}
+            aria-label={a.label} aria-valuetext={a.names[at]}
+            onChange={e => { const v = Number(e.target.value); setDrag({ key: a.key, at: v }); pick(a, Math.round(v * last)); }}
+            onPointerUp={() => setDrag(null)} onPointerCancel={() => setDrag(null)}
+            onBlur={() => setDrag(null)}
+            onKeyDown={e => {
+                // 화살표는 0.001씩 움직여 봐야 눈금이 안 바뀐다 — 한 칸씩 옮긴다.
+                const d = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1
+                    : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1
+                    : e.key === 'Home' ? -last : e.key === 'End' ? last : 0;
+                if (!d) return;
+                e.preventDefault();
+                setDrag(null);
+                pick(a, Math.min(last, Math.max(0, at + d)));
+            }}/>
         </div>
       </div>;
   })}

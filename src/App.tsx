@@ -7,7 +7,6 @@ import PhaseGlyph from './phases/PhaseGlyph';
 import PhaseTone from './phases/PhaseTone';
 import PhaseCompose from './phases/PhaseCompose';
 import PhaseColor from './phases/PhaseColor';
-import PhasePreview from './phases/PhasePreview';
 import PhaseSubmit from './phases/PhaseSubmit';
 import PhaseOnWall from './phases/PhaseOnWall';
 import PhaseDone from './phases/PhaseDone';
@@ -119,6 +118,7 @@ export default function App() {
   }
 
   function saveCompose(text: string, tone: ToneState) {
+    setGlyphTone(toPartial(tone));
     const cur = loadDraft() ?? newDraft(text);
     const updated: Draft = { ...cur, text, tone };
     updateDraftText(text);
@@ -131,9 +131,6 @@ export default function App() {
     setScreen('color');
   }
 
-  function handlePreviewConfirm() {
-    setScreen('submit');
-  }
 
   function handlePreviewBack() {
     setScreen('color');
@@ -207,12 +204,7 @@ export default function App() {
           onNext={(tone) => { saveCompose(draft.text, tone); setScreen('preview'); }} />;
       }
       return (
-        <PhasePreview
-          text={draft.text}
-          tone={draft.tone}
-          onConfirm={handlePreviewConfirm}
-          onBack={handlePreviewBack}
-        />
+        <PhaseSubmit draft={draft} onDocked={() => setScreen('onwall')} onEdit={handlePreviewBack} onRestart={handleRestart} />
       );
 
     case 'submit':
@@ -220,7 +212,7 @@ export default function App() {
         <PhaseSubmit
           draft={draft}
           onDocked={() => setScreen('onwall')}
-          onEdit={() => setScreen('preview')}
+          onEdit={handlePreviewBack}
           onRestart={handleRestart}
         />
       );

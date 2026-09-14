@@ -88,7 +88,7 @@ await page.waitForTimeout(400);
 await audit('07 벽에 떠 있음');
 
 await page.getByRole('button', { name: '폰을 뺐어요' }).click();
-await page.waitForSelector('.done-after', { timeout: 10000 });
+await page.waitForSelector('.done', { timeout: 10000 });
 await audit('08 완료');
 
 await browser.close();

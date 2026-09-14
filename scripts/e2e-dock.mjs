@@ -104,7 +104,7 @@ for (let i = 0; i < 14; i++) {
 check(closed, '빼면 큰 목소리가 거기서 끝난다');
 
 // ── 3. 뺀 사람의 08은 화면 전체를 쓴다 ────────────────────
-await phone.waitForSelector('.done-after', { timeout: 10000 });
+await phone.waitForSelector('.done', { timeout: 10000 });
 check((await phone.locator('.dock-buried').count()) === 0, '뺀 사람의 08은 화면 전체를 쓴다');
 
 // ── 4. 풍경에 합류했는가 ──────────────────────────────────

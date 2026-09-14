@@ -10,6 +10,9 @@
 export type FontFamily = 'doran' | 'chabun' | 'botong' | 'ttoryeot' | 'deulseok';
 
 export interface ToneState {
+  align?: 'left' | 'center' | 'right';
+  backgroundColor?: string;
+  textColor?: string;
   font: FontFamily;
   tone: number;       // scaleX (0.7 / 1.0 / 1.3)
   wght: number;       // 100..900

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { fontMap } from '../lib/palettes';
-import { moodAt } from '../lib/palettes-v2';
+import { messageColors } from '../lib/messageStyle';
 import type { ToneState } from '../types';
 
 interface Props {
@@ -20,7 +20,7 @@ const FALLBACK_TONE: ToneState = {
 
 export default function MessageTile({ text, tone }: Props) {
   const t = tone ?? FALLBACK_TONE;
-  const m = moodAt(t.paletteIdx);
+  const m = messageColors(t);
   const txtRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

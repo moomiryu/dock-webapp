@@ -82,8 +82,8 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
   },
   {
     step: 'Step 1',
-    title: '말투를 고르고 다듬습니다',
-    body: <p>마음에 드는 말투에 굵기, 너비, 기울기를 더해보세요.</p>,
+    title: '성격을 고르고 다듬습니다',
+    body: <p>마음에 드는 성격에 크기, 무게, 빠르기를 더해보세요.</p>,
     art: <ArtGlyphs />
   },
   {

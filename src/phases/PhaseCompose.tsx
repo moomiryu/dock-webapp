@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import BackButton from '../components/BackButton';
 import VoiceBubble from '../components/VoiceBubble';
+import { WaveRing } from '../components/WaveBox';
 import { fontMap } from '../lib/palettes';
 import { DRAFT_COLORS, messageColors } from '../lib/messageStyle';
 import type { ToneState } from '../types';
@@ -63,8 +64,8 @@ export default function PhaseCompose({ initialText, partialTone, initialPaletteI
     <h1>메시지를 작성해주세요.</h1>
    </div>
    <div className="compose-pane">
-    <Ripple color={colors.bg}/>
-    <VoiceBubble text={empty ? '여기를 눌러 쓰세요' : text} bg={colors.bg} color={colors.text} fontFamily={fontMap[tone.font]} font={tone.font} weight={tone.wght} width={tone.tone} slant={tone.slnt} align={align} size={tone.size} fontSize={composeFontSize(text.length || 1, tone)}>
+    <WaveRing color={colors.bg}/>
+    <VoiceBubble text={empty ? '여기를 눌러 쓰세요' : text} bg={colors.bg} color={colors.text} fontFamily={fontMap[tone.font]} font={tone.font} weight={tone.wght} width={tone.tone} slant={tone.slnt} align={align} size={tone.size} fontSize={composeFontSize(text.length || 1, tone)} fill={pulled}>
     <textarea ref={input} className="live-input compose-input" aria-label="벽에 올릴 한 줄" value={text} maxLength={60} spellCheck={false}
       onFocus={() => setPulled(false)} onBlur={() => setPulled(true)}
       onChange={e => setText(e.target.value.slice(0, 60))}/></VoiceBubble>
@@ -73,29 +74,6 @@ export default function PhaseCompose({ initialText, partialTone, initialPaletteI
   </div></div></div>
   <button className="primary-action" disabled={empty} onClick={() => onSubmit(text.trim(), tone)}>다음</button>
  </div>;
-}
-
-/**
- * 60자에 닿았을 때 몸통에서 번져 나가는 물결 한 겹.
- *
- * 참고 자료(`design sketch/motion reference_2.gif`, 400×400 · 30프레임 · 20ms)를
- * 프레임마다 덩어리로 뜯어 재서 나온 값이다. 도는 게 아니었다 — 날의 각도는
- * 30프레임 내내 44.74°로 붙박이였고, 대신 이런 일이 벌어진다:
- *
- *   · 물결은 몸통 가장자리(r=112, 몸통 반폭 109의 1.028배)에서 태어나
- *     바깥(r=128, 1.174배)까지 번지며 두께가 4.1px → 1.0px로 얇아진다
- *   · 한 겹뿐이다. 한 겹이 사라질 때쯤 다음 겹이 태어난다 — 600ms 주기
- *   · 네 귀퉁이에 걸친 네 토막이고, 변 한가운데가 끊겨 있다
- *   · 몸통은 물결이 떨어져 나가는 순간 넓이가 31660까지 줄었다가
- *     34475로 돌아온다 = 한 변으로 치면 2.2%
- *
- * 끊긴 자리는 점선(stroke-dasharray)으로 낸다. 네 토막을 따로 그리면
- * 모서리 반지름이 바뀔 때마다 네 경로를 다시 계산해야 한다.
- */
-export function Ripple({ color }: { color: string }) {
-    return <svg className="compose-ripple" viewBox="0 0 240 240" aria-hidden="true" focusable="false">
-  <rect className="compose-ripple-ring" x="20" y="20" width="200" height="200" rx="34" fill="none" stroke={color}/>
- </svg>;
 }
 
 /**

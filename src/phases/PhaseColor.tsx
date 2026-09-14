@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import BackButton from '../components/BackButton';
 import VoiceBubble from '../components/VoiceBubble';
-import { Ripple, composeFontSize } from './PhaseCompose';
+import { WaveRing } from '../components/WaveBox';
 import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import { messageColors } from '../lib/messageStyle';
@@ -46,8 +46,8 @@ export default function PhaseColor({ text, tone, onBack, onNext }: Props) {
     <h1>발화의 색을 정해주세요</h1>
    </div>
    <div className="compose-pane">
-    <Ripple color={bg}/>
-    <VoiceBubble text={text} bg={bg} color={fg} fontFamily={fontMap[tone.font]} font={tone.font} weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size} fontSize={composeFontSize(text.length || 1, tone)}/>
+    <WaveRing color={bg}/>
+    <VoiceBubble text={text} bg={bg} color={fg} fontFamily={fontMap[tone.font]} font={tone.font} weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size} fill/>
    </div>
   </div>
  </div></div>

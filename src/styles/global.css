@@ -608,23 +608,42 @@ body.wall-mode {
   display: block;
 }
 
-/* Triggered message — full-bleed in the message's own mood colors */
+/* 발화 — 검정이 깔리고 그 위에 그 사람 색의 상자 하나가 선다.
+   검정은 ::before에 따로 둔다. 내려앉을 때 검정만 걷히고 상자는 남아
+   제자리로 날아가야 하기 때문이다. */
 .wall-show {
   position: fixed;
   inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 6vw;
-  overflow: hidden;
+  display: grid;
+  place-items: center;
   z-index: var(--z-elevated);
-  transition: opacity 0.4s ease;
+  pointer-events: none;
 }
+.wall-show::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  transition: opacity var(--land-ms) var(--ease-standard);
+}
+.wall-show.is-landing::before { opacity: 0; }
 
-.wall-show.is-closing {
-  opacity: 0;
+/* 상자의 한 변은 WallSimulation이 --big-side로 준다 — 내려앉을 때 JS가
+   같은 숫자로 도착 배율을 계산해야 해서 한곳에 있다.
+   등장은 04가 물러설 때와 같은 결(--t-slow · emphasized). 내려앉음은 transform
+   하나로 간다 — 상자 안의 숨(scale)은 .wave-box에 있어 서로 안 겹친다. */
+.wall-show-box {
+  position: relative;
+  width: var(--big-side);
+  aspect-ratio: 1;
+  animation: wallBoxIn var(--t-slow) var(--ease-emphasized) both;
+  transition: transform var(--land-ms) var(--ease-emphasized);
+  will-change: transform;
+}
+.wall-show-box .wave-box { width: 100%; height: 100%; }
+@keyframes wallBoxIn {
+  from { opacity: 0; scale: 0.92; }
+  to   { opacity: 1; scale: 1; }
 }
 
 .wall-line {
@@ -738,6 +757,10 @@ body.wall-mode {
   height: 0;
   overflow: hidden;
 }
-.wall-block{ max-width: 29vw; transform: translateY(-50%); }
-.wall-block .voice-bubble{ max-width: 100%; }
-.wall-show .voice-bubble{ max-width: 88vw; }
+/* 잔상 — 풍경의 한 칸. 상자 한 변은 --echo-side(WallSimulation). 트랙의
+   top이 상자 가운데를 지나도록 translate로 반을 올린다 — transform은
+   흘러가는 애니메이션이 차지하고 있어서 거기 얹으면 지워진다. */
+.wall-block .wave-box{ width: var(--echo-side); translate: 0 -50%; }
+/* 발화 중인 글의 풍경 쪽 쌍둥이. 큰 상자가 내려앉아 겹치는 순간까지
+   자리는 지키되 보이지 않는다 — 자리를 지켜야 도착점을 잴 수 있다. */
+.wall-block.is-ghost{ visibility: hidden; }

@@ -328,6 +328,46 @@ export function subscribeShowTrigger(
 }
 
 /**
+ * 홈의 물리 스위치. 폰이 꽂히면 true, 빠지면 false.
+ *
+ * 쓰는 쪽은 파이다(`pi/switch.py`) — GPIO 17이 닫히면 이 값을 올린다.
+ * 읽는 쪽은 **폰**이다. 벽이 아니라 폰이 읽는 이유는 '어느 글이냐'를
+ * 스위치가 모르기 때문이다. 스위치는 "꽂혔다"만 말하고, 그 말을 들은 폰이
+ * 제 글의 id를 실어 raiseShowTrigger를 부른다 — 버튼을 누르던 그 길 그대로다.
+ *
+ * 3초 간격은 subscribeShowTrigger와 같다. 사람이 폰을 꽂고 벽을 올려다보는
+ * 동안이라 이 정도면 늦지 않고, 무료 할당량 안에 있다.
+ */
+export function subscribeSwitch(
+  cb: (on: boolean) => void,
+  onError?: (e: Error) => void
+): () => void {
+  if (!hasFirebaseEnv()) return () => {};
+  let cancelled = false;
+  const tick = async () => {
+    if (cancelled) return;
+    try {
+      const res = await withTimeout(fetch(`${FS_BASE}/${CONTROL_DOC}?key=${FS_KEY}`), 10000);
+      if (res.status === 404) {
+        if (!cancelled) cb(false);
+        return;
+      }
+      if (!res.ok) throw new Error(`control read ${res.status}`);
+      const json = (await res.json()) as { fields?: { switch?: { booleanValue?: boolean } } };
+      if (!cancelled) cb(json.fields?.switch?.booleanValue === true);
+    } catch (e) {
+      if (!cancelled) onError?.(e as Error);
+    }
+  };
+  tick();
+  const id = window.setInterval(tick, 3000);
+  return () => {
+    cancelled = true;
+    clearInterval(id);
+  };
+}
+
+/**
  * 벽에 "지금 이 글을 크게 띄워라"를 알린다.
  *
  * 물리 설치에서는 홈의 NFC·센서가 이 값을 올린다. 그 장치가 아직 없으므로

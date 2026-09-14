@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { releaseDock } from '../lib/firebase';
+import { useEffect, useRef, useState } from 'react';
+import { releaseDock, subscribeSwitch } from '../lib/firebase';
 import { EMPHASIS_SEC } from '../lib/wall';
 interface Props {
     onDone: (pulled: boolean) => void;
@@ -13,6 +13,21 @@ interface Props {
  */
 const KEEN_SEC = 10;
 export default function PhaseOnWall({ onDone }: Props) {
+    // 폰을 빼면 스위치가 열린다(true→false). 큰 목소리를 끝내는 것은 시간이
+    // 아니라 이 순간이다 — 아래 '폰을 뺐어요' 버튼과 같은 길로 간다.
+    const pulledRef = useRef(false);
+    useEffect(() => {
+        let prev: boolean | null = null;
+        return subscribeSwitch((on) => {
+            if (prev === true && !on && !pulledRef.current) {
+                pulledRef.current = true;
+                void releaseDock();
+                onDone(true);
+            }
+            prev = on;
+        });
+    }, [onDone]);
+
     const [left, setLeft] = useState(EMPHASIS_SEC);
     useEffect(() => { const start = Date.now(); const id = window.setInterval(() => { const remaining = Math.max(0, EMPHASIS_SEC - (Date.now() - start) / 1000); setLeft(remaining); if (remaining <= 0) {
         clearInterval(id);

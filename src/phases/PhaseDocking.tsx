@@ -1,5 +1,6 @@
+import { useEffect, useRef } from 'react';
 import MegafontFrame from '../components/MegafontFrame';
-import { raiseShowTrigger } from '../lib/firebase';
+import { raiseShowTrigger, subscribeSwitch } from '../lib/firebase';
 
 interface Props {
   /** 방금 보낸 글의 id — 벽이 '어느 글을 띄울지' 알아야 한다 */
@@ -26,10 +27,28 @@ interface Props {
 export default function PhaseDocking({ messageId, onDocked, onHome }: Props) {
   // 꽂힌 순간 벽에 신호를 보낸다. 실패해도 화면은 넘어간다 —
   // 벽이 못 받았다고 사용자를 여기 붙잡아 둘 이유는 없다.
+  const firedRef = useRef(false);
   function handleDocked() {
+    if (firedRef.current) return;   // 스위치와 버튼이 겹쳐 눌려도 한 번만
+    firedRef.current = true;
     void raiseShowTrigger(messageId);
     onDocked();
   }
+
+  // 홈의 물리 스위치가 꽂힘을 알리면 그대로 넘어간다. 아래 '꽂았어요' 버튼이
+  // 하던 일을 스위치가 대신하는 것이고, 가는 길은 같다.
+  //
+  // 올라가는 순간(false→true)에만 센다. 이 화면에 들어왔을 때 이미 true라면
+  // 앞사람이 안 뺀 것이지 내가 꽂은 게 아니다 — 그걸 내 꽂음으로 읽으면
+  // 화면에 닿자마자 넘어가 버린다. 그래서 첫 값은 기준선으로만 쓴다.
+  useEffect(() => {
+    let prev: boolean | null = null;
+    return subscribeSwitch((on) => {
+      if (prev === false && on) handleDocked();
+      prev = on;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (<MegafontFrame phaseLabel="도킹" onHome={onHome}><div className="guide-hero docking-simple"><h1>앞쪽 홈에 폰을 꽂으면 발화가 시작됩니다.</h1><p>세로로, 윗부분을 먼저 넣어주세요.</p><DockGuide/><button className="dock-test-link" onClick={handleDocked}>꽂았어요</button></div></MegafontFrame>);
 }

@@ -98,7 +98,7 @@ export default function PhaseTone({ initialTone, onBack, onNext }: Props) {
     return <div className="z-frame z1 tone-adjust">
  <div className="z-glyph-stage has-face">
   <div className="z-header"><BackButton label="성격 다시 고르기" onClick={() => onBack(tone)}/><span className="z-step-of">2 / 5 · 조율</span></div>
-  <div className="z-ask">
+  <div className="z-ask is-brief">
    <h1>전하고 싶은 느낌으로<br />조절해보세요</h1>
    <p>발화의 크기, 빠르기, 무게를 정해봐요.</p>
   </div>

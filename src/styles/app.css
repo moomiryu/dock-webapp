@@ -2000,6 +2000,21 @@
 .line-bubble-text { white-space: pre-wrap; line-height: 1.5; }
 .message-line { white-space: pre-wrap; overflow-wrap: anywhere; }
 .message-line-fill { background: var(--line-bg); border-radius: var(--r-xl); padding: var(--s1) var(--s3); box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+/* 한글은 띄어쓰기에서만 줄이 바뀐다(word-break: keep-all — 맞는 조판이다).
+   그래서 60자를 붙여 쓰면 접힐 데가 없어 한 줄로 흘러나가고, 상자에 맞추려는
+   계산이 바닥까지 내려가 10px짜리 얼룩이 됐다.
+
+   .message-line에 anywhere가 이미 걸려 있지만 소용이 없었다 — global.css의
+   `*`가 모든 요소의 overflow-wrap을 normal로 되돌려서, 정작 글자를 담은
+   이 칸에서 물려받은 값이 지워진다. 그래서 여기에 직접 건다.
+
+   anywhere는 **들어갈 데가 없을 때만** 글자 사이를 끊는다. 띄어쓰기가 있는
+   보통 글은 그대로 띄어쓰기에서 접힌다 — keep-all이 죽지 않는다.
+   상자를 채우는 03·04에만 준다(.is-fill). 벽은 건드리지 않는다.
+   기울기를 입히는 span이 한 겹 더 안쪽에 있고 거기에도 `*`가 닿으므로,
+   아래 전부에 건다 — 한 칸만 걸면 글자를 담은 칸에서 다시 지워진다. */
+.voice-bubble.is-fill .message-line-fill,
+.voice-bubble.is-fill .message-line-fill * { overflow-wrap: anywhere; }
 /* 라벨은 제 칸 가운데 — 스케치에서 셋 다 x=49.7에 맞춰져 있다.
    왼쪽에 붙이면 '크기'(두 자)와 '빠르기'(세 자)가 서로 어긋나 보인다. */
 .tone-slider { display:grid; grid-template-columns: var(--btn-l) minmax(0,1fr); gap:var(--s4); align-items:center; font-size:var(--fs-body-s); color:var(--body-text); }
@@ -2024,7 +2039,28 @@
 .compose-ask{ position: absolute; top: calc(var(--s5) + 44px + var(--s5)); left: var(--pad-x); right: var(--pad-x);
   z-index: 1; color: var(--paper); opacity: 0; pointer-events: none;
   transition: opacity 420ms var(--ease-emphasized); }
-.compose-editor.is-pulled .compose-ask{ opacity: 1; }
+.compose-editor.is-pulled .compose-ask{ opacity: 1; animation: askBrief 420ms var(--ease-emphasized) 3s forwards; }
+
+/* ─── 제목은 3초만 서 있는다 ───────────────────────────────────
+   무엇을 정하는 화면인지 한 번 말하고 물러난다. 계속 서 있으면 발화와
+   제목이 같은 화면에서 목소리를 다투고, 작은 폰에서는 둘이 서로 낑긴다.
+   읽고 나면 할 일이 끝난 문장이라 자리를 발화에게 넘긴다.
+
+   03·04의 .compose-ask는 absolute라 자리를 안 먹는다 — 흐려지기만 하면 된다.
+   03은 자판을 내려야 제목이 서므로, 애니메이션도 is-pulled가 붙는 그 순간
+   시작한다(규칙째로 들어왔다 나가서 셈이 매번 다시 선다). */
+@keyframes askBrief { to { opacity: 0; } }
+
+/* 02·05의 .z-ask는 세로로 자리를 먹는 칸이다. 흐려지는 것만으로는 빈자리가
+   그대로 남아 아무것도 넓어지지 않으므로, 흐려진 뒤 칸을 접는다.
+   10rem은 두 줄 제목 + 부제보다 넉넉한 상한이다 — 실제 높이가 그보다
+   낮으면 접히는 게 뒷부분에 몰리므로, 접는 구간을 뒤쪽 45%에만 준다. */
+@keyframes askBriefCollapse {
+  0%   { opacity: 1; max-height: 10rem; }
+  55%  { opacity: 0; max-height: 10rem; }
+  100% { opacity: 0; max-height: 0; }
+}
+.z-ask.is-brief{ overflow: hidden; animation: askBriefCollapse 760ms var(--ease-emphasized) 3s forwards; }
 /* 검은 자리 위라 --muted(4.49:1)로는 AA에 한 끗 모자란다. 한 칸 밝게. */
 .compose-count{ position: absolute; right: var(--pad-x); bottom: var(--s6); font-family: var(--label-font); font-size: var(--fs-cap); letter-spacing: 0.02em; color: var(--grey-500); font-variant-numeric: tabular-nums; }
 .compose-count.is-full{ color: var(--paper); }

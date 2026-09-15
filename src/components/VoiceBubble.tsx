@@ -83,12 +83,8 @@ export default function VoiceBubble({ text, bg, color, fontFamily, font, weight,
     }, [fill, text, fontFamily, weight, width, slant, align]);
     /* 무게가 '발랄한'만 못 움직인다 — 그 칸에서만 획이 대신 답한다.
        나머지 서체는 '0'이 와서 -webkit-text-stroke가 아무 일도 안 한다. */
-    return <div ref={body} className="voice-bubble line-bubble" style={{ '--line-bg': bg, color, fontFamily, fontWeight: weight, fontVariationSettings: '"wght" ' + weight, '--optical-stroke': opticalStroke(font ?? '', weight), textAlign: align, fontSize: fill ? `${filled}px` : (fontSize ?? `max(14px, calc(${fitFontSize(text, { min: 3, max: 240 })} * 0.52 * ${scale} / ${Math.max(1, width)}))`) } as CSSProperties}>
-  {/* 한글은 띄어쓰기에서만 줄이 바뀐다(word-break: normal). 그래서 60자를
-      붙여 쓰면 접힐 데가 없어 한 줄로 흘러나가고, 상자에 맞추려는 계산이
-      바닥까지 내려가 10px짜리 얼룩이 됐다. anywhere는 **들어갈 데가 없을 때만**
-      글자 사이를 끊는다 — 띄어쓰기가 있는 보통 글의 줄바꿈은 그대로다. */}
-  <div className="voice-bubble-text line-bubble-text" style={{ textAlign: align, transform: `scaleX(${width})`, transformOrigin: align, overflowWrap: fill ? 'anywhere' : undefined }}>
+    return <div ref={body} className={'voice-bubble line-bubble' + (fill ? ' is-fill' : '')} style={{ '--line-bg': bg, color, fontFamily, fontWeight: weight, fontVariationSettings: '"wght" ' + weight, '--optical-stroke': opticalStroke(font ?? '', weight), textAlign: align, fontSize: fill ? `${filled}px` : (fontSize ?? `max(14px, calc(${fitFontSize(text, { min: 3, max: 240 })} * 0.52 * ${scale} / ${Math.max(1, width)}))`) } as CSSProperties}>
+  <div className="voice-bubble-text line-bubble-text" style={{ textAlign: align, transform: `scaleX(${width})`, transformOrigin: align }}>
    {text.split('\n').map((line, i) => <div className="message-line" key={i}><span className="message-line-fill"><span style={{ fontStyle: slant ? `oblique ${Math.abs(slant)}deg` : 'normal' }}>{line.split(/([A-Za-z0-9][A-Za-z0-9 .,!?'-]*)/g).map((part, j) => /[A-Za-z0-9]/.test(part) ? <span key={j} lang="en" style={{ fontStyle: slant ? 'italic' : 'normal' }}>{part}</span> : part || '\u200b')}</span></span></div>)}
    {children}
   </div>

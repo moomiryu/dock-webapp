@@ -1,7 +1,7 @@
 // Wall projection — MEGAFONT's output side.
 //
-// 벽은 숨 쉬는 상자들의 풍경이다. 사흘치 글이 저마다 작은 파동 상자로 세
-// 줄을 흘러다닌다(잔상). 스위치가 올라가면(control/display.showTrigger) 지목된
+// 벽은 숨 쉬는 상자들의 풍경이다. 사흘치 글이 저마다 작은 파동 상자가 되어
+// 떠다니다 서로·벽면에 닿으면 튕긴다(잔상). 스위치가 올라가면(control/display.showTrigger) 지목된
 // 글이 검정 위에 큰 상자로 서서 세게 숨 쉬고, 30초에 걸쳐 잦아들다가, 제
 // 크기로 내려앉아 다른 잔상들 사이에 섞인다. 끝은 사건이 아니라 가라앉음이다.
 //
@@ -32,15 +32,18 @@ const RECENT_N = 15;                            // fewer reads per poll (quota)
 // 체류 기간은 lib/wall.ts 한 곳에서 정한다 (아카이브가 따로 없으니 이게 수명 전부)
 const LOAD_TIMEOUT_MS = 20000;
 
-// Three well-spaced tracks; blocks drift horizontally. Phase is distributed
-// evenly per track (not random) so same-speed blocks keep a constant gap and
-// never overlap.
-const TRACKS: ReadonlyArray<{ y: number; duration: number; dir: 'left' | 'right' }> = [
-  { y: 20, duration: 150, dir: 'left' },
-  { y: 50, duration: 190, dir: 'right' },
-  { y: 80, duration: 165, dir: 'left' }
-];
-const LANDSCAPE_N = 12; // recent messages in the drifting landscape (denser)
+// ─── 떠다니는 풍경 ────────────────────────────────────────────────────
+// 가로 세 줄을 흘러가던 것을 걷어냈다. 줄을 타면 말들이 행렬처럼 보이고,
+// 벽이 '지나가는 전광판'이 된다. 지금은 저마다 제 방향으로 떠다니다
+// 서로 닿거나 벽면에 닿으면 튕긴다 — 말들이 한 방에 같이 있는 것에 가깝다.
+
+/** 한 화면에 떠 있을 수 있는 잔상의 수. 이보다 쌓이면 갈아 끼운다 */
+const FLOAT_N = 10;
+/** 떠다니는 속도 — 초당 화면 높이의 몇 배인가. 읽을 수 있을 만큼 느리게 */
+const SPEED_MIN = 0.012;
+const SPEED_MAX = 0.032;
+/** 열 개가 차 있을 때 한 칸을 갈아 끼우는 간격 */
+const ROTATE_MS = 20_000;
 
 // ─── 파동 상자의 치수 ─────────────────────────────────────────────────
 // 발화하는 동안 서는 큰 상자와, 그 뒤 풍경에 남는 잔상. 둘의 글자 크기가
@@ -93,27 +96,68 @@ type Land = { dx: number; dy: number; scale: number };
 /** 도착점을 못 재면 제자리에서 잔상 크기로 가라앉는다 */
 const SINK: Land = { dx: 0, dy: 0, scale: ECHO_SIDE_VH / BIG_SIDE_VH };
 
+/** 떠다니는 몸 하나. 자리와 속도는 여기 있고 React는 모른다 — 프레임마다
+    상태를 갱신하면 열 개 × 60프레임 = 초당 600번 다시 그리게 된다. */
+type Body = { x: number; y: number; vx: number; vy: number; r: number; held: boolean };
+
+function boxSide(): number {
+  return (window.innerHeight * ECHO_SIDE_VH) / 100;
+}
+
+/** 새 몸을 아무 자리에 놓는다. 이미 있는 것들과 겹치지 않는 자리를 찾아본다 */
+function spawn(r: number, w: number, h: number, taken: Body[]): Body {
+  const speed = SPEED_MIN + Math.random() * (SPEED_MAX - SPEED_MIN);
+  const angle = Math.random() * Math.PI * 2;
+  let x = 0, y = 0;
+  for (let t = 0; t < 30; t++) {
+    x = r + Math.random() * Math.max(1, w - r * 2);
+    y = r + Math.random() * Math.max(1, h - r * 2);
+    if (taken.every((b) => Math.hypot(b.x - x, b.y - y) >= b.r + r)) break;
+  }
+  return { x, y, vx: Math.cos(angle) * speed * h, vy: Math.sin(angle) * speed * h, r, held: false };
+}
+
 /**
- * 그 글의 잔상이 지금 어디 있는지 재서, 큰 상자가 거기로 가는 길을 만든다.
- * 잔상은 흘러가는 중이라 LAND_MS 동안 갈 거리만큼 앞을 겨눈다 — 안 그러면
- * 도착한 순간 쌍둥이가 한 상자 폭쯤 비켜 있다.
- * 배율은 rect가 아니라 치수로 낸다. rect는 숨 쉬는 중이라 2.2% 흔들린다.
+ * 한 프레임. 벽면에 닿으면 되튀고, 서로 닿으면 맞바꾼다.
+ *
+ * 둥근 사각형을 원으로 친다(반지름 = 한 변의 절반). 축에 나란히 닿을 때가
+ * 정확히 변끼리 맞닿는 순간이고, 비스듬히 만날 때만 조금 일찍 튕긴다 —
+ * 모서리가 17% 깎여 있어서 눈에는 그게 더 맞다.
+ *
+ * 질량이 같으므로 탄성 충돌은 **법선 방향 속도를 맞바꾸는 것**으로 끝난다.
+ * 접선 방향은 건드리지 않는다(스치듯 지나가는 것이 스치듯 보여야 한다).
+ * 멀어지는 중인 쌍은 건너뛴다 — 안 그러면 겹친 채 붙어 떨리게 된다.
  */
-function aimAt(id: string): Land | null {
-  const block = document.querySelector<HTMLElement>(`.wall-block[data-id="${CSS.escape(id)}"]`);
-  const box = block?.querySelector<HTMLElement>('.wave-box');
-  if (!block || !box) return null;
-  const r = box.getBoundingClientRect();
-  const dir = block.classList.contains('track-left') ? -1 : 1;
-  const durS = parseFloat(getComputedStyle(block).animationDuration) || 0;
-  const lead = durS > 0 ? ((window.innerWidth + block.offsetWidth) / (durS * 1000)) * LAND_MS * dir : 0;
-  const bigSide = Math.min(window.innerHeight * BIG_SIDE_VH, window.innerWidth * BIG_SIDE_MAX_VW) / 100;
-  const echoSide = (window.innerHeight * ECHO_SIDE_VH) / 100;
-  return {
-    dx: r.left + r.width / 2 + lead - window.innerWidth / 2,
-    dy: r.top + r.height / 2 - window.innerHeight / 2,
-    scale: echoSide / bigSide
-  };
+function step(bodies: Body[], w: number, h: number, dt: number) {
+  for (const b of bodies) {
+    if (b.held) continue;
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx); }
+    else if (b.x > w - b.r) { b.x = w - b.r; b.vx = -Math.abs(b.vx); }
+    if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy); }
+    else if (b.y > h - b.r) { b.y = h - b.r; b.vy = -Math.abs(b.vy); }
+  }
+  for (let i = 0; i < bodies.length; i++) {
+    for (let j = i + 1; j < bodies.length; j++) {
+      const a = bodies[i], b = bodies[j];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const d = Math.hypot(dx, dy) || 1e-6;
+      const min = a.r + b.r;
+      if (d >= min) continue;
+      const nx = dx / d, ny = dy / d;
+      // 겹친 만큼 서로 밀어낸다. 안 그러면 다음 프레임에도 겹쳐 있어 떤다.
+      const push = (min - d) / 2;
+      if (!a.held) { a.x -= nx * push; a.y -= ny * push; }
+      if (!b.held) { b.x += nx * push; b.y += ny * push; }
+      const va = a.vx * nx + a.vy * ny;
+      const vb = b.vx * nx + b.vy * ny;
+      if (va - vb <= 0) continue;          // 이미 멀어지는 중
+      const diff = va - vb;
+      if (!a.held) { a.vx -= diff * nx; a.vy -= diff * ny; }
+      if (!b.held) { b.vx += diff * nx; b.vy += diff * ny; }
+    }
+  }
 }
 
 // ─── Component ────────────────────────────────────────────────────────
@@ -129,6 +173,22 @@ export default function WallSimulation() {
   const [emphMsg, setEmphMsg] = useState<StoredMessage | null>(null);
   const [emphLand, setEmphLand] = useState<Land | null>(null);
   const [emphKey, setEmphKey] = useState(0);
+
+  // 떠다니는 몸들과 그것을 그리는 요소. 둘 다 React 바깥에 둔다 —
+  // 프레임마다 상태를 갱신하면 열 개 × 60프레임을 다시 그리게 된다.
+  const bodiesRef = useRef(new Map<string, Body>());
+  const elsRef = useRef(new Map<string, HTMLElement>());
+  const setBlockEl = useCallback((id: string, el: HTMLElement | null) => {
+    if (el) elsRef.current.set(id, el);
+    else elsRef.current.delete(id);
+  }, []);
+
+  // 열 개가 차 있을 때 한 칸씩 갈아 끼우는 시계
+  const [rotate, setRotate] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setRotate((r) => r + 1), ROTATE_MS);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     document.body.classList.add('wall-mode');
@@ -220,8 +280,23 @@ export default function WallSimulation() {
       clearTimeout(closeTimerRef.current);
       clearTimeout(hideTimerRef.current);
       const id = emphIdRef.current;
-      setEmphLand((id && aimAt(id)) || SINK);
+      // 그 글의 잔상이 지금 떠 있는 자리를 겨눈다. 도착할 때까지 붙잡아
+      // 둔다(held) — 움직이는 과녁을 맞히려면 앞을 예측해야 하는데, 튕기는
+      // 몸은 예측이 안 된다. 어차피 숨어 있으니 멈춘 것은 보이지 않는다.
+      const body = id ? bodiesRef.current.get(id) : null;
+      if (body) {
+        body.held = true;
+        const bigSide = Math.min(window.innerHeight * BIG_SIDE_VH, window.innerWidth * BIG_SIDE_MAX_VW) / 100;
+        setEmphLand({
+          dx: body.x - window.innerWidth / 2,
+          dy: body.y - window.innerHeight / 2,
+          scale: (body.r * 2) / bigSide
+        });
+      } else {
+        setEmphLand(SINK);
+      }
       hideTimerRef.current = window.setTimeout(() => {
+        if (body) body.held = false;      // 도착했으니 다시 떠다닌다
         setEmphMsg(null);
         setEmphLand(null);
         emphIdRef.current = null;
@@ -281,6 +356,53 @@ export default function WallSimulation() {
       unsub();
     };
   }, []);
+
+  // 화면에 띄울 열 개. 더 쌓이면 갈아 끼우되, **발화 중인 글은 반드시 남긴다** —
+  // 그 잔상이 큰 상자가 내려앉을 자리이므로 없으면 갈 곳이 사라진다.
+  const shown = useMemo(() => {
+    if (visible.length <= FLOAT_N) return visible;
+    const out: StoredMessage[] = [];
+    const pinned = emphMsg ? visible.find((m) => m.id === emphMsg.id) : null;
+    if (pinned) out.push(pinned);
+    for (let i = 0; out.length < FLOAT_N && i < visible.length; i++) {
+      const m = visible[(i + rotate) % visible.length];
+      if (!out.some((x) => x.id === m.id)) out.push(m);
+    }
+    return out;
+  }, [visible, rotate, emphMsg]);
+
+  // 프레임마다 한 걸음 걷고 자리를 요소에 적는다. transform만 건드리므로
+  // 레이아웃을 다시 계산하지 않는다 — 파이에서 이게 프레임을 지킨다.
+  const shownKey = shown.map((m) => m.id).join(',');
+  useEffect(() => {
+    const ids = shownKey ? shownKey.split(',') : [];
+    let raf = 0;
+    let prev = performance.now();
+    const loop = (t: number) => {
+      // 탭이 뒤에 있다 돌아오면 dt가 몇 초가 된다. 그 한 프레임에 벽을
+      // 가로질러 버리므로 상한을 둔다.
+      const dt = Math.min(0.05, (t - prev) / 1000);
+      prev = t;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const r = boxSide() / 2;
+      const map = bodiesRef.current;
+      for (const id of [...map.keys()]) if (!ids.includes(id)) map.delete(id);
+      for (const id of ids) {
+        const b = map.get(id);
+        if (!b) map.set(id, spawn(r, w, h, [...map.values()]));
+        else b.r = r;                      // 창 크기가 바뀌면 같이 바뀐다
+      }
+      step([...map.values()], w, h, dt);
+      for (const [id, b] of map) {
+        const el = elsRef.current.get(id);
+        if (el) el.style.transform = `translate3d(${(b.x - b.r).toFixed(1)}px, ${(b.y - b.r).toFixed(1)}px, 0)`;
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [shownKey]);
 
   const retry = useCallback(() => {
     setError(null);
@@ -355,8 +477,8 @@ export default function WallSimulation() {
 
       {/* 풍경 — 잔상들이 세 줄을 흘러간다. 발화 중인 글의 잔상은 자리만
           지키고 숨어 있다가(is-ghost) 큰 상자가 내려앉는 순간 드러난다 */}
-      {visible.slice(0, LANDSCAPE_N).map((msg, i, arr) => (
-        <WallBlock key={msg.id} msg={msg} index={i} total={arr.length} ghost={emphMsg?.id === msg.id} />
+      {shown.map((msg, i) => (
+        <WallBlock key={msg.id} msg={msg} index={i} ghost={emphMsg?.id === msg.id} onEl={setBlockEl} />
       ))}
 
       {/* 발화 — 검정 위에 큰 상자 하나 */}
@@ -366,7 +488,7 @@ export default function WallSimulation() {
         <div className="wall-overlay">
           <div className="wall-overlay-line">MEGAFONT · WALL</div>
           <div className="wall-overlay-line">
-            풍경 {visible.length}개 {emphMsg ? (emphLand ? '· 내려앉는 중' : '· 발화 중') : '· 트리거 대기'}
+            풍경 {shown.length}/{visible.length}개 {emphMsg ? (emphLand ? '· 내려앉는 중' : '· 발화 중') : '· 트리거 대기'}
           </div>
           <div className="wall-overlay-line">
             {isFirebaseConfigured() ? 'Firestore 연결됨' : '로컬 mock 데이터'}
@@ -380,32 +502,20 @@ export default function WallSimulation() {
 
 // ─── 잔상 (풍경의 한 칸, 흘러가는 작은 상자) ─────────────────────────
 
-const WallBlock = memo(function WallBlock({ msg, index, total, ghost }: { msg: StoredMessage; index: number; total: number; ghost: boolean }) {
-  const track = TRACKS[index % TRACKS.length];
-  const posInTrack = Math.floor(index / TRACKS.length);
-  const countInTrack = Math.max(1, Math.ceil(total / TRACKS.length));
-
-  // 한 트랙 안에서는 균등 간격이라 같은 속도끼리 겹치지 않는다.
-  // 거기에 트랙마다 시작점을 어긋내야 메시지가 적을 때도 화면이 고르게 찬다 —
-  // 이게 없으면 글이 세 개일 때 셋 다 위상 0에서 같이 출발해, 설치 첫날
-  // 벽이 대부분 비어 있다가 한 덩어리가 지나가는 꼴이 된다.
-  const trackOffset = (index % TRACKS.length) / TRACKS.length;
-  // 0.5를 더해 새 글은 트랙 **가운데**서 출발한다. 큰 상자가 내려앉을 자리가
-  // 화면 안에 있어야 해서다 — 재 보니 넷 중 하나는 쌍둥이가 화면 밖(x=1308)에
-  // 있었고, 그러면 큰 상자가 벽 밖으로 날아간다. 가운데서 30초를 흘러도
-  // 한 바퀴의 20%라 여전히 화면 안이다. 간격은 다 같이 밀리므로 그대로다.
-  const phase = (0.5 + posInTrack / countInTrack + trackOffset) % 1;
-  const animDelay = -phase * track.duration;
+const WallBlock = memo(function WallBlock({ msg, index, ghost, onEl }: { msg: StoredMessage; index: number; ghost: boolean; onEl: (id: string, el: HTMLElement | null) => void }) {
   const { bg, text, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
   const ratio = useMemo(() => boxFontRatio(msg.text, scaleX, msg.tone?.size), [msg.text, scaleX, msg.tone?.size]);
-  // 숨도 어긋낸다. 137은 600과 서로소라 열두 개가 같은 위상에 모이지 않는다.
+  // 숨도 어긋낸다. 137은 600과 서로소라 열 개가 같은 위상에 모이지 않는다.
   const breath = -((index * 137) % 600);
 
+  // 자리는 CSS가 아니라 프레임 루프가 transform으로 적는다(위 useEffect).
+  // 여기서 style에 자리를 주면 매 프레임 React를 거치게 된다.
   return (
     <div
-      className={`wall-block track-${track.dir}${ghost ? ' is-ghost' : ''}`}
+      className={`wall-block${ghost ? ' is-ghost' : ''}`}
       data-id={msg.id}
-      style={{ top: `${track.y}%`, animationDuration: `${track.duration}s`, animationDelay: `${animDelay}s`, '--wave-phase': `${breath}ms` } as CSSProperties}
+      ref={(el) => onEl(msg.id, el)}
+      style={{ '--wave-phase': `${breath}ms` } as CSSProperties}
     >
       <WaveBox color={bg} strength={ECHO_STRENGTH}>
         <VoiceBubble text={msg.text} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght}

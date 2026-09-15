@@ -516,22 +516,16 @@ body.wall-mode {
   100% { transform: translateX(100vw); }
 }
 
-/* === Landscape blocks — multi-line, one size, drifting horizontally === */
+/* === 잔상 — 떠다니다 서로·벽면에 닿으면 튕긴다 ===
+   자리는 CSS가 모른다. WallSimulation의 프레임 루프가 transform으로 적는다 —
+   가로 세 줄을 흘러가던 CSS 애니메이션(wallSlideLeft/Right)은 걷어냈다.
+   왼쪽 위 모서리를 기준으로 놓으므로 left·top은 0이다. */
 .wall-block {
   position: absolute;
   left: 0;
+  top: 0;
   z-index: var(--z-content);
   will-change: transform;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-}
-
-.wall-block.track-left {
-  animation-name: wallSlideLeft;
-}
-
-.wall-block.track-right {
-  animation-name: wallSlideRight;
 }
 
 .wall-block-inner {
@@ -757,10 +751,10 @@ body.wall-mode {
   height: 0;
   overflow: hidden;
 }
-/* 잔상 — 풍경의 한 칸. 상자 한 변은 --echo-side(WallSimulation). 트랙의
-   top이 상자 가운데를 지나도록 translate로 반을 올린다 — transform은
-   흘러가는 애니메이션이 차지하고 있어서 거기 얹으면 지워진다. */
-.wall-block .wave-box{ width: var(--echo-side); translate: 0 -50%; }
+/* 잔상 — 풍경의 한 칸. 상자 한 변은 --echo-side(WallSimulation).
+   물리 계산이 왼쪽 위 모서리를 주므로 여기서 자리를 더 옮기지 않는다. */
+.wall-block .wave-box{ width: var(--echo-side); }
 /* 발화 중인 글의 풍경 쪽 쌍둥이. 큰 상자가 내려앉아 겹치는 순간까지
-   자리는 지키되 보이지 않는다 — 자리를 지켜야 도착점을 잴 수 있다. */
+   자리는 지키되 보이지 않는다 — 자리를 지켜야 도착점을 잴 수 있다.
+   그동안 그 몸은 붙잡혀 있다(Body.held) 도착과 함께 다시 떠다닌다. */
 .wall-block.is-ghost{ visibility: hidden; }

@@ -18,10 +18,13 @@ export default function PhasePreview({ text, tone, onConfirm, onBack, busy = fal
     const [stage, setStage] = useState('empty');
     const [run, setRun] = useState(0);
     const colors = messageColors(tone);
-    useEffect(() => { if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        setStage('hold');
-        return;
-    } setStage('empty'); const timers = [setTimeout(() => setStage('burst'), 600), setTimeout(() => setStage('hold'), 1650), setTimeout(() => setStage('settle'), 3250), setTimeout(() => setStage('ambient'), 4200)]; return () => timers.forEach(clearTimeout); }, [run]);
+    /* 모션을 끈 사람도 **같은 것을 본다.**
+       전에는 여기서 'hold'에 멈춰 세웠는데, 그러면 이 화면이 보여주기로 한
+       두 가지 중 뒤엣것 — '그 뒤 사흘, 다른 말들 사이로 들어간다' — 을
+       영영 못 본다. 미리보기가 절반만 말하는 셈이었다.
+       모션을 끄라는 요청은 **움직이지 말라**는 것이지 보여주지 말라는 것이
+       아니다. 차례는 그대로 밟되, 전환이 0초라 장면이 끊어 바뀐다. */
+    useEffect(() => { setStage('empty'); const timers = [setTimeout(() => setStage('burst'), 600), setTimeout(() => setStage('hold'), 1650), setTimeout(() => setStage('settle'), 3250), setTimeout(() => setStage('ambient'), 4200)]; return () => timers.forEach(clearTimeout); }, [run]);
     return <div className="z-frame preview-screen"><div className="z-header"><BackButton label="색 다시 고르기" onClick={() => { if (!busy)
         onBack(); }}/><span className="z-step-of">5 / 5 · 미리보기</span></div>
  {/* 여기가 마지막이라는 것을 말로 해 둔다. 이 뒤(도킹)에는 '이전'이 없다 —

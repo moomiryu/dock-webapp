@@ -33,6 +33,17 @@ interface Props {
  * 폭은 .line-bubble이 88%로 붙박이라 글자가 커지면 폭 대신 줄 수가 는다.
  * 그래서 높이 하나만 보면 된다. 띄어쓰기 없는 긴 글은 접힐 데가 없어 옆으로
  * 흘러나가므로 scrollWidth도 같이 본다.
+ *
+ * ── 재는 동안 전환을 끄는 이유 ────────────────────────────────────
+ * 이 이분법은 **쓴 값을 곧바로 다시 읽을 수 있다**는 데 전부를 건다. 그
+ * 전제가 한 번 깨진 적이 있다: 모션을 끈 사용자에게 걸리던 전역
+ * `transition-duration: 0.01ms`가 글자 크기까지 전환으로 만들어, 크기를 쓴
+ * 직후 잰 값이 옛 값이었다. 답이 통째로 망가져 05의 글이 48px 자리에서
+ * 10px(도착 직후)이나 239px(창이 흔들린 뒤)로 나왔다.
+ *
+ * 그 리셋은 global.css에서 0s로 고쳤다. 여기서 한 번 더 막는 것은 재는
+ * 쪽의 전제를 남의 CSS에 맡기지 않기 위해서다 — 어디서든 전환이 다시
+ * 붙어도 이 계산만은 성립한다.
  */
 function fitToBox(el: HTMLElement): number {
     const box = el.parentElement;
@@ -40,6 +51,8 @@ function fitToBox(el: HTMLElement): number {
     const limitH = box.clientHeight * 0.88;
     const limitW = box.clientWidth * 0.88;
     const prev = el.style.fontSize;
+    const prevTransition = el.style.transition;
+    el.style.transition = 'none';
     let lo = 10, hi = 240, best = 10;
     for (let i = 0; i < 9; i++) {                      // 230px를 9번 접으면 0.45px까지 좁혀진다
         const mid = (lo + hi) / 2;
@@ -49,6 +62,7 @@ function fitToBox(el: HTMLElement): number {
         else hi = mid;
     }
     el.style.fontSize = prev;
+    el.style.transition = prevTransition;
     return Math.floor(best);
 }
 /**

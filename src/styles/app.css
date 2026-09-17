@@ -1663,9 +1663,25 @@
   border-color: var(--ink);
 }
 
+/* 모션을 껐을 때 — 흐르지는 않되 **자리는 지킨다.**
+   전에는 여기서 animation을 통째로 지웠다. 그러면 풍경의 여섯 줄이 쓰던
+   자리까지 같이 잃는다 — 그 자리는 줄마다 다른 음수 지연이 만들던 것이라,
+   지우는 순간 여섯이 한가운데 겹쳐 쌓이고 미리보기가 빈 벽이 됐다.
+   지우는 대신 **멈춰 세운다.** 움직이는 그림의 한 장면을 정지 화면으로
+   보는 것과 같아진다 — 움직임은 없고 풍경은 남는다.
+
+   길이를 24초로 좁히는 것은 겹침 때문이다: 34초에서는 줄 사이 간격이
+   31.8cqw인데 제일 긴 글(22자 = 119cqw)이 그 간격을 넘어 옆줄을 덮었다.
+   24초면 45cqw가 되어 같은 줄의 셋이 서로를 비껴간다. 내 글만 34초 그대로
+   둔다 — 지연 -17초가 딱 절반, 곧 한가운데다. */
 @media (prefers-reduced-motion: reduce) {
   .sim-lane,
-  .sim-mine-lane,
+  .sim-mine-lane {
+    animation-play-state: paused !important;
+    transition: none !important;
+  }
+  .sim-lane{ animation-duration: 24s !important; }
+  .sim-mine-lane{ animation-duration: 34s !important; }
   .sim-mine {
     animation: none !important;
     transition: none !important;

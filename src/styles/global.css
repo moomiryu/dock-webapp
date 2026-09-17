@@ -45,11 +45,18 @@
   overflow-wrap: normal;
 }
 
+/* 0.01ms가 아니라 0s인 이유.
+   흔한 리셋은 0.01ms를 쓴다 — transitionend·animationend가 그래도 한 번은
+   울리게 하려는 것이다. 이 앱은 그 이벤트를 어디서도 듣지 않는다(확인함).
+   그런데 0이 아닌 값은 대가가 있었다: 글자 크기도 10마이크로초짜리 전환을
+   타는 바람에, 크기를 쓴 직후 재는 계산(VoiceBubble.fitToBox)이 옛 값을
+   돌려받았다. 05 색 화면의 글이 48px이어야 할 자리에서 10px로 나왔다.
+   듣는 이가 없는 이벤트를 위해 재는 일을 망칠 이유가 없다. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 0s !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0s !important;
     scroll-behavior: auto !important;
   }
   /* But keep the line pulse — it's a *baseline* per design charter, not decoration.

@@ -2303,6 +2303,12 @@
 .primary-action[aria-busy=true] { background:var(--brand-strong); color:var(--paper); }
 .docking-simple { justify-content:flex-start; padding-top:var(--s7); }
 .docking-simple .dock-guide { flex:1; align-items:center; }
+/* 그림이 이 화면의 본문이다 — 꽂는 동작은 말로 설명하기 어려워서 그림에게
+   맡겼는데, 정작 그림이 152px로 박혀 있어 500px짜리 자리 한가운데 떠 있었다.
+   그 크기에서는 설명이 아니라 각주로 읽힌다. 준 자리를 쓰게 하되 상한을
+   둔다 — 세로가 짧은 기기에서 제목과 부제를 밀어내면 안 된다. */
+.docking-simple .dock-guide{ flex-direction: column; }
+.docking-simple .dock-guide > svg{ flex: 1 1 auto; min-height: 0; max-height: 260px; width: auto; }
 .dock-test-link { align-self:center; min-height:var(--btn-l); border:0; background:none; color:var(--muted); font:inherit; font-size:var(--fs-cap-s); }
 .onwall-screen { min-height:100dvh; width:100%; max-width:480px; background:var(--brand-strong); color:var(--paper); padding:var(--s6) var(--pad-x); display:flex; flex-direction:column; }
 .onwall-screen .onwall { justify-content:center; align-items:center; }

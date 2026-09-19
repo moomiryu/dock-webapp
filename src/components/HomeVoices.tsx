@@ -18,6 +18,13 @@ import { charPos } from '../lib/charPos';
  * 나왔다 흩어져야 **여럿의 말이 모여 나가는 것**으로 보인다.
  *
  * 한 글자씩 찍히며 나온다 — 글자를 다루는 물건이 하는 일이라서.
+ *
+ * ── 가운데 한 축으로 오른다 ───────────────────────────────────────────
+ * 처음엔 나팔이 향한 쪽으로 사방에 뿌렸다. 포즈가 바뀔 때마다 말이 나오는
+ * 쪽도 같이 바뀌어서, 화면에 축이 서지 않았다 — 무엇을 읽어야 하는지가
+ * 매번 다른 자리에서 시작한다. 이제 **어느 포즈든 같은 축**이다. 가운데
+ * 에서 나와 곧장 위로 오르고, 위의 부제목에 닿기 한참 전에 다 옅어진다.
+ * 글줄이 부제목과 겹치면 워드마크가 두 겹으로 읽힌다.
  */
 
 /** 동시에 살아 있을 수 있는 말의 수 */
@@ -35,12 +42,14 @@ const LIFE = { min: 2800, max: 4000 };
 /** 한 다발에 몇 마디 · 그 안의 간격(ms) · 다발 사이의 쉼(ms) */
 const BUNCH = { min: 2, max: 3 }, INSIDE = { min: 260, max: 620 }, REST = { min: 2200, max: 4600 };
 /**
- * 멀어지는 거리 — 메가폰트 상자 한 변에 대한 비율.
+ * 다 옅어지는 자리 — **부제목 아래로 이만큼 남긴 높이**(프레임 높이 비율).
  *
- * 0.62였는데 화면 밖까지 흘러 나가 **아직 진할 때 잘렸다.** 줄이고,
- * 그래도 모자라면 테두리 안에서 끝나게 마지막에 한 번 더 묶는다.
+ * 말이 부제목까지 올라오면 워드마크 덩어리가 두 겹으로 읽힌다. 닿기 한참
+ * 전에 끝나야 그 위는 제목의 자리, 그 아래는 말의 자리로 갈린다.
  */
-const DRIFT = { x: 0.34, y: 0.22 };
+const FADE_GAP = 0.13;
+/** 나오는 자리 — 캐릭터 한가운데에서 이만큼 위 (상자 한 변의 비율) */
+const MOUTH = { min: 0.02, max: 0.16 };
 /** 가장자리에서 이만큼은 남긴다 (px) */
 const EDGE = 16;
 
@@ -72,13 +81,24 @@ export default function HomeVoices() {
 
     type Voice = {
       el: HTMLElement; live: boolean; born: number; life: number;
-      x: number; y: number; dx: number; dy: number;
-      text: string[]; typed: number; nextChar: number; tilt: number;
+      x: number; y: number; dy: number;
+      text: string[]; typed: number; nextChar: number;
     };
     const pool: Voice[] = nodes.map((el) => ({
-      el, live: false, born: 0, life: 0, x: 0, y: 0, dx: 0, dy: 0,
-      text: [], typed: 0, nextChar: 0, tilt: 0
+      el, live: false, born: 0, life: 0, x: 0, y: 0, dy: 0,
+      text: [], typed: 0, nextChar: 0
     }));
+
+    /* 다 옅어지는 높이. 부제목을 프레임 좌표로 재어 그 아래로 잡는다 —
+       수치를 적어 두면 글자 크기가 바뀔 때 그 줄이 먼저 죽는다. */
+    let ceiling = 0;
+    const measure = () => {
+      const f = frame.getBoundingClientRect();
+      const sub = frame.querySelector('.home-subtitle')?.getBoundingClientRect();
+      ceiling = (sub ? sub.bottom - f.top : f.height * 0.22) + f.height * FADE_GAP;
+    };
+    measure();
+    window.addEventListener('resize', measure);
 
     /** 다음 다발까지 남은 시간 · 이 다발에서 몇을 더 낼지 */
     let nextEmit = 0, left = 0;
@@ -86,34 +106,30 @@ export default function HomeVoices() {
     const emit = (t: number) => {
       const p = pool.find((v) => !v.live);
       if (!p) return;
-      // 나팔이 향한 쪽으로 나간다. charPos.voice가 그 방향(-1·+1)을 들고 있다.
-      const dir = charPos.voice || 1;
       p.live = true;
       p.born = t;
       p.life = random(LIFE.min, LIFE.max);
-      p.x = charPos.x + dir * charPos.size * 0.26;
-      p.y = charPos.y + random(-0.22, 0.2) * charPos.size;
-      p.dx = dir * charPos.size * DRIFT.x * random(0.7, 1.3);
-      p.dy = -charPos.size * DRIFT.y * random(0.25, 1);
+      // 포즈가 어느 쪽을 보든 같은 축이다. 가운데에서 나와 곧장 위로.
+      p.x = frame.clientWidth / 2;
+      p.y = charPos.y - random(MOUTH.min, MOUTH.max) * charPos.size;
+      p.dy = ceiling - p.y;
       p.text = Array.from(pick(VOICES));
       p.typed = 0;
       p.nextChar = t;
-      p.tilt = random(-7, 7);
-      p.el.style.setProperty('--voice-tilt', `${p.tilt.toFixed(1)}deg`);
       // --char-box는 캐릭터 요소에만 걸려 있다. 여기서는 잰 값을 그대로 쓴다.
-      p.el.style.fontSize = `${(charPos.size * 0.072).toFixed(1)}px`;
+      let px = charPos.size * 0.072;
+      p.el.style.fontSize = `${px.toFixed(1)}px`;
 
-      /* 테두리 안에서 나고 지게 묶는다.
-         글은 제 **가운데**를 자리로 삼으므로(translate -50%), 가운데만
-         묶으면 폭의 절반이 삐져나간다 — 실제로 진한 채로 잘렸다.
-         다 찍힌 상태로 한 번 재고 지운다. */
+      /* 가운데 축에 선 글은 제 폭의 절반씩 좌우로 나간다(translate -50%).
+         자리를 옮겨 피할 수가 없으므로 — 옮기면 축이 깨진다 — 넘치는
+         만큼 글자를 줄인다. 다 찍힌 상태로 한 번 재고 지운다. */
       p.el.textContent = p.text.join('');
       const half = p.el.offsetWidth / 2;
       p.el.textContent = '';
-      const lo = EDGE + half, hi = frame.clientWidth - EDGE - half;
-      if (hi > lo) {
-        p.x = Math.min(hi, Math.max(lo, p.x));
-        p.dx = Math.min(hi, Math.max(lo, p.x + p.dx)) - p.x;
+      const room = frame.clientWidth / 2 - EDGE;
+      if (half > room && half > 0) {
+        px *= room / half;
+        p.el.style.fontSize = `${px.toFixed(1)}px`;
       }
     };
 
@@ -146,13 +162,16 @@ export default function HomeVoices() {
         const fade = age < 0.1 ? age / 0.1 : 1 - (age - 0.1) / 0.9;
         p.el.style.opacity = (fade * 0.85).toFixed(3);
         p.el.style.transform =
-          `translate(${(p.x + p.dx * ease).toFixed(1)}px, ${(p.y + p.dy * ease).toFixed(1)}px)` +
-          ` translate(-50%, -50%) rotate(var(--voice-tilt, 0deg)) scale(${(1 - ease * 0.16).toFixed(3)})`;
+          `translate(${p.x.toFixed(1)}px, ${(p.y + p.dy * ease).toFixed(1)}px)` +
+          ` translate(-50%, -50%) scale(${(1 - ease * 0.16).toFixed(3)})`;
       }
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', measure);
+    };
   }, []);
 
   return (

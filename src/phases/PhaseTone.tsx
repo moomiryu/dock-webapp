@@ -120,8 +120,8 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
         setTone(t => ({ ...t, [a.key]: v, ...(a.key === 'tone' ? { slnt: slantFor(v) } : null) }));
     };
 
-    /* --optical-stroke: 무게가 '발랄한'만 못 움직여서 획으로 대신 답한다.
-       보정이 없는 서체는 '0'이라 아무 일도 일어나지 않는다(palettes.ts). */
+    /* --optical-stroke: 무게 축이 없는 서체(당당한·다정한)에 획으로 대신
+       답한다. 축이 있는 서체는 '0'이라 아무 일도 일어나지 않는다(palettes.ts). */
     const face = {
         fontFamily: fontMap[tone.font], fontWeight: tone.wght,
         fontVariationSettings: '"wght" ' + tone.wght,

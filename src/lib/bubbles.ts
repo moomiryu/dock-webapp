@@ -180,7 +180,7 @@ const oval: Bubble = {
   }
 };
 
-// ─── 계단 — 발랄한 ────────────────────────────────────────────────────
+// ─── 계단 — 유머있는 ──────────────────────────────────────────────────
 //
 // 네 변이 네모지게 물린다. 요철의 **깊이와 한 칸 길이는 고정**이고 개수가
 // 변 길이를 따라간다 — 옛 판은 개수가 7·6으로 박혀 있어서 가로로 늘리면
@@ -345,7 +345,7 @@ const cloud: Bubble = {
 
 export const BUBBLES: Record<string, Bubble> = { spiky, cloud, oval, steps };
 
-/** 성격 → 모양. 당당한=뾰족 · 차분한=타원 · 다정한=구름 · 발랄한=계단 */
+/** 성격 → 모양. 당당한=뾰족 · 차분한=타원 · 다정한=구름 · 유머있는=계단 */
 const BY_FONT: Record<string, string> = { ttoryeot: 'spiky', chabun: 'oval', doran: 'cloud', deulseok: 'steps' };
 
 export function bubbleFor(font?: FontFamily | string): Bubble {

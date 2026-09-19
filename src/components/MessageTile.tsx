@@ -98,7 +98,7 @@ export default function MessageTile({ text, tone }: Props) {
             transform: `scaleX(${t.tone}) skewX(${t.slnt}deg)`,
             ['--wght-base' as string]: String(low),
             ['--wght-active' as string]: String(t.wght),
-            // 줄마다 무게가 오갈 때 '발랄한'만 꿈쩍도 않는다 — 획이 같이 오간다
+            // 줄마다 무게가 오갈 때 축 없는 서체는 꿈쩍도 않는다 — 획이 같이 오간다
             ['--stroke-base' as string]: opticalStroke(t.font, low),
             ['--stroke-active' as string]: opticalStroke(t.font, t.wght)
           }}

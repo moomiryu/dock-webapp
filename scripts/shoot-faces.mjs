@@ -17,7 +17,7 @@ const OUT = 'design/screens/faces';
 
 const FACES = [
   { label: '다정한', file: 'doran', kind: '손글씨' },
-  { label: '발랄한', file: 'deulseok', kind: '둥근고딕' },
+  { label: '유머있는', file: 'deulseok', kind: '픽셀' },
   { label: '당당한', file: 'ttoryeot', kind: '고딕' },
   { label: '차분한', file: 'chabun', kind: '명조' }
 ];

@@ -1,10 +1,10 @@
 // Font family keys = the 5 형태(speech-form) levels, mapped to Adobe Fonts in
 // fontMap (palettes.ts). Ordered calm → lively:
-//   doran    도란도란  (jjgulwol)
-//   chabun   차분히    (kim-jung-chul-myungjo)
-//   botong   보통      (orbit)
-//   ttoryeot 또렷이    (seoul-namsan)
-//   deulseok 들썩들썩  (agahnsangsoo2012)
+//   doran    다정한    (Mapo Dacapo)
+//   chabun   차분한    (source-han-serif-kr-variable)
+//   botong   보통      (없어진 칸 — 옛 문서용)
+//   ttoryeot 당당한    (dunkel-sans-variable)
+//   deulseok 유머있는  (Handjet)
 // Older Firestore docs may still carry legacy keys (mono/gothic/myeongjo/song);
 // fontMap keeps those for back-compat rendering.
 export type FontFamily = 'doran' | 'chabun' | 'botong' | 'ttoryeot' | 'deulseok';

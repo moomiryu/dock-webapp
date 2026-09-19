@@ -17,23 +17,58 @@
   font-display: swap;
 }
 
-/* OG 르네상스 비밀 — 말투 '발랄한' 칸. 2026-09-15에 Sunflower에서 갈아탔다.
+/* ── 우리가 들고 있는 발화 서체 둘 ──────────────────────────────────
+   2026-09-20에 네 칸의 서체가 전부 갈렸다. 당당한·차분한은 Adobe 킷이
+   주고(index.html), 유머있는·다정한은 여기 파일로 있다.
 
-   Sunflower는 네모틀 안에 든 둥근 산세리프라 '당당한'(서울남산)과 골격이
-   겹쳤고, 그래서 네 칸의 차이가 사실상 굵기로만 읽혔다 — 굵기는 이미 별도
-   축이 하는 일이다. README의 '아직 안 된 것'에 그게 사용자 테스트의 선결
-   조건으로 적혀 있었다.
+   둘 다 woff2다. 원본은 핸드젯 915KB · 다카포 1377KB였는데 압축만 바꿔
+   85KB · 304KB가 됐다. 글자는 하나도 안 버렸다 — 학생이 폰으로 받는
+   물건이라 2.2MB를 그냥 둘 수 없었다. */
 
-   정적 글꼴이다 (fvar 없음, usWeightClass 400). 그래서 이 칸에서만 무게 축이
-   진짜 굵기가 아니라 브라우저의 합성 굵기로 답한다. 파일 하나에 100~900을
-   통째로 걸어 두는 이유가 그것이다 — 걸지 않으면 굵은 쪽에서 아예 다른
-   글꼴로 떨어진다. */
+/* 유머있는 — Handjet 2.004 (Rosetta, OFL 1.1).
+
+   **구글 폰트가 주는 판에는 한글이 한 글자도 없다.** 1339자가 들었는데
+   완성형 한글 0자, 자모조차 없다. 그래도 화면에는 글자가 멀쩡히 나온다 —
+   없는 글자는 조용히 다른 서체로 대신 그려지기 때문에, 라틴만 보면
+   '적용됐다'로 읽힌다. 실제로 그렇게 한 번 속았다.
+   공식 저장소의 2.004는 이름이 'Handjet with Korean support'이고 한글
+   11172자가 전부 들어 있다. 픽셀 골격도 한글에 그대로 간다.
+
+   축 셋을 다 갖고 있다: wght 100~900 · ELSH 0~16 · ELGR 1~2. */
 @font-face {
-  font-family: 'OG Renaissance Secret';
-  src: url('/fonts/OG%20%EB%A5%B4%EB%84%A4%EC%83%81%EC%8A%A4%20%EB%B9%84%EB%B0%80.ttf') format('truetype');
+  font-family: 'Handjet';
+  src: url('/fonts/HandjetVF.woff2') format('woff2');
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
+}
+
+/* 다정한 — 마포 다카포 (마포구, 임혜은, 2019).
+
+   한글 11172자를 다 갖고 있지만 **변동 축이 아예 없다.** 굵기도 한 벌뿐이다.
+   그래서 이 칸에서만 무게 축이 진짜 굵기로 답하지 못한다 — 획을 덧대어
+   대신 답하게 한다(palettes.ts의 STROKE_LADDER).
+
+   100~900을 통째로 거는 이유: 걸지 않으면 굵은 쪽에서 브라우저가 제멋대로
+   합성 굵기를 얹고, 그러면 우리가 덧댄 획과 겹쳐 두 겹이 된다. 굵기를
+   여기서 한 번에 막아 두고 한 군데(획)에서만 답하게 한다. */
+@font-face {
+  font-family: 'Mapo Dacapo';
+  src: url('/fonts/MapoDacapo.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 브라우저가 굵기를 지어내지 못하게 막는다.
+   네 발화 서체 중 둘(당당한·다정한)은 무게 축이 아예 없다. 켜 두면
+   600·700에서만 가짜 굵기가 갑자기 얹혀 다섯 칸이 '셋+둘'로 갈라지고,
+   당당한은 원래 잉크가 꽉 찬 얼굴이라 속공간이 통째로 메워져 검은
+   덩어리가 됐다. 굵기는 한 군데에서만 답한다 — 축이 있으면 축이,
+   없으면 덧댄 획이(palettes.ts의 STROKE_LADDER).
+   UI 얼굴들(Pretendard·Lineal)은 100~900 변동이라 잃는 것이 없다. */
+body {
+  font-synthesis-weight: none;
 }
 
 * {
@@ -145,7 +180,7 @@ body.themed {
 .preview-text .word.active {
   font-weight: var(--wght-active, 400);
   font-variation-settings: 'wght' var(--wght-active, 400);
-  /* 무게가 오갈 때 '발랄한'만 꿈쩍도 않는다 — 획이 같이 오간다 */
+  /* 무게가 오갈 때 축 없는 서체는 꿈쩍도 않는다 — 획이 같이 오간다 */
   -webkit-text-stroke-width: var(--stroke-active, 0);
 }
 
@@ -729,7 +764,7 @@ body.wall-mode {
   box-sizing: border-box;
   background: none;
   border-radius: 0;
-  /* 획 보정 — 무게 축이 '발랄한'만 못 움직여서 획이 대신 답한다.
+  /* 획 보정 — 무게 축이 없는 서체(당당한·다정한)에 획이 대신 답한다.
      값은 palettes.ts의 사다리가 정하고, 보정이 없는 서체에는 '0'이 와서
      아무 일도 일어나지 않는다. 물려받는 속성이라 여기 한 번이면 아래로 간다.
 

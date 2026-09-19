@@ -126,21 +126,30 @@ await page.waitForFunction(() => !document.querySelector('.splash'), { timeout: 
   await page.waitForFunction(() => !document.querySelector('.splash-veil'), { timeout: 5000 }).catch(() => {});
 snap['01 홈'] = await grab();
 
+// 차례는 2026-09-18에 뒤집혔다 — 한 줄을 먼저 쓰고 형식을 나중에 고른다.
+// (이 스크립트는 그때 같이 안 고쳐져서 '당당한'을 못 찾고 멈춰 있었다.)
 await page.getByRole('button', { name: /써봤어요/ }).click();
 await page.waitForTimeout(400);
-snap['02 말투'] = await grab();
+await page.locator('.write-input').fill('여기서 크게 말해본 적 없다');
+await page.waitForTimeout(300);
+snap['01 한 줄'] = await grab();
+
+await page.locator('.write-screen .primary-action').click();
+await page.waitForTimeout(400);
+snap['02 성격'] = await grab();
 
 await page.getByRole('button', { name: '당당한' }).click();
-await page.locator('.primary-action').click();
+await page.waitForTimeout(800);        // 칸이 자라는 680ms
+await page.locator('.tone-choice .primary-action').click();
 await page.waitForTimeout(400);
-snap['02 다듬기'] = await grab();
+snap['03 조율 (설명)'] = await grab();
 
-await page.locator('.tone-adjust .primary-action').click();
-await page.waitForTimeout(400);
-snap['03 한 줄'] = await grab();
+// 03은 두 장이다 — 설명하는 장을 눌러야 축과 버튼이 올라온다
+await page.locator('.tone-intro').click();
+await page.waitForTimeout(700);
+snap['03 조율 (조작)'] = await grab();
 
-await page.locator('.live-input').fill('여기서 크게 말해본 적 없다');
-await page.locator('.primary-action').click();
+await page.locator('.tone-work .primary-action').click();
 await page.waitForTimeout(600);
 snap['04 색'] = await grab();
 

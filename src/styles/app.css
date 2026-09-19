@@ -386,14 +386,14 @@
   /* 무게·장평·크기가 눈금에서 눈금으로 건너뛴다. 값이 다섯 칸뿐이라
      그냥 두면 한 칸에 100씩 튀어 딱딱 끊긴다. 260ms를 물려 획이
      자라는 것으로 보이게 한다 — font-variation-settings는 같은 축이면
-     보간된다(가변 글꼴 셋에서만. '발랄한'은 정적이라 해당 없음). */
+     보간된다(무게 축이 있는 둘에서만 — 당당한·다정한은 축이 없다). */
   transition: transform 260ms var(--ease-standard), font-size 260ms var(--ease-standard),
               font-variation-settings 260ms var(--ease-standard),
               font-weight 260ms var(--ease-standard), font-style 260ms var(--ease-standard),
               -webkit-text-stroke-width 260ms var(--ease-standard),
               color 200ms;
   transform-origin: center;
-  /* 획 보정 — 정적인 '발랄한'은 무게 대신 이것이 답한다. 같은 260ms를
+  /* 획 보정 — 축이 없는 당당한·다정한은 무게 대신 이것이 답한다. 같은 260ms를
      타야 다른 셋과 같은 박자로 굵어진다(palettes.ts에 사다리와 그 근거). */
   -webkit-text-stroke: var(--optical-stroke, 0) currentColor;
   paint-order: stroke fill;
@@ -1900,7 +1900,7 @@
 .z-glyph.is-line > span{ display: flex; flex-direction: column; align-items: center; }
 .z-glyph.is-line .z-glyph-char{ display: block; animation: none; }
 /* 크기는 두 가지가 함께 정한다.
-   --optical: 서체별 잉크 높이 보정(palettes.ts에서 잰 값. 발랄한만 1.122).
+   --optical: 서체별 잉크 높이 보정(palettes.ts에서 잰 값. 네 서체 모두 걸린다).
    29cqw:     칸이 좁아져도 글자가 칸 밖으로 나가지 않게 잡는 상한.
               제일 넓은 '다정한'이 2.964em이라 0.29 x 2.964 = 칸의 86%다.
               4분면에서는 칸이 195px이라 사다리 꼭대기(36px)가 그대로 쓰인다 —

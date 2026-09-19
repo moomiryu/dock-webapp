@@ -95,7 +95,7 @@ export default function VoiceBubble({ text, bg, color, fontFamily, font, weight,
         ro.observe(el.parentElement);
         return () => { ro.disconnect(); if (waiting) cancelAnimationFrame(waiting); };
     }, [fill, text, fontFamily, weight, width, slant, align]);
-    /* 무게가 '발랄한'만 못 움직인다 — 그 칸에서만 획이 대신 답한다.
+    /* 무게 축이 없는 서체는 못 움직인다 — 그 칸에서만 획이 대신 답한다.
        나머지 서체는 '0'이 와서 -webkit-text-stroke가 아무 일도 안 한다. */
     return <div ref={body} className={'voice-bubble line-bubble' + (fill ? ' is-fill' : '')} style={{ '--line-bg': bg, color, fontFamily, fontWeight: weight, fontVariationSettings: '"wght" ' + weight, '--optical-stroke': opticalStroke(font ?? '', weight), textAlign: align, fontSize: fill ? `${filled}px` : (fontSize ?? `max(14px, calc(${fitFontSize(text, { min: 3, max: 240 })} * 0.52 * ${scale} / ${Math.max(1, width)}))`) } as CSSProperties}>
   <div className="voice-bubble-text line-bubble-text" style={{ textAlign: align, transform: `scaleX(${width})`, transformOrigin: align }}>

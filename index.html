@@ -10,10 +10,13 @@
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <title>MEGAFONT</title>
-    <!-- Adobe Fonts (Typekit) kit — provides the speech-mode typefaces (JS loader) -->
+    <!-- Adobe Fonts (Typekit) kit qgd6cda — 당당한(dunkel-sans-variable)과
+         차분한(source-han-serif-kr-variable) 둘을 준다. 나머지 둘은
+         public/fonts에서 우리가 들고 있다. 이 킷은 도메인 잠금이 걸려 있어
+         새 도메인에 올릴 때는 Adobe Fonts에서 그 도메인을 먼저 넣어야 한다. -->
     <script>
       (function (d) {
-        var config = { kitId: 'zhl0ile', scriptTimeout: 3000, async: true },
+        var config = { kitId: 'qgd6cda', scriptTimeout: 3000, async: true },
           h = d.documentElement,
           t = setTimeout(function () {
             h.className = h.className.replace(/\bwf-loading\b/g, '') + ' wf-inactive';

@@ -101,8 +101,11 @@ node scripts/shoot-screens.mjs
 | 차분한 | 명조 | 김정철명조 |
 
 Adobe Fonts 킷(`zhl0ile`)에서 오고, OG 르네상스 비밀·Orbit·Pretendard는
-`public/fonts`와 CDN에 있다. 워드마크만 Space Mono를 여덟 글자 서브셋으로
-받는다.
+`public/fonts`와 CDN에 있다. 워드마크는 Lineal VF를 무게 1150으로 쓴다
+(Space Mono는 더 이상 없다 — 2026-09-19 확인).
+
+UI 활자의 실제 크기·굵기·행간은 [design/type-inventory.md](design/type-inventory.md)에
+실측으로 적어 두었다.
 
 **'발랄한'은 2026-09-15에 Sunflower에서 갈아탔다.** Sunflower와 서울남산이
 둘 다 네모틀 산세리프라 두 칸의 차이가 사실상 굵기로만 읽혔고, 굵기는 이미
@@ -118,6 +121,7 @@ Adobe Fonts 킷(`zhl0ile`)에서 오고, OG 르네상스 비밀·Orbit·Pretenda
 | [design/direction-v0.md](design/direction-v0.md) | 절대원칙 — 편집권은 발화자에게, 시스템은 추천하지 않는다 |
 | [design/reference-adoption.md](design/reference-adoption.md) | 참조 디자인 채택 기록 + 검사 스크립트 돌리는 법 |
 | [design/references.md](design/references.md) | 레퍼런스 |
+| [design/type-inventory.md](design/type-inventory.md) | 지금 쓰는 서체·크기·굵기·행간 (실측) |
 
 **디자인 토큰은 문서가 아니라 [src/styles/tokens.css](src/styles/tokens.css)에 있다.**
 `design/tokens.md`는 2026-05 시점의 옛 체계를 적어 둔 기록이다.

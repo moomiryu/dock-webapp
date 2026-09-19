@@ -65,6 +65,39 @@ const rad = (deg: number) => (deg * Math.PI) / 180;
  */
 const R2 = Math.SQRT2;
 
+/**
+ * 글 덩어리와 윤곽 사이에 **반드시** 남는 자리 — 글자 한 칸의 배수.
+ * 네 도형이 같은 값을 쓴다.
+ *
+ * 이게 없으면 여백이 도형마다 딴판이 된다. 계단은 0.8u로 고르게 두르고
+ * 있었는데, 타원·구름·뾰족은 글 덩어리에 **외접**하는 타원을 몸통으로 써서
+ * 옆으로는 넉넉하고 네 모서리에서는 여백이 **0**이었다. 글자가 윤곽에 닿는다.
+ *
+ * 그래서 도형마다 글 덩어리를 먼저 이만큼 부풀리고, 그 부푼 칸을 감싼다.
+ * 재서 확인한다 — scripts는 아니고 조율 격자 쪽에서 윤곽까지의 실제 거리를
+ * 스물넷 방향으로 잰다(아래 padOf 주석).
+ */
+export const PAD = 0.7;
+
+/**
+ * 글 덩어리에 여백을 두른 칸. 두 가지인 이유는 **재보고 알았다.**
+ *
+ * 네 도형에 같은 값을 물렸더니 최소 여백이 계단 0.71u · 타원 계열 1.0u로
+ * 갈렸다. 타원을 두르는 도형은 글 상자의 **네 모서리**에서 여백이 제일
+ * 좁은데, 외접 타원이 부푼 칸의 모서리를 지나므로 그 자리의 실제 여백이
+ * 물린 값보다 멀어진다. 그래서 타원 쪽은 그 배수로 나눠 물린다.
+ *
+ * 배수를 √2(모서리까지의 대각선)로 놓아 봤더니 이번엔 0.62u까지 모자랐다 —
+ * 타원이 모서리에서 휘어 달아나므로 실제로는 대각선보다 가깝다. 스물넷
+ * 방향으로 재보니 그 배수가 비례에 따라 **1.25~1.5** 사이를 움직인다.
+ * 제일 불리한 1.25로 잡아야 어느 비례에서도 PAD 아래로 안 내려간다.
+ */
+const ELLIPSE_GAIN = 1.25;
+const padRect = (tw: number, th: number, u: number): [number, number] =>
+  [tw + 2 * PAD * u, th + 2 * PAD * u];
+const padEllipse = (tw: number, th: number, u: number): [number, number] =>
+  [tw + (2 * PAD / ELLIPSE_GAIN) * u, th + (2 * PAD / ELLIPSE_GAIN) * u];
+
 /** 4:1보다 납작해지지 않게 높이를 끌어올린다. 글은 몸통 한가운데 앉는다 */
 const capped = (w: number, h: number): Size => ({ w, h: Math.max(h, w / MIN_ASPECT) });
 
@@ -133,7 +166,7 @@ const OVAL_TAIL = 1.6;
 
 const oval: Bubble = {
   key: 'oval', label: '타원',
-  body: (tw, th) => capped(tw * R2, th * R2),
+  body: (tw, th, u) => { const [pw, ph] = padEllipse(tw, th, u); return capped(pw * R2, ph * R2); },
   tail: (u) => OVAL_TAIL * u,
   path(w, h, u) {
     const rx = w / 2, ry = h / 2, d = OVAL_TAIL * u;
@@ -156,12 +189,11 @@ const oval: Bubble = {
 
 const STEP_AMP = 0.42;   // 요철 깊이
 const STEP_LEN = 1.5;    // 요철 한 칸 길이
-const STEP_PAD = 0.8;    // 글과 변 사이
 const STEP_TAIL = 2.4;   // 꼬리가 내려가는 깊이
 
 const steps: Bubble = {
   key: 'steps', label: '계단',
-  body: (tw, th, u) => capped(tw + 2 * STEP_PAD * u, th + 2 * STEP_PAD * u),
+  body: (tw, th, u) => { const [pw, ph] = padRect(tw, th, u); return capped(pw, ph); },
   tail: (u) => STEP_TAIL * u,
   path(w, h, u) {
     const amp = STEP_AMP * u;
@@ -205,10 +237,19 @@ const steps: Bubble = {
 const SPIKE = 1.0;         // 갈래 깊이
 const SPIKE_GAP = 1.1;     // 갈래 사이
 const SPIKE_TAIL = 3.4;    // 꼬리 갈래는 이 배수만큼 길다 — 얕아진 만큼 더 뺀다
+const SPIKE_NOTCH = 0.35;  // 꼬리 양옆을 안으로 파는 깊이. 밑동이 좁아야 꼬리로 읽힌다
 
 const spiky: Bubble = {
   key: 'spiky', label: '뾰족',
-  body: (tw, th, u) => capped(tw * R2 + 2 * SPIKE * u, th * R2 + 2 * SPIKE * u),
+  body: (tw, th, u) => {
+    // 꼬리 양옆이 안으로 파이는 만큼을 미리 물려 둔다 — 안 그러면 그 두 점이
+    // 여백을 먹는다. 재보니 한 줄에서 0.51u까지 내려가 있었다.
+    // 홈은 꼬리 양옆, 곧 **아래쪽에만** 파인다. 사방에 물리면 이 도형만
+    // 여백이 1.6u까지 벌어져 나머지 셋과 안 맞는다.
+    const notch = 2 * SPIKE_NOTCH * SPIKE * u;
+    const [pw, ph] = padEllipse(tw, th + notch, u);
+    return capped(pw * R2 + 2 * SPIKE * u, ph * R2 + 2 * SPIKE * u);
+  },
   tail: (u) => SPIKE * u * (SPIKE_TAIL - 1) * 0.92,
   path(w, h, u) {
     const sp = SPIKE * u;
@@ -221,7 +262,7 @@ const spiky: Bubble = {
     for (let i = 0; i < n; i++) {
       const e = on(rx + sp, ry + sp, rx, ry, rad(-90 + (i * 360) / n));
       const near = i === (ti + n - 1) % n || i === (ti + 1) % n;
-      list.push(push(e.p, e.n, i === ti ? sp * SPIKE_TAIL : near ? -sp * 0.55 : i % 2 ? 0 : sp));
+      list.push(push(e.p, e.n, i === ti ? sp * SPIKE_TAIL : near ? -sp * SPIKE_NOTCH : i % 2 ? 0 : sp));
     }
     return poly(list);
   }
@@ -265,7 +306,7 @@ function cloudDots(bx: number, by: number, u: number): Array<{ c: Pt; r: number 
 
 const cloud: Bubble = {
   key: 'cloud', label: '구름',
-  body: (tw, th, u) => capped(tw * R2 + 2 * BUMP * u, th * R2 + 2 * BUMP * u),
+  body: (tw, th, u) => { const [pw, ph] = padEllipse(tw, th, u); return capped(pw * R2 + 2 * BUMP * u, ph * R2 + 2 * BUMP * u); },
   tail: (u) => cloudDots(0, 0, u).at(-1)!.c[1] + CLOUD_DOTS.at(-1)! * u,
   path(w, h, u) {
     const bp = BUMP * u;

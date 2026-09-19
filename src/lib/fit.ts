@@ -30,3 +30,83 @@ export function glyphCm(text: string, wallWidthM: number): number {
   const longest = Math.max(1, ...lines.map((l) => Array.from(l).length));
   return Math.round(((wallWidthM * 100) / longest) * 0.88);
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// 글 → 틀. 위 계산과 반대 방향이다.
+//
+// 위의 fitFontSize는 **액자가 먼저 있고 글자가 거기 맞춰 줄어든다.** 그
+// 순서에서는 발화자가 정한 줄바꿈이 크기 축에 밀려 다시 접힌다. 아래는
+// 그 반대다 — 글과 크기가 먼저고, 틀이 결과로 나온다.
+//
+// 두 계산이 당분간 같이 산다. 위쪽은 아직 03·04·/wall이 쓰고 있고,
+// 아래쪽이 그 자리들을 하나씩 넘겨받는다.
+// ─────────────────────────────────────────────────────────────────────
+
+/** 한 줄에 들어갈 수 있는 최대 글자 수. 근거는 design/line-length-2026-09-17.md */
+export const CHARS_PER_LINE = 12;
+
+/** 줄 높이 — 글자 한 칸의 배수 */
+export const LINE_HEIGHT = 1.5;
+
+/**
+ * 크기 축 다섯 칸. **절대 크기가 아니라 비율이다.**
+ *
+ * 절대 크기(28~60px)로 두면 두 가지가 동시에 깨진다. 짧은 한마디가 제
+ * 자리를 못 쓰고(‘왜?’가 최대 영역의 4분의 1에 갇힌다), 긴 글에서는 위쪽
+ * 칸들이 영역을 넘어 죽은 칸이 된다.
+ *
+ * 그래서 축의 뜻을 바꾼다 — **이 말이 벽에서 쓸 수 있는 자리 중 얼마를
+ * 쓸 것인가.** 맨 위 칸이 곧 최대 영역이고, 그래서 "영역을 넘는 크기는
+ * 고를 수 없다"가 규칙이 아니라 정의가 된다.
+ *
+ * 이 정의가 폰 문제도 같이 푼다. 비율은 폰에서도 벽에서도 같은 값이라,
+ * 폰이 19배 작아도 **거짓말을 하지 않는다.** 절대 크기를 보여주려 들면
+ * 축의 아래 칸이 폰에서 5.7pt가 되어 못 읽고, 읽히게 바닥을 깔면 이번엔
+ * 축이 거짓이 된다(그 바닥이 지금 코드의 18px이다).
+ */
+export const SIZE_FILLS = [0.47, 0.6, 0.73, 0.87, 1] as const;
+
+/** 틀 치수. 전부 **최대 영역 한 변에 대한 비율**이라 폰(px)에도 벽(vh)에도 곱하면 된다 */
+export interface Boxed {
+  /** 글자 한 칸 = font-size */
+  unit: number;
+  /** 몸통 */
+  w: number;
+  h: number;
+  /** 꼬리가 몸통 아래로 더 쓰는 높이 */
+  tail: number;
+}
+
+/** 크기와 틀 치수를 이어 주는 도형 쪽 계약 — bubbles.ts의 Bubble이 이걸 만족한다 */
+export interface BoxShape {
+  body(tw: number, th: number, u: number): { w: number; h: number };
+  tail(u: number): number;
+}
+
+/**
+ * 이 글이 이 모양으로 **최대 영역을 꽉 채울 때**의 치수.
+ *
+ * 도형 함수는 전부 글자 한 칸(u)에 정비례한다 — 늘어나는 건 가운데뿐이고
+ * 꼬리·갈래도 u의 배수다. 그래서 u=1로 한 번 재면 계수가 나오고, 나누기
+ * 한 번으로 끝난다. 폭과 높이 중 **먼저 닿는 쪽**이 크기를 정한다.
+ */
+export function maxBubble(lines: readonly string[], shape: BoxShape): Boxed {
+  const longest = Math.max(1, ...lines.map((l) => Array.from(l).length));
+  const rows = Math.max(1, lines.length);
+  const at1 = shape.body(longest, rows * LINE_HEIGHT, 1);
+  const tail1 = shape.tail(1);
+  const unit = Math.min(1 / at1.w, 1 / (at1.h + tail1));
+  return { unit, w: at1.w * unit, h: at1.h * unit, tail: tail1 * unit };
+}
+
+/** 그중 한 칸(SIZE_FILLS)을 골랐을 때의 치수 */
+export function bubbleAt(lines: readonly string[], shape: BoxShape, fill: number): Boxed {
+  const m = maxBubble(lines, shape);
+  return { unit: m.unit * fill, w: m.w * fill, h: m.h * fill, tail: m.tail * fill };
+}
+
+/** 저장된 옛 크기(28~60)를 새 다섯 칸 중 가까운 자리로 읽는다 */
+export function fillFromLegacySize(size: number | undefined): number {
+  const i = Math.round(((Math.min(60, Math.max(28, size ?? 44)) - 28) / 32) * (SIZE_FILLS.length - 1));
+  return SIZE_FILLS[i];
+}

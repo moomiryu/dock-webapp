@@ -16,3 +16,6 @@ design/_insp.json
 
 # 참조 캡처 원본 (개인 스크린샷)
 reference capture/
+
+# 에디터 개인 설정 (Python 환경 등 — 프로젝트와 무관)
+.vscode/

@@ -94,25 +94,31 @@ async function main() {
   }
   await capture(page, '01-info-6');
 
-  // 02 자형 — 고르기 전(빈 무대)과 고른 뒤
+  // 01 한 줄 — 빈 상태와 채운 상태. 2026-09-19에 글이 맨 앞으로 왔다.
   await page.goto(url('/?mock=1'), { waitUntil: 'load' });
   await settle(page);
   await page.getByRole('button', { name: /써봤어요/ }).click();
+  await page.waitForTimeout(400);
+  await shoot(page, '01-message-empty');
+  await page.locator('.live-input').fill(SAMPLE_TEXT);
+  await page.waitForTimeout(300);
+  await shoot(page, '01-message-filled');
+
+  // 02 성격 — 고르기 전(빈 무대)과 고른 뒤. 네 칸이 방금 쓴 글을 보여준다.
+  await page.locator('.compose-screen .primary-action').click();
+  await page.waitForTimeout(400);
   await shoot(page, '02-glyph-empty');
   await page.getByRole('button', { name: '당당한' }).click();
   await shoot(page, '02-glyph-picked');
 
-  // 03 메시지 — 빈 상태와 채운 상태
-  await page.locator('.primary-action').click();
-  await page.locator('.tone-adjust .primary-action').click(); // 다듬기 → 한 줄
-
-  await shoot(page, '03-message-empty');
-  await page.locator('.live-input').fill(SAMPLE_TEXT);
-  await shoot(page, '03-message-filled');
+  // 03 조율
+  await page.locator('.tone-choice .primary-action').click();
+  await page.waitForTimeout(400);
+  await shoot(page, '03-tone');
+  await page.locator('.tone-adjust .primary-action').click();
 
   // 04 최종 미리보기 — 여기서만은 모션이 곧 내용이라 세 시점을 찍는다.
   // (컨텍스트 전체는 모션을 꺼 두었으므로 이 화면에서만 잠깐 켠다)
-  await page.locator('.primary-action').click();
   await shoot(page, '04-color');
   await page.locator('.color-choice .primary-action').click();
   await shoot(page, '04-preview');

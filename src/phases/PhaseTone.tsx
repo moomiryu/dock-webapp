@@ -1,22 +1,44 @@
 import { useState, type CSSProperties } from 'react';
 import BackButton from '../components/BackButton';
-import { fontMap, opticalStroke } from '../lib/palettes';
+import { fontMap } from '../lib/palettes';
 import { type PartialTone } from '../lib/tone';
+import { bubbleAt, fillFromLegacySize, foldLines } from '../lib/fit';
+import { bubbleFor } from '../lib/bubbles';
+import SpeechBubble from '../components/SpeechBubble';
+import VoiceBubble from '../components/VoiceBubble';
+import { DRAFT_COLORS } from '../lib/messageStyle';
 interface Props {
+    /** 앞 화면들에서 쓰고 고른 것. 견본이 이제 내 글이다 */
+    text: string;
     initialTone: PartialTone;
     onBack: (tone: PartialTone) => void;
     onNext: (tone: PartialTone) => void;
 }
 /**
- * 견본 글자 크기 = 크기 값 × 이것.
+ * 견본이 '발화' 두 글자에서 **내 글**로 바뀌었다 (2026-09-19).
  *
- * 스케치의 '발화'는 잉크로 224.2×120.1 — 133px쯤이다. 끝(60)까지 밀었을 때
- * 장평까지 겹쳐도 화면 밖으로 나가지 않아야 한다:
- *   2 글자 × 0.853em × (60 × k) × 장평 1.3 ≤ 390 − 좌우 40  →  k ≤ 2.63
- * 2026-09-15: 크기가 두 잣대(28·60)로 바뀌면서 2.2로 내렸다. '크게'가
- * 60 × 2.2 = 132px — 스케치에서 잰 133px이다.
+ * 옛 배율(2.2)은 스케치의 '발화'를 잉크로 재서 나온 값이라 **두 글자**를
+ * 전제했다 — 2글자 × 0.853em × (60 × k) × 장평 1.3 ≤ 390 − 40. 열두 자짜리
+ * 문장에는 그 식이 통째로 안 맞는다.
+ *
+ * 대신 무대에 맞춘다. 가장 긴 줄이 무대 폭의 86%에 들어가고(칸이 좁아져도
+ * 글자가 밖으로 안 나간다), 줄 수가 늘면 높이가 먼저 걸린다. 크기 축은 그
+ * 위에 배율로 얹힌다 — 이 화면에서 축은 절대 크기가 아니라 **얼마나 쓰는가**를
+ * 말한다(근거는 lib/fit.ts의 SIZE_FILLS).
  */
-const GLYPH_SCALE = 2.2;
+/**
+ * 무대에 그리는 **최대 영역**. 벽에서 말풍선이 차지할 수 있는 가장 큰
+ * 자리(1.08m 정사각)를 폰 화면에 줄여 놓은 것이다.
+ *
+ * 이게 없으면 크기 축이 말을 못 한다. 축은 절대 크기가 아니라 '얼마나
+ * 쓰는가'인데(lib/fit.ts의 SIZE_FILLS), 붉은 면 한가운데 글자만 떠 있으면
+ * **무엇에 대한 73%인지**가 화면에 없다. 점선 네모가 그 무엇이다.
+ *
+ * 폰은 벽보다 19배 작아서 이 안의 글자가 12px쯤으로 작다. 읽으라고 두는
+ * 자리가 아니다 — 말풍선이 네모를 얼마나 채우는지를 보는 자리고, 읽히는지는
+ * 미리보기가 맡는다.
+ */
+const AREA = 'min(88cqw, 196px)';
 
 /**
  * 세 축. 차례는 스케치를 따른다 — 크기 · 빠르기 · 무게.
@@ -79,8 +101,15 @@ type Axis = (typeof AXES)[number];
 const nearest = (stops: readonly number[], v: number) =>
     stops.reduce((best, s, i) => (Math.abs(s - v) < Math.abs(stops[best] - v) ? i : best), 0);
 
-export default function PhaseTone({ initialTone, onBack, onNext }: Props) {
+export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) {
     const [tone, setTone] = useState<PartialTone>(initialTone);
+    const lines = foldLines(text);
+    const longest = Math.max(1, ...lines.map((l) => Array.from(l).length));
+    void longest;
+    const shape = bubbleFor(tone.font);
+    const box = bubbleAt(lines, shape, fillFromLegacySize(tone.size));
+    // 장평이 넓어지면 글이 그만큼 옆으로 퍼진다 — fit.ts는 장평을 모른다
+    const em = (box.unit / Math.max(1, tone.tone)).toFixed(4);
     /**
      * 끌고 있는 축과 손가락이 지금 가 있는 자리(0~1).
      *
@@ -97,17 +126,21 @@ export default function PhaseTone({ initialTone, onBack, onNext }: Props) {
     };
     return <div className="z-frame z1 tone-adjust">
  <div className="z-glyph-stage has-face">
-  <div className="z-header"><BackButton label="성격 다시 고르기" onClick={() => onBack(tone)}/><span className="z-step-of">2 / 5 · 조율</span></div>
+  <div className="z-header"><BackButton label="성격 다시 고르기" onClick={() => onBack(tone)}/><span className="z-step-of">3 / 5 · 조율</span></div>
   <div className="z-ask is-brief">
    <h1>전하고 싶은 느낌으로<br />조절해보세요</h1>
    <p>발화의 크기, 빠르기, 무게를 정해봐요.</p>
   </div>
-  {/* 글자를 낱자로 쪼갠다 — 한 덩어리로 두면 '발화'가 판때기처럼 떠다닌다.
-      바깥 span이 통째로 두둥실 뜨고, 그 안에서 낱자가 제각기 조금씩 기운다. */}
-  {/* --optical-stroke: 무게가 이 글꼴만 못 움직여서 획으로 대신 답한다.
-      보정이 없는 서체는 '0'이라 아무 일도 일어나지 않는다(palettes.ts). */}
-  <div className={'z-glyph' + (tone.slnt ? ' is-gust' : '')} style={{ fontFamily: fontMap[tone.font], fontWeight: tone.wght, fontVariationSettings: '"wght" ' + tone.wght, transform: 'scaleX(' + tone.tone + ')', fontStyle: tone.slnt ? `oblique ${Math.abs(tone.slnt)}deg` : 'normal', fontSize: tone.size * GLYPH_SCALE + 'px', '--optical-stroke': opticalStroke(tone.font, tone.wght) } as CSSProperties}>
-   <span>{['발', '화'].map((c, i) => <b key={i} className="z-glyph-char" style={{ animationDelay: i * -1.7 + 's' }}>{c}</b>)}</span>
+  {/* 점선 네모가 최대 영역이고, 그 안의 말풍선이 축이 정한 만큼을 쓴다.
+      색은 아직 안 골랐으니 작업용 바탕(DRAFT_COLORS)이다 — 다음 화면에서
+      열 조합 중 하나로 갈아탄다. */}
+  <div className="tone-area" style={{ '--tone-area': AREA } as CSSProperties}>
+   <SpeechBubble shape={shape} box={box} side="var(--tone-area)" color={DRAFT_COLORS.backgroundColor}>
+    <VoiceBubble text={lines.join('\n')} bg={DRAFT_COLORS.backgroundColor} color={DRAFT_COLORS.textColor}
+      fontFamily={fontMap[tone.font]} font={tone.font} weight={tone.wght} width={tone.tone}
+      slant={tone.slnt} align="center" size={tone.size}
+      fontSize={`calc(var(--tone-area) * ${em})`} />
+   </SpeechBubble>
   </div>
  </div>
  <div className="z-axes">

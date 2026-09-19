@@ -37,7 +37,7 @@ export default function PhaseColor({ text, tone, onBack, onNext }: Props) {
  <div className="proj-stage is-bleed"><div className="proj-fit">
   <div className="proj-frame compose-editor is-pulled">
    <div className="compose-chrome">
-    <BackButton label="한 줄 다시 쓰기" onClick={() => onBack(current)}/>
+    <BackButton label="조율 다시" onClick={() => onBack(current)}/>
     <span className="z-step-of">4 / 5 · 색</span>
    </div>
    {/* 03에서 자판을 내렸을 때 선 제목이 그 자리 그대로 글자만 바뀐다.

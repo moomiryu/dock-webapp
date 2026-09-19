@@ -10,26 +10,37 @@ import PhaseColor from './phases/PhaseColor';
 import PhaseSubmit from './phases/PhaseSubmit';
 import PhaseOnWall from './phases/PhaseOnWall';
 import PhaseDone from './phases/PhaseDone';
+import { DRAFT_COLORS } from './lib/messageStyle';
 import {
   clearDraft,
   loadDraft,
-  newDraft,
   updateDraftText,
   updateDraftTone
 } from './lib/draft';
 import { clearStageFromUrl, getStageFromUrl } from './lib/stage';
 import type { Draft, ToneState } from './types';
 
+/**
+ * ── 순서를 뒤집었다 (2026-09-19) ──────────────────────────────────────
+ *
+ * 그전까지는 성격 → 조율 → 한 줄이었다. 발화자가 '발화' 두 글자라는 **남의
+ * 글**로 형식을 먼저 정하고, 그다음에 제 말을 그 틀에 부어 넣는 순서였다.
+ *
+ * 이제 한 줄 → 성격 → 조율이다. 재료를 먼저 준비하고 그다음에 요리한다.
+ * 얻는 것이 셋이다 — 성격 카드가 성격 이름 대신 **내 문장**을 보여줄 수 있고
+ * (네 서체의 차이가 두 글자에서는 안 보인다), 조율의 견본이 내 글이 되고,
+ * 형식 없는 맨 글이 생겨서 그게 '원본'이 된다.
+ */
 type Screen =
-  | 'home'     // 01 Intro
-  | 'glyph'    // 02 자형
-  | 'tone'     // 말투 세부 조절
-  | 'compose'  // 03 메시지 (입력 = 미리보기) + 색
-  | 'color'    // 메시지 색 조합
-  | 'preview'  // 04 최종 미리보기
-  | 'submit'   // 05 전송 중 → 06 도킹 안내
-  | 'onwall'   // 07 벽에 떠 있는 동안
-  | 'done';    // 08 완료 — 폰을 가져가는 자리
+  | 'home'     // 홈
+  | 'compose'  // 1/5 한 줄 — 형식 없는 맨 글
+  | 'glyph'    // 2/5 성격
+  | 'tone'     // 3/5 조율
+  | 'color'    // 4/5 색
+  | 'preview'  // 5/5 미리보기
+  | 'submit'   // 전송 중 → 도킹 안내
+  | 'onwall'   // 벽에 떠 있는 동안
+  | 'done';    // 완료 — 폰을 가져가는 자리
 
 type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
 
@@ -44,7 +55,7 @@ function pickInitialScreen(stage: ReturnType<typeof getStageFromUrl>, draft: Dra
   if (stage === 'enter') {
     // NFC arrival — bypass home. Resume at preview if a full draft exists.
     if (draft && draft.tone && draft.text) return 'preview';
-    return 'glyph';
+    return 'compose';
   }
   return 'home';
 }
@@ -57,7 +68,7 @@ export default function App() {
     return d?.tone ? toPartial(d.tone) : null;
   });
   const [ready, setReady] = useState(false);
-  // 07에서 폰을 직접 뺐는지 — 08이 화면 전체를 쓸지 아래 절반만 쓸지 가른다
+  // 벽에서 폰을 직접 뺐는지 — 완료 화면이 화면 전체를 쓸지 아래 절반만 쓸지 가른다
   const [pulled, setPulled] = useState(false);
 
   useEffect(() => {
@@ -98,42 +109,35 @@ export default function App() {
     return <PhaseSplash />;
   }
 
-  function handleStart() {
-    setScreen('glyph');
+  /**
+   * 글만 먼저 저장된다. 형식은 아직 없다 — Draft.tone은 null을 허용한다.
+   *
+   * newDraft()로 만들어 상태에만 넣었더니 **저장소에 안 남았다.** 그 함수는
+   * 만들기만 하고 쓰지 않는다. 다음 화면에서 loadDraft()가 null을 돌려주고,
+   * 글 없는 형식이 저장되어 색 화면이 첫 단계로 되돌아갔다.
+   */
+  function saveText(text: string) {
+    setDraft(updateDraftText(text));
   }
 
-  function handleGlyphNext(partial: PartialTone) {
+  /** 조율까지 끝난 형식을 글에 얹는다. 색은 아직 안 골랐으니 작업용 바탕이다 */
+  function saveTone(partial: PartialTone) {
     setGlyphTone(partial);
-    setScreen('tone');
+    const cur = loadDraft();
+    const tone: ToneState = {
+      ...partial,
+      paletteIdx: cur?.tone?.paletteIdx ?? 0,
+      graphicIdx: -1,
+      ...(cur?.tone?.backgroundColor ? null : DRAFT_COLORS)
+    };
+    setDraft(updateDraftTone(tone));
   }
 
-  function handleToneNext(partial: PartialTone) {
-    setGlyphTone(partial);
-    setScreen('compose');
-  }
-
-  function handleComposeBack(text: string, tone: ToneState) {
-    saveCompose(text, tone);
-    setScreen('tone');
-  }
-
-  function saveCompose(text: string, tone: ToneState) {
+  /** 색 화면이 돌려주는 완성된 형식 */
+  function saveFull(text: string, tone: ToneState) {
     setGlyphTone(toPartial(tone));
-    const cur = loadDraft() ?? newDraft(text);
-    const updated: Draft = { ...cur, text, tone };
     updateDraftText(text);
-    const final = updateDraftTone(tone);
-    setDraft(final ?? updated);
-  }
-
-  function handleComposeSubmit(text: string, tone: ToneState) {
-    saveCompose(text, tone);
-    setScreen('color');
-  }
-
-
-  function handlePreviewBack() {
-    setScreen('color');
+    setDraft(updateDraftTone(tone));
   }
 
   function handleRestart() {
@@ -143,45 +147,50 @@ export default function App() {
     setScreen('home');
   }
 
+  const text = draft?.text ?? '';
+
   switch (screen) {
     case 'home':
-      return <PhaseHome onStart={handleStart} />;
+      return <PhaseHome onStart={() => setScreen('compose')} />;
+
+    case 'compose':
+      return (
+        <PhaseCompose
+          initialText={text}
+          onBack={(t) => { saveText(t); setScreen('home'); }}
+          onSubmit={(t) => { saveText(t); setScreen('glyph'); }}
+        />
+      );
 
     case 'glyph':
       return (
         <PhaseGlyph
+          text={text}
           initialTone={glyphTone ?? (draft?.tone ? toPartial(draft.tone) : null)}
-          onBack={() => setScreen('home')}
-          onNext={handleGlyphNext}
+          onBack={() => setScreen('compose')}
+          onNext={(partial) => { setGlyphTone(partial); setScreen('tone'); }}
         />
       );
 
-    case 'tone':
-    case 'compose': {
+    case 'tone': {
       const partial = glyphTone ?? (draft?.tone ? toPartial(draft.tone) : null);
       if (!partial) {
-        // No glyph tone yet — fall back to the glyph step.
+        // 성격을 아직 안 골랐으면 그 화면으로 물러선다
         return (
           <PhaseGlyph
+            text={text}
             initialTone={null}
-            onBack={() => setScreen('home')}
-            onNext={handleGlyphNext}
+            onBack={() => setScreen('compose')}
+            onNext={(p) => { setGlyphTone(p); setScreen('tone'); }}
           />
         );
       }
-      if (screen === 'tone') {
-        return <PhaseTone initialTone={partial} onNext={handleToneNext} onBack={(tone) => {
-          setGlyphTone(tone);
-          setScreen('glyph');
-        }} />;
-      }
       return (
-        <PhaseCompose
-          initialText={draft?.text ?? ''}
-          partialTone={partial}
-          initialPaletteIdx={draft?.tone?.paletteIdx}
-          onBack={handleComposeBack}
-          onSubmit={handleComposeSubmit}
+        <PhaseTone
+          text={text}
+          initialTone={partial}
+          onBack={(p) => { setGlyphTone(p); setScreen('glyph'); }}
+          onNext={(p) => { saveTone(p); setScreen('color'); }}
         />
       );
     }
@@ -191,20 +200,20 @@ export default function App() {
       if (!draft?.text || !draft.tone) {
         // 되살릴 초안이 없으면 플로우 첫 단계로.
         return (
-          <PhaseGlyph
-            initialTone={glyphTone}
-            onBack={() => setScreen('home')}
-            onNext={handleGlyphNext}
+          <PhaseCompose
+            initialText={text}
+            onBack={(t) => { saveText(t); setScreen('home'); }}
+            onSubmit={(t) => { saveText(t); setScreen('glyph'); }}
           />
         );
       }
       if (screen === 'color') {
         return <PhaseColor text={draft.text} tone={draft.tone}
-          onBack={(tone) => { saveCompose(draft.text, tone); setScreen('compose'); }}
-          onNext={(tone) => { saveCompose(draft.text, tone); setScreen('preview'); }} />;
+          onBack={(tone) => { saveFull(draft.text, tone); setScreen('tone'); }}
+          onNext={(tone) => { saveFull(draft.text, tone); setScreen('preview'); }} />;
       }
       return (
-        <PhaseSubmit draft={draft} onDocked={() => setScreen('onwall')} onEdit={handlePreviewBack} onRestart={handleRestart} />
+        <PhaseSubmit draft={draft} onDocked={() => setScreen('onwall')} onEdit={() => setScreen('color')} onRestart={handleRestart} />
       );
 
     case 'submit':
@@ -212,7 +221,7 @@ export default function App() {
         <PhaseSubmit
           draft={draft}
           onDocked={() => setScreen('onwall')}
-          onEdit={handlePreviewBack}
+          onEdit={() => setScreen('color')}
           onRestart={handleRestart}
         />
       );

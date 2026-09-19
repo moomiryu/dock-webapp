@@ -2,31 +2,46 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import BackButton from '../components/BackButton';
 import VoiceBubble from '../components/VoiceBubble';
 import { WaveRing } from '../components/WaveBox';
-import { fontMap } from '../lib/palettes';
 import { DRAFT_COLORS, messageColors } from '../lib/messageStyle';
 import type { ToneState } from '../types';
-type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
+
 interface Props {
     initialText: string;
-    partialTone: PartialTone;
-    initialPaletteIdx?: number;
-    onBack: (text: string, tone: ToneState) => void;
-    onSubmit: (text: string, tone: ToneState) => void;
+    onBack: (text: string) => void;
+    onSubmit: (text: string) => void;
 }
-export default function PhaseCompose({ initialText, partialTone, initialPaletteIdx, onBack, onSubmit }: Props) {
+
+/**
+ * 01 한 줄 — **맨 처음 화면이다.**
+ *
+ * 2026-09-19까지는 성격·조율을 다 거친 뒤 세 번째로 오는 화면이었다. 그
+ * 순서에서는 발화자가 '발화' 두 글자라는 **남의 글**로 형식을 먼저 정하고,
+ * 그다음에 제 말을 그 틀에 부어 넣었다. 뒤집는다 — 재료를 먼저 준비하고
+ * 그다음에 요리한다.
+ *
+ * ── 여기엔 형식이 없다 ────────────────────────────────────────────────
+ * 아직 성격을 안 골랐으니 **그릴 도형도 입힐 서체도 없다.** 화면 서체 그대로,
+ * 작업용 바탕 위의 맨 글이다. 두 가지가 여기서 나온다.
+ *
+ * 하나 — 폰 폭에 열두 자를 넣으면서 말풍선 윤곽까지 두르면 글자가 30%
+ * 깎인다(28.6px → 20.2px). 쓰는 동안은 제 글이 읽히는 것이 먼저다.
+ *
+ * 둘 — 이 맨 글이 **원본**이 된다. 성격을 고르는 순간 얼굴이 바뀌고, 그게
+ * 형식이 입혀지는 순간으로 읽힌다. 비교할 원본이 없으면 그 순간도 없다.
+ */
+
+/** 형식을 고르기 전의 글. 무게도 장평도 기울기도 없는 기본값이다 */
+const BARE: ToneState = {
+    font: 'ttoryeot',          // 쓰이지 않는다 — 아래에서 화면 서체로 덮는다
+    tone: 1, wght: 400, slnt: 0, size: 44,
+    align: 'center', paletteIdx: 0, graphicIdx: -1,
+    ...DRAFT_COLORS
+};
+
+export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
     const [text, setText] = useState(initialText);
-    // 정렬과 기울기는 이 화면에서 빠졌다. 기울기는 03의 '빠르기'가 함께
-    // 정하고(빠르게 말하면 기운다), 정렬은 가운데로 고정한다 — 한 줄짜리
-    // 글에서 정렬 셋은 고를 것이 있는 척만 하고 결과가 거의 같았다.
-    const align: ToneState['align'] = partialTone.align ?? 'center';
-    const slnt = partialTone.slnt ?? 0;
     const input = useRef<HTMLTextAreaElement>(null);
-    // 아직 한 번도 색을 고르지 않았을 때만 작업용 바탕을 깐다. 04에서
-    // 고르고 돌아오면 partialTone이 그 색을 들고 있으므로 건드리지 않는다.
-    const untouched = initialPaletteIdx === undefined && !partialTone.backgroundColor;
-    const tone: ToneState = { ...partialTone, align, slnt, paletteIdx: initialPaletteIdx ?? 0, graphicIdx: -1,
-        ...(untouched ? DRAFT_COLORS : null) };
-    const colors = messageColors(tone);
+    const colors = messageColors(BARE);
     const empty = !text.trim();
     // 물러서는 계기는 **자판을 내리는 것**이다.
     //
@@ -43,9 +58,6 @@ export default function PhaseCompose({ initialText, partialTone, initialPaletteI
     const [pulled, setPulled] = useState(false);
     useEffect(() => { input.current?.focus({ preventScroll: true }); }, []);
     useEffect(() => { if (full) input.current?.blur(); }, [full]);
-    // 색은 액자가 아니라 **화면**이 입는다 — 버튼이 서는 아래 띠까지가
-    // 그 색이고, 빨강 그라데이션은 그 위에 얹힌다. 물러서면 화면째 검정이
-    // 되고, 그제야 한 덩이만 색으로 남는다.
     return <div className={'z-frame compose-screen' + (pulled ? ' is-pulled' : '')}
       style={{ '--pane-bg': colors.bg, '--chrome-ink': colors.text } as CSSProperties}>
   <div className="proj-stage is-bleed"><div className="proj-fit"><div className={'proj-frame compose-editor' + (pulled ? ' is-pulled' : '')} onPointerDown={e => { if (e.target !== input.current) {
@@ -53,26 +65,30 @@ export default function PhaseCompose({ initialText, partialTone, initialPaletteI
         input.current?.focus({ preventScroll: true }); // 누르면 다시 들어간다(줌인)
     } }}>
    <div className="compose-chrome">
-    <BackButton label="특성 조절로" onClick={() => onBack(text, tone)}/>
-    <span className="z-step-of">3 / 5 · 한 줄</span>
+    <BackButton label="처음으로" onClick={() => onBack(text)}/>
+    <span className="z-step-of">1 / 5 · 한 줄</span>
    </div>
    {/* 자판을 내리면 그제야 제목이 선다. 쓰는 동안은 화면이 통째로 종이라
-       제목이 설 자리가 없고, 물러선 뒤에는 02·03과 같은 자리(머리줄 아래)에
-       같은 얼굴로 온다. 항상 그려 두고 투명도만 바꾼다 — 화면이 물러서는
-       420ms에 같이 떠오르려면 그 순간에 이미 자리에 있어야 한다. */}
+       제목이 설 자리가 없고, 물러선 뒤에는 뒤 화면들과 같은 자리(머리줄
+       아래)에 같은 얼굴로 온다. 항상 그려 두고 투명도만 바꾼다 — 화면이
+       물러서는 420ms에 같이 떠오르려면 그 순간에 이미 자리에 있어야 한다. */}
    <div className="z-ask compose-ask" aria-hidden={!pulled}>
-    <h1>메시지를 작성해주세요.</h1>
+    <h1>어떤 발화를<br />시작해볼까요?</h1>
    </div>
    <div className="compose-pane">
     <WaveRing color={colors.bg}/>
-    <VoiceBubble text={empty ? '여기를 눌러 쓰세요' : text} bg={colors.bg} color={colors.text} fontFamily={fontMap[tone.font]} font={tone.font} weight={tone.wght} width={tone.tone} slant={tone.slnt} align={align} size={tone.size} fontSize={composeFontSize(text.length || 1, tone)} fill={pulled}>
+    {/* 화면 서체 그대로다. 서체를 고르는 일은 다음 화면이 한다 —
+        여기서 넷 중 하나를 기본으로 깔면 시스템이 이미 하나를 고른 셈이다. */}
+    <VoiceBubble text={empty ? '여기를 눌러 쓰세요' : text} bg={colors.bg} color={colors.text}
+      fontFamily="var(--ui-font)" weight={BARE.wght} width={1} slant={0} align="center"
+      size={BARE.size} fontSize={composeFontSize(text.length || 1, BARE)} fill={pulled}>
     <textarea ref={input} className="live-input compose-input" aria-label="벽에 올릴 한 줄" value={text} maxLength={60} spellCheck={false}
       onFocus={() => setPulled(false)} onBlur={() => setPulled(true)}
       onChange={e => setText(e.target.value.slice(0, 60))}/></VoiceBubble>
    </div>
    <span className={'compose-count' + (full ? ' is-full' : '')}>{text.length}<span>/60</span></span>
   </div></div></div>
-  <button className="primary-action" disabled={empty} onClick={() => onSubmit(text.trim(), tone)}>다음</button>
+  <button className="primary-action" disabled={empty} onClick={() => onSubmit(text.trim())}>다 썼어요</button>
  </div>;
 }
 
@@ -85,7 +101,7 @@ export default function PhaseCompose({ initialText, partialTone, initialPaletteI
  * 크기를 상한으로 두고, 그 아래로는 18px을 바닥으로 깐다. 스무 자를 넘으면
  * 크기가 그대로 있고 줄이 늘어난다(60자 = 세 줄, 스케치와 같다).
  *
- * 벽에서 정말 어떻게 보이는지는 미리보기(05)가 16:10 액자로 맡는다.
+ * 벽에서 정말 어떻게 보이는지는 미리보기가 16:10 액자로 맡는다.
  */
 export function composeFontSize(length: number, tone: ToneState): string {
     const perLine = 88 / Math.min(length, 20);          // cqw — 액자 폭의 88%

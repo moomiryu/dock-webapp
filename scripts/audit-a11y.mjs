@@ -61,19 +61,25 @@ await audit('01 소개');
 await page.getByRole('button', { name: '처음으로', exact: true }).click();
 await page.waitForTimeout(400);
 
+// 2026-09-19에 순서가 뒤집혔다 — 글이 먼저다.
 await page.getByRole('button', { name: /써봤어요/ }).click();
-await audit('02 말투 (빈 상태)');
-await page.getByRole('button', { name: '당당한' }).click();
-await audit('02 말투 (고른 뒤)');
-
-await page.locator('.primary-action').click();
-await page.locator('.tone-adjust .primary-action').click(); // 다듬기 → 한 줄
-
-await audit('03 한 줄 (빈 상태)');
+await page.waitForTimeout(400);
+await audit('01 한 줄 (빈 상태)');
 await page.locator('.live-input').fill('여기서 크게 말해본 적 없다');
-await audit('03 한 줄 (채운 뒤)');
+await page.waitForTimeout(300);
+await audit('01 한 줄 (채운 뒤)');
 
-await page.locator('.primary-action').click();
+await page.locator('.compose-screen .primary-action').click();
+await page.waitForTimeout(400);
+await audit('02 성격 (빈 상태)');
+await page.getByRole('button', { name: '당당한' }).click();
+await audit('02 성격 (고른 뒤)');
+
+await page.locator('.tone-choice .primary-action').click();
+await page.waitForTimeout(400);
+await audit('03 조율');
+
+await page.locator('.tone-adjust .primary-action').click();
 await page.waitForTimeout(600);
 await audit('04 색');
 await page.locator('.color-choice .primary-action').click();

@@ -78,25 +78,18 @@ export async function toHome(page) {
   await settle(page);
 }
 
-/** 02 말투 — 자형 고르는 화면. font를 주면 골라 둔 상태까지 간다. */
-export async function toVoice(page, font = null) {
+/** 기본 견본 발화. 순서가 뒤집히면서 어느 화면에 가려 해도 글이 먼저 필요하다 */
+export const SAMPLE_TEXT = '여기서 크게 말해본 적 없다';
+
+/**
+ * 01 한 줄 — **맨 처음 화면이다.** text를 주면 채워 넣는다.
+ *
+ * 2026-09-19에 순서가 뒤집혔다(글 → 성격 → 조율). 그전까지 이 함수는
+ * 성격·조율을 거친 뒤 세 번째 화면으로 갔다.
+ */
+export async function toCompose(page, text = SAMPLE_TEXT) {
   await toHome(page);
   await page.getByRole('button', { name: /써봤어요/ }).click();
-  await page.waitForTimeout(300);
-  if (font) await page.getByRole('button', { name: font }).click();
-}
-
-/** 02 말하는 법 — 목소리·속도·말끝 조절 */
-export async function toShape(page, font = '당당한') {
-  await toVoice(page, font);
-  await page.locator('.primary-action').click();
-  await page.waitForTimeout(300);
-}
-
-/** 03 한 줄 — text를 주면 채워 넣는다 */
-export async function toCompose(page, text = null, font = '당당한') {
-  await toShape(page, font);
-  await page.locator('.tone-adjust .primary-action').click();
   await page.waitForTimeout(300);
   if (text !== null) {
     await page.locator('.live-input').fill(text);
@@ -104,10 +97,25 @@ export async function toCompose(page, text = null, font = '당당한') {
   }
 }
 
+/** 02 성격 — font를 주면 골라 둔 상태까지 간다 */
+export async function toVoice(page, font = null, text = SAMPLE_TEXT) {
+  await toCompose(page, text);
+  await page.locator('.compose-screen .primary-action').click();
+  await page.waitForTimeout(300);
+  if (font) await page.getByRole('button', { name: font }).click();
+}
+
+/** 03 조율 — 크기·빠르기·무게 */
+export async function toShape(page, font = '당당한', text = SAMPLE_TEXT) {
+  await toVoice(page, font, text);
+  await page.locator('.tone-choice .primary-action').click();
+  await page.waitForTimeout(300);
+}
+
 /** 04 색 */
-export async function toColor(page, text = '여기서 크게 말해본 적 없다', font = '당당한') {
-  await toCompose(page, text, font);
-  await page.locator('.primary-action').click();
+export async function toColor(page, text = SAMPLE_TEXT, font = '당당한') {
+  await toShape(page, font, text);
+  await page.locator('.tone-adjust .primary-action').click();
   await page.waitForTimeout(400);
 }
 

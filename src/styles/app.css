@@ -1787,6 +1787,25 @@
 /* 고른 칸은 빨강이 칸 전체를 먹는다. 스케치는 #CF5B4C이지만 그 위의 흰
    글자는 4.00:1 — AA(4.5)에 못 미친다. 채움 버튼과 같은 --brand-strong(4.64:1). */
 .tone-choice .style-card.on{ background: var(--brand-strong); color: var(--paper); }
+/* 칸이 보여주는 것은 이제 성격 이름이 아니라 **내 문장의 첫 줄**이다. 네 칸이
+   같은 글자를 쓰게 되어서 처음으로 서체끼리 견줄 수 있다 — 이름을 찍던 때는
+   칸마다 다른 낱말이라 무엇을 비교하는지 알 수 없었다.
+   --card-fit은 그 글자 수에 맞춘 상한이고(PhaseGlyph가 잰다), 29cqw는 글이
+   없을 때의 예전 값이다. 이름은 아래 작은 글씨로 남는다 — 앱의 어휘다. */
+.tone-choice .style-card{ align-content: center; gap: var(--s3); }
+.style-card-line{ display: block; }
+.style-card-tag{ font-family: var(--label-font); font-size: var(--fs-cap-s);
+  letter-spacing: 0.02em; opacity: 0.62; }
+.tone-choice .style-card.on .style-card-tag{ opacity: 0.85; }
+/* 견본이 문장이 되면서 낱자가 줄이 됐다. 줄은 세로로 쌓이고, 두둥실 뜨는
+   것은 바깥 덩어리 하나가 맡는다 — 줄마다 따로 뜨면 문단이 흔들린다. */
+/* 조율 화면의 최대 영역. 점선이라야 틀과 말풍선이 안 헷갈린다 —
+   실선으로 두면 그것도 상자로 읽힌다. */
+.tone-area{ width: var(--tone-area); aspect-ratio: 1; display: grid; place-items: center;
+  outline: 1px dashed rgb(255 255 255 / 30%); flex: none; }
+/* 축을 한 칸 밀면 말풍선이 그 크기로 자란다. 글자가 건너뛰던 260ms를
+   틀도 같이 탄다 — 따로 놀면 글과 윤곽이 어긋나 보인다. */
+.tone-area .speech-bubble{ transition: width 260ms var(--ease-standard), height 260ms var(--ease-standard); }
 /* 크기는 두 가지가 함께 정한다.
    --optical: 서체별 잉크 높이 보정(palettes.ts에서 잰 값. 발랄한만 1.122).
    29cqw:     칸이 좁아져도 글자가 칸 밖으로 나가지 않게 잡는 상한.
@@ -1796,7 +1815,7 @@
 /* --optical-stroke: 획 보정. 획을 글자 색으로 덧대 굵기를 맞춘다 —
    굵기 축이 없는 글꼴이라 font-weight로는 답이 안 나온다. 보정이 없는
    서체는 0em이라 아무 일도 일어나지 않는다. */
-.tone-choice .style-card-name{ font-size: calc(min(var(--fs-h1), 29cqw) * var(--optical, 1)); line-height: 1.15;
+.tone-choice .style-card-name{ font-size: calc(min(var(--fs-h1), var(--card-fit, 29cqw)) * var(--optical, 1)); line-height: 1.15;
   -webkit-text-stroke: var(--optical-stroke, 0) currentColor; paint-order: stroke fill;
   /* --optical-shift: 베이스라인 보정. 네 칸의 베이스라인이 3px 어긋나 있었다. */
   translate: 0 var(--optical-shift, 0); }

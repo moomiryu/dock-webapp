@@ -31,10 +31,10 @@ interface Props {
  * 보여준다.
  */
 
-/** 견본이 쓸 수 있는 높이. 축 셋과 버튼이 아래를 가져간 나머지다 */
-const STAGE_H = 150;
 /** 견본 행간. 낱자 두 개('발화')일 때 쓰던 1은 문장에서 줄끼리 붙는다 */
 const STAGE_LH = 1.4;
+/** 견본이 제 자리에서 쓰는 몫 — 가로·세로(%). 나머지는 숨 쉴 여백이다 */
+const USE = { w: 86, h: 88 };
 
 /**
  * 세 축. 차례는 스케치를 따른다 — 크기 · 빠르기 · 무게.
@@ -103,8 +103,26 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
     const [step, setStep] = useState<'intro' | 'work'>('intro');
     const lines = foldLines(text);
     const longest = Math.max(1, ...lines.map((l) => Array.from(l).length));
-    const byLine = ((86 / longest) * (tone.size / 60)).toFixed(2);
-    const byHeight = (((STAGE_H / (lines.length * STAGE_LH)) * (tone.size / 60)) / Math.max(1, tone.tone)).toFixed(1);
+    /**
+     * 견본 크기 — **제 자리를 재서 정한다.**
+     *
+     * 세로 몫을 150px이라는 **적어 둔 숫자**로 잡고 있었다(2026-09-20에
+     * 재서 알았다). 실제 칸은 398px이라, 몇 줄이든 그 3분의 1짜리 가상의
+     * 칸에 욱여넣고 있었다 — 60자짜리 긴 글이 15.7px까지 내려앉아 읽히지
+     * 않았고, 칸의 28%만 쓰고 나머지는 빈 채였다. 이제 cqh로 칸에게
+     * 직접 묻는다(.z-glyph-fit이 container-type: size를 들고 있다).
+     *
+     * 크기 축은 그대로 곱한다 — '얼마를 쓸 것인가'가 이 축의 뜻이고,
+     * 그 몫이 칸에 대한 비율이라야 벽에서도 같은 값이 된다(fit.ts).
+     *
+     * 장평은 **가로에만** 건다. scaleX는 세로를 건드리지 않는데 그동안
+     * 세로 쪽을 나누고 있었다. 좁아지는 쪽(0.7·0.85)은 나누지 않는다 —
+     * 그 두 칸에는 기울기가 함께 붙어서, 좁아진 만큼을 기운 획이 도로
+     * 가져간다.
+     */
+    const fill = tone.size / 60;
+    const byLine = ((USE.w / longest) * fill / Math.max(1, tone.tone)).toFixed(2);
+    const byHeight = ((USE.h / (lines.length * STAGE_LH)) * fill).toFixed(2);
     /**
      * 끌고 있는 축과 손가락이 지금 가 있는 자리(0~1).
      *
@@ -127,7 +145,7 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
         fontVariationSettings: '"wght" ' + tone.wght,
         transform: 'scaleX(' + tone.tone + ')',
         fontStyle: tone.slnt ? `oblique ${Math.abs(tone.slnt)}deg` : 'normal',
-        fontSize: `min(${byLine}cqw, ${byHeight}px)`,
+        fontSize: `min(${byLine}cqw, ${byHeight}cqh)`,
         '--optical-stroke': opticalStroke(tone.font, tone.wght)
     } as CSSProperties;
 
@@ -160,9 +178,13 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
      <BackButton label="설명 다시 보기" onClick={() => setStep('intro')}/>
      <span className="z-step-of">3 / 5 · 조율</span>
     </div>
-    {/* 견본은 글자뿐이다. 도형은 색을 고르는 화면에서 처음 나온다. */}
-    <div className={'z-glyph is-line' + (tone.slnt ? ' is-gust' : '')} style={face}>
-     <span>{lines.map((l, i) => <b key={i} className="z-glyph-char">{l}</b>)}</span>
+    {/* 견본은 글자뿐이다. 도형은 색을 고르는 화면에서 처음 나온다.
+        한 겹을 더 두른 것은 **자리를 재기 위해서다** — 머리줄을 뺀 나머지가
+        견본의 몫인데, 칸 전체를 기준으로 삼으면 머리줄 높이만큼 넘친다. */}
+    <div className="z-glyph-fit">
+     <div className={'z-glyph is-line' + (tone.slnt ? ' is-gust' : '')} style={face}>
+      <span>{lines.map((l, i) => <b key={i} className="z-glyph-char">{l}</b>)}</span>
+     </div>
     </div>
    </div>
    <div className="z-axes">

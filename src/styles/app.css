@@ -1865,8 +1865,12 @@
   padding: var(--s2) var(--s5); min-height: var(--btn-s); cursor: pointer; }
 .glyph-reset:active{ background: var(--press-tint); }
 
-/* 04 색 — 말풍선이 처음 서는 자리. 정사각 상자를 쓰던 자리를 그대로 쓴다. */
-.color-stage{ width: 100%; height: 100%; display: grid; place-items: center; }
+/* 04 색 — 말풍선이 처음 서는 자리. 정사각 상자를 쓰던 자리를 그대로 쓴다.
+   말풍선이 쓸 한 변을 이 상자에게 묻는다(PhaseColor의 AREA). 그 전에는
+   'min(80vw, 316px)'이라 **화면 가로 폭만 보고** 정했는데, 재 보니 이
+   자리는 358×716이라 세로의 87%가 빈 채였다. */
+.color-stage{ width: 100%; height: 100%; display: grid; place-items: center;
+  container-type: size; }
 
 /* 03 조율 — 두 장을 겹쳐 두고 통째로 민다.
    한 장에 제목·설명·견본·축 셋을 다 올리면 처음 보는 사람에게 요소가
@@ -1954,8 +1958,15 @@
    제목도 설명도 없앴다 — 무슨 화면인지는 견본이 말하고, 무엇을 만지는지는
    아래 세 라벨이 말한다. 그래서 면은 가장자리까지, 위로는 맨 끝까지 간다. */
 .tone-adjust{ padding-top: 0; }
+/* 견본칸이 **먼저 양보한다.**
+   1 0 320px으로 박아 두었더니 이 화면이 요구하는 최소 높이가 742px이 됐다
+   (견본 320 + 축 318 + 버튼 56 + 여백 48). 바깥 액자는 100dvh에 묶여 있고
+   .tone-deck이 넘친 것을 잘라내므로, 화면이 그보다 짧으면 **다음 버튼이
+   스크롤로도 안 나오고 그냥 없어졌다** — 667px 화면에서 버튼 56px이 통째로
+   화면 밖이었다(재서 확인). 줄어들 수 있는 것은 이 칸뿐이라 여기가 준다. */
 .tone-adjust .z-glyph-stage{
-  flex: 1 0 320px;
+  flex: 1 1 0;
+  min-height: 0;
   position: relative;
   height: auto;
   margin-inline: calc(var(--pad-x) * -1);
@@ -1963,6 +1974,13 @@
   background: var(--brand-main);
   color: var(--paper);
 }
+/* 견본이 실제로 쓸 수 있는 자리 — 머리줄을 뺀 나머지.
+   견본 크기를 이 상자에게 직접 묻는다(PhaseTone이 cqh로 쓴다). 높이를
+   flex가 정해 주므로 container-type: size를 걸어도 순환이 없다 — 내용이
+   높이를 정하는 자리에 걸었다면 글자 크기가 0으로 풀렸을 것이다. */
+.tone-adjust .z-glyph-fit{ flex: 1; min-width: 0; min-height: 0; width: 100%;
+  display: flex; align-items: center; justify-content: center;
+  container-type: size; }
 .tone-adjust .z-glyph-stage .z-back{ color: var(--paper); }
 .tone-adjust .z-glyph-stage .z-back:active{ background: rgb(255 255 255 / 16%); }
 .tone-adjust .z-axes{ padding-bottom: var(--s3); }

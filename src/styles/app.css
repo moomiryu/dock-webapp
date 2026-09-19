@@ -1926,7 +1926,7 @@
    나갈 때만 바닥이 차가워서, 그 둘이 이 앱이 아닌 것처럼 읽힌다. */
 .home-frame::after,
 .tone-choice::after, .tone-adjust::after, .compose-screen::after,
-.color-choice::after, .preview-screen::after,
+.write-screen::after, .color-choice::after, .preview-screen::after,
 .info-overlay::after{
   content: '';
   position: absolute;
@@ -1950,6 +1950,7 @@
    칠해져 버튼까지 덮는다 — 회색 비활성 버튼이 분홍으로 흐려졌다. */
 .tone-choice > .primary-action, .tone-adjust > .primary-action,
 .compose-screen > .primary-action, .color-choice > .primary-action,
+.write-screen > .primary-action, .write-screen > .compose-count,
 .preview-screen > .primary-action{ position: relative; z-index: 2; }
 /* 홈의 두 버튼과 소개의 발치 줄은 그 기운 위에 앉는다 */
 .home-frame .home-gate, .info-overlay > .info-nav{ position: relative; z-index: 2; }

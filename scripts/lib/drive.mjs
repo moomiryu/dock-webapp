@@ -69,6 +69,11 @@ export async function settle(page) {
   await page
     .waitForFunction(() => !document.querySelector('.splash'), { timeout: 15000 })
     .catch(() => {});
+  // 빨강이 캐릭터 자리로 내려앉는 900ms까지 기다린다 — 안 기다리면
+  // 화면을 찍을 때 그 막이 같이 찍힌다
+  await page
+    .waitForFunction(() => !document.querySelector('.splash-veil'), { timeout: 5000 })
+    .catch(() => {});
   await page.waitForTimeout(300);
 }
 

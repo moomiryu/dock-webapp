@@ -122,6 +122,8 @@ const snap = {};
 await page.goto(`${BASE}/?mock=1`, { waitUntil: 'load' });
 await page.evaluate(() => document.fonts.ready);
 await page.waitForFunction(() => !document.querySelector('.splash'), { timeout: 12000 }).catch(() => {});
+  // 빨강이 캐릭터 자리로 내려앉는 900ms까지 기다린다
+  await page.waitForFunction(() => !document.querySelector('.splash-veil'), { timeout: 5000 }).catch(() => {});
 snap['01 홈'] = await grab();
 
 await page.getByRole('button', { name: /써봤어요/ }).click();

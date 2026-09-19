@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import AdminWall from './admin/AdminWall';
 import WallSimulation from './admin/WallSimulation';
 import PhaseSplash from './phases/PhaseSplash';
@@ -10,6 +10,7 @@ import PhaseColor from './phases/PhaseColor';
 import PhaseSubmit from './phases/PhaseSubmit';
 import PhaseOnWall from './phases/PhaseOnWall';
 import PhaseDone from './phases/PhaseDone';
+import { REST_Y } from './components/HomeCharacter';
 import { DRAFT_COLORS } from './lib/messageStyle';
 import {
   clearDraft,
@@ -68,6 +69,12 @@ export default function App() {
     return d?.tone ? toPartial(d.tone) : null;
   });
   const [ready, setReady] = useState(false);
+  /**
+   * 00에서 01로 건너가는 동안. 빨강이 사라지는 게 아니라 **캐릭터가 된다** —
+   * 화면을 덮은 빨강이 캐릭터가 서는 자리로 좁혀 들고, 거기서 지워지면
+   * 같은 색의 실루엣이 남는다. 그 사이 홈은 이미 아래에 그려져 있다.
+   */
+  const [landing, setLanding] = useState(false);
   // 벽에서 폰을 직접 뺐는지 — 완료 화면이 화면 전체를 쓸지 아래 절반만 쓸지 가른다
   const [pulled, setPulled] = useState(false);
 
@@ -82,12 +89,15 @@ export default function App() {
 
   // 웹폰트가 준비될 때까지 splash. 자형이 이 앱의 내용이라 폰트가 늦으면
   // 첫 화면이 다른 글씨로 한 번 깜빡인다.
-  // 최소 2초를 지키는 건 로딩 때문이 아니라 도입을 위해서다 — 폰을 대자마자
-  // 화면이 튀어나오면 시작한 줄 모른다. 폰트가 영영 오지 않는 경우엔 상한이 끊는다.
+  // 최소 시간을 지키는 건 로딩 때문이 아니라 도입을 위해서다 — 폰을 대자마자
+  // 화면이 튀어나오면 시작한 줄 모른다. 2초는 짧았다: 글을 읽고 나면 곧바로
+  // 넘어가 버려서 '기다렸다'가 아니라 '깜빡였다'로 보였다. 2.6초로 늘리고,
+  // 그 뒤 빨강이 캐릭터로 내려앉는 900ms가 더 붙는다.
+  // 폰트가 영영 오지 않는 경우엔 상한이 끊는다.
   useEffect(() => {
     let live = true;
     const settle = () => live && setReady(true);
-    const floor = new Promise<void>((r) => setTimeout(r, 2000));
+    const floor = new Promise<void>((r) => setTimeout(r, 2600));
     Promise.all([document.fonts.ready, floor]).then(settle);
     const cap = window.setTimeout(settle, 4000);
     return () => {
@@ -106,7 +116,7 @@ export default function App() {
 
   // 00 — 입력 앱에만. 벽·관리 화면은 곧바로 뜬다.
   if (!ready) {
-    return <PhaseSplash />;
+    return <PhaseSplash onLand={() => setLanding(true)} />;
   }
 
   /**
@@ -151,7 +161,17 @@ export default function App() {
 
   switch (screen) {
     case 'home':
-      return <PhaseHome onStart={() => setScreen('compose')} />;
+      return (
+        <>
+          <PhaseHome onStart={() => setScreen('compose')} />
+          {/* 빨강이 캐릭터 자리로 좁혀 드는 900ms. 홈은 이미 아래에 있다.
+              NFC로 들어와 홈을 건너뛰는 경우엔 내려앉을 캐릭터가 없으므로
+              이 막도 없다. */}
+          {landing && <div className="splash-veil" aria-hidden="true"
+            style={{ '--land-rest': `${(REST_Y * 100).toFixed(1)}%` } as CSSProperties}
+            onAnimationEnd={() => setLanding(false)} />}
+        </>
+      );
 
     case 'compose':
       return (

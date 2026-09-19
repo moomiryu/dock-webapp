@@ -50,6 +50,10 @@ async function settle(page) {
   await page
     .waitForFunction(() => !document.querySelector('.splash'), { timeout: 12000 })
     .catch(() => console.log('  ⚠ 스플래시가 걷히지 않았다'));
+  // 빨강이 캐릭터 자리로 내려앉는 900ms까지 기다린다
+  await page
+    .waitForFunction(() => !document.querySelector('.splash-veil'), { timeout: 5000 })
+    .catch(() => {});
   await page.waitForTimeout(900);
 }
 

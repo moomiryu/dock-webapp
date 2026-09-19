@@ -902,6 +902,44 @@
   color: var(--paper);
 }
 
+/* 00 → 01. 빨강이 사라지는 게 아니라 **캐릭터가 된다.**
+   화면을 덮은 빨강이 캐릭터가 서는 자리로 좁혀 들고, **실루엣 안에서** 꺼진다.
+
+   실루엣 밖에서 꺼지면 어색하다 — 빨간 원이 캐릭터를 비껴 사라지는 것으로
+   보인다. 몸통을 재 보니 상자의 30~82%에 271×141로 눕고, 거기 드는 가장 큰
+   원이 반지름 57px(상자의 0.21)에 중심이 세로 61%다. 그보다 안쪽(0.20)까지
+   좁힌 **뒤에** 흐려지기 시작하므로, 꺼지는 동안 원은 줄곧 빨강 위에 있다.
+
+   색도 갈아탄다: splash의 --brand-strong에서 캐릭터 몸 색인 --brand-main
+   (#cf5b4c)으로. 같은 색이 되어야 걷히는 순간이 안 보인다.
+   세로 자리(--land-rest)는 HomeCharacter의 REST_Y가 내려준다. */
+.splash-veil{
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  background: var(--brand-strong);
+  /* .home-char의 width와 같은 식 */
+  --land-box: min(70vw, 272px);
+  /* 상자 한가운데가 아니라 몸통 한가운데(상자 세로 61%)로 모인다 */
+  --land-y: calc(var(--land-rest, 52%) + var(--land-box) * 0.11);
+  animation: splashLand 900ms var(--ease-emphasized) forwards;
+}
+@keyframes splashLand{
+  0%   { clip-path: circle(140% at 50% var(--land-y));
+         background: var(--brand-strong); opacity: 1; }
+  72%  { clip-path: circle(calc(var(--land-box) * 0.2) at 50% var(--land-y));
+         background: var(--brand-main); opacity: 1; }
+  100% { clip-path: circle(calc(var(--land-box) * 0.06) at 50% var(--land-y));
+         background: var(--brand-main); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce){
+  /* 움직임을 끈 사람에게도 빨강이 한 번 지나가야 화면이 갈리지 않는다.
+     좁혀 들지 않고 제자리에서 걷힌다. */
+  .splash-veil{ animation: splashFade 300ms linear forwards; }
+  @keyframes splashFade{ to { opacity: 0; } }
+}
+
 /* ─── 프로젝트 정보 덮개 ────────────────────────────────────── */
 
 .info-overlay{
@@ -1782,16 +1820,21 @@
   gap: 1px; flex: 1; background: var(--line); border: 0; border-radius: 0; overflow: hidden;
   margin-inline: calc(var(--pad-x) * -1);
   /* 트랙 목록은 길이가 같으면 보간된다. 고른 칸의 줄·칸만 1fr로 남기고
-     나머지를 0fr로 보내면, 판을 갈아 끼우지 않고도 그 칸이 자란다. */
-  transition: grid-template-columns 460ms var(--ease-emphasized),
-              grid-template-rows 460ms var(--ease-emphasized); }
+     나머지를 0fr로 보내면, 판을 갈아 끼우지 않고도 그 칸이 자란다.
+     460ms에서는 자라는 게 아니라 **갈아 끼운 것으로** 보였다 — 한 칸이
+     화면 전체가 되는 큰 움직임이라 조율의 장 넘김(520ms)보다도 느려야
+     한다. 680ms. */
+  transition: grid-template-columns 680ms var(--ease-emphasized),
+              grid-template-rows 680ms var(--ease-emphasized); }
 .tone-choice .style-card{ overflow: hidden; min-width: 0; min-height: 0; }
 /* 접히는 칸은 글자가 먼저 사라진다 — 안 그러면 0폭 칸에서 글이 삐져나온다.
    안쪽 여백도 같이 접어야 한다. 0fr 트랙의 최소 크기는 내용이 정하는데,
    패딩은 min-width로 안 지워져서 칸마다 24px이 남아 있었다(재서 확인). */
 .tone-choice.is-picked .style-card:not(.on){ padding: 0;
-  transition: padding 460ms var(--ease-emphasized); }
-.tone-choice.is-picked .style-card:not(.on) > *{ opacity: 0; transition: opacity 160ms; }
+  transition: padding 680ms var(--ease-emphasized); }
+/* 글자는 칸보다 먼저 비운다. 다만 너무 빨리 사라지면 칸만 홀로 줄어드는
+   것으로 보여서, 늘어나는 시간의 3분의 1쯤에 맞춘다. */
+.tone-choice.is-picked .style-card:not(.on) > *{ opacity: 0; transition: opacity 240ms; }
 .tone-choice .style-card{ min-height: 0; border: 0; border-radius: 0;
   display: grid; place-items: center; padding: var(--s4); background: var(--paper);
   text-align: center; container-type: inline-size; }
@@ -2031,8 +2074,9 @@
 :root[data-keyboard='up'] .proj-meta > span:first-child{ display: none; }
 
 /* 직접 만지는 크기. 340px에서 80%로 줄였다. */
-.home-char{ left: 0; top: 0; width: min(70vw, 272px); max-width: none; height: auto; aspect-ratio: 1; border: 0; padding: 0; margin: 0; background: none; color: inherit; cursor: grab; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; transform: translate(0, 0); will-change: transform; }
-.home-char[data-held="true"]{ cursor: grabbing; }
+/* 2026-09-20: 끌어 옮기던 것을 걷어냈다. 손을 안 받으므로 커서도 평범하다 —
+   grab 커서를 남겨 두면 잡을 수 있다고 거짓말을 한다. */
+.home-char{ left: 0; top: 0; width: min(70vw, 272px); max-width: none; height: auto; aspect-ratio: 1; border: 0; padding: 0; margin: 0; background: none; color: inherit; pointer-events: none; user-select: none; -webkit-user-select: none; transform: translate(0, 0); will-change: transform; }
 /* 회전은 --char-turn 이 가로로 한 번 좁혔다 편다. 기울기는 --char-tilt.
    포즈끼리는 path를 직접 보간하므로 겹쳐 놓고 페이드할 그림이 없다. */
 .home-char-motion{ display: block; position: relative; width: 100%; height: 100%;
@@ -2065,6 +2109,73 @@
 /* 가운데선에서 한쪽으로 뻗는다. 몸 위에 있으므로 옆으로는 겹칠 일이 없다. */
 .home-char-say[data-side='right']{ left: 50%; }
 .home-char-say[data-side='left']{ right: 50%; }
+/* ── 배경을 오가는 캐릭터들 ──────────────────────────────────────────
+   가장자리에서 걸어 들어와 지나가고, 얼마는 메가폰트 앞에 서서 웃고
+   **빨강이 되어** 나간다. 자리는 JS가 프레임마다 transform으로 적고
+   (HomeCrowd), 걷는 다리와 몸의 들썩임·몸 색만 CSS가 맡는다.
+   버튼 위에 얹히지 않게 손을 안 받는다. */
+.home-crowd{ position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+/* 앞뒤는 발끝이 정한다 — 2D에서 깊이를 만드는 방법은 그것뿐이다.
+   층 번호를 JS가 프레임마다 적는다(HomeCrowd · CHAR_Z=500). 메가폰트가
+   한가운데 서고 구경꾼이 그 위아래로 벌어지므로, 여섯과 메가폰트가 한 줄로
+   정렬된다 — 아래에 선 애가 위에 선 애를 가린다.
+
+   그 위로 두 겹이 더 있다: 바닥의 그라데이션(900)과 글자·버튼(1000).
+   누르려는 손을 가리면 안 되므로 버튼이 맨 위다. */
+.home-char{ z-index: 500; }
+.home-frame::after{ z-index: 900; }
+.home-frame > .home-layer{ z-index: 1000; }
+/* 이 캐릭터는 바닥에 선 것이 아니라 떠 있다. 그림자가 그것을 말한다 —
+   몸보다 아래, 몸보다 작게, 옅게. 상자에 대고 고정했더니(88%) 포즈마다
+   어긋났다 — 옆모습은 실루엣이 좁고 짧은데 그림자는 그대로였다. 이제
+   폭과 자리를 HomeCharacter가 실루엣에서 재어 내려준다. 그 줄이 구경꾼의
+   앞뒤를 가르는 바닥선이기도 하다(charPos.ground). */
+/* 얼굴이 돌아 들어올 때 가로로 열린다(HomeCharacter의 EYE_OPEN_FROM).
+   중첩 svg라 제 상자를 기준으로 잡아야 가운데에서 열린다. */
+.home-char-eye{ transform-box: fill-box; transform-origin: center; }
+.home-char-shade{ position: absolute; left: 50%; top: calc(var(--shade-y, 0.87) * 100%);
+  translate: -50% -50%; width: calc(var(--shade-w, 0.38) * 100%); height: 6%;
+  border-radius: 50%; background: #5a5580; opacity: 0.18; pointer-events: none;
+  /* 포즈가 바뀌면 실루엣이 달라진다. 글자·형태가 건너가는 260ms를 같이 탄다 */
+  transition: width 260ms var(--ease-standard), top 260ms var(--ease-standard); }
+.walker{ position: absolute; left: 0; top: 0; display: block; will-change: transform; }
+.walker-art{ display: block; width: 100%; height: 100%; }
+/* 몸 색. 파랑으로 들어와 메가폰트 앞에서 빨강이 된다 — 그 순간이 이
+   장면의 내용이라 뚝 끊기지 않고 건너가야 한다. */
+.walker{ color: #2ce9f7; transition: color 620ms var(--ease-standard); }
+.walker[data-tone='red']{ color: var(--brand-main); }
+/* 표정 넷을 다 그려 두고 하나만 보여 준다. 바꿀 때마다 React를 거치면
+   여섯이 초당 몇 번씩 다시 그려진다. */
+.w-eye{ display: none; }
+.walker[data-eye='look'] .w-eye-look,
+.walker[data-eye='wide'] .w-eye-wide,
+.walker[data-eye='shut'] .w-eye-shut,
+.walker[data-eye='smile'] .w-eye-smile{ display: block; }
+/* 다리는 엉덩이(화판의 183,430)에서 앞뒤로 흔들린다. 원본은 경로를 40프레임
+   모핑해 걷는데 그 값 목록만 28KB라, 회전으로 대신한다 — 56px에서는 같아
+   보인다. 두 다리가 서로 반대로 가야 걷는 것으로 읽힌다. */
+/* 축은 몸 속이다(윗변 360과 클립 416 사이). 여기서 돌아야 이음매가 안 보인다 */
+.w-leg{ transform-box: view-box; transform-origin: 183px 392px; }
+.walker[data-walking='true'] .w-far{ animation: walkFar var(--walk-ms, 900ms) ease-in-out infinite; }
+.walker[data-walking='true'] .w-near{ animation: walkNear var(--walk-ms, 900ms) ease-in-out infinite; }
+.walker[data-walking='true'] .walker-art{ animation: walkBob var(--walk-ms, 900ms) ease-in-out infinite; }
+@keyframes walkFar { 0%, 100% { rotate: 7deg; } 50% { rotate: -7deg; } }
+@keyframes walkNear{ 0%, 100% { rotate: -7deg; } 50% { rotate: 7deg; } }
+/* 걸을 때 몸이 한 번 뜬다. 다리만 흔들면 미끄러지는 것으로 보인다 */
+@keyframes walkBob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -3%; } }
+@media (prefers-reduced-motion: reduce){
+  .walker{ animation: none; }
+  .walker[data-walking='true'] .w-far,
+  .walker[data-walking='true'] .w-near,
+  .walker[data-walking='true'] .walker-art{ animation: none; }
+}
+
+/* 인사가 아니라 할 일. 열한 자를 0.12배(32px)로 찍으면 nowrap이라 한 줄이
+   390 화면을 넘는다 — 0.072배(20px)면 245px로 들어간다. */
+.home-char-say[data-small='true']{ font-size: calc(var(--char-box, 272px) * 0.072); font-weight: 700; }
+/* '!'는 터지고 끝나는 것이라 뜨고 지는 시간도 짧다. 기본 1600ms를 그대로
+   쓰면 900ms에 사라지는 글자가 아직 또렷한 채로 잘린다. */
+.home-char-say[data-quick='true']{ animation-duration: 900ms; }
 
 /* translate가 이미 세로를 맡고 있어서 transform에 다시 쓰면 덮어쓴다.
    회전과 크기만 transform에 둔다. */
@@ -2078,7 +2189,6 @@
 .home-layer{ z-index: 2; pointer-events: none; }
 .home-gate{ pointer-events: none; }
 .home-actions > button{ position: relative; pointer-events: auto; }
-.home-char:focus-visible{ outline: 2px dashed var(--brand-main); outline-offset: -12px; border-radius: 24px; }
 
 /* writing-block feedback: shared line boxes and participant controls. */
 .line-bubble { width: 88%; max-width: 88%; position: relative; }

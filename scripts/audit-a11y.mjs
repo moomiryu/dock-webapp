@@ -26,6 +26,8 @@ const page = await (
 async function settle() {
   await page.evaluate(() => document.fonts.ready);
   await page.waitForFunction(() => !document.querySelector('.splash'), { timeout: 12000 }).catch(() => {});
+  // 빨강이 캐릭터 자리로 내려앉는 900ms까지 기다린다
+  await page.waitForFunction(() => !document.querySelector('.splash-veil'), { timeout: 5000 }).catch(() => {});
   await page.waitForTimeout(400);
 }
 

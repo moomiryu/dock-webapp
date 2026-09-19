@@ -3,11 +3,35 @@ import {
   CANVAS, EYES, blendGeo, eyeMarkup, eyeOpacity, poseGeometry, toPathD, turnKind,
   type Eyes, type Pose, type PoseGeo
 } from '../lib/characterMorph';
+import { charPos } from '../lib/charPos';
+
+/**
+ * 캐릭터가 처음 서는 자리 — 화면 높이에 대한 비율. 가로는 늘 한가운데다.
+ *
+ * 0.46이었다. 캐릭터가 가끔 한 마디를 뱉는데 그 말이 **머리 위**에 뜨므로,
+ * 46%에서는 말이 워드마크 쪽으로 올라붙었다. 말이 설 자리를 미리 비워 둔다.
+ *
+ * 00에서 01로 건너갈 때 빨강 막이 내려앉는 자리도 이 값을 쓴다(App.tsx) —
+ * 두 곳에 따로 적으면 그중 하나가 반드시 어긋난다.
+ */
+export const REST_Y = 0.52;
+
+/**
+ * 실루엣 바닥에서 그림자까지의 틈 — 상자 한 변에 대한 비율.
+ *
+ * 이 캐릭터는 바닥에 선 것이 아니라 **떠 있다.** 붙이면 선 것이 되고
+ * 너무 멀면 딴 물건이 된다.
+ *
+ * 자리를 상자에 대고 고정했더니(88%) 포즈마다 어긋났다 — 옆모습은 실루엣이
+ * 좁고 짧은데 그림자는 그대로라 몸 밖에 떠 있었다. 이제 **실루엣**을 따라
+ * 간다: 폭은 실루엣 폭에, 높이는 실루엣 바닥에 이 틈을 더한 자리에.
+ */
+export const SHADE_GAP = 0.06;
+/** 그림자 폭 — 실루엣 폭에 대한 비율 */
+const SHADE_W = 0.62;
 
 /** 한 포즈에서 다음 포즈로 형태가 넘어가는 데 걸리는 시간 (ms) */
 const TURN_MS = 380;
-/** 표정이 한 번 바뀌면 최소한 이만큼은 유지된다 (ms) */
-const FACE_HOLD = 2000;
 /** 포즈가 방향을 따라 바뀌더라도 이 간격보다 자주 바뀌지 않는다 (ms) */
 const POSE_DWELL = 900;
 
@@ -18,19 +42,6 @@ const POSE_DWELL = 900;
  * 홈_3이 상자 170px, 홈_1이 390px, 홈_2가 607px(화면에 잘려 나갈 만큼 가깝다).
  * 272로 나누면 0.63 · 1.43 · 2.23. 그 폭을 그대로 쓴다.
  */
-/**
- * 크기는 제자리(1)가 기본이고, 가끔 한 번씩 커졌다 금세 돌아온다.
- *
- * 계속 오가게 두면 '크기가 계속 변하는 것'이 되어 버린다. 기본이 있고
- * 거기서 벗어났다 돌아와야 벗어난 것이 사건으로 읽힌다. 그래서 목표를
- * 따라가는 대신 한 번의 움직임으로 다룬다 — 부풀고, 잠깐 머물고, 돌아온다.
- */
-const BURST_MAX = 2.35;
-const BURST_MIN = 1.45;
-const BURST_UP = 340;     // 부푸는 데 (ms)
-const BURST_HOLD = 380;   // 그 크기로 머무는 동안
-const BURST_BACK = 300;   // 돌아오는 데 — 올 때보다 빠르다
-
 /**
  * 가끔 캐릭터가 한 마디를 뱉는다.
  *
@@ -64,18 +75,41 @@ const SAY_MS = 1600;
  *
  * 세 나라 말인 이유: 캠퍼스에 한국어만 쓰는 사람만 있지 않다.
  */
-const WELCOME = ['안녕하세요', 'こんにちは', 'Hello'];
+/**
+ * 첫인사. 마지막 한 마디는 인사가 아니라 **할 일**이라 작게 적는다 —
+ * 같은 크기로 두면 'Hello' 다음에 온 또 하나의 인사로 읽힌다.
+ * 열한 자를 0.12배(32px)로 찍으면 한 줄이 390 화면을 넘는다(nowrap이다).
+ */
+const WELCOME: Array<{ text: string; small?: boolean }> = [
+  { text: '안녕하세요' }, { text: 'こんにちは' }, { text: 'Hello' },
+  { text: '아래 버튼을 눌러보세요', small: true }
+];
 /** 한 마디가 떠 있는 시간 · 다음 마디까지의 틈 */
 const WELCOME_MS = 1250, WELCOME_GAP = 220;
-/** 떠오르고 자리를 잡을 틈. 곧바로 말하면 인사가 등장에 묻힌다 */
-const WELCOME_DELAY = 650;
+/**
+ * 처음에 눈을 감고 있는 동안.
+ *
+ * 등을 보이고 있다가 돌아서게 해 봤는데, 돌아오는 그 한 순간의 눈이
+ * 어떻게 해도 어색했다 — 투명도로 올리면 허공에서 떠오르고, 눌러 뒀다
+ * 켜면 툭 켜지고, 가로로 열면 획이 깨져 보인다. 뒷모습을 빼고 **처음부터
+ * 정면, 눈만 감은 채**로 둔다. 뜨는 것은 눈꺼풀이 하는 일이지 회전이
+ * 하는 일이 아니다.
+ *
+ * 00에서 넘어온 빨강 막이 꺼지는 데 900ms가 걸리므로(App.tsx · splashLand)
+ * 그보다 넉넉히 길어야 '감고 있었다'가 보인다 — 막이 몸과 같은 빨강이라
+ * 그동안은 얼굴 자리가 통째로 가려져 있다(그걸 모르고 눈 자산을 한참
+ * 의심했다).
+ */
+const SHUT_MS = 1600;
+/** 눈을 뜨고 터지는 '!' — 놀란 뒤에 웃는다 */
+const BANG_MS = 900;
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 const random = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
 export default function HomeCharacter() {
-  const ref = useRef<HTMLButtonElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<SVGPathElement>(null);
   const hatRef = useRef<SVGPathElement>(null);
   const dotRef = useRef<SVGCircleElement>(null);
@@ -84,15 +118,20 @@ export default function HomeCharacter() {
 
   // 표정만 React가 들고 있다. 벽에 닿을 때만 바뀌고 최소 2초를 버티므로
   // 리렌더가 드물다. 포즈와 위치는 매 프레임이라 DOM을 직접 만진다.
-  const [eyes, setEyes] = useState<Eyes>('general');
+  /**
+   * 처음에는 눈을 감고 있다. 첫 프레임부터 그래야 뜨는 것이 사건이 된다.
+   *
+   * 감은 눈은 'twinkle'(◡)이다. 아홉 표정을 몸 색 위에 한 장으로 놓고
+   * 골랐다 — 'tired'는 이름과 달리 흰자가 반쯤 잘린 접시 모양이라
+   * 감은 눈으로 안 읽힌다.
+   */
+  const [eyes, setEyes] = useState<Eyes>('twinkle');
   // 뱉은 글자. 표정과 같은 이유로 React가 들고 있다 — 몇 초에 한 번뿐이라
   // 리렌더가 드물다. 자리와 크기는 매 프레임이라 여전히 DOM을 직접 만진다.
-  const [say, setSay] = useState<{ text: string; side: 'left' | 'right'; tilt: number } | null>(null);
-  const api = useRef<{
-    down: (e: React.PointerEvent) => void;
-    move: (e: React.PointerEvent) => void;
-    up: (e: React.PointerEvent, cancelled?: boolean) => void;
-    key: (e: React.KeyboardEvent) => void;
+  const [say, setSay] = useState<{
+    text: string; side: 'left' | 'right'; tilt: number;
+    /** 인사가 아니라 할 일. 작게 적는다 */ small?: boolean;
+    /** '!'처럼 짧게 터지는 것 — 뜨고 지는 시간도 짧다 */ quick?: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -101,6 +140,9 @@ export default function HomeCharacter() {
     const media = matchMedia('(prefers-reduced-motion: reduce)');
     let reduced = media.matches;
 
+    /**
+     * 처음부터 정면이다. 돌아서지 않는다 — 감은 눈을 뜨는 것으로 충분하다.
+     */
     let pose: Pose = 'front_center';
     let from: PoseGeo = poseGeometry(pose);
     let to: PoseGeo = from;
@@ -111,24 +153,35 @@ export default function HomeCharacter() {
     let w = 0, h = 0, size = 0, x = 0, y = 0;
     /** 워드마크·설명이 끝나는 높이. 글자는 그 아래에서만 뜬다 */
     let introBottom = 0;
-    let vx = random(-25, 25), vy = 28, targetX = vx, targetY = vy;
-    let held = false, pointer = -1, grabX = 0, grabY = 0, lastX = 0, lastY = 0, lastMove = 0;
-    let nextWander = 0, lastPose = 0, lastBounce = 0, faceUntil = 0;
+    /**
+     * 이 캐릭터는 이제 **움직이지 않는다.**
+     *
+     * 끌어 옮기고 벽에 튕기던 것을 걷어냈다. 그 움직임이 있는 동안에는
+     * 홈에서 일어나는 일이 전부 이 캐릭터의 일이었는데, 이제 배경을
+     * 오가는 구경꾼들이 그 자리를 맡는다. 메가폰트는 제자리에 서서
+     * **모습만 바꾼다** — 포즈·표정·한 마디.
+     */
+    let lastPose = 0, nextPose = 0, faceUntil = 0;
     let squash = 0, tilt = 0, raf = 0, lastTime = 0;
-    let depth = 1;
-    // 한 번 부푸는 동안의 상태. burstAt는 시작 시각, burstTo는 이번에 갈 크기.
-    let burstAt = 0, burstTo = 1, nextBurst = 0;
+    /**
+     * 크기는 늘 1이다.
+     *
+     * 가끔 한 번씩 부풀었다 돌아오는 움직임이 있었는데 걷어냈다. 그것은
+     * 캐릭터가 화면을 떠다니던 시절, 가만히 있는 동안에도 무언가 일어나게
+     * 하려던 장치였다. 이제 배경에 오가는 사람들이 그 일을 하므로, 한가운데
+     * 것까지 들썩이면 볼 데가 둘이 된다.
+     */
+    const depth = 1;
     let nextSay = 0, sayUntil = 0;
-    // 첫인사 — 세 마디를 다 하면 끝나고, 그 뒤로는 평소대로 논다.
-    let welcomeIdx = 0, welcomeNext = 0, welcoming = true;
-    let initialized = false, visible = !document.hidden;
+    /**
+     * 첫인사의 차례. 등 → 돌아섬 → '!' → 웃음 → 인사 넉 마디 → 평소.
+     * 이 동안에는 떠다니지도 부풀지도 않는다.
+     */
+    let intro: 'shut' | 'bang' | 'welcome' | null = 'shut';
+    let introAt = 0;
 
-    /** 표정은 사건이 있을 때만 바뀐다. 한 번 바뀌면 2초는 그 얼굴로 있는다. */
-    const feel = (next: Eyes, now: number) => {
-      if (now < faceUntil) return;
-      faceUntil = now + FACE_HOLD;
-      setEyes(next);
-    };
+    let welcomeIdx = 0, welcomeNext = 0;
+    let initialized = false, visible = !document.hidden;
 
     const setPose = (next: Pose, now: number) => {
       if (next === pose) return;
@@ -136,6 +189,7 @@ export default function HomeCharacter() {
       // 벽에 붙어 있을 때 더 큰 포즈로 바꾸면 안쪽으로 순간이동한 것처럼 보인다.
       if (x < (size * depth * shape.x) / 2 || x > w - (size * depth * shape.x) / 2 ||
           y < (size * depth * shape.y) / 2 || y > h - (size * depth * shape.y) / 2) return;
+      void 0;
       turn = turnKind(pose, next);
       from = geo;                    // 돌던 도중이면 지금 모습에서 이어서 돈다
       to = poseGeometry(next);
@@ -165,6 +219,11 @@ export default function HomeCharacter() {
       dot.setAttribute('cy', geo.dot.cy.toFixed(2));
       dot.setAttribute('r', geo.dot.r.toFixed(2));
       dot.setAttribute('fill', geo.bodyFill);
+      // 도는 중간에는 감춘다. 뒷모습의 혹이 줄어드는 동안 몸은 가로로
+      // 좁아지는데 이 점은 제자리라, 한가운데 즈음에서 **몸에서 떨어진
+      // 점**으로 보인다. 도는 결의 한복판에서 0이 된다.
+      const swing = progress > 0 && progress < 1 ? Math.sin(Math.PI * progress) : 0;
+      dot.setAttribute('opacity', (1 - swing).toFixed(3));
 
       const eye = eyeRef.current!;
       if (geo.eye) {
@@ -173,6 +232,10 @@ export default function HomeCharacter() {
         eye.setAttribute('width', geo.eye.w.toFixed(2));
         eye.setAttribute('height', geo.eye.h.toFixed(2));
       }
+      /* 눈을 가로로 열어 봤다가 걷어냈다(2026-09-20). 뒷모습에서 정면으로
+         도는 그 한 순간을 위한 것이었는데, 배율로 눌린 획이 **벡터가 깨진
+         것처럼** 보였다. 첫 화면이 뒷모습을 거치지 않게 되면서 그 순간
+         자체가 없어졌고 — 앞모습과 옆모습은 둘 다 눈을 갖고 있어 늘 1이다. */
       eye.style.opacity = String(eyeOpacity(from, to, progress));
 
       const trail = trailRef.current!;
@@ -192,7 +255,19 @@ export default function HomeCharacter() {
       el.style.setProperty('--char-squash', String(1 - squash));
       el.style.setProperty('--char-stretch', String(1 + squash * 0.45));
       el.dataset.pose = pose;
-      el.dataset.held = String(held);
+
+      // 그림자는 실루엣을 따라간다. 포즈마다 폭도 바닥도 다르다.
+      const floor = geo.span.y / 2 + SHADE_GAP;
+      el.style.setProperty('--shade-w', (geo.span.x * SHADE_W).toFixed(3));
+      el.style.setProperty('--shade-y', (0.5 + floor).toFixed(3));
+
+      // 구경꾼들이 따라올 수 있게 자리를 적어 둔다. 상태로 올리면 초당
+      // 예순 번 홈 전체가 다시 그려진다 — 그래서 모듈 하나를 같이 쓴다.
+      charPos.x = x;
+      charPos.y = y;
+      charPos.size = size * depth;
+      charPos.ground = y + size * depth * floor;   // 그림자가 놓인 줄이 바닥이다
+      charPos.ready = initialized;
     };
 
     const measure = () => {
@@ -204,27 +279,25 @@ export default function HomeCharacter() {
       introBottom = intro
         ? intro.getBoundingClientRect().bottom - frame.getBoundingClientRect().top
         : 0;
-      if (!initialized) { x = w / 2; y = h * 0.46; initialized = true; }
+      if (!initialized) { x = w / 2; y = h * REST_Y; initialized = true; }
       contain();
       paint(1);
     };
 
     /**
-     * 어느 쪽으로 가고 있느냐가 어느 쪽을 보느냐를 정한다.
+     * 가만히 서서 이따금 고개를 돌린다.
      *
-     * 문턱을 둘로 나눈 이유: 조금 흐를 때 몸까지 틀면 가만히 떠 있는 동안
-     * 계속 좌우로 꺾인다. 그래서 느리면 눈만 그쪽으로 보내고(front_left·
-     * front_right), 확실히 그쪽으로 갈 때만 몸을 튼다.
-     * 위로 멀어질 때는 등을 보인다 — 뒷모습에는 눈이 없다.
+     * 움직이던 시절에는 가는 쪽이 보는 쪽을 정했다. 이제 갈 데가 없으므로
+     * 제 안에서 고른다. 정면에 오래 머물고 옆은 잠깐씩만 본다 — 반대로
+     * 두면 두리번거리는 것이 되어 가만히 있는 것으로 안 읽힌다.
+     * 등은 돌리지 않는다. 첫인사에서 한 번 돌아선 뒤로는 사람을 본다.
      */
-    const facing = (): Pose => {
-      if (Math.hypot(vx, vy) > 360) return vx < 0 ? 'left_light' : 'right_light';
-      if (vy < -40 && Math.abs(vy) > Math.abs(vx)) return vx < 0 ? 'back_left' : 'back_right';
-      if (vx < -60) return 'left';
-      if (vx > 60) return 'right';
-      if (vx < -12) return 'front_left';
-      if (vx > 12) return 'front_right';
-      return 'front_center';
+    const idlePose = (): Pose => {
+      const r = Math.random();
+      if (r < 0.52) return 'front_center';
+      if (r < 0.68) return 'front_left';
+      if (r < 0.84) return 'front_right';
+      return r < 0.92 ? 'left' : 'right';
     };
 
     const step = (t: number) => {
@@ -232,58 +305,58 @@ export default function HomeCharacter() {
       lastTime = t;
 
       // ── 첫인사 ───────────────────────────────────────────────
-      // 정면·웃는 눈으로 묶어 두고 세 마디를 차례로 띄운다. 이 동안에는
-      // 부풀기도 혼잣말도 돌지 않는다 — 한 번에 두 가지가 일어나면 둘 다
-      // 흐려진다(부풀기와 혼잣말을 서로 막아 두는 것과 같은 이유다).
-      if (welcoming && !reduced) {
-        if (!welcomeNext) welcomeNext = t + WELCOME_DELAY;
-        setPose('front_center', t);
+      // 등을 보이고 있다가 돌아서고, 정면이 되는 순간 놀라고('!'), 그제야
+      // 웃으면서 인사한다. 이 동안에는 떠다니지도 부풀지도 혼잣말하지도
+      // 않는다 — 한 번에 두 가지가 일어나면 둘 다 흐려진다.
+      if (intro && !reduced) {
+        if (!introAt) introAt = t;
         faceUntil = 0;
-        setEyes('happy');
-        if (!sayUntil && t > welcomeNext) {
+        if (intro === 'shut') {
+          // 감았던 눈을 뜨는 그 순간에 '!'가 터진다. 둘이 같은 사건이다.
+          if (t - introAt > SHUT_MS) {
+            setEyes('general');
+            setSay({ text: '!', side: 'right', tilt: -8, quick: true });
+            sayUntil = t + BANG_MS;
+            intro = 'bang'; introAt = t;
+          }
+        } else if (intro === 'bang') {
+          // 놀란 다음에 웃는다. 순서가 뒤집히면 인사가 먼저 와서 '!'가
+          // 무엇에 놀란 것인지 알 수 없다.
+          if (t > sayUntil) {
+            sayUntil = 0; setSay(null);
+            setEyes('happy');
+            intro = 'welcome'; welcomeNext = t + WELCOME_GAP;
+          }
+        } else if (!sayUntil && t > welcomeNext) {
           if (welcomeIdx >= WELCOME.length) {
-            welcoming = false;
+            intro = null;
             setEyes('general');
             nextSay = t + 1200;
-            nextBurst = t + 900;
           } else {
             // 양옆으로 번갈아. 두 마디가 같은 쪽에 서면 차례로 온 것이
             // 아니라 한 자리에서 글자만 바뀐 것으로 보인다.
-            setSay({ text: WELCOME[welcomeIdx], side: welcomeIdx % 2 ? 'left' : 'right', tilt: welcomeIdx % 2 ? 5 : -5 });
+            const w = WELCOME[welcomeIdx];
+            setSay({ text: w.text, small: w.small, side: welcomeIdx % 2 ? 'left' : 'right', tilt: welcomeIdx % 2 ? 5 : -5 });
             sayUntil = t + WELCOME_MS;
             welcomeNext = t + WELCOME_MS + WELCOME_GAP;
             welcomeIdx++;
           }
         }
-      } else if (welcoming && reduced) {
-        welcoming = false;
+      } else if (intro && reduced) {
+        // 움직임을 끈 사람에게는 차례가 없다 — 곧바로 정면으로 선다.
+        setPose('front_center', t);
+        intro = null;
       }
 
-      if (visible && !held && !reduced && !welcoming) {
-        if (t > nextWander) {
-          const angle = random(0, Math.PI * 2);
-          targetX = Math.cos(angle) * random(18, 38);
-          targetY = Math.sin(angle) * random(18, 38);
-          nextWander = t + random(2800, 5200);
-        }
-        // 다음 부풀기는 언제 올지 모른다. 규칙적이면 사건이 아니라 박자가 된다.
-        // 글자를 뱉는 동안에는 부풀지 않는다 — 글자가 몸을 따라 위로 밀려
-        // 화면 밖으로 나가고, 한 번에 두 가지가 일어나 둘 다 흐려진다.
-        if (!burstAt && !sayUntil && t > nextBurst) {
-          burstAt = t;
-          burstTo = random(BURST_MIN, BURST_MAX);
-        }
-        // 글자가 뜰 자리가 있어야 뱉는다. 셋을 본다:
-        //   · 부푸는 중이면 참는다 — 뱉는 사이에 몸이 커져 글자를 밀어 올린다
+      if (visible && !reduced && !intro) {
+        // 글자가 뜰 자리가 있어야 뱉는다. 둘을 본다:
         //   · 상자가 화면보다 넓으면 어디에 두든 한쪽이 잘린다
         //   · 몸 위로 글자 한 줄이 들어갈 자리가 워드마크 아래에 남아 있어야 한다
-        //     (--say-floor 위로 여백 0.08 + 글자 높이 0.12 ≒ 상자의 0.2)
         const roomAbove = y - (size * depth * geo.span.y) / 2 - size * depth * 0.2;
         if (t > nextSay && !sayUntil &&
-            (burstAt || size * depth > w * 0.98 || roomAbove < introBottom + 8)) {
+            (size * depth > w * 0.98 || roomAbove < introBottom + 8)) {
           nextSay = t + 1500;
         } else if (t > nextSay && !sayUntil) {
-          // 어느 쪽에 뱉을지는 취향이 아니라 자리 문제다 — 화면 가운데 쪽으로.
           setSay({
             text: SAY_POOL[Math.floor(Math.random() * SAY_POOL.length)],
             side: x < w / 2 ? 'right' : 'left',
@@ -291,27 +364,12 @@ export default function HomeCharacter() {
           });
           sayUntil = t + SAY_MS;
         }
-        const ease = 1 - Math.exp(-dt * 0.8);
-        vx += (targetX - vx) * ease;
-        vy += (targetY - vy) * ease;
-        x += vx * dt;
-        y += vy * dt;
-
-        const { rx, ry } = bounds();
-        let hit = false;
-        if (x < rx) { x = rx; vx = Math.abs(vx) * 0.78; targetX = Math.abs(targetX); hit = true; }
-        if (x > w - rx) { x = w - rx; vx = -Math.abs(vx) * 0.78; targetX = -Math.abs(targetX); hit = true; }
-        if (y < ry) { y = ry; vy = Math.abs(vy) * 0.78; targetY = Math.abs(targetY); hit = true; }
-        if (y > h - ry) { y = h - ry; vy = -Math.abs(vy) * 0.78; targetY = -Math.abs(targetY); hit = true; }
-
-        // 벽에 부딪히는 것이 이 캐릭터에게 일어나는 유일한 사건이다.
-        // 표정은 여기서만 바뀐다 — 가만히 떠다니는 동안은 무표정이다.
-        if (hit && t - lastBounce > 450) {
-          lastBounce = t;
-          squash = 0.09;
-          feel(Math.random() < 0.75 ? 'surprise' : 'angry', t);
+        // 이따금 고개를 돌린다. 부풀거나 말하는 중에는 가만히 둔다 —
+        // 한 번에 두 가지가 일어나면 둘 다 흐려진다.
+        if (t > nextPose && !sayUntil && t - lastPose > POSE_DWELL) {
+          setPose(idlePose(), t);
+          nextPose = t + random(2600, 6200);
         }
-        if (t - lastPose > POSE_DWELL) setPose(facing(), t);
         contain();
       }
 
@@ -332,85 +390,17 @@ export default function HomeCharacter() {
       const p = easeInOut(raw);
       geo = raw >= 1 ? to : blendGeo(from, to, p);
 
-      // 부풀기는 목표를 쫓아가는 게 아니라 한 번 지나가는 것이다.
-      // 시간으로 끊어야 '금세 돌아온다'가 지켜진다.
-      if (reduced) { depth = 1; burstAt = 0; }
-      else if (burstAt) {
-        const age = t - burstAt;
-        if (age < BURST_UP) depth = 1 + (burstTo - 1) * easeInOut(age / BURST_UP);
-        else if (age < BURST_UP + BURST_HOLD) depth = burstTo;
-        else if (age < BURST_UP + BURST_HOLD + BURST_BACK) {
-          depth = burstTo + (1 - burstTo) * easeInOut((age - BURST_UP - BURST_HOLD) / BURST_BACK);
-        } else {
-          depth = 1;
-          burstAt = 0;
-          nextBurst = t + random(5000, 16000);
-        }
-      }
-
       squash *= Math.exp(-dt * 12);
       // 회전의 결을 몸짓으로 거든다: 좌우로 돌 때 가로로 한 번 좁아진다.
       // 형태 변화만으로는 방향이 안 읽힌다.
       const swing = raw > 0 && raw < 1 ? Math.sin(Math.PI * raw) : 0;
       const spin = turn === 'spin' ? swing * 0.22 : 0;
-      const drift = reduced ? 0 : clamp(vx / 70, -4, 4);
-      tilt += (drift - tilt) * (1 - Math.exp(-dt * 6));
+      // 기울기는 흐르던 속도를 따라갔다. 이제 흐르지 않으므로 늘 곧게 선다.
+      tilt += (0 - tilt) * (1 - Math.exp(-dt * 6));
       el.style.setProperty('--char-turn', String(1 - spin));
 
       paint(p);
       raf = requestAnimationFrame(step);
-    };
-
-    api.current = {
-      down(e) {
-        if (held || !e.isPrimary || e.button !== 0) return;
-        held = true;
-        pointer = e.pointerId;
-        el.setPointerCapture(pointer);
-        const r = frame.getBoundingClientRect();
-        grabX = e.clientX - r.left - x;
-        grabY = e.clientY - r.top - y;
-        lastX = x; lastY = y; lastMove = performance.now();
-        vx = vy = 0;
-        paint(1);
-      },
-      move(e) {
-        if (!held || e.pointerId !== pointer) return;
-        const r = frame.getBoundingClientRect();
-        const t = performance.now();
-        x = e.clientX - r.left - grabX;
-        y = e.clientY - r.top - grabY;
-        contain();
-        const dt = Math.max((t - lastMove) / 1000, 0.008);
-        vx = vx * 0.35 + clamp((x - lastX) / dt, -1100, 1100) * 0.65;
-        vy = vy * 0.35 + clamp((y - lastY) / dt, -1100, 1100) * 0.65;
-        lastX = x; lastY = y; lastMove = t;
-        if (!reduced && t - lastPose > POSE_DWELL) setPose(facing(), t);
-        contain();
-      },
-      up(e, cancelled = false) {
-        if (!held || e.pointerId !== pointer) return;
-        held = false;
-        pointer = -1;
-        if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
-        const t = performance.now();
-        if (cancelled || reduced || t - lastMove > 120) vx = vy = 0;
-        const speed = Math.hypot(vx, vy);
-        if (speed > 850) { vx *= 850 / speed; vy *= 850 / speed; }
-        contain();
-      },
-      key(e) {
-        const step: Record<string, number[]> = {
-          ArrowLeft: [-24, 0], ArrowRight: [24, 0], ArrowUp: [0, -24], ArrowDown: [0, 24]
-        };
-        if (step[e.key]) {
-          e.preventDefault();
-          const [dx, dy] = step[e.key];
-          x += dx; y += dy; vx = dx; vy = dy;
-          contain();
-          setPose(facing(), performance.now());
-        }
-      }
     };
 
     const resize = new ResizeObserver(measure);
@@ -420,8 +410,7 @@ export default function HomeCharacter() {
     const onVisibility = () => { visible = !document.hidden; lastTime = 0; };
     const onReduced = () => {
       reduced = media.matches;
-      vx = vy = tilt = squash = 0;
-      if (reduced) { depth = 1; burstAt = 0; }
+      tilt = squash = 0;
       paint(1);
     };
     document.addEventListener('visibilitychange', onVisibility);
@@ -430,30 +419,26 @@ export default function HomeCharacter() {
     return () => {
       cancelAnimationFrame(raf);
       resize.disconnect();
-      api.current = null;
       document.removeEventListener('visibilitychange', onVisibility);
       media.removeEventListener('change', onReduced);
     };
   }, []);
 
   return (
-    <button
+    <div
       ref={ref}
-      type="button"
       className="home-char"
       data-eyes={eyes}
-      aria-label="메가폰트 캐릭터. 드래그하거나 방향키로 움직여보세요"
-      onPointerDown={(e) => api.current?.down(e)}
-      onPointerMove={(e) => api.current?.move(e)}
-      onPointerUp={(e) => api.current?.up(e)}
-      onPointerCancel={(e) => api.current?.up(e, true)}
-      onLostPointerCapture={(e) => api.current?.up(e, true)}
-      onKeyDown={(e) => api.current?.key(e)}
+      role="img"
+      aria-label="메가폰트 캐릭터"
     >
       {say && !matchMedia('(prefers-reduced-motion: reduce)').matches && (
         <span className="home-char-say" data-side={say.side} aria-hidden="true"
+          data-small={say.small ? 'true' : undefined} data-quick={say.quick ? 'true' : undefined}
           style={{ '--say-tilt': `${say.tilt.toFixed(1)}deg` } as React.CSSProperties}>{say.text}</span>
       )}
+      {/* 떠 있다는 것은 그림자가 말한다. 몸보다 아래, 몸보다 작게. */}
+      <span className="home-char-shade" aria-hidden="true" />
       <span className="home-char-motion" aria-hidden="true">
         <svg viewBox={`0 0 ${CANVAS} ${CANVAS}`}>
           <g ref={trailRef} />
@@ -472,17 +457,22 @@ export default function HomeCharacter() {
               두 겹을 미리 그려 두고 CSS가 투명도만 바꾸므로, 깜빡이는 동안
               React가 다시 그리지 않는다. 표정이 무엇이든 그 위로 깜빡인다. */}
           <svg
+            className="home-char-eye"
             ref={eyeRef}
             viewBox="0 0 412.12 172.44"
             preserveAspectRatio="none"
             overflow="visible"
           >
             <g className="mf-eye-face" dangerouslySetInnerHTML={{ __html: eyeMarkup(eyes) }} />
-            <g className="mf-eye-wink" dangerouslySetInnerHTML={{ __html: eyeMarkup('twinkle') }} />
+            {/* 짓고 있는 얼굴이 이미 twinkle이면 갈아 끼울 것이 없다 —
+                같은 마크업을 두 벌 넣을 이유가 없다. */}
+            {eyes !== 'twinkle' && (
+              <g className="mf-eye-wink" dangerouslySetInnerHTML={{ __html: eyeMarkup('twinkle') }} />
+            )}
           </svg>
         </svg>
       </span>
-    </button>
+    </div>
   );
 }
 

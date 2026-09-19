@@ -44,6 +44,7 @@ function check(ok, label) {
 async function settle(page) {
   await page.evaluate(() => document.fonts.ready);
   await page.waitForFunction(() => !document.querySelector('.splash'), { timeout: 10000 }).catch(() => {});
+  await page.waitForFunction(() => !document.querySelector('.splash-veil'), { timeout: 5000 }).catch(() => {});
   await page.waitForTimeout(400);
 }
 

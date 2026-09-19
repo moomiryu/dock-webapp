@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import InfoOverlay from '../components/InfoOverlay';
 import HomeCharacter from '../components/HomeCharacter';
+import HomeCrowd from '../components/HomeCrowd';
 interface Props { onStart: () => void; }
 export default function PhaseHome({ onStart }: Props) {
   const [info, setInfo] = useState(false);
   if (info) return <InfoOverlay onClose={() => setInfo(false)} onStart={onStart} />;
   return (
     <div className="home-frame">
+      {/* 구경꾼이 먼저 그려져야 메가폰트 뒤에 선다 */}
+      <HomeCrowd />
       <HomeCharacter />
       <div className="home-layer">
         <div className="home-intro">

@@ -5,17 +5,18 @@
 // 글이 검정 위에 큰 상자로 서서 세게 숨 쉬고, 30초에 걸쳐 잦아들다가, 제
 // 크기로 내려앉아 다른 잔상들 사이에 섞인다. 끝은 사건이 아니라 가라앉음이다.
 //
-// 상자의 생김새는 04 작성 화면에서 자판을 내리면 남는 그 한 덩이와 같다
-// (components/WaveBox).
+// 말풍선의 생김새는 성격이 정한다(lib/bubbles). 크기는 글이 정한다 —
+// 상자가 먼저 있고 글자가 줄어드는 것이 아니라 그 반대다(lib/fit).
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import WaveBox from '../components/WaveBox';
+import SpeechBubble from '../components/SpeechBubble';
+import { bubbleFor } from '../lib/bubbles';
+import { bubbleAt, fillFromLegacySize, foldLines, type Boxed } from '../lib/fit';
 import { fontMap } from '../lib/palettes';
 import { palettes as legacyPalettes } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import { EMPHASIS_MS, STAY_MS } from '../lib/wall';
 import VoiceBubble from '../components/VoiceBubble';
-import { sizeScale } from '../lib/messageStyle';
 import { SAMPLE_MESSAGES } from '../lib/samples';
 import {
   isFirebaseConfigured,
@@ -60,10 +61,6 @@ const ECHO_STRENGTH = 0.3;
 const LAND_MS = 1200;
 /** 세기를 새로 내려주는 간격. 그 사이는 CSS transition이 잇는다 */
 const CALM_TICK_MS = 250;
-/** 상자 안에서 글이 쓰는 폭 — 한 변에 대한 비율 */
-const INNER = 0.76;
-/** 이 글자 수를 넘는 줄은 접는다. 04와 같이 크기는 그대로 두고 줄을 늘린다 */
-const CHARS_PER_LINE = 12;
 
 /** CSS가 같은 치수를 보게 내려준다. 벽의 루트에 한 번 */
 const WALL_VARS = {
@@ -74,22 +71,6 @@ const WALL_VARS = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 
-/**
- * 상자 한 변에 대한 글자 크기의 비율. 결과가 한 변에 정비례해야 한다 —
- * 큰 상자와 잔상이 같은 함수를 쓰면 내려앉을 때 배율 하나로 글까지 포개진다.
- *
- * 짧은 글은 한 줄에 맞추고(CHARS_PER_LINE까지), 긴 글은 접어서 넓이에 맞춘다.
- * 넓이 쪽: N자를 줄간 1.5로 채우면 N × 1.5 × F² ≤ inner², F = inner / √(1.5N).
- * 04와 같은 태도다 — 열두 자를 넘으면 크기는 그대로 두고 줄이 늘어난다.
- */
-function boxFontRatio(text: string, scaleX: number, size: number | undefined): number {
-  const wide = Math.max(1, scaleX);
-  const chars = Math.max(1, Array.from(text.replace(/\n/g, '')).length);
-  const longest = Math.max(1, ...text.split('\n').map((l) => Array.from(l).length));
-  const byLine = INNER / Math.min(longest, CHARS_PER_LINE) / wide;
-  const byArea = INNER / Math.sqrt(1.5 * chars * wide);
-  return Math.min(byArea, byLine * sizeScale(size ?? 44));
-}
 
 /** 큰 상자가 내려앉을 자리. 화면 가운데에서의 거리(px)와 배율 */
 type Land = { dx: number; dy: number; scale: number };
@@ -99,6 +80,18 @@ const SINK: Land = { dx: 0, dy: 0, scale: ECHO_SIDE_VH / BIG_SIDE_VH };
 /** 떠다니는 몸 하나. 자리와 속도는 여기 있고 React는 모른다 — 프레임마다
     상태를 갱신하면 열 개 × 60프레임 = 초당 600번 다시 그리게 된다. */
 type Body = { x: number; y: number; vx: number; vy: number; r: number; held: boolean };
+
+/**
+ * 이 글이 쓰는 틀 — 최대 영역 한 변에 대한 **비율**로.
+ *
+ * 잔상과 강조가 같은 값을 쓴다. 둘의 차이는 곱하는 한 변뿐이라
+ * (--echo-side · --big-side) 내려앉을 때 배율 하나로 포개진다.
+ */
+function bubbleOf(msg: StoredMessage): { lines: string[]; shape: ReturnType<typeof bubbleFor>; box: Boxed } {
+  const lines = foldLines(msg.text);
+  const shape = bubbleFor(msg.tone?.font);
+  return { lines, shape, box: bubbleAt(lines, shape, fillFromLegacySize(msg.tone?.size)) };
+}
 
 function boxSide(): number {
   return (window.innerHeight * ECHO_SIDE_VH) / 100;
@@ -182,6 +175,11 @@ export default function WallSimulation() {
     if (el) elsRef.current.set(id, el);
     else elsRef.current.delete(id);
   }, []);
+
+  // 잔상의 크기는 글마다 다르다 — 정사각이던 시절엔 한 변 하나로 끝났지만,
+  // 이제 납작한 것과 정방형인 것이 섞여 있다. 물리 계산이 그 값을 알아야
+  // 벽면과 서로에게 제대로 튕긴다. 프레임 루프는 React 바깥이라 ref로 건넨다.
+  const sizesRef = useRef(new Map<string, { w: number; h: number }>());
 
   // 열 개가 차 있을 때 한 칸씩 갈아 끼우는 시계
   const [rotate, setRotate] = useState(0);
@@ -290,7 +288,8 @@ export default function WallSimulation() {
         setEmphLand({
           dx: body.x - window.innerWidth / 2,
           dy: body.y - window.innerHeight / 2,
-          scale: (body.r * 2) / bigSide
+          // 같은 글이라 잔상과 큰 상자의 생김새가 같다 — 배율은 한 변의 비다
+          scale: boxSide() / bigSide
         });
       } else {
         setEmphLand(SINK);
@@ -374,6 +373,15 @@ export default function WallSimulation() {
   // 프레임마다 한 걸음 걷고 자리를 요소에 적는다. transform만 건드리므로
   // 레이아웃을 다시 계산하지 않는다 — 파이에서 이게 프레임을 지킨다.
   const shownKey = shown.map((m) => m.id).join(',');
+  // 물리 계산이 볼 수 있게 크기를 옮겨 둔다. 글·모양·크기가 그대로면 값도 같다.
+  useEffect(() => {
+    const m = new Map<string, { w: number; h: number }>();
+    for (const msg of shown) {
+      const { box } = bubbleOf(msg);
+      m.set(msg.id, { w: box.w, h: box.h + box.tail });
+    }
+    sizesRef.current = m;
+  }, [shown]);
   useEffect(() => {
     const ids = shownKey ? shownKey.split(',') : [];
     let raf = 0;
@@ -385,18 +393,27 @@ export default function WallSimulation() {
       prev = t;
       const w = window.innerWidth;
       const h = window.innerHeight;
-      const r = boxSide() / 2;
+      const side = boxSide();
+      // 원으로 치되 반지름은 **긴 쪽 절반**이다. 납작한 말풍선이 옆으로
+      // 스칠 때 조금 일찍 튕기지만, 짧은 쪽으로 잡으면 겹쳐 지나간다.
+      const rOf = (id: string) => {
+        const f = sizesRef.current.get(id);
+        return (side * (f ? Math.max(f.w, f.h) : 1)) / 2;
+      };
       const map = bodiesRef.current;
       for (const id of [...map.keys()]) if (!ids.includes(id)) map.delete(id);
       for (const id of ids) {
         const b = map.get(id);
-        if (!b) map.set(id, spawn(r, w, h, [...map.values()]));
-        else b.r = r;                      // 창 크기가 바뀌면 같이 바뀐다
+        if (!b) map.set(id, spawn(rOf(id), w, h, [...map.values()]));
+        else b.r = rOf(id);                // 창 크기가 바뀌면 같이 바뀐다
       }
       step([...map.values()], w, h, dt);
       for (const [id, b] of map) {
         const el = elsRef.current.get(id);
-        if (el) el.style.transform = `translate3d(${(b.x - b.r).toFixed(1)}px, ${(b.y - b.r).toFixed(1)}px, 0)`;
+        if (!el) continue;
+        // 몸은 가운데를 들고 있고 요소는 왼쪽 위로 놓인다
+        const f = sizesRef.current.get(id) ?? { w: 1, h: 1 };
+        el.style.transform = `translate3d(${(b.x - (side * f.w) / 2).toFixed(1)}px, ${(b.y - (side * f.h) / 2).toFixed(1)}px, 0)`;
       }
       raf = requestAnimationFrame(loop);
     };
@@ -504,7 +521,7 @@ export default function WallSimulation() {
 
 const WallBlock = memo(function WallBlock({ msg, index, ghost, onEl }: { msg: StoredMessage; index: number; ghost: boolean; onEl: (id: string, el: HTMLElement | null) => void }) {
   const { bg, text, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
-  const ratio = useMemo(() => boxFontRatio(msg.text, scaleX, msg.tone?.size), [msg.text, scaleX, msg.tone?.size]);
+  const { lines, shape, box } = useMemo(() => bubbleOf(msg), [msg]);
   // 숨도 어긋낸다. 137은 600과 서로소라 열 개가 같은 위상에 모이지 않는다.
   const breath = -((index * 137) % 600);
 
@@ -515,13 +532,13 @@ const WallBlock = memo(function WallBlock({ msg, index, ghost, onEl }: { msg: St
       className={`wall-block${ghost ? ' is-ghost' : ''}`}
       data-id={msg.id}
       ref={(el) => onEl(msg.id, el)}
-      style={{ '--wave-phase': `${breath}ms` } as CSSProperties}
     >
-      <WaveBox color={bg} strength={ECHO_STRENGTH}>
-        <VoiceBubble text={msg.text} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght}
+      <SpeechBubble shape={shape} box={box} side="var(--echo-side)" color={bg}
+        strength={ECHO_STRENGTH} phase={`${breath}ms`}>
+        <VoiceBubble text={lines.join('\n')} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght}
           width={scaleX} slant={skew} align={msg.tone?.align} size={msg.tone?.size}
-          fontSize={`calc(var(--echo-side) * ${ratio.toFixed(4)})`} />
-      </WaveBox>
+          fontSize={`calc(var(--echo-side) * ${box.unit.toFixed(4)})`} />
+      </SpeechBubble>
     </div>
   );
 });
@@ -530,7 +547,7 @@ const WallBlock = memo(function WallBlock({ msg, index, ghost, onEl }: { msg: St
 
 const WallShowMessage = memo(function WallShowMessage({ msg, land }: { msg: StoredMessage; land: Land | null }) {
   const { bg, text, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
-  const ratio = useMemo(() => boxFontRatio(msg.text, scaleX, msg.tone?.size), [msg.text, scaleX, msg.tone?.size]);
+  const { lines, shape, box } = useMemo(() => bubbleOf(msg), [msg]);
 
   // 30초에 걸쳐 잦아든다. 상한까지 가면 잔상의 세기에 닿는다 — 그래서
   // 내려앉을 때 세기는 이미 거기 있고, 일찍 빼면 남은 만큼을 마저 내린다.
@@ -554,11 +571,12 @@ const WallShowMessage = memo(function WallShowMessage({ msg, land }: { msg: Stor
   return (
     <div className={`wall-show${landing ? ' is-landing' : ''}`}>
       <div className="wall-show-box" style={boxStyle}>
-        <WaveBox color={bg} strength={landing ? ECHO_STRENGTH : strength} style={calm}>
-          <VoiceBubble text={msg.text} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght}
+        <SpeechBubble shape={shape} box={box} side="var(--big-side)" color={bg}
+          strength={landing ? ECHO_STRENGTH : strength} style={calm}>
+          <VoiceBubble text={lines.join('\n')} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght}
             width={scaleX} slant={skew} align={msg.tone?.align} size={msg.tone?.size}
-            fontSize={`calc(var(--big-side) * ${ratio.toFixed(4)})`} />
-        </WaveBox>
+            fontSize={`calc(var(--big-side) * ${box.unit.toFixed(4)})`} />
+        </SpeechBubble>
       </div>
     </div>
   );

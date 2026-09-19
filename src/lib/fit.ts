@@ -110,3 +110,37 @@ export function fillFromLegacySize(size: number | undefined): number {
   const i = Math.round(((Math.min(60, Math.max(28, size ?? 44)) - 28) / 32) * (SIZE_FILLS.length - 1));
   return SIZE_FILLS[i];
 }
+
+/**
+ * 줄바꿈이 없는 글을 한 줄 12자로 접는다 — **어절 단위로만.**
+ *
+ * 줄을 어디서 나눌지는 발화자가 정한다. 그런데 그 규칙이 생기기 전에 쓰인
+ * 글에는 나눌 자리가 적혀 있지 않다 — 저장된 글은 전부 줄바꿈 없는 한
+ * 덩어리다. 그걸 그대로 새 계산에 넣으면 25자짜리가 한 줄로 늘어서 벽을
+ * 가로지르는 띠가 된다.
+ *
+ * 그래서 **줄바꿈이 없을 때만** 여기서 접는다. 발화자가 넣은 줄바꿈이
+ * 하나라도 있으면 손대지 않는다. 시스템이 형식을 정하는 것이 아니라,
+ * 아직 아무도 정하지 않은 자리를 메우는 다리다.
+ *
+ * 어절이 한 줄보다 긴 경우에만 음절에서 자른다. 표본에서 어절 최대가
+ * 6자였으니 12자 한도에서는 거의 오지 않는 길이다.
+ */
+export function foldLines(text: string, per = CHARS_PER_LINE): string[] {
+  if (text.includes('\n')) return text.split('\n');
+  const out: string[] = [];
+  let line = '';
+  const len = (v: string) => Array.from(v).length;
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    const next = line ? line + ' ' + word : word;
+    if (len(next) <= per) { line = next; continue; }
+    if (line) out.push(line);
+    line = word;
+    while (len(line) > per) {
+      out.push(Array.from(line).slice(0, per).join(''));
+      line = Array.from(line).slice(per).join('');
+    }
+  }
+  if (line) out.push(line);
+  return out.length ? out : [''];
+}

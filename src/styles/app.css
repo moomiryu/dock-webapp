@@ -2166,6 +2166,27 @@
 .wave-box{ position: relative; display: grid; place-items: center; aspect-ratio: 1; border-radius: 17%;
   transition: --wave-reach var(--wave-calm, 300ms) linear, --wave-ink var(--wave-calm, 300ms) linear; }
 .wave-box .message-line-fill{ background: none; padding-inline: 0; }
+
+/* ── 말풍선(벽) ────────────────────────────────────────────────────────
+   WaveBox와 같은 숨을 쉬지만 몸이 정사각이 아니다. 크기는 SpeechBubble이
+   calc()로 적는다 — 창이 바뀌어도 JS를 안 거친다. */
+.speech-bubble{ position: relative;
+  transition: --wave-reach var(--wave-calm, 300ms) linear, --wave-ink var(--wave-calm, 300ms) linear; }
+.bubble-art{ position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+/* 둘레를 100으로 정규화해(pathLength) 어느 도형에서도 같은 리듬으로 끊는다.
+   정사각 상자에서 쓰던 151.4/34 · 오프셋 102.4를 그 둘레 741.6으로 나눈 값이다. */
+.bubble-ring{ stroke-dasharray: 20.4 4.6; stroke-dashoffset: 13.8; stroke-linecap: round;
+  transform-box: fill-box; transform-origin: center; animation: waveRing 600ms linear infinite; }
+.bubble-core{ transform-box: fill-box; transform-origin: center; animation: waveCore 600ms linear infinite; }
+.bubble-ring, .bubble-core{ animation-delay: var(--wave-phase, 0s); }
+/* 글은 **몸통** 한가운데 앉는다 — 꼬리는 그 아래라 셈에서 뺀다 */
+.bubble-text{ position: absolute; left: 0; top: 0; width: 100%; display: grid; place-items: center; }
+.speech-bubble .message-line-fill{ background: none; padding-inline: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .bubble-ring, .bubble-core { animation: none; }
+  .bubble-ring { stroke-width: 3.8px; }
+}
+
 .compose-count{ transition: opacity 240ms; }
 @media (prefers-reduced-motion: reduce) {
   .wave-ring-path, .wave-core, .compose-editor.is-pulled .compose-pane,

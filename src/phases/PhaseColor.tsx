@@ -1,7 +1,9 @@
 import { useState, type CSSProperties } from 'react';
 import BackButton from '../components/BackButton';
 import VoiceBubble from '../components/VoiceBubble';
-import { WaveRing } from '../components/WaveBox';
+import SpeechBubble from '../components/SpeechBubble';
+import { bubbleFor } from '../lib/bubbles';
+import { bubbleAt, fillFromLegacySize, foldLines } from '../lib/fit';
 import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import { messageColors } from '../lib/messageStyle';
@@ -26,9 +28,23 @@ interface Props {
  *
  * 이 단계에서 달라지는 것은 하나뿐이다: **색판이 아래에서 올라온다.**
  * 그래서 단계가 넘어간 게 아니라 색만 꺼내 든 것으로 읽힌다.
+ *
+ * ── 말풍선이 여기서 처음 나온다 ───────────────────────────────────────
+ * 한때 조율 화면부터 도형을 세워 봤는데, 축 셋을 만지는 자리에 도형까지
+ * 올라오니 무엇을 조절하는 중인지가 흐려졌다. 여기는 **면이 주인공**인
+ * 화면이라 도형이 제 일을 한다 — 고른 색이 그 윤곽을 입는다.
+ *
+ * 크기는 fit.ts가 준다. 정사각 상자가 아니라 글이 정한 비례를 그대로
+ * 입으므로, 여기서 보는 모양이 벽에 뜰 모양과 같다.
  */
+/** 말풍선이 쓸 수 있는 가장 큰 자리. 옛 정사각 상자와 같은 치수다 */
+const AREA = 'min(80vw, 316px)';
+
 export default function PhaseColor({ text, tone, onBack, onNext }: Props) {
     const initial = messageColors(tone);
+    const lines = foldLines(text);
+    const shape = bubbleFor(tone.font);
+    const box = bubbleAt(lines, shape, fillFromLegacySize(tone.size));
     const [bg, setBg] = useState(initial.bg);
     const [fg, setFg] = useState(initial.text);
     const current = { ...tone, backgroundColor: bg, textColor: fg };
@@ -45,9 +61,12 @@ export default function PhaseColor({ text, tone, onBack, onNext }: Props) {
    <div className="z-ask compose-ask">
     <h1>발화의 색을 정해주세요</h1>
    </div>
-   <div className="compose-pane">
-    <WaveRing color={bg}/>
-    <VoiceBubble text={text} bg={bg} color={fg} fontFamily={fontMap[tone.font]} font={tone.font} weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size} fill/>
+   <div className="color-stage" style={{ '--color-area': AREA } as CSSProperties}>
+    <SpeechBubble shape={shape} box={box} side="var(--color-area)" color={bg}>
+     <VoiceBubble text={lines.join('\n')} bg={bg} color={fg} fontFamily={fontMap[tone.font]} font={tone.font}
+       weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size}
+       fontSize={`calc(var(--color-area) * ${box.unit.toFixed(4)})`} />
+    </SpeechBubble>
    </div>
   </div>
  </div></div>

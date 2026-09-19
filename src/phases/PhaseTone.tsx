@@ -1,12 +1,9 @@
 import { useState, type CSSProperties } from 'react';
 import BackButton from '../components/BackButton';
-import { fontMap } from '../lib/palettes';
+import { fontMap, opticalStroke } from '../lib/palettes';
 import { type PartialTone } from '../lib/tone';
-import { bubbleAt, fillFromLegacySize, foldLines } from '../lib/fit';
-import { bubbleFor } from '../lib/bubbles';
-import SpeechBubble from '../components/SpeechBubble';
-import VoiceBubble from '../components/VoiceBubble';
-import { DRAFT_COLORS } from '../lib/messageStyle';
+import { foldLines } from '../lib/fit';
+
 interface Props {
     /** 앞 화면들에서 쓰고 고른 것. 견본이 이제 내 글이다 */
     text: string;
@@ -14,31 +11,30 @@ interface Props {
     onBack: (tone: PartialTone) => void;
     onNext: (tone: PartialTone) => void;
 }
+
 /**
- * 견본이 '발화' 두 글자에서 **내 글**로 바뀌었다 (2026-09-19).
+ * 03 조율 — 두 장이다.
  *
- * 옛 배율(2.2)은 스케치의 '발화'를 잉크로 재서 나온 값이라 **두 글자**를
- * 전제했다 — 2글자 × 0.853em × (60 × k) × 장평 1.3 ≤ 390 − 40. 열두 자짜리
- * 문장에는 그 식이 통째로 안 맞는다.
+ * 한 장에 제목·설명·견본·축 셋을 다 올렸더니 처음 보는 사람에게 요소가
+ * 너무 많았다. **설명하는 장과 조작하는 장을 가른다** — 첫 장은 무엇을
+ * 하는 자리인지만 말하고, 누르면 화면이 통째로 위로 밀려 올라가며 견본과
+ * 축이 올라온다.
  *
- * 대신 무대에 맞춘다. 가장 긴 줄이 무대 폭의 86%에 들어가고(칸이 좁아져도
- * 글자가 밖으로 안 나간다), 줄 수가 늘면 높이가 먼저 걸린다. 크기 축은 그
- * 위에 배율로 얹힌다 — 이 화면에서 축은 절대 크기가 아니라 **얼마나 쓰는가**를
- * 말한다(근거는 lib/fit.ts의 SIZE_FILLS).
+ * ── 여기에 말풍선은 없다 ──────────────────────────────────────────────
+ * 한때 이 화면에 최대 영역 틀과 진짜 말풍선을 세워 봤다(2026-09-19).
+ * 크기 축이 '얼마나 쓰는가'라는 것은 분명해졌지만, 축 셋을 만지는 화면에
+ * 도형까지 올라오니 무엇을 조절하는 중인지가 흐려졌다. 말풍선은 **색을
+ * 고르는 화면**에서 처음 나온다 — 거기서는 면이 주인공이라 도형이 제
+ * 일을 한다.
+ *
+ * 그래서 여기 견본은 글자뿐이다. 크기·빠르기·무게가 글에 어떻게 얹히는지만
+ * 보여준다.
  */
-/**
- * 무대에 그리는 **최대 영역**. 벽에서 말풍선이 차지할 수 있는 가장 큰
- * 자리(1.08m 정사각)를 폰 화면에 줄여 놓은 것이다.
- *
- * 이게 없으면 크기 축이 말을 못 한다. 축은 절대 크기가 아니라 '얼마나
- * 쓰는가'인데(lib/fit.ts의 SIZE_FILLS), 붉은 면 한가운데 글자만 떠 있으면
- * **무엇에 대한 73%인지**가 화면에 없다. 점선 네모가 그 무엇이다.
- *
- * 폰은 벽보다 19배 작아서 이 안의 글자가 12px쯤으로 작다. 읽으라고 두는
- * 자리가 아니다 — 말풍선이 네모를 얼마나 채우는지를 보는 자리고, 읽히는지는
- * 미리보기가 맡는다.
- */
-const AREA = 'min(88cqw, 196px)';
+
+/** 견본이 쓸 수 있는 높이. 축 셋과 버튼이 아래를 가져간 나머지다 */
+const STAGE_H = 150;
+/** 견본 행간. 낱자 두 개('발화')일 때 쓰던 1은 문장에서 줄끼리 붙는다 */
+const STAGE_LH = 1.4;
 
 /**
  * 세 축. 차례는 스케치를 따른다 — 크기 · 빠르기 · 무게.
@@ -77,8 +73,8 @@ const AXES = [
 /**
  * 기울기는 이제 제 축이 아니다 — 빠르기가 함께 정한다.
  *
- * 04에 정렬·기울기 버튼 둘이 따로 서 있었는데, 기울기는 '빠르게 말하기'와
- * 같은 것을 다른 손짓으로 두 번 묻고 있었다. 빠르게 말하면 글자가 좁아지고
+ * 정렬·기울기 버튼 둘이 따로 서 있었는데, 기울기는 '빠르게 말하기'와 같은
+ * 것을 다른 손짓으로 두 번 묻고 있었다. 빠르게 말하면 글자가 좁아지고
  * (장평 0.7) 앞으로 기운다 — 한 동작이다. 그래서 빠른 쪽 두 칸에만 붙는다.
  *
  * 처음엔 12도·24도였는데 '빠르게'가 기운 티가 안 났다. 한 칸씩 올려
@@ -103,13 +99,12 @@ const nearest = (stops: readonly number[], v: number) =>
 
 export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) {
     const [tone, setTone] = useState<PartialTone>(initialTone);
+    /** 'intro' = 설명하는 장 · 'work' = 조작하는 장 */
+    const [step, setStep] = useState<'intro' | 'work'>('intro');
     const lines = foldLines(text);
     const longest = Math.max(1, ...lines.map((l) => Array.from(l).length));
-    void longest;
-    const shape = bubbleFor(tone.font);
-    const box = bubbleAt(lines, shape, fillFromLegacySize(tone.size));
-    // 장평이 넓어지면 글이 그만큼 옆으로 퍼진다 — fit.ts는 장평을 모른다
-    const em = (box.unit / Math.max(1, tone.tone)).toFixed(4);
+    const byLine = ((86 / longest) * (tone.size / 60)).toFixed(2);
+    const byHeight = (((STAGE_H / (lines.length * STAGE_LH)) * (tone.size / 60)) / Math.max(1, tone.tone)).toFixed(1);
     /**
      * 끌고 있는 축과 손가락이 지금 가 있는 자리(0~1).
      *
@@ -124,63 +119,93 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
         const v = a.stops[i];
         setTone(t => ({ ...t, [a.key]: v, ...(a.key === 'tone' ? { slnt: slantFor(v) } : null) }));
     };
+
+    /* --optical-stroke: 무게가 '발랄한'만 못 움직여서 획으로 대신 답한다.
+       보정이 없는 서체는 '0'이라 아무 일도 일어나지 않는다(palettes.ts). */
+    const face = {
+        fontFamily: fontMap[tone.font], fontWeight: tone.wght,
+        fontVariationSettings: '"wght" ' + tone.wght,
+        transform: 'scaleX(' + tone.tone + ')',
+        fontStyle: tone.slnt ? `oblique ${Math.abs(tone.slnt)}deg` : 'normal',
+        fontSize: `min(${byLine}cqw, ${byHeight}px)`,
+        '--optical-stroke': opticalStroke(tone.font, tone.wght)
+    } as CSSProperties;
+
     return <div className="z-frame z1 tone-adjust">
- <div className="z-glyph-stage has-face">
-  <div className="z-header"><BackButton label="성격 다시 고르기" onClick={() => onBack(tone)}/><span className="z-step-of">3 / 5 · 조율</span></div>
-  <div className="z-ask is-brief">
-   <h1>전하고 싶은 느낌으로<br />조절해보세요</h1>
-   <p>발화의 크기, 빠르기, 무게를 정해봐요.</p>
-  </div>
-  {/* 점선 네모가 최대 영역이고, 그 안의 말풍선이 축이 정한 만큼을 쓴다.
-      색은 아직 안 골랐으니 작업용 바탕(DRAFT_COLORS)이다 — 다음 화면에서
-      열 조합 중 하나로 갈아탄다. */}
-  <div className="tone-area" style={{ '--tone-area': AREA } as CSSProperties}>
-   <SpeechBubble shape={shape} box={box} side="var(--tone-area)" color={DRAFT_COLORS.backgroundColor}>
-    <VoiceBubble text={lines.join('\n')} bg={DRAFT_COLORS.backgroundColor} color={DRAFT_COLORS.textColor}
-      fontFamily={fontMap[tone.font]} font={tone.font} weight={tone.wght} width={tone.tone}
-      slant={tone.slnt} align="center" size={tone.size}
-      fontSize={`calc(var(--tone-area) * ${em})`} />
-   </SpeechBubble>
-  </div>
- </div>
- <div className="z-axes">
-  {AXES.map(a => {
-      const at = nearest(a.stops, tone[a.key]);          // 값이 붙어 있는 눈금
-      const last = a.stops.length - 1;
-      // 손잡이 자리: 끄는 동안은 손가락, 놓으면 눈금
-      const pos = drag?.key === a.key ? drag.at : at / last;
-      return <div key={a.key} className="z-axis-line" role="group" aria-label={a.label}>
-        <div className="z-axis-head">
-          <span className="z-axis-label">{a.label}</span>
-          <span className="z-axis-value">{a.names[at]}</span>
-        </div>
-        <div className={'z-steps' + (drag?.key === a.key ? ' is-dragging' : '')}
-          style={{ '--at': pos } as CSSProperties}>
-          <span className="z-steps-thumb" aria-hidden="true"/>
-          {/* 점이 커지는 것만으로 "왼쪽이 적고 오른쪽이 많다"를 말한다.
-              눈금 안에 글자를 넣으면 좁은 화면에서 잣대 이름이 잘린다. */}
-          {a.stops.map((_, i) =>
-            <span key={i} className={'z-step-dot' + (i === at ? ' on' : '')}
-              style={{ width: 6 + i * 3, height: 6 + i * 3 }} aria-hidden="true"/>
-          )}
-          <input type="range" className="z-steps-input" min={0} max={1} step={0.001} value={pos}
-            aria-label={a.label} aria-valuetext={a.names[at]}
-            onChange={e => { const v = Number(e.target.value); setDrag({ key: a.key, at: v }); pick(a, Math.round(v * last)); }}
-            onPointerUp={() => setDrag(null)} onPointerCancel={() => setDrag(null)}
-            onBlur={() => setDrag(null)}
-            onKeyDown={e => {
-                // 화살표는 0.001씩 움직여 봐야 눈금이 안 바뀐다 — 한 칸씩 옮긴다.
-                const d = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1
-                    : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1
-                    : e.key === 'Home' ? -last : e.key === 'End' ? last : 0;
-                if (!d) return;
-                e.preventDefault();
-                setDrag(null);
-                pick(a, Math.min(last, Math.max(0, at + d)));
-            }}/>
-        </div>
-      </div>;
-  })}
- </div>
- <button className="primary-action" onClick={() => onNext(tone)}>다음</button></div>;
+ <div className="tone-deck" data-step={step}>
+
+  {/* ── 첫 장: 무엇을 하는 자리인지만 ───────────────────────────── */}
+  <section className="tone-pane tone-intro" onClick={() => setStep('work')}>
+   <div className="z-glyph-stage has-face">
+    <div className="z-header">
+     <BackButton label="성격 다시 고르기" onClick={() => onBack(tone)}/>
+     <span className="z-step-of">3 / 5 · 조율</span>
+    </div>
+    {/* is-brief를 뺐다 — 그 규칙은 3초 뒤 제목을 저절로 접는다. 여기서는
+        설명이 사라지는 계기가 **누르는 손**이어야 한다. '가'와 같이 간다. */}
+    <div className="z-ask">
+     <h1>전하고 싶은 느낌으로<br />조절해보세요</h1>
+     <p>발화의 크기, 빠르기, 무게를 정해봐요.</p>
+    </div>
+    {/* 삽화 자리. 아직 그려지지 않았다 — 지금은 '가' 한 글자가 대신 선다. */}
+    <div className="tone-figure" aria-hidden="true" style={{ fontFamily: fontMap[tone.font] }}>가</div>
+    <span className="tone-more">화면을 누르면 시작해요</span>
+   </div>
+  </section>
+
+  {/* ── 둘째 장: 견본과 축 셋 ──────────────────────────────────── */}
+  <section className="tone-pane tone-work">
+   <div className="z-glyph-stage has-face">
+    <div className="z-header">
+     <BackButton label="설명 다시 보기" onClick={() => setStep('intro')}/>
+     <span className="z-step-of">3 / 5 · 조율</span>
+    </div>
+    {/* 견본은 글자뿐이다. 도형은 색을 고르는 화면에서 처음 나온다. */}
+    <div className={'z-glyph is-line' + (tone.slnt ? ' is-gust' : '')} style={face}>
+     <span>{lines.map((l, i) => <b key={i} className="z-glyph-char">{l}</b>)}</span>
+    </div>
+   </div>
+   <div className="z-axes">
+    {AXES.map(a => {
+        const at = nearest(a.stops, tone[a.key]);          // 값이 붙어 있는 눈금
+        const last = a.stops.length - 1;
+        // 손잡이 자리: 끄는 동안은 손가락, 놓으면 눈금
+        const pos = drag?.key === a.key ? drag.at : at / last;
+        return <div key={a.key} className="z-axis-line" role="group" aria-label={a.label}>
+          <div className="z-axis-head">
+            <span className="z-axis-label">{a.label}</span>
+            <span className="z-axis-value">{a.names[at]}</span>
+          </div>
+          <div className={'z-steps' + (drag?.key === a.key ? ' is-dragging' : '')}
+            style={{ '--at': pos } as CSSProperties}>
+            <span className="z-steps-thumb" aria-hidden="true"/>
+            {/* 점이 커지는 것만으로 "왼쪽이 적고 오른쪽이 많다"만 말한다.
+                눈금 안에 글자를 넣으면 좁은 화면에서 잣대 이름이 잘린다. */}
+            {a.stops.map((_, i) =>
+              <span key={i} className={'z-step-dot' + (i === at ? ' on' : '')}
+                style={{ width: 6 + i * 3, height: 6 + i * 3 }} aria-hidden="true"/>
+            )}
+            <input type="range" className="z-steps-input" min={0} max={1} step={0.001} value={pos}
+              aria-label={a.label} aria-valuetext={a.names[at]}
+              onChange={e => { const v = Number(e.target.value); setDrag({ key: a.key, at: v }); pick(a, Math.round(v * last)); }}
+              onPointerUp={() => setDrag(null)} onPointerCancel={() => setDrag(null)}
+              onBlur={() => setDrag(null)}
+              onKeyDown={e => {
+                  // 화살표는 0.001씩 움직여 봐야 눈금이 안 바뀐다 — 한 칸씩 옮긴다.
+                  const d = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1
+                      : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1
+                      : e.key === 'Home' ? -last : e.key === 'End' ? last : 0;
+                  if (!d) return;
+                  e.preventDefault();
+                  setDrag(null);
+                  pick(a, Math.min(last, Math.max(0, at + d)));
+              }}/>
+          </div>
+        </div>;
+    })}
+   </div>
+   <button className="primary-action" onClick={() => onNext(tone)}>다음</button>
+  </section>
+
+ </div></div>;
 }

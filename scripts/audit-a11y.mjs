@@ -65,11 +65,11 @@ await page.waitForTimeout(400);
 await page.getByRole('button', { name: /써봤어요/ }).click();
 await page.waitForTimeout(400);
 await audit('01 한 줄 (빈 상태)');
-await page.locator('.live-input').fill('여기서 크게 말해본 적 없다');
+await page.locator('.write-input').fill('여기서 크게 말해본 적 없다');
 await page.waitForTimeout(300);
 await audit('01 한 줄 (채운 뒤)');
 
-await page.locator('.compose-screen .primary-action').click();
+await page.locator('.write-screen .primary-action').click();
 await page.waitForTimeout(400);
 await audit('02 성격 (빈 상태)');
 await page.getByRole('button', { name: '당당한' }).click();
@@ -77,9 +77,12 @@ await audit('02 성격 (고른 뒤)');
 
 await page.locator('.tone-choice .primary-action').click();
 await page.waitForTimeout(400);
-await audit('03 조율');
+await audit('03 조율 (설명)');
+await page.locator('.tone-intro').click();
+await page.waitForTimeout(700);
+await audit('03 조율 (조작)');
 
-await page.locator('.tone-adjust .primary-action').click();
+await page.locator('.tone-work .primary-action').click();
 await page.waitForTimeout(600);
 await audit('04 색');
 await page.locator('.color-choice .primary-action').click();

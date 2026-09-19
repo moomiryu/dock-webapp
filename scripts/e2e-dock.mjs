@@ -61,11 +61,12 @@ console.log(`\n한 줄: ${STAMP}\n`);
 
 // 2026-09-19에 순서가 뒤집혔다 — 글이 먼저고, 형식이 그 뒤다.
 await phone.getByRole('button', { name: /써봤어요/ }).click();
-await phone.locator('.live-input').fill(STAMP);
-await phone.locator('.compose-screen .primary-action').click();   // 다 썼어요 → 성격
+await phone.locator('.write-input').fill(STAMP);
+await phone.locator('.write-screen .primary-action').click();   // 다 썼어요 → 성격
 await phone.getByRole('button', { name: '당당한' }).click();
 await phone.locator('.tone-choice .primary-action').click();      // 이 성격으로 → 조율
-await phone.locator('.tone-adjust .primary-action').click();      // 다음 → 색
+await phone.locator('.tone-intro').click();                       // 설명 → 조작
+await phone.locator('.tone-work .primary-action').click();        // 다음 → 색
 await phone.locator('.color-choice .primary-action').click();
 await phone.waitForTimeout(700);
 await phone.locator('.primary-action').click(); // 발화하기

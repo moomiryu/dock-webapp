@@ -4,74 +4,92 @@ import { fontMap, opticalFix, opticalStroke } from '../lib/palettes';
 import { foldLines } from '../lib/fit';
 import { DEFAULT_TONE, STYLE_OPTIONS, type PartialTone } from '../lib/tone';
 import type { ToneState } from '../types';
+
 interface Props {
-  /** 앞 화면에서 쓴 한 줄. 네 칸의 견본이 된다 */
+  /** 앞 화면에서 쓴 한 줄. 고르고 나면 이게 통째로 뜬다 */
   text: string;
   initialTone?: PartialTone | null;
   onBack: () => void;
   onNext: (tone: PartialTone) => void;
 }
+
 /**
- * 02 성격.
+ * 02 성격 — 두 걸음이다.
  *
- * ── 칸이 보여주는 것이 바뀌었다 (2026-09-19) ──────────────────────────
- * 전에는 칸마다 제 이름을 그 서체로 찍었다('당당한'을 서울남산으로). 그런데
- * 그러면 **네 칸이 서로 다른 낱말**이라, 무엇을 견주는 것인지 알 수 없다.
- * 골격이 비슷한 두 칸(당당한·발랄한)이 특히 그랬다.
+ * **고르는 걸음.** 네 칸에 성격 이름을 그 서체로 찍는다. 한때 여기에 내
+ * 문장을 넣어 봤는데(2026-09-19), 칸이 195px이라 열두 자가 19px로 내려앉아
+ * 획이 안 보였다. 여섯 자로 접어 키우니 이번엔 문장이 토막 났다. 칸은
+ * 좁고, 좁은 칸에서 서체를 보여주는 건 결국 **한 낱말**이다.
  *
- * 순서를 뒤집어 글이 먼저 오게 되면서 네 칸에 **같은 글자**를 놓을 수 있게
- * 됐다 — 방금 쓴 내 문장이다. 같은 받침, 같은 조사, 같은 띄어쓰기를 네 번
- * 찍으면 차이가 서체에서만 온다.
+ * **확인하는 걸음.** 고르면 **그 칸이 자라서** 아래를 통째로 차지하고 내 글
+ * 전문이 그 얼굴로 선다. 다른 화면으로 갈아타는 것이 아니라 누른 칸이
+ * 커지는 것이라, 무엇을 눌렀는지가 손에 남는다.
  *
- * 이름은 아래 작은 글씨로 남긴다 — 앱의 어휘라 사라지면 안 된다.
+ * 격자를 지우고 새 판을 그리는 대신 **칸 크기만 0으로 접는다** — 격자의
+ * 트랙(grid-template)은 보간되므로, 고른 칸의 줄과 칸만 1fr로 남기고
+ * 나머지를 0fr로 보내면 그 칸이 자라는 것으로 보인다. 같은 요소가 자라는
+ * 것이라 글자도 이어진다.
  */
 export default function PhaseGlyph({ text, initialTone, onBack, onNext }: Props) {
   const [font, setFont] = useState<ToneState['font'] | null>(initialTone?.font ?? null);
-  /**
-   * 칸 안에서만 짧게 접는다 — 벽의 12자와는 다른 값이다.
-   *
-   * 벽의 줄(12자)을 그대로 넣었더니 195px 칸에서 19px이 됐다. 이름 세 글자를
-   * 36px로 찍던 자리라 획이 거의 안 보이고, 정작 견주라는 서체 차이가 그
-   * 크기에서 사라진다. 여섯 자로 접어 세 줄까지만 쓰면 36px이 그대로 나온다.
-   *
-   * 문장이 토막 나 보이지만 이 칸은 읽는 자리가 아니라 **획을 보는 자리**다.
-   * 네 칸이 같은 글자를 쓴다는 것만 지켜지면 된다.
-   */
-  const CARD_CHARS = 6, CARD_ROWS = 3;
-  const sample = (text.trim() ? foldLines(text, CARD_CHARS).slice(0, CARD_ROWS) : ['발화']);
-  const chars = Math.max(1, ...sample.map((l) => Array.from(l).length));
-  // 칸 폭의 86%에 맞춘다 — 이름을 찍던 시절의 상한과 같은 비율이다.
-  const fit = (86 / chars).toFixed(1);
+  const at = font ? STYLE_OPTIONS.findIndex(s => s.val === font) : -1;
+  const lines = text.trim() ? foldLines(text) : ['발화'];
+  const longest = Math.max(1, ...lines.map(l => Array.from(l).length));
+  // 전문이 붉은 면 폭의 82%에 들어가되, 줄이 많아지면 높이가 먼저 걸린다.
+  // 높이는 vh로 잰다 — cqh를 쓰려면 container-type: size가 필요한데, 그러면
+  // 붉은 면이 제 내용으로 높이를 못 정해 글자 크기가 0으로 풀린다.
+  const size = `min(${(82 / longest).toFixed(1)}cqw, ${(52 / lines.length).toFixed(1)}vh, 44px)`;
+  // 고른 칸의 줄·칸만 남기고 나머지를 0으로 접는다 (0·1번 = 윗줄, 0·2번 = 왼칸)
+  const grid: CSSProperties | undefined = at < 0 ? undefined : {
+    gridTemplateColumns: at % 2 === 0 ? '1fr 0fr' : '0fr 1fr',
+    gridTemplateRows: at < 2 ? '1fr 0fr' : '0fr 1fr'
+  };
+
   return (
-    <div className="z-frame z1 tone-choice">
+    <div className={'z-frame z1 tone-choice' + (at >= 0 ? ' is-picked' : '')}>
       <div className="z-header">
-        <BackButton label="한 줄 다시 쓰기" onClick={onBack} /><span className="z-step-of">2 / 5 · 성격</span>
+        <BackButton label="한 줄 다시 쓰기" onClick={onBack} />
+        <span className="z-step-of">2 / 5 · 성격</span>
       </div>
       <div className="z-ask">
         <h1>어떤 성격으로<br />말해볼까요?</h1>
-        <p>마음에 드는 것을 골라주세요.</p>
+        {at < 0
+          ? <p>마음에 드는 것을 골라주세요.</p>
+          /* 머리줄의 뒤로가기는 **단계**를 되돌린다(한 줄로). 이 안의 걸음을
+             되돌리는 것은 다른 일이라 다른 자리에 다른 모양으로 둔다. */
+          : <button type="button" className="glyph-reset" onClick={() => setFont(null)}>다른 성격 보기</button>}
       </div>
-      <div className="style-cards" role="group" aria-label="성격 고르기">
-        {STYLE_OPTIONS.map(s => (
-          <button key={s.val} type="button" className={'style-card ' + (font === s.val ? 'on' : '')}
-            aria-pressed={font === s.val} aria-label={s.label} onClick={() => setFont(s.val)}>
-            {/* 서체마다 잉크가 차지하는 높이도 굵기도 달라 같은 크기·같은
-                굵기로 안 보인다. 잰 값은 palettes.ts에 있다. */}
-            <span className="style-card-name" style={{
-              fontFamily: fontMap[s.val],
-              '--optical': opticalFix[s.val]?.scale ?? 1,
-              '--card-fit': fit + 'cqw',
-              /* 이 카드는 무게를 고르는 자리가 아니다 — CSS가 400으로 찍는다.
-                 사다리의 400 칸을 그대로 가져온다. */
-              '--optical-stroke': opticalStroke(s.val, 400),
-              '--optical-shift': (opticalFix[s.val]?.shift ?? 0) + 'em'
-            } as CSSProperties}>
-              {sample.map((l, i) => <span key={i} className="style-card-line">{l}</span>)}
-            </span>
-            <span className="style-card-tag">{s.label}</span>
+
+      <div className="style-cards" role="group" aria-label="성격 고르기" style={grid}>
+        {STYLE_OPTIONS.map((s, i) => (
+          <button key={s.val} type="button" className={'style-card ' + (at === i ? 'on' : '')}
+            aria-pressed={at === i} aria-label={s.label} onClick={() => setFont(s.val)}>
+            {at === i ? (
+              <div className="glyph-full-text" style={{
+                fontFamily: fontMap[s.val],
+                fontSize: size,
+                '--optical-stroke': opticalStroke(s.val, 400),
+                translate: `0 ${opticalFix[s.val]?.shift ?? 0}em`
+              } as CSSProperties}>
+                {lines.join('\n')}
+              </div>
+            ) : (
+              /* 서체마다 잉크가 차지하는 높이도 굵기도 달라 같은 크기·같은
+                 굵기로 안 보인다. 잰 값은 palettes.ts에 있다. */
+              <span className="style-card-name" style={{
+                fontFamily: fontMap[s.val],
+                '--optical': opticalFix[s.val]?.scale ?? 1,
+                /* 이 카드는 무게를 고르는 자리가 아니다 — CSS가 400으로 찍는다. */
+                '--optical-stroke': opticalStroke(s.val, 400),
+                '--optical-shift': (opticalFix[s.val]?.shift ?? 0) + 'em'
+              } as CSSProperties}>
+                {s.label}
+              </span>
+            )}
           </button>
         ))}
       </div>
+
       <button className="primary-action" disabled={!font}
         onClick={() => font && onNext({ ...(initialTone ?? DEFAULT_TONE), font })}>이 성격으로 할게요</button>
     </div>

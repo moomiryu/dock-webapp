@@ -92,7 +92,7 @@ export async function toCompose(page, text = SAMPLE_TEXT) {
   await page.getByRole('button', { name: /써봤어요/ }).click();
   await page.waitForTimeout(300);
   if (text !== null) {
-    await page.locator('.live-input').fill(text);
+    await page.locator('.write-input').fill(text);
     await page.waitForTimeout(300);
   }
 }
@@ -100,7 +100,7 @@ export async function toCompose(page, text = SAMPLE_TEXT) {
 /** 02 성격 — font를 주면 골라 둔 상태까지 간다 */
 export async function toVoice(page, font = null, text = SAMPLE_TEXT) {
   await toCompose(page, text);
-  await page.locator('.compose-screen .primary-action').click();
+  await page.locator('.write-screen .primary-action').click();
   await page.waitForTimeout(300);
   if (font) await page.getByRole('button', { name: font }).click();
 }
@@ -115,7 +115,10 @@ export async function toShape(page, font = '당당한', text = SAMPLE_TEXT) {
 /** 04 색 */
 export async function toColor(page, text = SAMPLE_TEXT, font = '당당한') {
   await toShape(page, font, text);
-  await page.locator('.tone-adjust .primary-action').click();
+  // 03은 두 장이다 — 설명하는 장을 눌러야 축과 버튼이 올라온다
+  await page.locator('.tone-intro').click();
+  await page.waitForTimeout(600);
+  await page.locator('.tone-work .primary-action').click();
   await page.waitForTimeout(400);
 }
 

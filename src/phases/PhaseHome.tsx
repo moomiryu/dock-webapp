@@ -2,6 +2,7 @@ import { useState } from 'react';
 import InfoOverlay from '../components/InfoOverlay';
 import HomeCharacter from '../components/HomeCharacter';
 import HomeCrowd from '../components/HomeCrowd';
+import HomeVoices from '../components/HomeVoices';
 interface Props { onStart: () => void; }
 export default function PhaseHome({ onStart }: Props) {
   const [info, setInfo] = useState(false);
@@ -10,6 +11,8 @@ export default function PhaseHome({ onStart }: Props) {
     <div className="home-frame">
       {/* 구경꾼이 먼저 그려져야 메가폰트 뒤에 선다 */}
       <HomeCrowd />
+      {/* 나팔에서 나오는 말은 캐릭터 뒤, 배경으로 흩어진다 */}
+      <HomeVoices />
       <HomeCharacter />
       <div className="home-layer">
         <div className="home-intro">

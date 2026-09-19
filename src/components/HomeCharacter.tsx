@@ -42,44 +42,6 @@ const POSE_DWELL = 900;
  * 홈_3이 상자 170px, 홈_1이 390px, 홈_2가 607px(화면에 잘려 나갈 만큼 가깝다).
  * 272로 나누면 0.63 · 1.43 · 2.23. 그 폭을 그대로 쓴다.
  */
-/**
- * 가끔 캐릭터가 한 마디를 뱉는다.
- *
- * 홈_4 스케치에서 'AaBbCc'가 캐릭터 옆에 비스듬히 떠 있었다(잉크 109.6×50.9,
- * 상자 312 기준 높이의 0.163배). 거기서 자란 목록이다.
- *
- * 두 갈래다. **견본**은 글자로 된 것이 글자를 보여주는 것이고, **혼잣말**은
- * 말이 되다 만 것이다. 둘 다 'AaBbCc'와 'I think…' 만한 분량으로 묶었다 —
- * 더 길면 읽는 동안 1.6초가 끝나고, 더 짧으면 뭐가 지나갔는지 모른다.
- *
- * 권유는 넣지 않는다. `design/instructions.md`가 "참여해보세요 같은 권유는
- * 쓰지 않는다"고 못박아 두었고, 무엇을 쓰라는 말도 넣지 않는다 — 편집권은
- * 발화자에게 있다. 이건 캐릭터의 군소리지 안내가 아니다.
- *
- * 말끝도 붙이지 않는다. 어휘 원칙의 해요체·합니다체는 장치가 사용자에게
- * 말할 때의 것이고, 이건 혼잣말이라 토막으로 둔다.
- */
-const SAY_POOL = [
-  'AaBbCc', '가나다라', '한글 Aa', 'Rr Ss Tt', '0123',
-  'I think…', '음…', '그러니까', '있잖아', '아 맞다', '어?', '!'
-];
-const SAY_MS = 1600;
-
-/**
- * 첫인사. 캐릭터가 떠오르고 자리를 잡는 동안만 나온다.
- *
- * 여기서만 캐릭터가 **정해진 대로** 움직인다 — 정면을 보고, 웃는 눈으로,
- * 세 마디를 양옆으로 번갈아 하나씩 띄운다. 나머지 시간의 SAY_POOL은
- * 혼잣말이라 무엇이 언제 나올지 모르는 것이 요점인데, 처음 만나는
- * 순간까지 그러면 인사가 아니라 잡음이 된다. 환영은 정해져 있어야 한다.
- *
- * 세 나라 말인 이유: 캠퍼스에 한국어만 쓰는 사람만 있지 않다.
- */
-/**
- * 첫인사. 마지막 한 마디는 인사가 아니라 **할 일**이라 작게 적는다 —
- * 같은 크기로 두면 'Hello' 다음에 온 또 하나의 인사로 읽힌다.
- * 열한 자를 0.12배(32px)로 찍으면 한 줄이 390 화면을 넘는다(nowrap이다).
- */
 const WELCOME: Array<{ text: string; small?: boolean }> = [
   { text: '안녕하세요' }, { text: 'こんにちは' }, { text: 'Hello' },
   { text: '아래 버튼을 눌러보세요', small: true }
@@ -151,8 +113,6 @@ export default function HomeCharacter() {
     let geo: PoseGeo = from;   // 지금 이 순간의 형태
 
     let w = 0, h = 0, size = 0, x = 0, y = 0;
-    /** 워드마크·설명이 끝나는 높이. 글자는 그 아래에서만 뜬다 */
-    let introBottom = 0;
     /**
      * 이 캐릭터는 이제 **움직이지 않는다.**
      *
@@ -172,7 +132,7 @@ export default function HomeCharacter() {
      * 것까지 들썩이면 볼 데가 둘이 된다.
      */
     const depth = 1;
-    let nextSay = 0, sayUntil = 0;
+    let sayUntil = 0;
     /**
      * 첫인사의 차례. 등 → 돌아섬 → '!' → 웃음 → 인사 넉 마디 → 평소.
      * 이 동안에는 떠다니지도 부풀지도 않는다.
@@ -185,11 +145,12 @@ export default function HomeCharacter() {
 
     const setPose = (next: Pose, now: number) => {
       if (next === pose) return;
-      const shape = poseGeometry(next).span;
-      // 벽에 붙어 있을 때 더 큰 포즈로 바꾸면 안쪽으로 순간이동한 것처럼 보인다.
-      if (x < (size * depth * shape.x) / 2 || x > w - (size * depth * shape.x) / 2 ||
-          y < (size * depth * shape.y) / 2 || y > h - (size * depth * shape.y) / 2) return;
-      void 0;
+      /* 가장자리 검사를 걷어냈다(2026-09-20).
+         "벽에 붙어 있을 때 더 큰 포즈로 바꾸면 안쪽으로 순간이동한 것처럼
+         보인다"를 막던 장치인데, 캐릭터가 떠다니지 않게 되면서 벽에 붙는
+         일 자체가 없어졌다. 남겨 두니 **가운데에서도 넓은 포즈를 거절**해서
+         소리가 뻗는 옆모습이 영영 안 나왔다 — 있는 것처럼 보이고 실제로는
+         안 나오는 상태였다. */
       turn = turnKind(pose, next);
       from = geo;                    // 돌던 도중이면 지금 모습에서 이어서 돈다
       to = poseGeometry(next);
@@ -245,9 +206,24 @@ export default function HomeCharacter() {
         trail.dataset.key = wanted;
       }
 
-      // 글자가 앉을 선 — 실루엣의 맨 윗변. 포즈마다 다르므로 매 프레임 준다.
-      // 앞모습은 상자의 18.5% 지점, 옆모습은 상자 꼭대기(0)다.
-      el.style.setProperty('--say-floor', `${size * (0.5 - geo.span.y / 2)}px`);
+      /* 글자가 앉을 자리 — 실루엣에서 직접 잰다.
+         span으로 셈하던 때는 **실루엣이 상자 한가운데 있다고 치고** 있었다.
+         옆모습은 몸이 한쪽으로 쏠려 있어서 그 가정이 깨지고, 글자가 몸에서
+         동떨어진 데에 떴다. 왼쪽 끝·오른쪽 끝·윗변을 그때그때 잰다.
+
+         **몸통과 모자를 같이 본다.** 몸통만 재면 윗변이 삼각형 꼭지가 되는데
+         그 위에 모자가 한 뼘 더 서 있어서, 인사할 때 글자가 모자와 겹쳤다. */
+      let bx0 = Infinity, bx1 = -Infinity, by0 = Infinity;
+      for (const part of [geo.body, geo.hat]) {
+        for (let i = 0; i < part.length; i += 2) {
+          const px = part[i], py = part[i + 1];
+          if (px < bx0) bx0 = px;
+          if (px > bx1) bx1 = px;
+          if (py < by0) by0 = py;
+        }
+      }
+      el.style.setProperty('--say-floor', `${(size * by0) / CANVAS}px`);
+      el.style.setProperty('--say-x', `${(size * (bx0 + bx1)) / 2 / CANVAS}px`);
 
       // scale이 translate 뒤에 와야 상자 가운데를 붙든 채 커진다.
       el.style.transform = `translate(${x - size / 2}px, ${y - size / 2}px) scale(${depth.toFixed(3)})`;
@@ -267,6 +243,8 @@ export default function HomeCharacter() {
       charPos.y = y;
       charPos.size = size * depth;
       charPos.ground = y + size * depth * floor;   // 그림자가 놓인 줄이 바닥이다
+      // 나팔이 향한 쪽. 'left'는 입이 왼쪽이라 소리가 오른쪽으로 나간다.
+      charPos.voice = pose.startsWith('left') ? 1 : -1;
       charPos.ready = initialized;
     };
 
@@ -275,29 +253,36 @@ export default function HomeCharacter() {
       h = frame.clientHeight;
       size = el.offsetWidth;
       el.style.setProperty('--char-box', `${size}px`);
-      const intro = frame.querySelector('.home-intro');
-      introBottom = intro
-        ? intro.getBoundingClientRect().bottom - frame.getBoundingClientRect().top
-        : 0;
       if (!initialized) { x = w / 2; y = h * REST_Y; initialized = true; }
       contain();
       paint(1);
     };
 
     /**
-     * 가만히 서서 이따금 고개를 돌린다.
+     * 첫인사가 끝나면 **옆모습으로 돌아서고, 그 뒤로는 옆모습만 쓴다.**
      *
-     * 움직이던 시절에는 가는 쪽이 보는 쪽을 정했다. 이제 갈 데가 없으므로
-     * 제 안에서 고른다. 정면에 오래 머물고 옆은 잠깐씩만 본다 — 반대로
-     * 두면 두리번거리는 것이 되어 가만히 있는 것으로 안 읽힌다.
-     * 등은 돌리지 않는다. 첫인사에서 한 번 돌아선 뒤로는 사람을 본다.
+     * 정면(삼각형)은 인사하는 얼굴이다 — 눈을 맞추고 말을 건네는 자리.
+     * 인사가 끝나면 이 물건은 다시 **메가폰**이 된다. 옆에서 본 꼴이
+     * 그것이고, 홈에 서 있는 동안의 기본은 그쪽이다.
+     *
+     * 고를 수 있는 옆모습은 왼쪽·오른쪽 둘뿐이라 변화는 방향을 바꾸는 것
+     * 하나다. 그래서 **반드시 반대쪽으로** 돈다 — 무작위로 고르면 절반은
+     * 같은 쪽이 나와 setPose가 조용히 되돌아가고, 실제로는 한 방향으로
+     * 굳어 버린다(26초를 지켜봤더니 내내 오른쪽이었다).
+     * 대신 오래 머문다. 몇 초마다 돌아서면 두리번거리는 것이 되어 가만히
+     * 서 있는 것으로 안 읽힌다.
+     *
+     * 소리가 뻗는 옆모습(_light) 둘도 같은 식구다. 넷 중에서 고르되
+     * **방향은 반드시 바꾼다** — 왼쪽에 서 있었으면 오른쪽 둘 중 하나로.
+     * 소리가 뻗는 쪽은 가끔만 나온다. 늘 뻗고 있으면 그건 상태지 사건이
+     * 아니다.
      */
     const idlePose = (): Pose => {
-      const r = Math.random();
-      if (r < 0.52) return 'front_center';
-      if (r < 0.68) return 'front_left';
-      if (r < 0.84) return 'front_right';
-      return r < 0.92 ? 'left' : 'right';
+      const toRight = pose === 'left' || pose === 'left_light';
+      const loud = Math.random() < 0.35;
+      return toRight
+        ? (loud ? 'right_light' : 'right')
+        : (loud ? 'left_light' : 'left');
     };
 
     const step = (t: number) => {
@@ -330,8 +315,11 @@ export default function HomeCharacter() {
         } else if (!sayUntil && t > welcomeNext) {
           if (welcomeIdx >= WELCOME.length) {
             intro = null;
+            charPos.greeted = true;      // 이제 나팔에서 남의 말이 나온다
             setEyes('general');
-            nextSay = t + 1200;
+            // 인사가 끝나면 곧바로 돌아선다. 정면은 인사하는 얼굴이었다.
+            setPose(idlePose(), t);
+            nextPose = t + random(5000, 9000);
           } else {
             // 양옆으로 번갈아. 두 마디가 같은 쪽에 서면 차례로 온 것이
             // 아니라 한 자리에서 글자만 바뀐 것으로 보인다.
@@ -349,26 +337,11 @@ export default function HomeCharacter() {
       }
 
       if (visible && !reduced && !intro) {
-        // 글자가 뜰 자리가 있어야 뱉는다. 둘을 본다:
-        //   · 상자가 화면보다 넓으면 어디에 두든 한쪽이 잘린다
-        //   · 몸 위로 글자 한 줄이 들어갈 자리가 워드마크 아래에 남아 있어야 한다
-        const roomAbove = y - (size * depth * geo.span.y) / 2 - size * depth * 0.2;
-        if (t > nextSay && !sayUntil &&
-            (size * depth > w * 0.98 || roomAbove < introBottom + 8)) {
-          nextSay = t + 1500;
-        } else if (t > nextSay && !sayUntil) {
-          setSay({
-            text: SAY_POOL[Math.floor(Math.random() * SAY_POOL.length)],
-            side: x < w / 2 ? 'right' : 'left',
-            tilt: random(-14, 6)
-          });
-          sayUntil = t + SAY_MS;
-        }
         // 이따금 고개를 돌린다. 부풀거나 말하는 중에는 가만히 둔다 —
         // 한 번에 두 가지가 일어나면 둘 다 흐려진다.
         if (t > nextPose && !sayUntil && t - lastPose > POSE_DWELL) {
           setPose(idlePose(), t);
-          nextPose = t + random(2600, 6200);
+          nextPose = t + random(5000, 9000);
         }
         contain();
       }
@@ -378,10 +351,10 @@ export default function HomeCharacter() {
         faceUntil = 0;
         setEyes('general');
       }
-      // 글자는 제 시간을 다 살면 사라지고, 다음 것은 한참 뒤에 온다
+      // 인사 한 마디는 제 시간을 다 살면 사라진다. 그 뒤로 이 캐릭터가
+      // 뱉는 글자는 없다 — 나팔에서 나오는 남의 말이 그 자리를 맡는다.
       if (sayUntil && t > sayUntil) {
         sayUntil = 0;
-        nextSay = t + random(7000, 15000);
         setSay(null);
       }
 
@@ -435,7 +408,9 @@ export default function HomeCharacter() {
       {say && !matchMedia('(prefers-reduced-motion: reduce)').matches && (
         <span className="home-char-say" data-side={say.side} aria-hidden="true"
           data-small={say.small ? 'true' : undefined} data-quick={say.quick ? 'true' : undefined}
-          style={{ '--say-tilt': `${say.tilt.toFixed(1)}deg` } as React.CSSProperties}>{say.text}</span>
+          style={{ '--say-tilt': `${say.tilt.toFixed(1)}deg` } as React.CSSProperties}>
+          {say.text}
+        </span>
       )}
       {/* 떠 있다는 것은 그림자가 말한다. 몸보다 아래, 몸보다 작게. */}
       <span className="home-char-shade" aria-hidden="true" />

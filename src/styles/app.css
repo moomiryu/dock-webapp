@@ -2084,6 +2084,27 @@
              scale(calc(var(--char-stretch, 1) * var(--char-turn, 1)), var(--char-squash, 1));
   pointer-events: none; }
 .home-char-motion > svg{ display: block; width: 100%; height: 100%; overflow: visible; }
+/* 제자리에서 두둥실.
+   떠 있는 물건이 완전히 멎어 있으면 떠 있는 것이 아니라 붙어 있는 것이다.
+   위아래로 조금 오르내리고 같은 박자로 조금 기운다 — 크기는 안 건드린다
+   (부풀었다 돌아오는 것은 따로 있었고, 그건 걷어냈다).
+   translate·rotate는 독립 속성이라 이 요소의 transform(회전·눌림)과
+   겹치지 않고 그 위에 얹힌다. */
+.home-char-motion{ animation: charFloat 5.2s ease-in-out infinite; }
+@keyframes charFloat{
+  0%, 100% { translate: 0 -1.7%; rotate: -1.4deg; }
+  50%      { translate: 0 1.7%; rotate: 1.4deg; }
+}
+/* 그림자는 같이 뜨지 않는다 — 바닥에 지는 것이니까. 대신 몸이 멀어지면
+   옅고 넓어진다. 몸과 **반대 박자**라야 떠 있는 것으로 읽힌다. */
+.home-char-shade{ animation: charFloatShade 5.2s ease-in-out infinite; }
+@keyframes charFloatShade{
+  0%, 100% { scale: 1.06; opacity: 0.14; }
+  50%      { scale: 0.94; opacity: 0.2; }
+}
+@media (prefers-reduced-motion: reduce){
+  .home-char-motion, .home-char-shade{ animation: none; }
+}
 /* 가끔 뱉는 글자 (2026-09-15 홈_4 스케치).
    몸 바깥에 둔다 — 몸이 기울고 눌릴 때 같이 일그러지면 글자로 안 읽힌다.
    상자에 걸린 scale은 같이 받으므로 멀리 있으면 글자도 작다.
@@ -2091,8 +2112,11 @@
 .home-char-say{
   position: absolute;
   /* 실루엣 윗변(--say-floor)에서 한 뼘 띄우고 그 위에 앉힌다. translate로
-     제 높이만큼 끌어올리므로 글자 상자가 몸에 닿지 않는다. */
-  top: calc(var(--say-floor, 0px) - var(--char-box, 272px) * 0.08);
+     제 높이만큼 끌어올리므로 글자 상자가 몸에 닿지 않는다.
+     0.08이었는데 몸이 두둥실 오르내리는 만큼(±1.7%) 틈이 같이 좁아져
+     제일 올라왔을 때 10px까지 붙었다. 0.11로 넓힌다 — 글자는 같이 안 뜨고
+     제자리에 있으므로, 틈은 몸이 올라온 쪽을 기준으로 잡아야 한다. */
+  top: calc(var(--say-floor, 0px) - var(--char-box, 272px) * 0.11);
   translate: 0 -100%;
   /* 라틴은 워드마크와 같은 얼굴로, 한글은 Lineal에 없으니 UI 얼굴로 떨어진다.
      성격 서체 넷 중 하나를 쓰면 고르기도 전에 한 톤을 내민 꼴이 된다. */
@@ -2107,8 +2131,35 @@
   animation: charSay 1600ms var(--ease-standard) both;
 }
 /* 가운데선에서 한쪽으로 뻗는다. 몸 위에 있으므로 옆으로는 겹칠 일이 없다. */
-.home-char-say[data-side='right']{ left: 50%; }
-.home-char-say[data-side='left']{ right: 50%; }
+/* 몸의 한가운데에서 좌우로 뻗는다. 상자 한가운데(50%)가 아니다 — 옆모습은
+   몸이 한쪽으로 쏠려 있어 그러면 글자가 몸에서 떨어진다(--say-x는
+   HomeCharacter가 실루엣에서 재어 내려준다). */
+.home-char-say[data-side='right']{ left: var(--say-x, 50%); }
+.home-char-say[data-side='left']{ right: calc(100% - var(--say-x, 50%)); }
+/* ── 나팔에서 흘러나오는 말 ──────────────────────────────────────────
+   인사가 끝나면 나팔 쪽으로 짧은 말들이 줄줄 나와 배경으로 흩어진다.
+   캐릭터의 혼잣말이 아니라 **닿은 사람들이 맡기고 간 말**이다.
+   자리·투명도·글자는 JS가 프레임마다 적는다(HomeVoices) — CSS는 생김새만.
+
+   층은 캐릭터(500) 위, 바닥 그라데이션(900) 아래다. 100에 두어 뒤로
+   보냈더니 나팔에서 나온 말이 **제 몸에 가려** 반쯤 지워졌다 — 배경으로
+   물러나는 것은 층이 아니라 옅어지는 것이 맡는다. */
+.home-voices{ position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+  z-index: 700; }
+.voice{
+  position: absolute; left: 0; top: 0; opacity: 0;
+  font-family: 'Lineal VF', 'Pretendard Variable', sans-serif;
+  font-weight: 700;
+  /* 크기는 HomeVoices가 캐릭터 상자에서 재어 인라인으로 준다 */
+  font-size: 20px;
+  line-height: 1;
+  color: var(--brand-main);
+  white-space: nowrap;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+@media (prefers-reduced-motion: reduce){ .home-voices{ display: none; } }
+
 /* ── 배경을 오가는 캐릭터들 ──────────────────────────────────────────
    가장자리에서 걸어 들어와 지나가고, 얼마는 메가폰트 앞에 서서 웃고
    **빨강이 되어** 나간다. 자리는 JS가 프레임마다 transform으로 적고

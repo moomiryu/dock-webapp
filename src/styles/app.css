@@ -2347,6 +2347,17 @@
    (HomeCrowd), 걷는 다리와 몸의 들썩임·몸 색만 CSS가 맡는다.
    버튼 위에 얹히지 않게 손을 안 받는다. */
 .home-crowd{ position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+
+/* 메가폰트 앞을 가로지르는 구경꾼이 그 몸에 그림자를 드리운다.
+   층(z-index)만으로는 앞뒤가 안 읽힌다 — 둘 다 납작한 색면이라 앞에 선
+   사람이 그냥 겹쳐 있는 것으로 보인다. 그림자가 그 사이에 공기를 넣는다.
+
+   실루엣을 그대로 따라 지는 그림자라 drop-shadow다. 몸을 벗어나면 JS가
+   꺼 준다(HomeCrowd · data-cast) — 흰 바탕 위에서는 받아 줄 면이 없어
+   허공에 얼룩으로 남는다. 켜고 끌 때 그 경계가 보이지 않게 천천히 든다. */
+.walker{ transition: filter 420ms var(--ease-standard); }
+.walker[data-cast='on']{ filter: drop-shadow(6px 10px 10px var(--cast)); }
+@media (prefers-reduced-motion: reduce){ .walker{ transition: none; } }
 .walker{ position: absolute; left: 0; top: 0; display: block; will-change: transform; }
 /* 옆모습 그림자가 화판(366)보다 넓다. 자르면 그 폭이 없어지므로 내보낸다 —
    무리를 담은 .home-crowd가 inset: 0 · overflow: hidden이라 화면 밖으로는

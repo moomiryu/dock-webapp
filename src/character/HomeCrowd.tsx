@@ -54,6 +54,15 @@ const SPEED = { min: 13, max: 26 };
  */
 const BLOCK = { x: 0.42, y: 0.34 };
 /**
+ * **앞을 지나는 사람**이 닿았다고 보는 거리.
+ *
+ * 뒤로 지나는 사람은 메가폰트에 가려지므로 몸 가장자리에서 멎어야 한다.
+ * 앞으로 지나는 사람은 가려질 일이 없으니 **정면 한가운데까지** 와도 된다 —
+ * 그래야 둘이 마주 선 장면이 된다. 닿는 띠도 넓다(0.34 → 1.05): 가장자리
+ * 한 줄에서만 빨개지면 앞을 지나는 사람은 영영 파란 채로 지나간다.
+ */
+const FRONT = { x: 0.1, y: 1.05 };
+/**
  * 첫 여섯이 하나씩 들어오는 간격 (ms). 메가폰트의 첫인사가 끝날 즈음부터.
  *
  * 간격을 고르게 두면 여섯이 비슷한 때에 메가폰트 앞에 닿아 **한꺼번에
@@ -98,6 +107,8 @@ export default function HomeCrowd() {
       x: number; y: number; dir: 1 | -1; speed: number;
       phase: Phase; until: number; beat: number;
       born: number; live: boolean; moving: boolean;
+      /** 지금 메가폰트 몸에 그림자를 드리우고 있나 */
+      casts: boolean;
     };
 
     /** 가장자리 밖에서 새로 들어온다. 파랑으로, 아직 아무것도 모른 채 */
@@ -126,7 +137,7 @@ export default function HomeCrowd() {
       const p: Walker = {
         el, art: el.querySelector('svg')!,
         x: 0, y: 0, dir: 1, speed: 0, phase: 'walk',
-        until: 0, beat: 0, born: 0, live: false, moving: false
+        until: 0, beat: 0, born: 0, live: false, moving: false, casts: false
       };
       // 걸음은 그림 안의 움직임(SMIL)이라 CSS로 못 세운다. 나올 때까지 재워 둔다
       p.art.setCurrentTime(0);
@@ -176,10 +187,14 @@ export default function HomeCrowd() {
             p.x += p.dir * p.speed * dt;
             // 메가폰트에 닿으면 멈춘다. 몸을 스치지 않는 높이로 지나는
             // 사람은 걸리지 않는다 — 그래서 늘 몇은 그냥 지나간다.
+            //
+            // 발끝이 메가폰트보다 **아래**면 그 앞을 지나는 사람이다.
+            // 가려질 일이 없으므로 정면 한가운데까지 들어온다(FRONT).
+            const near = charPos.ready && p.y > charPos.ground ? FRONT : BLOCK;
             if (p.phase === 'walk' && charPos.ready &&
-                Math.abs(p.y - charPos.ground) < charPos.size * BLOCK.y &&
-                Math.abs(p.x - charPos.x) < charPos.size * BLOCK.x) {
-              p.x = charPos.x - p.dir * charPos.size * BLOCK.x;   // 닿은 자리에 세운다
+                Math.abs(p.y - charPos.ground) < charPos.size * near.y &&
+                Math.abs(p.x - charPos.x) < charPos.size * near.x) {
+              p.x = charPos.x - p.dir * charPos.size * near.x;   // 닿은 자리에 세운다
               p.phase = 'meet';
               p.beat = 0;
               p.el.dataset.eye = MEETING[0].eye;
@@ -213,6 +228,17 @@ export default function HomeCrowd() {
         p.el.style.zIndex = String(
           charPos.ready ? clamp(Math.round(CHAR_Z + p.y - charPos.ground), 1, 999) : 1
         );
+        /* 메가폰트 앞을 가로지르는 사람은 그 몸에 그림자를 드리운다.
+           층만으로는 앞뒤가 안 읽힌다 — 둘 다 납작한 색면이라 앞에 선 사람이
+           그냥 겹쳐 있는 것으로 보인다. 그림자가 그 사이에 공기를 넣는다.
+           몸을 벗어나면 끈다. 흰 바탕 위에 뜬 그림자는 받아 줄 면이 없어
+           허공에 얼룩으로 남는다. */
+        const casts = charPos.ready && p.y > charPos.ground
+          && Math.abs(p.x - charPos.x) < charPos.size * 0.62;
+        if (casts !== p.casts) {
+          p.casts = casts;
+          p.el.dataset.cast = casts ? 'on' : '';
+        }
         p.el.style.transform =
           `translate(${(p.x - half).toFixed(1)}px, ${(p.y - HEIGHT).toFixed(1)}px) scaleX(${face})`;
       }

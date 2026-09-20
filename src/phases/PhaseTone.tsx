@@ -377,7 +377,7 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
      <p>발화의 크기, 빠르기, {hasWeightAxis(tone.font) ? '무게' : '말투'}를 정해봐요.</p>
     </div>
     {/* 삽화 자리. 아직 그려지지 않았다 — 지금은 '가' 한 글자가 대신 선다. */}
-    <div className="tone-figure" aria-hidden="true" style={{ fontFamily: fontMap[tone.font] }}>가</div>
+    <div className="tone-figure" aria-hidden="true" style={{ fontFamily: fontMap[tone.font] }}>발화</div>
     {/* 글자였다. 그러면 이 장에서 **앞으로 가는 길이 손가락뿐**이라
         자판·스위치·낭독기를 쓰는 사람은 03에 들어와 빠져나갈 수가 없었다
         (탭을 눌러 보면 뒤로가기 하나를 지나 안 보이는 둘째 장으로 굴러

@@ -125,8 +125,7 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
     title: '소리 대신 빛으로 말해보세요.',
     body: (
       <p>
-        내가 쓴 텍스트가 벽에 떠올라<br />
-        공간을 지나는 사람들에게 닿습니다.
+        텍스트가 화면에 떠올라.
       </p>
     ),
     art: <Built name="about" still={artAboutFull}
@@ -154,7 +153,7 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
   },
   {
     step: 'Step 2',
-    title: '발화의 성격을 고르고 다듬습니다.',
+    title: '성격을 골라 다듬습니다.',
     body: (
       <p>
         크기와 빠르기, 무게를 조절하며<br />

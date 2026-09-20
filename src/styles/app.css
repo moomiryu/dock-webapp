@@ -2334,9 +2334,20 @@
      0.08이었는데 몸이 두둥실 오르내리는 만큼(±1.7%) 틈이 같이 좁아져
      제일 올라왔을 때 10px까지 붙었다. 0.11로 넓힌다. */
   top: calc(var(--say-floor, 0px) - var(--char-box, 272px) * 0.11);
-  /* 제 높이만큼 끌어올린다. 두둥실(saySway)이 이 값을 물고 위아래로
-     흔드는데, 그 애니메이션이 꺼진 자리에서는 이 줄이 자리를 지킨다. */
-  translate: 0 -100%;
+  /* 캐릭터 머리 위 **한가운데**에 선다(2026-09-20).
+     전에는 마디마다 좌우로 번갈아 붙고 ±5도씩 기울었다. 마디가 짧은
+     인사 셋일 때는 그 들쭉날쭉이 생기였는데, 두 줄짜리 문장이 되자
+     읽는 눈이 매번 다른 데서 시작해야 했다. 읽을 것이 생기면 축이 하나여야
+     한다. 가로로는 제 폭의 절반, 세로로는 제 높이만큼 끌어올린다 —
+     두둥실(saySway)이 이 값을 물고 흔들므로 여기가 그 기준점이다. */
+  left: var(--say-x, 50%);
+  translate: -50% -100%;
+  text-align: center;
+  /* 제 내용만큼만 넓다. 안 주면 상자가 오른쪽 끝까지 늘어나 pre-line이
+     작가가 끊어 준 자리 말고 엉뚱한 데서도 줄을 바꾼다(두 줄이 세 줄이
+     됐다). 그러고도 화면은 못 넘게 막아 둔다. */
+  width: max-content;
+  max-width: min(92vw, 420px);
   /* 라틴은 워드마크와 같은 얼굴로, 한글은 Lineal에 없으니 UI 얼굴로 떨어진다.
      성격 서체 넷 중 하나를 쓰면 고르기도 전에 한 톤을 내민 꼴이 된다.
 
@@ -2346,13 +2357,18 @@
      뜻하지 않는다. Pretendard를 650으로 내리면 0.115가 되어 줄기가 같아진다
      (가변 글꼴이라 중간값을 그대로 쓴다). 라틴은 Lineal이 받으므로 900. */
   font-weight: 650;
-  font-size: calc(var(--char-box, 272px) * 0.12);
-  line-height: 1;
+  /* 0.12배(32px)였다. 한 마디가 '안녕하세요' 다섯 자일 때는 맞았지만,
+     '발화를 시작해보세요.' 열한 자가 되자 360 화면에서 한 줄이 넘쳤다.
+     0.10배면 열한 자가 268px이라 제일 좁은 화면에도 든다. */
+  font-size: calc(var(--char-box, 272px) * 0.1);
+  /* 두 줄이 되었으므로 줄 사이가 필요하다. 1은 줄끼리 붙는다. */
+  line-height: 1.35;
   color: var(--brand-main);
-  white-space: nowrap;
+  /* 줄바꿈은 작가가 끊어 준 자리 그대로(HomeCharacter · WELCOME).
+     화면 폭에 맡기면 뜻이 안 끊기는 데서 끊긴다. */
+  white-space: pre-line;
   pointer-events: none;
   transform-origin: center bottom;
-  transform: rotate(var(--say-tilt, 0deg));
   /* 뜨고 지는 것과 떠 있는 것은 다른 일이다. 앞은 한 번 일어나고 끝나며
      (charSay), 뒤는 글자가 서 있는 내내 돈다(saySway). */
   animation: charSay 1600ms var(--ease-standard) both,
@@ -2362,9 +2378,12 @@
    그 폭을 글자에도 같은 값으로 준다 — 글자만 제자리에 붙박여 있으면 몸은
    떠 있고 말은 벽에 붙은 것이 된다. 같은 위상이라 둘 사이의 틈이 늘 같다.
    translate는 transform과 따로 노는 속성이라 기울기(--say-tilt)를 안 덮는다. */
+/* 가로의 -50%를 여기서도 들고 있어야 한다. translate 한 속성이라
+   애니메이션이 도는 동안 위의 선언을 통째로 덮는다 — X를 빼먹었더니
+   글자가 가운데에 서지 않고 가운데선에서 오른쪽으로만 뻗었다. */
 @keyframes saySway {
-  0%, 100% { translate: 0 calc(-100% - var(--char-box, 272px) * 0.017); }
-  50%      { translate: 0 calc(-100% + var(--char-box, 272px) * 0.017); }
+  0%, 100% { translate: -50% calc(-100% - var(--char-box, 272px) * 0.017); }
+  50%      { translate: -50% calc(-100% + var(--char-box, 272px) * 0.017); }
 }
 /* 가운데선에서 한쪽으로 뻗는다. 몸 위에 있으므로 옆으로는 겹칠 일이 없다. */
 /* 몸의 한가운데에서 좌우로 뻗는다. 상자 한가운데(50%)가 아니다 — 옆모습은
@@ -2372,11 +2391,6 @@
    HomeCharacter가 실루엣에서 재어 내려준다). */
 /* 라틴만 900. 이 글자들은 Lineal이 그리므로 위의 환산이 필요 없다. */
 .home-char-say[data-latin='true']{ font-weight: 900; }
-.home-char-say[data-side='right']{ left: var(--say-x, 50%); }
-.home-char-say[data-side='left']{ right: calc(100% - var(--say-x, 50%)); }
-/* 인사가 아니라 할 일. 열한 자를 0.12배(32px)로 찍으면 nowrap이라 한 줄이
-   390 화면을 넘는다 — 0.072배(20px)면 245px로 들어간다. */
-.home-char-say[data-small='true']{ font-size: calc(var(--char-box, 272px) * 0.072); font-weight: 700; }
 /* '!'는 터지고 끝나는 것이라 뜨고 지는 시간도 짧다. 기본 1600ms를 그대로
    쓰면 900ms에 사라지는 글자가 아직 또렷한 채로 잘린다. */
 .home-char-say[data-quick='true']{ animation-duration: 900ms; }

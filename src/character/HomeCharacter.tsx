@@ -42,14 +42,25 @@ const POSE_DWELL = 900;
  * 홈_3이 상자 170px, 홈_1이 390px, 홈_2가 607px(화면에 잘려 나갈 만큼 가깝다).
  * 272로 나누면 0.63 · 1.43 · 2.23. 그 폭을 그대로 쓴다.
  */
-/* 인사 셋뿐이다. '아래 버튼을 눌러보세요'가 넷째로 있었는데 걷어냈다
-   (2026-09-20) — 버튼 둘이 바로 아래에 크게 서 있어서, 그것을 누르라고
-   말로 다시 이르는 것은 화면을 못 믿는다는 뜻이 된다. */
-const WELCOME: Array<{ text: string; small?: boolean }> = [
-  { text: '안녕하세요' }, { text: 'こんにちは' }, { text: 'Hello' }
+/**
+ * 처음 오는 사람에게 건네는 세 마디.
+ *
+ * 2026-09-20까지는 '안녕하세요 · こんにちは · Hello' 셋이었다. 인사를 세
+ * 나라 말로 하는 것은 이 물건이 누구에게나 열려 있다는 말이었지만, 그
+ * 다음에 무엇을 해야 하는지는 끝내 말하지 않았다. 처음 여는 화면이
+ * 할 일은 인사하고 **데려가는 것**이라 셋을 그 차례로 바꿨다.
+ *
+ * 줄바꿈은 작가가 끊어 준 자리다. 뜻이 끊기는 데서 끊는다 —
+ * '메가폰트 웹에 오신 걸 / 환영합니다', '아래 버튼을 눌러서 / 발화를
+ * 시작해보세요'. 자동 줄바꿈에 맡기면 화면 폭에 따라 엉뚱한 데서 끊긴다.
+ */
+const WELCOME: Array<{ text: string; ms: number }> = [
+  { text: '안녕하세요.', ms: 1250 },
+  { text: '메가폰트 웹에 오신 걸\n환영합니다.', ms: 1900 },
+  { text: '아래 버튼을 눌러서,\n발화를 시작해보세요.', ms: 2300 }
 ];
-/** 한 마디가 떠 있는 시간 · 다음 마디까지의 틈 */
-const WELCOME_MS = 1250, WELCOME_GAP = 220;
+/** 다음 마디까지의 틈. 떠 있는 시간은 마디마다 다르다 — 길면 읽을 짬이 든다 */
+const WELCOME_GAP = 220;
 /**
  * 깨어나는 차례.
  *
@@ -111,8 +122,7 @@ export default function HomeCharacter() {
   // 뱉은 글자. 표정과 같은 이유로 React가 들고 있다 — 몇 초에 한 번뿐이라
   // 리렌더가 드물다. 자리와 크기는 매 프레임이라 여전히 DOM을 직접 만진다.
   const [say, setSay] = useState<{
-    text: string; side: 'left' | 'right'; tilt: number;
-    /** 인사가 아니라 할 일. 작게 적는다 */ small?: boolean;
+    text: string;
     /** '!'처럼 짧게 터지는 것 — 뜨고 지는 시간도 짧다 */ quick?: boolean;
   } | null>(null);
 
@@ -326,7 +336,7 @@ export default function HomeCharacter() {
             introAt = t;
             if (wakeIdx >= WAKE.length) {
               setBlind(false);
-              setSay({ text: '!', side: 'right', tilt: -8, quick: true });
+              setSay({ text: '!', quick: true });
               sayUntil = t + BANG_MS;
               intro = 'bang';
             } else {
@@ -353,9 +363,9 @@ export default function HomeCharacter() {
             // 양옆으로 번갈아. 두 마디가 같은 쪽에 서면 차례로 온 것이
             // 아니라 한 자리에서 글자만 바뀐 것으로 보인다.
             const w = WELCOME[welcomeIdx];
-            setSay({ text: w.text, small: w.small, side: welcomeIdx % 2 ? 'left' : 'right', tilt: welcomeIdx % 2 ? 5 : -5 });
-            sayUntil = t + WELCOME_MS;
-            welcomeNext = t + WELCOME_MS + WELCOME_GAP;
+            setSay({ text: w.text });
+            sayUntil = t + w.ms;
+            welcomeNext = t + w.ms + WELCOME_GAP;
             welcomeIdx++;
           }
         }
@@ -438,10 +448,9 @@ export default function HomeCharacter() {
       aria-label="메가폰트 캐릭터"
     >
       {say && !matchMedia('(prefers-reduced-motion: reduce)').matches && (
-        <span className="home-char-say" data-side={say.side} aria-hidden="true"
-          data-small={say.small ? 'true' : undefined} data-quick={say.quick ? 'true' : undefined}
-          data-latin={isLatin(say.text) ? 'true' : undefined}
-          style={{ '--say-tilt': `${say.tilt.toFixed(1)}deg` } as React.CSSProperties}>
+        <span className="home-char-say" aria-hidden="true"
+          data-quick={say.quick ? 'true' : undefined}
+          data-latin={isLatin(say.text) ? 'true' : undefined}>
           {say.text}
         </span>
       )}

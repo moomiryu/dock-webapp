@@ -13,7 +13,7 @@ for(const width of [320,390,480]){
  await page.locator('.info-track').waitFor();
  await check('tutorial');
  await page.screenshot({path:`${out}/tutorial-${width}.png`});
- for(let i=1;i<6;i++){await page.getByRole('button',{name:'아래로 스크롤하여 다음 설명 보기'}).click();await page.waitForTimeout(100); if(await page.locator('.info-head').innerText()!==`${i+1} / 6`)throw Error('scroll step '+i);}
+ for(let i=1;i<6;i++){await page.getByRole('button',{name:'다음',exact:true}).click();await page.waitForTimeout(100); if(await page.locator('.info-head').innerText()!==`${i+1} / 6`)throw Error('scroll step '+i);}
  await page.screenshot({path:`${out}/tutorial-last-${width}.png`});
  await page.locator('.info-track').focus();await page.keyboard.press('Home');
  await page.getByRole('button',{name:'시작하기',exact:true}).click();

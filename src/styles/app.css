@@ -982,16 +982,19 @@
 }
 
 /* Vertical sections use natural height; large text never gets trapped in a slide. */
+/* 한 번에 한 장만 여기 선다. 스크롤은 없다 — 넘기는 것은 '다음'이 한다.
+   초점을 받되 탭 차례에는 안 낀다(tabIndex=-1) — 장이 바뀔 때 읽는 도구가
+   새 내용으로 가게 하는 용도다. */
 .info-track{
   position: relative;
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior-y: contain;
+  overflow: hidden;
 }
+.info-track:focus{ outline: none; }
 .info-slide{
   min-height: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1059,19 +1062,15 @@
   gap: var(--s3);
   flex: none;
 }
-.info-scroll{
-  display: grid;
-  place-items: center;
-  align-self: center;
-  width: 64px;
-  min-height: 48px;
-  border: 0;
-  background: none;
-  color: var(--muted);
-  cursor: pointer;
+/* 장이 들어올 때. 옆으로 미끄러지지 않고 제자리에서 한 뼘 올라오며 든다 —
+   미끄러지는 것은 '여러 장이 옆으로 이어져 있다'는 말인데, 이제 한 장씩
+   서는 화면이라 그 말이 거짓이 된다. */
+@keyframes infoSlideIn{
+  from{ opacity: 0; translate: 0 10px; }
+  to{ opacity: 1; translate: 0 0; }
 }
-.info-scroll:disabled{ visibility: hidden; }
-.info-scroll:hover{ color: var(--ink); }
+.info-slide{ animation: infoSlideIn 280ms var(--ease-standard) both; }
+@media (prefers-reduced-motion: reduce){ .info-slide{ animation: none; } }
 
 .info-rules{
   display: flex;

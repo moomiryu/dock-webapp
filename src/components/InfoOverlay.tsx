@@ -28,60 +28,51 @@ import artDockTo from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_2.svg
 
 interface Props { onClose: () => void; onStart: () => void; }
 
-// Native vertical scrolling keeps every section readable, including enlarged text.
+/**
+ * 한 장에 한 가지.
+ *
+ * 2026-09-20까지는 여섯 장이 세로로 이어진 스크롤이었다. 넘기는 것이
+ * 손가락에 달려 있으니 어디까지 읽었는지가 흐릿하고, 한 장이 화면보다
+ * 길어지면 다음 장이 위로 비어져 들어와 **두 생각이 한 화면에 겹쳤다.**
+ * 이제 한 번에 한 장만 서고 '다음'이 넘긴다 — 읽을 것이 언제나 하나다.
+ */
 export default function InfoOverlay({ onClose, onStart }: Props) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
+  const last = idx === SLIDES.length - 1;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
-    trackRef.current?.focus({ preventScroll: true });
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
+  // 장이 바뀌면 그 장으로 초점을 옮긴다 — 읽는 도구에 새 내용이 왔다고 알린다
+  useEffect(() => { trackRef.current?.focus({ preventScroll: true }); }, [idx]);
 
-  function onScroll() {
-    const el = trackRef.current;
-    if (!el) return;
-    const slides = Array.from(el.children) as HTMLElement[];
-    const top = el.getBoundingClientRect().top;
-    let active = 0;
-    slides.forEach((slide, i) => {
-      if (slide.getBoundingClientRect().top - top <= el.clientHeight * 0.45) active = i;
-    });
-    setIdx(active);
-  }
-  function next() {
-    const el = trackRef.current;
-    const target = el?.children[Math.min(idx + 1, SLIDES.length - 1)];
-    if (!el || !target) return;
-    el.scrollTo({
-      top: el.scrollTop + target.getBoundingClientRect().top - el.getBoundingClientRect().top,
-      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
-    });
-  }
+  // 좌상단은 한 걸음씩 되돌린다. 첫 장에서만 이 화면을 닫는다 — 여섯 장을
+  // 읽고 나서 한 장 앞을 다시 보려면 되돌아갈 데가 있어야 한다.
+  const back = () => (idx === 0 ? onClose() : setIdx(idx - 1));
+  const s = SLIDES[idx];
   return (
     <div className="info-overlay" aria-label="메가폰트 소개">
       <div className="info-head">
-        <BackButton label="처음으로" onClick={onClose} />
+        <BackButton label={idx === 0 ? '처음으로' : '이전 설명'} onClick={back} />
         <span>{idx + 1} / {SLIDES.length}</span>
       </div>
-      <div className="info-track" ref={trackRef} onScroll={onScroll} tabIndex={0} role="region" aria-label="메가폰트 사용 안내, 아래로 스크롤">
-        {SLIDES.map((s, i) => (
-          <section className="info-slide" key={i} aria-label={s.title}>
-            <span className="info-step-label">{s.step}</span>
-            <h2>{s.title}</h2>
-            <div className="info-said">{s.body}</div>
-            <div className={'info-art ' + (s.artClass ?? '')} aria-hidden>{s.art}</div>
-          </section>
-        ))}
+      <div className="info-track" ref={trackRef} tabIndex={-1} role="region"
+        aria-live="polite" aria-label="메가폰트 사용 안내">
+        {/* key가 바뀌면 장이 새로 서고, 그때 들어오는 결(infoSlideIn)이 돈다 */}
+        <section className="info-slide" key={idx} aria-label={s.title}>
+          <span className="info-step-label">{s.step}</span>
+          <h2>{s.title}</h2>
+          <div className="info-said">{s.body}</div>
+          <div className={'info-art ' + (s.artClass ?? '')} aria-hidden>{s.art}</div>
+        </section>
       </div>
       <div className="info-nav">
-        <button type="button" className="info-scroll" onClick={next} disabled={idx === SLIDES.length - 1} aria-label="아래로 스크롤하여 다음 설명 보기">
-          <svg width="48" height="28" viewBox="0 0 48 28" fill="none" aria-hidden="true">
-            <path d="M6 8 L24 18 L42 8" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+        <button type="button" className="primary-action"
+          onClick={last ? onStart : () => setIdx(idx + 1)}>
+          {last ? '시작하기' : '다음'}
         </button>
-        <button type="button" className="primary-action" onClick={onStart}>시작하기</button>
       </div>
     </div>
   );

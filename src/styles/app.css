@@ -1857,7 +1857,15 @@
    틀이 같이 길어지는데, 그러면 힌트를 펼친 만큼 '다 썼어요'가 화면 밖으로
    밀린다(재서 확인: 844 화면에서 버튼 아래가 978이었다). 높이를 박으면
    남는 자리가 없을 때 줄어들 수 있는 것부터 줄어든다 — 힌트가 그것이다. */
-.write-screen{ height: 100dvh; }
+/* 100dvh였다. dvh는 주소창만 따라가고 **자판은 안 따라간다** — 390 폭
+   기준으로 자판이 올라온 높이(380)에서 재보니 '다 썼어요'가 화면 밖
+   238px에 있었다. 한 줄을 다 쓴 바로 그 순간 버튼이 안 보인다.
+
+   자판이 먹는 높이를 재서 흘려보내는 장치는 이미 있었다(lib/viewport.ts가
+   --vvh를 :root에 적는다). 그 값을 쓰는 규칙이 .compose-screen에 걸려
+   있었는데, 그 클래스를 쓰는 것은 **04 색 화면**이다. 이름이 갈리면서
+   규칙이 엉뚱한 화면에 가 있었다. */
+.write-screen{ height: var(--vvh, 100dvh); overflow: auto; }
 /* 입력창은 **줄어들지 않는다.** 2.4/1.5는 벽의 비율이고, 쓰는 동안 보는
    줄모양이 곧 벽의 줄모양이라는 이 화면의 약속이 거기 걸려 있다.
 
@@ -1941,10 +1949,25 @@
    너무 많다. 설명하는 장과 조작하는 장을 가르고, 누르면 위로 밀린다. */
 .tone-adjust{ padding: 0; gap: 0; }
 .tone-deck{ flex: 1; min-height: 100dvh; position: relative; overflow: hidden; }
+/* ── 안 보이는 장은 **없는 것이어야 한다** ─────────────────────────
+   두 장이 겹쳐 있고 transform으로만 치워 두었다. 치워진 장이 그대로
+   살아 있어서 탭이 거기로 굴러떨어졌다 — 첫 장을 보고 있는 사람이
+   안 보이는 둘째 장의 눈금자까지 만질 수 있었다(재서 확인: 탭 여덟 번
+   중 일곱 번이 안 보이는 쪽이었다). 슬라이드가 520ms라, 먹었는지 확신
+   못 해 한 번 더 누른 탭이 미끄러져 들어오는 패널에 떨어지기도 한다.
+
+   visibility로 끊는다 — 탭 순서에서도, 낭독기에서도, 손가락에서도
+   한꺼번에 빠진다. 나가는 장은 다 나간 **뒤에** 꺼져야 하므로 그 쪽만
+   520ms 늦춘다(transition의 마지막 항). */
 .tone-pane{ position: absolute; inset: 0; display: flex; flex-direction: column;
   gap: var(--s5); background: var(--paper);
   padding: var(--s5) var(--pad-x) max(var(--s6), env(safe-area-inset-bottom, 0px));
-  transition: transform 520ms var(--ease-emphasized); }
+  visibility: hidden;
+  transition: transform 520ms var(--ease-emphasized), visibility 0s linear 520ms; }
+.tone-deck[data-step="intro"] .tone-intro,
+.tone-deck[data-step="work"] .tone-work{
+  visibility: visible;
+  transition: transform 520ms var(--ease-emphasized), visibility 0s; }
 .tone-deck[data-step="intro"] .tone-work{ transform: translateY(100%); }
 .tone-deck[data-step="work"] .tone-intro{ transform: translateY(-100%); }
 .tone-work > .primary-action{ margin-top: auto; }
@@ -1956,8 +1979,12 @@
   font-size: min(46cqw, 28vh); color: rgb(255 255 255 / 92%); }
 /* 다음 걸음으로 가는 유일한 손짓이라 위계를 본문 자리에 둔다 —
    라벨(14px·76%)로 두었더니 잔글씨로 읽혀 눌러야 하는 줄 몰랐다. */
+/* span이었다가 버튼이 됐다(2026-09-21) — 이 장에서 앞으로 가는 길이
+   손가락뿐이면 자판을 쓰는 사람이 갇힌다. 보이는 모습은 그대로여야
+   하므로 버튼의 기본 생김새를 전부 지운다. */
 .tone-more{ font-family: var(--ui-font); font-size: var(--fs-body); font-weight: 600;
-  color: var(--paper); padding-bottom: var(--s6);
+  color: var(--paper); padding: 0 0 var(--s6);
+  border: 0; background: none; cursor: pointer; text-align: left;
   display: flex; align-items: center; gap: var(--s2); }
 .tone-more::before{ content: ''; width: 9px; height: 9px; border-left: 2px solid currentColor;
   border-top: 2px solid currentColor; rotate: 45deg; translate: 0 2px; }

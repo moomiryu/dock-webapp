@@ -235,6 +235,17 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
     useLayoutEffect(() => {
         const el = glyph.current;
         if (!el) return;
+        /* 미는 동안에는 재지 않는다. 이 함수는 의존성 배열이 없어 렌더마다
+           도는데(그래야 마지막 크기에서 잰 값으로 수렴한다), 잣대를 미는
+           동안에는 pointermove마다 렌더가 나므로 초당 60~120번 강제 리플로우가
+           된다 — getComputedStyle·offsetWidth·offsetHeight 셋 다 "지금 당장
+           배치를 다시 계산해"라는 읽기다. 손이 제일 오래 머무는 동작이
+           제일 무거워진다.
+
+           건너뛰어도 값이 안 틀린다: 미는 동안 바뀌는 것은 크기와 장평뿐이고
+           둘 다 글자 **골격**을 안 바꾼다(아래 계산이 base로 나눠 정규화한다).
+           손을 떼면 다시 재서 맞춘다. */
+        if (drag) return;
         /* **바탕 크기**로 나눈다. 최종 크기에는 서체별 잉크 보정(optic)이
            이미 곱해져 있는데, 아래 계산은 그 보정을 곱하기 **전**의 값을
            내놓기 때문이다. 같은 자리에서 재야 셈이 딱 맞는다. */
@@ -349,7 +360,11 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
  <div className="tone-deck" data-step={step}>
 
   {/* ── 첫 장: 무엇을 하는 자리인지만 ───────────────────────────── */}
-  <section className="tone-pane tone-intro" onClick={() => setStep('work')}>
+  {/* 장 전체가 넘기는 손짓이다. 다만 **버튼 위는 아니다** — 머리줄의
+      뒤로가기가 이 안에 들어 있어서, 뒤로 가려고 누른 탭이 onBack과
+      setStep을 같이 돌렸다. 되돌리려는 손짓이 진행 손짓을 겸하면 안 된다. */}
+  <section className="tone-pane tone-intro"
+    onClick={e => { if (!(e.target as HTMLElement).closest('button')) setStep('work'); }}>
    <div className="z-glyph-stage has-face">
     <div className="z-header">
      <BackButton label="성격 다시 고르기" onClick={() => onBack(tone)}/>
@@ -363,7 +378,13 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
     </div>
     {/* 삽화 자리. 아직 그려지지 않았다 — 지금은 '가' 한 글자가 대신 선다. */}
     <div className="tone-figure" aria-hidden="true" style={{ fontFamily: fontMap[tone.font] }}>가</div>
-    <span className="tone-more">화면을 누르면 시작해요</span>
+    {/* 글자였다. 그러면 이 장에서 **앞으로 가는 길이 손가락뿐**이라
+        자판·스위치·낭독기를 쓰는 사람은 03에 들어와 빠져나갈 수가 없었다
+        (탭을 눌러 보면 뒤로가기 하나를 지나 안 보이는 둘째 장으로 굴러
+        떨어졌다). 보이는 모습은 그대로 두고 버튼으로 바꾼다 — 이름은
+        화면에 적힌 그 문장이어야 한다(눈에 보이는 글자와 낭독되는 이름이
+        어긋나면 음성으로 조작하는 사람이 부를 이름을 잃는다). */}
+    <button type="button" className="tone-more" onClick={() => setStep('work')}>화면을 누르면 시작해요</button>
    </div>
   </section>
 

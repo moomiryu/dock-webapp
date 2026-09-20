@@ -87,6 +87,14 @@ const WAKE: Array<{ open: boolean; ms: number }> = [
 ];
 /** 눈을 뜨고 터지는 '!' — 놀란 뒤에 웃는다 */
 const BANG_MS = 900;
+/**
+ * 한 글자가 찍히는 빠르기 (초당 글자 수).
+ *
+ * 22자면 '메가폰트 웹에 오신 걸 / 환영합니다.' 열일곱 자가 0.77초에 다
+ * 찍힌다. 그 마디가 1.9초 떠 있으므로 찍히고 나서 읽을 짬이 1.1초 남는다.
+ * 더 빠르면 찍히는 것으로 안 보이고, 더 느리면 다 읽기 전에 사라진다.
+ */
+const TYPE_CPS = 22;
 
 /**
  * 이 글자들을 Lineal이 그리는가.
@@ -123,8 +131,10 @@ export default function HomeCharacter() {
   // 리렌더가 드물다. 자리와 크기는 매 프레임이라 여전히 DOM을 직접 만진다.
   const [say, setSay] = useState<{
     text: string;
-    /** '!'처럼 짧게 터지는 것 — 뜨고 지는 시간도 짧다 */ quick?: boolean;
+    /** 이 마디가 떠 있는 시간(ms). 뜨고 지는 결의 길이도 이것이다 */ ms: number;
   } | null>(null);
+  /** 찍히는 중인 글자를 프레임마다 적는 자리. React를 거치지 않는다 */
+  const sayEl = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     const el = ref.current!;
@@ -163,6 +173,8 @@ export default function HomeCharacter() {
      */
     const depth = 1;
     let sayUntil = 0;
+    /** 지금 찍고 있는 마디. 한 글자씩 늘려 적는다 */
+    let typing: { text: string; from: number; built?: boolean; shown?: number } | null = null;
     /**
      * 첫인사의 차례. 등 → 돌아섬 → '!' → 웃음 → 인사 넉 마디 → 평소.
      * 이 동안에는 떠다니지도 부풀지도 않는다.
@@ -336,7 +348,8 @@ export default function HomeCharacter() {
             introAt = t;
             if (wakeIdx >= WAKE.length) {
               setBlind(false);
-              setSay({ text: '!', quick: true });
+              setSay({ text: '!', ms: BANG_MS });
+              typing = { text: '!', from: t };
               sayUntil = t + BANG_MS;
               intro = 'bang';
             } else {
@@ -347,7 +360,7 @@ export default function HomeCharacter() {
           // 놀란 다음에 웃는다. 순서가 뒤집히면 인사가 먼저 와서 '!'가
           // 무엇에 놀란 것인지 알 수 없다.
           if (t > sayUntil) {
-            sayUntil = 0; setSay(null);
+            sayUntil = 0; setSay(null); typing = null;
             setEyes('happy');
             intro = 'welcome'; welcomeNext = t + WELCOME_GAP;
           }
@@ -363,7 +376,8 @@ export default function HomeCharacter() {
             // 양옆으로 번갈아. 두 마디가 같은 쪽에 서면 차례로 온 것이
             // 아니라 한 자리에서 글자만 바뀐 것으로 보인다.
             const w = WELCOME[welcomeIdx];
-            setSay({ text: w.text });
+            setSay({ text: w.text, ms: w.ms });
+            typing = { text: w.text, from: t };
             sayUntil = t + w.ms;
             welcomeNext = t + w.ms + WELCOME_GAP;
             welcomeIdx++;
@@ -394,9 +408,38 @@ export default function HomeCharacter() {
       }
       // 인사 한 마디는 제 시간을 다 살면 사라진다. 그 뒤로 이 캐릭터가
       // 뱉는 글자는 없다 — 나팔에서 나오는 남의 말이 그 자리를 맡는다.
+      /* 한 글자씩 찍는다. 글자를 다루는 물건이 제 입으로 말하는 자리라
+         한꺼번에 떠오르는 것보다 찍히는 편이 이 화면의 말투에 맞는다.
+         React를 거치지 않고 여기서 바로 적는다 — 초당 스물두 번씩 상태를
+         갈면 홈 전체가 그만큼 다시 그려진다. 읽는 도구에는 이 글자가
+         안 보이므로(aria-hidden) 덜 찍힌 글이 읽힐 걱정은 없다. */
+      if (typing && sayEl.current) {
+        /* 글자는 **처음부터 다 심어 두고** 안 보이게만 둔다. 한 글자씩
+           이어 붙이면 상자가 글자마다 넓어지는데, 가운데 정렬이라 이미
+           찍힌 글자가 매번 왼쪽으로 밀린다 — 읽던 자리가 흔들린다.
+           visibility는 자리를 남기므로 줄바꿈도 처음부터 제자리다. */
+        if (!typing.built) {
+          sayEl.current.textContent = '';
+          for (const ch of typing.text) {
+            const one = document.createElement('span');
+            one.textContent = ch;
+            one.style.visibility = 'hidden';
+            sayEl.current.appendChild(one);
+          }
+          typing.built = true;
+          typing.shown = 0;
+        }
+        const n = Math.min(typing.text.length, Math.max(0, Math.floor(((t - typing.from) * TYPE_CPS) / 1000)));
+        for (let i = typing.shown ?? 0; i < n; i++) {
+          (sayEl.current.children[i] as HTMLElement | undefined)?.style.setProperty('visibility', 'visible');
+        }
+        typing.shown = n;
+        if (n >= typing.text.length) typing = null;
+      }
+
       if (sayUntil && t > sayUntil) {
         sayUntil = 0;
-        setSay(null);
+        setSay(null); typing = null;
       }
 
       // 형태 보간
@@ -448,11 +491,12 @@ export default function HomeCharacter() {
       aria-label="메가폰트 캐릭터"
     >
       {say && !matchMedia('(prefers-reduced-motion: reduce)').matches && (
-        <span className="home-char-say" aria-hidden="true"
-          data-quick={say.quick ? 'true' : undefined}
-          data-latin={isLatin(say.text) ? 'true' : undefined}>
-          {say.text}
-        </span>
+        /* 글자는 비워 둔다 — 찍는 쪽(rAF)이 프레임마다 채운다. 여기에
+           {say.text}를 적어 두면 React가 다시 그릴 때마다 다 찍힌 글로
+           되돌아간다. */
+        <span className="home-char-say" aria-hidden="true" ref={sayEl}
+          data-latin={isLatin(say.text) ? 'true' : undefined}
+          style={{ '--say-life': `${say.ms}ms` } as React.CSSProperties} />
       )}
       {/* 떠 있다는 것은 그림자가 말한다. 몸보다 아래, 몸보다 작게. */}
       <span className="home-char-shade" aria-hidden="true" />

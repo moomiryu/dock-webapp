@@ -943,6 +943,8 @@
   gap: var(--s5);
 }
 
+/* 찍히며 드는 본문. 줄바꿈이 글 안에 적혀 있으므로 그 자리를 지킨다 */
+.info-said p.is-typed{ white-space: pre-line; }
 .info-said p{
   font-size: var(--fs-body);
   line-height: 1.5;
@@ -2368,6 +2370,9 @@
      됐다). 그러고도 화면은 못 넘게 막아 둔다. */
   width: max-content;
   max-width: min(92vw, 420px);
+  /* 찍히는 동안에도 상자는 처음부터 제 크기다 — 글자를 다 심어 두고
+     보이기만 켜기 때문이다(HomeCharacter). 그래서 가운데 정렬이 흔들리지
+     않는다. */
   /* 라틴은 워드마크와 같은 얼굴로, 한글은 Lineal에 없으니 UI 얼굴로 떨어진다.
      성격 서체 넷 중 하나를 쓰면 고르기도 전에 한 톤을 내민 꼴이 된다.
 
@@ -2391,7 +2396,9 @@
   transform-origin: center bottom;
   /* 뜨고 지는 것과 떠 있는 것은 다른 일이다. 앞은 한 번 일어나고 끝나며
      (charSay), 뒤는 글자가 서 있는 내내 돈다(saySway). */
-  animation: charSay 1600ms var(--ease-standard) both,
+  /* 뜨고 지는 시간은 그 마디가 떠 있는 시간이다. 1600ms로 박아 뒀더니
+     2300ms짜리 마디가 다 읽히기도 전에 사라지고 700ms를 빈 채로 기다렸다. */
+  animation: charSay var(--say-life, 1600ms) var(--ease-standard) both,
              saySway 5.2s ease-in-out infinite;
 }
 /* 캐릭터와 같은 박자로 두둥실(5.2s · ±1.7%). 몸이 charFloat으로 오르내리는
@@ -2411,18 +2418,18 @@
    HomeCharacter가 실루엣에서 재어 내려준다). */
 /* 라틴만 900. 이 글자들은 Lineal이 그리므로 위의 환산이 필요 없다. */
 .home-char-say[data-latin='true']{ font-weight: 900; }
-/* '!'는 터지고 끝나는 것이라 뜨고 지는 시간도 짧다. 기본 1600ms를 그대로
-   쓰면 900ms에 사라지는 글자가 아직 또렷한 채로 잘린다. */
-.home-char-say[data-quick='true']{ animation-duration: 900ms; }
+/* '!'도 제 시간(BANG_MS)을 --say-life로 받는다 — 따로 적지 않는다. */
 /* 2026-09-20: 크기가 튀는 것을 걷어냈다.
    0.72배에서 터지듯 나타나 1.12배로 커지며 사라졌는데, 한 마디가 1.6초씩
    넉 번 이어지는 자리라 그 몸짓이 네 번 반복되면 과하다. 이제 흐려졌다
    또렷해지기만 하고, 떠 있는 동안은 saySway가 캐릭터와 같이 두둥실한다.
    기울기는 정해진 값이라 이제 요소에 그대로 둔다 — 움직이지 않는다. */
+/* 들어오는 일은 **찍히는 것**이 한다(HomeCharacter · TYPE_CPS). 그래서
+   흐려졌다 또렷해지는 구간은 짧다 — 길면 첫 글자들이 반투명한 채로 찍힌다. */
 @keyframes charSay {
   0%   { opacity: 0; }
-  14%  { opacity: 1; }
-  74%  { opacity: 1; }
+  5%   { opacity: 1; }
+  86%  { opacity: 1; }
   100% { opacity: 0; }
 }
 .home-char svg circle{ animation: none; }

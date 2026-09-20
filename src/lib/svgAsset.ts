@@ -910,8 +910,13 @@ export function chainSvg(raws: string[], key: string, dur = 11): string {
     for (let k = n - 2; k >= 0; k--) order.push(k);
     /* 첫 구간과 마지막 구간을 길게 준다. 거기서 사람이 걸어 들어오고
        나가기 때문이다(Step 3). 걸음이 짧으면 미끄러진 것으로 보인다.
-       사람이 없는 장(Step 2)에서는 그저 첫 전환이 조금 느긋해질 뿐이다. */
-    const moves = order.slice(1).map((_, i) => (i === 0 || i === order.length - 2 ? 5 : 2));
+       사람이 없는 장(Step 2)에서는 그저 첫 전환이 조금 느긋해질 뿐이다.
+
+       컷이 둘뿐이면(Step 1) 그 규칙을 안 쓴다 — 두 구간이 곧 첫 구간이자
+       마지막 구간이라 **전부**가 느려진다. 5/2로 주면 머무는 1.7초보다
+       건너가는 2.9초가 길어져, 읽어야 할 판이 늘 바뀌는 중이었다. */
+    const moves = order.slice(1).map((_, i) =>
+      (n > 2 && (i === 0 || i === order.length - 2) ? 5 : 2));
     const t = timeline(order.map((k) => (k === 0 || k === n - 1 ? 3 : 1)), moves);
 
     // 첫 컷의 요소 → 컷마다의 짝

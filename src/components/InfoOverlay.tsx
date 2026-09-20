@@ -23,6 +23,8 @@ import { EMPHASIS_SEC, STAY_DAYS } from '../lib/wall';
 // 어디까지 보이고 어디가 잘려야 하는지를 그것이 정한다(app.css · --focus).
 import artAboutLit from '../../by_moomiryu/Renewal_v1/Tutorial/example_about_1.svg?raw';
 import artAboutFull from '../../by_moomiryu/Renewal_v1/Tutorial/example_about_2.svg?raw';
+import artRule1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step_1.svg?raw';
+import artRule2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_2_1.svg?raw';
 import artGlyphs1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_1.svg?raw';
 import artGlyphs2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_2.svg?raw';
 import artGlyphs3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_3.svg?raw';
@@ -135,7 +137,13 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
         <b>비속어 및 타인을 해치는 표현은 사용할 수 없습니다.</b>
       </p>
     ),
-    art: <ArtLine />
+    /* 두 컷이 오간다: '최대 60자' ↔ 비속어 금지. 같은 판에 같은 자리라
+       바뀌는 것은 **판 위의 말**뿐이고, 구경하는 캐릭터는 눈만 바뀐다 —
+       규칙 둘을 나란히 놓는 대신 한 자리에서 갈아 끼운다. 아래 설명 두
+       줄이 그 둘을 글로도 말하므로 그림은 차례로 하나씩 보여도 된다. */
+    art: <Built name="rules" still={artRule1}
+      make={(k) => chainSvg([artRule1, artRule2], k)} />,
+    artClass: 'is-wide'
   },
   {
     step: 'Step 2',
@@ -210,22 +218,6 @@ function Art({ children }: { children: ReactNode }) {
     </svg>
   );
 }
-
-
-function ArtLine() {
-  return (
-    <Art>
-      {/* 폰 화면 안의 한 줄 — 여기서는 아직 벽이 아니라 손 안이다 */}
-      <rect x="92" y="8" width="56" height="114" rx="7" strokeWidth="1.8" />
-      <line x1="112" y1="116" x2="128" y2="116" strokeWidth="2" />
-      <g strokeWidth="5">
-        <line x1="104" y1="52" x2="136" y2="52" />
-      </g>
-      <line x1="104" y1="64" x2="120" y2="64" strokeWidth="1" opacity="0.4" />
-    </Art>
-  );
-}
-
 
 
 function ArtBig() {

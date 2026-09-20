@@ -65,9 +65,6 @@
   cursor: pointer;
 }
 
-.mf-home-btn:hover{
-  color: var(--ink);
-}
 
 /* 뒤로 가기 — 아이콘만. 좌상단의 고정 자리 */
 /* 손이 닿는 자리는 44인데 그 안의 ∨는 24이고, 그 24 안에서도 획은 7.5만큼
@@ -90,9 +87,8 @@
   cursor: pointer;
 }
 
-.z-back:hover{
-  border-color: var(--ink);
-}
+/* 여기에 .z-back:hover{ border-color }가 있었다. .z-back은 border: none이라
+   (바로 위) 아무 일도 안 하는 줄이었다. 2026-09-21에 걷어냈다. */
 
 /* ─── 공통 타이포 ──────────────────────────────────────────────
    한글은 낱말 안에서 끊지 않는다. balance만 켜면 브라우저가 줄 길이를
@@ -163,7 +159,6 @@
   color: var(--paper);
   border: 1px solid var(--brand-strong);
   padding: 0 20px;   /* 참조가 명시한 xlarge 버튼 좌우 여백 */
-  border-radius: var(--r-xl);
   font-family: inherit;
   font-size: var(--fs-btn);
   font-weight: 500;
@@ -208,7 +203,7 @@
 .sim-replay::after {
   content: '';
   position: absolute;
-  inset: -8px;
+  inset: calc(var(--s3) * -1);
 }
 
 .primary-action:disabled{
@@ -247,10 +242,6 @@
   min-height: var(--btn-l);
 }
 
-.home-link:hover,
-.done-home-link:hover{
-  color: var(--ink);
-}
 
 /* ─── 홈: 인사말, 캐릭터, 시작 선택 ─── */
 
@@ -305,7 +296,6 @@
   background: var(--brand-strong);
   color: var(--paper);
   border: 1px solid var(--brand-strong);
-  border-radius: var(--r-xl);
   font-family: inherit;
   font-size: var(--fs-btn);
   font-weight: 500;
@@ -323,7 +313,6 @@
   background: var(--grey-100);
   color: var(--ink);
   border: 1px solid var(--grey-100);
-  border-radius: var(--r-l);
   font-family: inherit;
   font-size: var(--fs-body);
   cursor: pointer;
@@ -501,8 +490,8 @@
    --at이 1일 때 왼쪽 끝이 안쪽 폭의 4/5에 선다. */
 .z-steps-thumb{
   position: absolute;
-  top: 4px;
-  bottom: 4px;
+  top: var(--s1);
+  bottom: var(--s1);
   left: calc(4px + var(--at, 0) * (100% - 8px) * 0.8);
   width: calc((100% - 8px) / 5);
   background: var(--brand-sub);
@@ -736,7 +725,7 @@
   font-family: var(--label-font);
   font-size: var(--fs-cap-s);
   color: var(--muted);
-  margin-left: 8px;
+  margin-left: var(--s3);
 }
 
 .z-cycle-count{
@@ -780,7 +769,7 @@
 }
 
 .z-progress-label{
-  margin-left: 6px;
+  margin-left: var(--s2);
   letter-spacing: 0.02em;
 }
 
@@ -797,7 +786,7 @@
 
 .guide-hero .primary-action,
 .guide-hero .done-home-link{
-  margin-top: 12px;
+  margin-top: var(--s4);
 }
 
 .error-banner{
@@ -838,7 +827,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 12px;
+  padding-bottom: var(--s4);
   border-bottom: 1px solid var(--line);
   font-family: var(--label-font);
   font-size: var(--fs-cap);
@@ -862,9 +851,6 @@
   cursor: pointer;
 }
 
-.info-close:hover{
-  border-color: var(--ink);
-}
 
 /* Vertical sections use natural height; large text never gets trapped in a slide. */
 /* 한 번에 한 장만 여기 선다. 스크롤은 없다 — 넘기는 것은 '다음'이 한다.
@@ -1143,7 +1129,7 @@
   gap: var(--s3);
   padding: var(--s4) var(--s5);
   border: 1px solid var(--line);
-  margin-top: 4px;
+  margin-top: var(--s1);
   border-radius: var(--r-surface);
 }
 
@@ -1177,7 +1163,7 @@
   line-height: 1.5;
   color: var(--muted);
   border-top: 1px solid var(--line);
-  padding-top: 8px;
+  padding-top: var(--s3);
 }
 
 /* ─── 07 · 08 폰이 꽂힌 채로 읽는 화면 ──────────────────────
@@ -1358,7 +1344,7 @@
   gap: var(--s3);
   border-top: 1px solid var(--line);
   padding-top: 13px;
-  margin-top: 6px;
+  margin-top: var(--s2);
   font-size: var(--fs-body-s);
   line-height: 1.5;
   color: var(--muted);
@@ -1581,10 +1567,6 @@
   cursor: pointer;
 }
 
-.sim-replay:hover{
-  color: var(--ink);
-  border-color: var(--ink);
-}
 
 /* 모션을 껐을 때 — 흐르지는 않되 **자리는 지킨다.**
    전에는 여기서 animation을 통째로 지웠다. 그러면 풍경의 여섯 줄이 쓰던
@@ -2332,7 +2314,7 @@
   pointer-events: none;
 }
 
-.z-steps{ background: var(--grey-100); border-color: var(--grey-100); gap: 4px; padding: 4px; }
+.z-steps{ background: var(--grey-100); border-color: var(--grey-100); gap: var(--s1); padding: var(--s1); }
 /* 점은 --grey-600 — 회색 트랙 위에서 4.2:1이다. 글자가 아니라 표식이라
    대비 규칙의 대상이 아니지만, 안 보이면 눈금이 몇 칸인지 못 센다.
    손잡이가 올라앉은 눈금만 검게 — 청록 위에서 회색은 묻힌다. */
@@ -2348,7 +2330,7 @@
 /* 눈금자와 **같은 높이**여야 한다(--btn-xl). 58px이라 눈금자(56)와 2px
    어긋났고, 도구를 오갈 때마다 아래의 '다음'이 그만큼 들썩였다. */
 .z-manner{ height: var(--btn-xl); align-items: center;
-  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--s1);
   padding: 4px; background: var(--line); border: 1px solid var(--line);
   border-radius: var(--r-l);
 }
@@ -2375,6 +2357,10 @@
    홈의 두 버튼만 그랬던 것을 전부로 넓혔다 (2026-09-15). 누르는 것과
    그냥 면인 것을 모양 하나로 가른다 — 알약이면 누르는 것이다.
    면(카드·미리보기·메시지 타일)은 사다리 값을 그대로 쓴다. */
+/* 버튼의 라운드는 여기서 적지 않는다. 아래 한 규칙이 버튼 전부를
+   알약(--r-full)으로 덮는다 — 여기 사다리 값을 적어 두면 뒤에서
+   죽고, 새로 온 사람이 그걸 고치면 아무 일도 안 일어난다
+   (재서 확인: 셋 다 999px로 그려지고 있었다). */
 .primary-action, .home-cta, .home-info-btn, .info-close,
 .z-cycle, .z-back, .z-steps, .dock-next, .fail-keep,
 .sim-replay, .done-home-link, .tone-selected button, .format-button,
@@ -3254,9 +3240,21 @@
    줄무늬(:nth-child)가 .style-card:active보다 특정성이 높아 공용 누름
    규칙이 먹지 않았다. 그래서 여기서 같은 무게로 다시 쓴다. */
 .tone-choice .style-card:active{ background: var(--brand-strong); color: var(--paper); }
-/* 마우스가 있는 기기에서만. 폰에서 hover를 켜면 누른 뒤에도 색이 남는다 */
+/* ── 마우스가 있는 기기에서만 ────────────────────────────────────────
+   폰에서 hover를 켜면 **누른 뒤에도 색이 남는다.** 손가락은 떼도 마지막에
+   닿은 것을 계속 가리키기 때문이다. 이 규칙은 원래 성격 카드 하나에만
+   걸려 있었고, 나머지 넷은 파일 곳곳에 맨몸으로 흩어져 있어서 폰에서
+   그대로 색이 눌러붙고 있었다(2026-09-21에 모았다).
+
+   같이 오지 못한 것이 하나 있다: .z-back:hover는 border-color를 바꾸는데
+   .z-back에는 테두리가 없어서 처음부터 죽은 줄이었다. 옮기는 대신 지웠다. */
 @media (hover: hover) {
   .tone-choice .style-card:hover:not(.on){ background: var(--brand-soft); }
+  .mf-home-btn:hover{ color: var(--ink); }
+  .home-link:hover,
+  .done-home-link:hover{ color: var(--ink); }
+  .info-close:hover{ border-color: var(--ink); }
+  .sim-replay:hover{ color: var(--ink); border-color: var(--ink); }
 }
 
 /* ─── 03 조율 — 2026-09-15 스케치(_3) ──────────────────────────

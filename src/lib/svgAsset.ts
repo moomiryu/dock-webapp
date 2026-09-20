@@ -7,7 +7,6 @@
 //
 // 그래서 붓기 전에 이름 뒤에 에셋 키를 달아 각자 방을 준다.
 // 원본 파일은 건드리지 않는다 — 그림은 작가 것이고, 여기서는 읽기만 한다.
-import { CLIP_H, WALK } from '../character/walker';
 
 export function scopeSvg(raw: string, key: string): string {
   return raw
@@ -655,52 +654,27 @@ function cloneInto(B: Element, el: Element, before: Element | null): Element {
 const NUM_ATTRS = [...SHAPE_ATTRS, 'font-size', 'stroke-width'];
 
 
-/* ═══ 걸어 들어오기 ════════════════════════════════════════════════════
-   튜토리얼의 인물은 **홈을 걸어 다니는 그 캐릭터다.** 짐작이 아니라 잰
-   것이다: 머리 지름이 곧 몸 너비라는 비례가 같고, 그 비례로 뽑은 배율
-   (About 0.16285 · Step 3 0.35779)로 홈 캐릭터의 발밑(y 541.81)을 옮기면
-   작가가 그린 그림자의 시작점과 소수점까지 맞는다 — 309.19,413.73 ·
-   238.68,443.32. 같은 그림에서 나온 것이다.
+/* 여기에 **걸어 들어오는 기계**가 있었다. 2026-09-20에 넣었다가 같은 날
+   걷어냈다.
 
-   그래서 걸음을 옮겨 붙일 수 있다. 작가의 인물을 엉덩이(CLIP_H)에서 자르고
-   그 아래에 홈의 다리 둘을 같은 배율로 놓는다. 몸은 걸음의 박자로 오르내리고
-   (WALK.bob) 그 박자에 기운다(WALK.tilt) — 홈에서 쓰는 값 그대로다.
+   홈을 걸어 다니는 그 캐릭터를 소개 화면에도 옮겨 붙인 것이었다 — 골격이
+   정말 같다는 것까지 좌표로 확인했고(머리 지름 = 몸 너비, 그 비례로 뽑은
+   배율로 발밑을 옮기면 작가가 그린 그림자 시작점과 소수점까지 맞는다),
+   허리에서 몸을 잘라 홈의 다리를 갈아 끼우고 걸음의 박자로 몸을 흔들었다.
 
-   ── 멈추는 법 ────────────────────────────────────────────────────────
-   다리는 들어오는 동안만 걷고 도착하면 선 자세로 멎는다. SMIL은 한 요소의
-   시계를 중간에 세울 수 없으므로, 장면의 시간표 위에 **걷는 구간만 걸음을
-   깔고 그 뒤로는 선 자세를 이어 붙인다.** 그래서 다리가 멎는 순간이 도착과
-   정확히 같다 — 따로 맞출 위상이 없다.
+   잘 돌았지만 **소개 화면에는 필요 없는 일이었다.** 여기서 인물은 장면을
+   설명하는 그림이지 살아 움직이는 배경이 아니다. 걸어 들어오는 데 두
+   걸음이 드는 만큼 한 장을 읽는 시간이 길어졌고, 읽을 것은 그동안 기다린다.
+   이제 인물은 처음부터 제자리에 서 있다.
 
-   65프레임(50fps)을 다 쓰지 않고 셋에 하나만 쓴다. 다리가 화면에서 15px쯤
-   이라 17fps로도 걸음이 읽히고, 프레임 하나가 450자라 다 쓰면 인물 하나에
-   30,000자가 붙는다. */
+   되살릴 일이 있으면 34315f3을 본다 — 다리 데이터 샘플링, 도착에서 멎게
+   하는 시간표, 배율 반올림이 허리에 흰 선을 만들던 것까지 거기 다 있다.
+
+   골격을 재는 조각(RIG · rigOf)은 남겼다. Step 2에서 잣대를 잡은 손을
+   찾는 데 그대로 쓴다 — 인물의 머리와 그림자로 몸을 알아보는 일이다. */
 
 /** 홈 캐릭터의 골격 치수(Character_walk_v3.svg의 화판에서) */
 const RIG = { left: 17.13, width: 332.21, hipX: 183.23, hipY: 449, footY: 541.81 };
-/** 다리는 몇 프레임마다 한 장씩 쓸지 */
-const LEG_STEP = 3;
-
-/**
- * 다리가 시작하는 높이. 몸을 자르는 자리(CLIP_H)보다 **아래**다.
- *
- * 451에서 자르는데 다리는 453부터 그려져서, 그 2단위가 아무것도 없는 틈으로
- * 남았다. 홈에서는 인물이 56px이라 0.2px이라 안 보이지만, 소개 화면의 Step 3
- * 인물은 205px이라 허리에 **흰 선 한 줄**로 드러났다. 자르는 자리를 다리
- * 맨 위보다 한 단위 더 내려 겹쳐 준다 — 겹치는 한 단위는 몸도 다리도 같은
- * 색이고 그 높이에서는 둘 다 폭이 같아서 보이지 않는다.
- *
- * 수치를 적어 두지 않고 그림에서 읽는다. 작가가 다리를 다시 그리면 이 값이
- * 먼저 낡는다.
- */
-const LEG_TOP = Math.min(
-  ...[WALK.farRest, WALK.nearRest].flatMap((raw) => {
-    // 먼저 절대좌표 x,y 짝으로 편다. 원본은 v·h·c가 섞여 있어 홀짝으로
-    // 세면 x를 y로 읽는다 — 그렇게 읽었더니 틈이 그대로 남았다.
-    const d = normalizeD(raw);
-    return d ? (d.match(/-?\d*\.?\d+/g) ?? []).map(Number).filter((_, i) => i % 2 === 1) : [];
-  })
-);
 
 interface Rig { tx: number; ty: number; s: number; r: number; cx: number; cy: number }
 
@@ -728,19 +702,6 @@ function rigOf(head: Item, all: Item[]): Rig | null {
   return shadow ? { tx, ty, s, r, cx, cy } : null;
 }
 
-/**
- * 어느 쪽 밖에서 걸어 들어올지.
- *
- * 설 자리가 화판 왼쪽이면 왼쪽에서, 오른쪽이면 오른쪽에서 온다 — 제 자리를
- * 지나쳐 갔다가 되돌아오는 것보다 짧고, 오는 길이 곧 보는 사람의 시선이다.
- */
-function entryDx(vb: number[], box: { x: number; y: number; w: number; h: number }) {
-  const margin = vb[2] * 0.06;
-  return box.x + box.w / 2 < vb[0] + vb[2] / 2
-    ? r2(-(box.x + box.w - vb[0] + margin))
-    : r2(vb[0] + vb[2] - box.x + margin);
-}
-
 /** 제 변환까지 먹인 한가운데. 잣대 손잡이는 돌려서 놓여 있어 bbox만으로는 모자란다 */
 function centreOf(it: Item): [number, number] | null {
   const b = boxOf(it);
@@ -753,171 +714,8 @@ function centreOf(it: Item): [number, number] | null {
   return [tf.translate[0] + x * co - y * si, tf.translate[1] + x * si + y * co];
 }
 
-/** 그 인물의 몸이 차지하는 칸 */
-const rigBox = (g: Rig) => ({ x: g.tx, y: g.ty, w: RIG.width * g.s, h: (RIG.footY + 20) * g.s });
 
-const inBox = (it: Item, box: { x: number; y: number; w: number; h: number }) => {
-  const b = boxOf(it);
-  if (!b) return false;
-  const x = b.x + b.w / 2, y = b.y + b.h / 2;
-  return x > box.x - box.w * 0.2 && x < box.x + box.w * 1.2 && y > box.y - box.h * 0.1 && y < box.y + box.h * 1.1;
-};
 
-/**
- * 인물 하나를 걸어 들어오게 한다.
- *
- * @param els   그 인물을 이루는 것 전부(그림자 포함)
- * @param seg   걷는 구간 — 장면 한 바퀴에 대한 [시작, 끝] 비율
- * @param dx    출발 자리. 화판 밖이라 걸어 들어오는 것으로 보인다
- */
-function walkIn(root: Element, els: Item[], g: Rig, key: string, seg: [number, number], dx: number, dur: number): Element | null {
-  const doc = root.ownerDocument;
-  const NS = 'http://www.w3.org/2000/svg';
-  const make = (tag: string) => doc.createElementNS(NS, tag);
-  const [a, b] = seg;
-
-  const shadow = els.find((it) => it.tag !== 'circle' && (boxOf(it)?.h ?? 9e9) < g.r * 0.8
-    && (boxOf(it)?.w ?? 0) > g.r);
-  const body = els.filter((it) => it !== shadow);
-  if (!body.length) return null;
-
-  /* 걸음 한 바퀴를 몇 번 걷는가. 홈과 같은 빠르기(WALK.ms)에 제일 가깝게
-     잡되, 구간에 딱 맞아떨어지게 나눈다 — 도착할 때 발이 땅에 있어야 한다. */
-  const span = (b - a) * dur * 1000;
-  const laps = Math.max(1, Math.round(span / WALK.ms));
-  const frames = WALK.keyTimes.split(';').length;            // 65
-  const each = Math.ceil((frames - 1) / LEG_STEP);            // 한 바퀴에 쓰는 프레임 수
-
-  const far = WALK.far.split(';'), near = WALK.near.split(';');
-  const bob = WALK.bob.split(';').map((v) => v.trim().split(/[ ,]+/).map(Number));
-  const tilt = WALK.tilt.split(';').map((v) => v.trim().split(/[ ,]+/).map(Number));
-  const rest = WALK.bobRest.split(/[ ,]+/).map(Number);
-
-  const times: number[] = [], legFar: string[] = [], legNear: string[] = [],
-    bobs: string[] = [], tilts: string[] = [], xs: string[] = [];
-  const hip = [g.tx + RIG.hipX * g.s, g.ty + RIG.hipY * g.s];
-  const total = laps * each;
-
-  /* 마지막 걸음에서 **속도를 줄인다.**
-     한 걸음 한 걸음에 드는 시간을 뒤로 갈수록 길게 준다. 시간표가 다리·몸·
-     자리 셋에 공통이라, 늘린 만큼 걸음도 같이 느려진다 — 몸만 멎고 발은
-     제 박자로 도는 어긋남이 생길 수 없다.
-     같은 자리에 멈추는 것은 그대로다. 마지막 표본이 0프레임(선 자세)이고
-     그 뒤로 그 자세가 이어지므로, 발이 굳거나 튀는 자리가 없다. */
-  const weight = (k: number) => 1 + 0.7 * Math.max(0, (k / total - 0.75) / 0.25);
-  const span01: number[] = [0];
-  for (let k = 1; k <= total; k++) span01.push(span01[k - 1] + weight(k));
-  const stretch = span01[total];
-
-  for (let k = 0; k <= total; k++) {
-    const at = a + ((b - a) * span01[k]) / stretch;
-    const f = ((k % each) * LEG_STEP) % (frames - 1);
-    times.push(at);
-    legFar.push(far[f]); legNear.push(near[f]);
-    const bo = bob[f] ?? rest, ti = tilt[f] ?? [0];
-    // 걸음의 오르내림은 캐릭터 크기만큼 줄여서 얹는다
-    bobs.push(`${r2((bo[0] - rest[0]) * g.s)} ${r2((bo[1] - rest[1]) * g.s)}`);
-    tilts.push(`${r2(ti[0])} ${r2(hip[0])} ${r2(hip[1])}`);
-    xs.push(`${r2(dx * (1 - k / total))} 0`);
-  }
-  /* 앞뒤를 채운다. keyTimes는 **반드시 0에서 시작해 1에서 끝나야** 하고,
-     아니면 브라우저가 그 애니메이션을 통째로 무시한다 — 처음에 걷는 구간
-     [0.41, 0.64]만 적었더니 다리도 몸도 자리도 아무것도 안 움직였다.
-     앞은 걷기 전 자세로 기다리고, 뒤는 도착한 자세 그대로 선다. */
-  const cap = (arr: string[], last: string) => { arr.unshift(arr[0]); arr.push(last); };
-  times.unshift(0); times.push(1);
-  cap(legFar, far[0]);
-  cap(legNear, near[0]);
-  cap(bobs, '0 0');
-  cap(tilts, `0 ${r2(hip[0])} ${r2(hip[1])}`);
-  cap(xs, '0 0');
-
-  const kt = times.map((x) => r2(x)).join(';');
-  const put2 = (el: Element, tag: string, attrs: Record<string, string>) => {
-    const n = make(tag);
-    for (const [k2, v] of Object.entries(attrs)) n.setAttribute(k2, v);
-    n.setAttribute('keyTimes', kt);
-    n.setAttribute('calcMode', 'linear');
-    n.setAttribute('dur', `${dur}s`);
-    n.setAttribute('repeatCount', 'indefinite');
-    el.appendChild(n);
-    return n;
-  };
-
-  // 바깥 무리: 걸어 들어오는 이동
-  const outer = make('g');
-  els[0].el.parentNode?.insertBefore(outer, els[0].el);
-  put2(outer, 'animateTransform', { attributeName: 'transform', type: 'translate', values: xs.join(';') });
-  if (shadow) outer.appendChild(shadow.el);
-
-  // 다리 — 홈의 그 다리다
-  const legs = make('g');
-  /* 배율만은 소수점 둘째 자리로 자르면 안 된다. 0.35785를 0.36으로 읽으면
-     453단위 아래에서 2.7단위(화면 1px)가 어긋나 허리에 흰 선이 생긴다 —
-     실제로 그랬다(클립 아래 584.6px · 다리 맨 위 585.2px). 자리는 둘째
-     자리로 충분하지만 배율은 곱해지는 값이라 오차도 같이 곱해진다. */
-  legs.setAttribute('transform', `translate(${r2(g.tx)},${r2(g.ty)}) scale(${g.s.toFixed(5)})`);
-  const skin = body.find((it) => it.tag === 'path')?.fill ?? '#000';
-  for (const [d, vals] of [[WALK.farRest, legFar], [WALK.nearRest, legNear]] as Array<[string, string[]]>) {
-    const leg = make('path');
-    leg.setAttribute('d', d);
-    leg.setAttribute('fill', skin);
-    put2(leg, 'animate', { attributeName: 'd', values: vals.join(';') });
-    legs.appendChild(leg);
-  }
-  outer.appendChild(legs);
-
-  // 몸 — 엉덩이에서 자르고, 걸음의 박자로 오르내리며 기운다
-  const clip = make('clipPath');
-  clip.setAttribute('id', `mf-hip-${key}-${r2(g.cx)}`);
-  const rect = make('rect');
-  rect.setAttribute('x', r2(g.tx - g.r) + ''); rect.setAttribute('y', r2(g.ty - g.r) + '');
-  rect.setAttribute('width', r2(RIG.width * g.s + g.r * 2) + '');
-  rect.setAttribute('height', r2(Math.max(CLIP_H, LEG_TOP + 1) * g.s + g.r) + '');
-  clip.appendChild(rect);
-  (root.querySelector('defs') ?? root.insertBefore(make('defs'), root.firstChild)).appendChild(clip);
-
-  const trunk = make('g');
-  trunk.setAttribute('clip-path', `url(#${clip.getAttribute('id')})`);
-  put2(trunk, 'animateTransform', { attributeName: 'transform', type: 'translate', values: bobs.join(';') });
-  put2(trunk, 'animateTransform', { attributeName: 'transform', type: 'rotate', additive: 'sum', values: tilts.join(';') });
-  for (const it of body) trunk.appendChild(it.el);
-  outer.appendChild(trunk);
-
-  /* ── 멈출 때는 **작가가 그린 그 자세**로 선다 ────────────────────────
-     걸음의 0프레임도 선 자세이긴 하지만 작가가 그린 발 모양과 같지는 않다.
-     서 있는 그림이 이미 파일에 있는데(example_about_2) 그것을 안 쓰고
-     걸음의 한 프레임으로 서 있으면, 멈춘 자세가 그림과 어긋난다.
-
-     그래서 도착하는 자리에서 **갈아 끼운다.** 걷는 동안에는 움직이는 다리를,
-     멈춘 뒤에는 작가의 몸을 통째로 보여준다. 갈아 끼우는 자리는 다리와
-     잘린 몸통 **사이**다 — 작가의 몸이 다리를 덮고, 잘린 몸통(머리·눈까지
-     들었다)은 그 위에 그대로 남는다. 허리 위는 두 몸이 같은 모양·같은
-     색이라 겹쳐도 보이지 않는다. */
-  const hipY = g.ty + Math.max(CLIP_H, LEG_TOP + 1) * g.s;
-  const lower = body.find((it) => {
-    const bb = boxOf(it);
-    return !!bb && bb.y + bb.h > hipY + g.r * 0.1;
-  });
-  if (lower) {
-    const still = lower.el.cloneNode(true) as Element;
-    outer.insertBefore(still, trunk);
-    const swap = `0;${r2(Math.max(0, b - 0.015))};${r2(b)};1`;
-    const fade = (el: Element, values: string) => {
-      const n = make('animate');
-      n.setAttribute('attributeName', 'opacity');
-      n.setAttribute('values', values);
-      n.setAttribute('keyTimes', swap);
-      n.setAttribute('calcMode', 'linear');
-      n.setAttribute('dur', `${dur}s`);
-      n.setAttribute('repeatCount', 'indefinite');
-      el.appendChild(n);
-    };
-    fade(still, '0;0;1;1');
-    fade(legs, '1;1;0;0');
-  }
-  return outer;
-}
 
 
 /* ═══ 폰을 홈에 꽂기 ═══════════════════════════════════════════════════
@@ -1220,48 +1018,14 @@ export function chainSvg(raws: string[], key: string, dur = 11): string {
     }
     const rest = [...planted];
 
-    /* 첫 컷에 없던 것 가운데 **사람**이 있으면 밝기로 나타나지 않고 걸어
-       들어온다. Step 3이 그렇다 — 메가폰트만 서 있다가 누가 걸어와 폰을
-       꽂는다. 걷는 구간은 첫 컷에서 둘째 컷으로 가는 동안이다. */
-    const vbn = (base.getAttribute('viewBox') ?? '').split(/[ ,]+/).map(Number);
-    const crew: Item[] = [];
-    /** 걸어 들어온 사람이 서 있는 컷들 — 폰도 같은 컷에 있다 */
-    const crewAt = new Set<number>();
-    if (vbn.length === 4) {
-      for (const { it } of planted) {
-        const rg = rigOf(it, planted.map((x) => x.it));
-        if (!rg) continue;
-        const mine = rest.filter((x) => inBox(x.it, rigBox(rg)));
-        if (mine.length < 2) continue;
-        const outer = walkIn(base, mine.map((x) => x.it), rg, key,
-          [t.at[1], t.at[2]], entryDx(vbn, rigBox(rg)), dur);
-        if (!outer) continue;
-        for (const x of mine) {
-          const i = rest.indexOf(x);
-          if (i >= 0) rest.splice(i, 1);
-          crew.push(x.it);
-          for (const c of x.at) crewAt.add(c);
-        }
-        /* 걷는 동안 반투명하면 걸어오는 것이 아니라 스며 나오는 것이 된다.
-           걸음이 시작되는 자리에서 한 번에 켜고, 장면이 처음으로 돌아갈 때
-           끈다 — 돌아가는 길에 뒷걸음질을 시키지 않으려고 걷지 않고 진다. */
-        put(outer, 'animate', {
-          attributeName: 'opacity', values: '0;0;1;1;0',
-          keyTimes: `0;${r2(t.at[1])};${r2(Math.min(t.at[1] + 0.01, t.at[2]))};` +
-            `${r2(t.at[t.at.length - 2])};1`,
-          calcMode: 'linear', dur: `${dur}s`
-        });
-      }
-    }
-
+    /* 사람은 걸어 들어오지 않는다 — 제 컷이 오면 그 자리에 서 있다
+       (2026-09-20에 걸음을 걷어냈다). 폰만은 손에서 홈으로 옮겨 가야 하므로
+       아래에서 따로 다룬다. */
     /* 색만 다르고 덩치가 같은 짝이 있으면 **같은 물건이 색을 갈아입은
        것**이다. 손의 검은 폰과 홈의 빨간 네모가 그렇다. 하나로 묶어 꽂는다.
        사람을 세운 **뒤에** 찾는다 — 먼저 찾으면 함께 움직일 손을 첫 컷에서
        고르게 되는데, 거기엔 사람이 없어서 메가폰트의 눈이 손으로 뽑혔다. */
-    /* 폰은 사람의 손에 들려 함께 걸어 들어오므로, 걷는 무리에 섞여 있다.
-       두 목록을 다 뒤진다 — 무리 쪽에 있으면 그대로 두고 그 자리에서
-       꽂는다(무리의 변환은 도착 뒤 항등이라 좌표가 어긋나지 않는다). */
-    for (const g of [...rest, ...crew.map((it) => ({ it, at: new Set<number>() }))]) {
+    for (const g of [...rest]) {
       const gb = boxOf(g.it);
       if (g.it.tag === 'path' || !gb) continue;
       const twin = items[0].find((x) => x.tag === g.it.tag && x.size === g.it.size
@@ -1269,15 +1033,13 @@ export function chainSvg(raws: string[], key: string, dur = 11): string {
         && (x.el.getAttribute('transform') ?? '') !== (g.it.el.getAttribute('transform') ?? ''));
       if (!twin) continue;
       // 함께 움직일 손 = 걸어 들어온 사람의 조각 가운데 폰에 제일 가까운 작은 동그라미
-      const hand = crew
-        .map((x) => ({ x, b: boxOf(x) }))
+      const hand = planted
+        .map((x) => ({ x: x.it, b: boxOf(x.it) }))
         .filter((o) => o.x.tag === 'circle' && o.b && o.b.w < gb.w * 1.2)
         .sort((m, n) => Math.hypot(m.b!.x - gb.x, m.b!.y - gb.y) - Math.hypot(n.b!.x - gb.x, n.b!.y - gb.y))[0];
-      /* 손에 들린 컷이 어느 것인지는 같이 걸어 들어온 무리가 안다 */
-      const at = g.at.size ? g.at : new Set(crewAt);
-      if (!dockPhone(base, twin, g.it, hand?.x ?? null, order, at, t, dur)) continue;
+      if (!dockPhone(base, twin, g.it, hand?.x ?? null, order, g.at, t, dur)) continue;
       g.it.el.parentNode?.removeChild(g.it.el);
-      const i = rest.indexOf(g as { it: Item; at: Set<number> });
+      const i = rest.indexOf(g);
       if (i >= 0) rest.splice(i, 1);
       break;
     }
@@ -1363,46 +1125,16 @@ export function aboutSvg(litRaw: string, fullRaw: string, key: string, dur = 12)
       const cy = b.y + b.h / 2;
       return cy > wall.y && cy < wall.y + wall.h;
     };
-    const guests = w.onlyB.filter((it) => !inWall(it));
+    // 벽면 안에 든 것만 밝기로 뜬다. 바깥에 선 사람은 처음부터 거기 있다.
     for (const it of w.onlyB.filter(inWall)) say(it.el, ['0', '0', '1', '1', '0']);
 
     /* ③ 사람은 제일 오른쪽 끝보다 더 오른쪽에서 들어온다. 화판 밖으로
        완전히 나가야 가장자리에서 반쯤 잘린 채로 기다리지 않는다. */
-    if (guests.length) {
-      let right = 0, left = vb[2];
-      for (const it of guests) {
-        const b = boxOf(it);
-        if (!b) continue;
-        right = Math.max(right, b.x + b.w);
-        left = Math.min(left, b.x);
-      }
-      const dx = r2(Math.max(right, vb[2]) - left + vb[2] * 0.06);
-      // 사람은 미끄러져 들어오지 않고 **걸어서** 들어온다. 걷는 구간은
-      // 셋째 걸음 — 시간표에서 셋째 머묾의 끝부터 넷째 머묾의 시작까지다.
-      const seg: [number, number] = [t.at[5], t.at[6]];
-      const left0 = [...guests];
-      for (const head of guests) {
-        const g = rigOf(head, guests);
-        if (!g) continue;
-        const mine = left0.filter((it) => inBox(it, rigBox(g)));
-        if (!mine.length) continue;
-        const outer = walkIn(B, mine, g, key, seg, dx, dur);
-        if (!outer) continue;
-        for (const it of mine) { const k = left0.indexOf(it); if (k >= 0) left0.splice(k, 1); }
-        // 불이 꺼지면 어둠에 묻힌다. 걸어 나가지는 않는다 — 뒷걸음이 된다.
-        animateSeq(outer, 'opacity', ['1', '1', '1', '1', '0'], t, dur);
-      }
-      if (left0.length) {
-        const g = B.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
-        left0[0].el.parentNode?.insertBefore(g, left0[0].el);
-        for (const it of left0) g.appendChild(it.el);
-        put(g, 'animateTransform', {
-          attributeName: 'transform', type: 'translate',
-          values: doubled([`${dx} 0`, `${dx} 0`, `${dx} 0`, '0 0', `${dx} 0`]).join(';'),
-          keyTimes: t.keyTimes, keySplines: t.keySplines, calcMode: 'spline', dur: `${dur}s`
-        });
-      }
-    }
+    /* 구경꾼은 **처음부터 거기 서 있다.** 오른쪽 밖에서 걸어 들어오게
+       해 뒀었는데(2026-09-20), 들어오는 데 드는 두 걸음만큼 한 장을 읽는
+       시간이 길어졌다. 소개 화면의 인물은 장면을 설명하는 그림이지 살아
+       움직이는 배경이 아니다. 밝기도 자리도 건드리지 않는다. */
+
     if (!lamps && !w.onlyB.length) return scopeSvg(fullRaw, key);
 
     focusOn(B, [...ia, ...ib]);

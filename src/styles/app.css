@@ -1716,7 +1716,7 @@
 
    가장자리에 테두리를 두지 않는다. 칸 사이 1px만 보여서 화면이 십자로
    갈린 것처럼 읽힌다. */
-.tone-choice .style-cards{ margin-top: 0; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+.tone-choice .style-cards{ margin-top: 0; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr);
   gap: 1px; flex: 1; background: var(--line); border: 0; border-radius: 0; overflow: hidden;
   margin-inline: calc(var(--pad-x) * -1);
   /* 트랙 목록은 길이가 같으면 보간된다. 고른 칸의 줄·칸만 1fr로 남기고
@@ -1727,14 +1727,19 @@
      글자도 함께 얼굴을 바꾸는데, 그 둘을 다 볼 시간이 안 났다. 갑절로
      늘린다. 1360ms.
 
-     4080ms에 튕기는 것(--ease-boing)까지 해 봤다가 되돌렸다(2026-09-20) —
-     한 칸이 화면이 되는 것은 크지만 **조용한** 일이라, 벽에 부딪혀 되돌아
-     오는 몸짓이 얹히니 장난스러워졌다. 길이도 4초는 기다림이 됐다.
+     2026-09-20에 두 가지를 해 봤다가 **둘 다 되돌렸다.**
 
-     다만 격자가 이어지게 한 것은 남긴다. CSS가 `repeat(2, 1fr)`이고 고른 뒤
-     인라인이 `1fr 0fr`이면 이 둘은 보간되지 않아 **칸이 그냥 튄다** — 그때
-     움직이던 것은 안 고른 칸의 여백뿐이었다(재서 확인: 52ms에 이미 94%).
-     `1fr 1fr`로 풀어 적어야 1360ms가 실제로 쓰인다. */
+     하나는 4080ms에 튕기는 것(--ease-boing). 한 칸이 화면이 되는 것은
+     크지만 조용한 일이라, 벽에 부딪혀 되돌아오는 몸짓이 얹히니 장난스러워
+     졌다. 4초도 보는 시간이 아니라 기다리는 시간이 됐다.
+
+     다른 하나는 이 줄의 `repeat(2, 1fr)`을 `1fr 1fr`로 푼 것이다.
+     **여기 적힌 '트랙 목록이 보간된다'는 실제로는 안 일어나고 있다.**
+     repeat() 표기와 인라인의 `1fr 0fr`은 서로 보간되지 않아서 칸이 그냥
+     튄다 — 위 1360ms 동안 움직이는 것은 칸이 아니라 안 고른 칸의 여백이다
+     (재서 확인: 52ms에 이미 94%). 풀어 적으면 1360ms가 실제로 쓰이는데,
+     그렇게 자라는 쪽이 더 낫지 않다는 판단이 나왔다. 튀는 쪽을 쓴다.
+     고치려고 다시 풀어 적기 전에 이 문단을 읽을 것. */
   transition: grid-template-columns 1360ms var(--ease-emphasized),
               grid-template-rows 1360ms var(--ease-emphasized); }
 .tone-choice .style-card{ overflow: hidden; min-width: 0; min-height: 0; }

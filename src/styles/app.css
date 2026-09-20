@@ -460,35 +460,6 @@
    슬라이더를 두 번 시도했고 두 번 다 같은 데서 걸렸다: 손잡이가 무엇을
    만지는 중인지 말해 주지 못한다. 칸을 눌러 고르면 축 이름이 화면에
    그대로 남는다. */
-.z-axes{
-  display: flex;
-  flex-direction: column;
-  justify-content: space-evenly;
-  gap: var(--s3);
-  flex: 1;
-}
-
-.z-axis-line{
-  display: grid;
-  gap: var(--s2);
-}
-
-/* 이 한 줄이 "무엇을 만지는 중인가"에 답한다. 왼쪽은 축 이름으로 고정,
-   오른쪽은 지금 고른 칸의 이름. 눈금 칸 안에는 글자를 넣지 않는다. */
-.z-axis-head{
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--s3);
-}
-
-.z-axis-label{
-  font-family: var(--label-font);
-  font-size: var(--fs-cap);
-  letter-spacing: 0.02em;
-  color: var(--muted);
-}
-
 .z-steps{
   position: relative;
   display: grid;
@@ -1650,7 +1621,6 @@
 .style-card-name{ font-size: var(--fs-h3); line-height: 1.5; }
 .z-glyph-stage{ height: 160px; flex: none; container-type: inline-size; }
 .z-glyph-hint{ font-size: var(--fs-body-s); line-height: 1.5; }
-.z-axes{ flex: none; gap: var(--s5); justify-content: flex-start; }
 .z1 > .primary-action{ margin-top: auto; }
 .info-overlay{ height: 100dvh; min-height: 0; gap: var(--s3); }
 .info-head{ border: 0; padding-bottom: 0; }
@@ -1924,16 +1894,111 @@
   container-type: size; }
 .tone-adjust .z-glyph-stage .z-back{ color: var(--paper); }
 .tone-adjust .z-glyph-stage .z-back:active{ background: rgb(255 255 255 / 16%); }
-.tone-adjust .z-axes{ padding-bottom: var(--s3); }
+/* ── 03 조율의 편집 패널 (2026-09-20) ────────────────────────────────
+   축 셋을 세로로 쌓아 두었었다. 한 손으로 못 쓰는 배치였다 — 트랙이 화면
+   폭을 다 쓰고(350px), 맨 위 축의 왼쪽 끝이 오른손 엄지 회전 중심에서
+   405px인데 이 기기에서 편한 엄지 호가 409px이다. 다른 손에 팸플릿을 든
+   사람은 '아주 작게'에 손이 안 닿는다.
+
+   아래를 **도구 하나**로 묶는다. 흰 종이에서 한 톤 내린 면(--grey-50)이
+   위의 붉은 견본과 갈리면서 "여기가 만지는 자리"라고 먼저 말한다.
+   항목은 탭으로 고르고 한 번에 하나만 세운다 — 고르는 자리와 만지는
+   자리 사이가 194 → 80px이 된다.
+
+   알약 두 종류가 서로 다른 것을 말한다:
+     흰 알약  = 지금 보고 있는 항목   (.tone-tab.on)
+     청록 알약 = 고른 값             (.z-steps-thumb · .z-manner-btn.on)
+   같은 청록을 탭에도 쓰면 말투 탭에서 두 줄이 똑같아 보인다. */
+.tone-panel{
+  flex: none;
+  margin-inline: calc(var(--pad-x) * -1);
+  padding: var(--s5) var(--pad-x);
+  background: var(--grey-50);
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: var(--s5);
+}
+
+.tone-tools{ display: flex; align-items: center; gap: var(--s3); }
+/* 항목 넷까지 들어간다(크기·빠르기·무게 또는 말투). 자동 칸이라
+   서체에 무게 축이 없어 셋만 남아도 폭이 알아서 나뉜다. */
+.tone-tabs{
+  flex: 1; min-width: 0;
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  gap: 4px; padding: 4px; background: var(--line); border-radius: var(--r-full);
+}
+.tone-tab{
+  min-height: var(--btn-s); padding: var(--s1) var(--s2);
+  border: 0; border-radius: var(--r-full);
+  background: none; color: var(--muted);
+  font-family: var(--ui-font); font-size: var(--fs-body-s); line-height: 1.2;
+  cursor: pointer;
+  transition: background 200ms var(--ease-standard), color 200ms var(--ease-standard);
+}
+.tone-tab.on{ background: var(--paper); color: var(--ink); font-weight: 700; }
+.tone-tab:active{ background: var(--press-tint); }
+
+/* 원본 버튼. 누르고 있는 동안만 켜지므로 :active가 아니라 .on이 그 상태다.
+   길게 누르는 손짓이라 브라우저의 글자 선택·길게누르기 메뉴를 막는다. */
+.tone-orig{
+  flex: none; min-height: var(--btn-l); padding: 0 var(--s4);
+  border: 1px solid var(--line); border-radius: var(--r-full);
+  background: var(--paper); color: var(--body-text);
+  font-family: var(--ui-font); font-size: var(--fs-cap); line-height: 1;
+  cursor: pointer; user-select: none; -webkit-user-select: none;
+  -webkit-touch-callout: none; touch-action: manipulation;
+  transition: background 120ms var(--ease-standard), color 120ms var(--ease-standard);
+}
+.tone-orig.on{ background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+/* 무엇을 만지는 중이고 지금 값이 무엇인지. 전에는 잣대 위에 작게 좌우로
+   나뉘어 있었다 — 값이 주인공인 자리라 가운데에 크게 둔다. */
+.tone-now{ display: grid; gap: var(--s1); justify-items: center; }
+.tone-now-label{
+  font-family: var(--label-font); font-size: var(--fs-cap-s);
+  letter-spacing: 0.06em; color: var(--muted);
+}
+.tone-now-value{ font-size: var(--fs-h3); font-weight: 700; color: var(--ink); line-height: 1.2; }
+
+/* 잣대는 짧다. 미는 일은 아래 면이 받고, 여기는 지금 어디쯤인지만 말한다.
+   220px에 칸 사이가 넷이라 한 칸이 55px — 손가락 최소 크기를 넘긴다. */
+.tone-track{ width: 220px; max-width: 100%; margin-inline: auto; }
+
+/* 끄는 면. 엄지가 닿는 아무 데나 눌러 좌우로 밀면 민 만큼 값이 옮겨간다
+   (PhaseTone · DRAG_STEP). 값이 절대 위치에서 풀리는 것이 한 손 조작을
+   푸는 전부다 — 트랙을 짧게 하는 것만으로는 손이 여전히 그 자리로 간다.
+   touch-action: none이 없으면 옆으로 미는 손짓을 브라우저가 먼저 가져간다. */
+.tone-pad{
+  margin-inline: calc(var(--pad-x) * -1);
+  padding: var(--s4) var(--pad-x) var(--s1);
+  border-top: 1px dashed var(--grey-300);
+  display: grid; place-items: center;
+  min-height: var(--btn-l);
+  touch-action: none; cursor: ew-resize;
+  user-select: none; -webkit-user-select: none;
+  font-size: var(--fs-cap-s); color: var(--muted);
+}
+.tone-pad > span::before{ content: '↔'; margin-inline-end: var(--s2); }
+
+/* 원본을 보는 동안 견본 위에 뜨는 표식. 눈은 견본에 가 있는데 답이 손
+   밑에만 있으면 무엇을 보고 있는지 모른다. */
+.tone-orig-chip{
+  /* 머리줄(위 여백 + 뒤로가기 버튼) 아래로 내려놓는다 — --s6에 두었더니
+     '3 / 5 · 조율'과 같은 줄에 앉아 머리줄이 세 토막으로 읽혔다. */
+  position: absolute; top: calc(var(--s5) + var(--btn-l) + var(--s5));
+  left: 50%; translate: -50% 0;
+  background: var(--ink); color: var(--paper);
+  font-family: var(--label-font); font-size: var(--fs-cap-s); letter-spacing: 0.06em;
+  padding: var(--s2) var(--s4); border-radius: var(--r-full);
+  pointer-events: none;
+}
+
 .z-steps{ background: var(--grey-100); border-color: var(--grey-100); gap: 4px; padding: 4px; }
 /* 점은 --grey-600 — 회색 트랙 위에서 4.2:1이다. 글자가 아니라 표식이라
    대비 규칙의 대상이 아니지만, 안 보이면 눈금이 몇 칸인지 못 센다.
    손잡이가 올라앉은 눈금만 검게 — 청록 위에서 회색은 묻힌다. */
 .z-steps{ min-height: var(--btn-l); color: var(--grey-600); }
 .z-step-dot.on{ background: var(--ink); }
-/* 축 이름이 주인공이다 — 무엇을 만지는 중인지 먼저 읽혀야 한다. */
-.z-axis-label{ font-size: var(--fs-body); font-weight: 600; color: var(--ink); letter-spacing: -0.01em; }
-.z-axis-value{ font-size: var(--fs-body-s); color: var(--muted); }
 /* 말투 — 값이 둘뿐인 축이라 손잡이가 아니라 버튼 둘이다(안내서도 그렇게
    그렸다). 이름이 **그 말투의 얼굴로** 쓰여 있어서, 누르기 전에 무엇이
    되는지가 글자 자체로 보인다 — 잣대가 이름이 아니라 견본인 셈이다.
@@ -2880,5 +2945,4 @@
 
 /* align-items: center였다 — 알약이 252px 고정폭이라 가운데 세웠다.
    눈금 줄은 화면 폭을 다 쓴다(다섯 칸을 나눠야 해서). stretch로 되돌린다. */
-.tone-adjust .z-axes{ gap: var(--s6); flex: none; padding-block: var(--s6); }
 

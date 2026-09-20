@@ -1,7 +1,7 @@
-import { useState, type CSSProperties } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import BackButton from '../components/BackButton';
 import { MANNER, fontMap, hasWeightAxis, opticalFix, opticalStroke, variationFor } from '../lib/palettes';
-import { type PartialTone } from '../lib/tone';
+import { DEFAULT_TONE, type PartialTone } from '../lib/tone';
 import { foldLines } from '../lib/fit';
 
 interface Props {
@@ -29,7 +29,46 @@ interface Props {
  *
  * 그래서 여기 견본은 글자뿐이다. 크기·빠르기·무게가 글에 어떻게 얹히는지만
  * 보여준다.
+ *
+ * ── 아래는 편집 도구다 (2026-09-20) ──────────────────────────────────
+ * 축 셋을 세로로 쌓아 두었었다. 한 손으로 못 쓰는 배치였다 — 트랙이 화면
+ * 폭을 다 쓰고(350px) 맨 위 축의 왼쪽 끝이 오른손 엄지 회전 중심에서
+ * 405px인데, 이 기기에서 편한 엄지 호가 409px이다. '아주 작게'를 고르려면
+ * 쥔 손을 고쳐 잡아야 했고, 다른 손에 팸플릿이 있으면 그게 안 된다.
+ * 축을 옮길 때마다 손가락이 96~98px씩, 끝에서 끝까지 194px 움직였다.
+ *
+ * 사진 보정 앱들이 푸는 방식으로 바꿨다. 아래를 **컨트롤 패널 하나**로
+ * 묶고, 축은 탭으로 고르고, 한 번에 한 축만 세운다. 탭 바로 아래에 값과
+ * 잣대가 붙으니 고르는 자리와 만지는 자리 사이가 194 → 80px이 된다.
+ *
+ * 한 손 문제는 트랙을 짧게(350 → 220px) 하는 것만으로는 안 끝난다. 값이
+ * **절대 위치**에 묶여 있는 한 손가락은 그 자리로 가야 한다. 그래서 잣대
+ * 아래에 **끄는 면**을 따로 둔다 — 엄지가 닿는 아무 데나 눌러 좌우로 밀면
+ * 민 만큼 값이 옮겨간다. 트랙은 지금 어디인지를 보여주는 눈금자가 되고,
+ * 조작은 넓은 면이 받는다.
+ *
+ * ── 원본 비교 ─────────────────────────────────────────────────────────
+ * '원본' 버튼을 **누르고 있는 동안만** 다듬기 전이 보인다. 토글이 아닌
+ * 이유는 되돌아올 일이 없어서다 — 토글이면 원본을 보는 채로 잣대를 만지는
+ * 사고가 난다. 손을 떼면 제자리라 편집값이 구조적으로 지켜진다.
+ *
+ * 견본을 길게 누르는 방식(사진 앱 여럿이 그렇다)은 안 썼다. 한 번 쓰고 마는
+ * 물건이라 숨은 손짓은 아무도 못 찾는다. 버튼을 눈에 보이게 두고, 누르는
+ * 동안 견본 위에 '원본' 표식이 떠서 지금 보는 것이 무엇인지 말한다.
+ *
+ * 원본의 기준은 **고른 성격의 기본값**이다(DEFAULT_TONE + font). 화면에
+ * 들어온 시점이 아니다 — 조율에서 색으로 갔다가 뒤로 오면 그 시점 값이
+ * 이미 제 편집값이라(PhaseGlyph가 initialTone을 그대로 넘긴다) '원본'을
+ * 눌러도 아무 일이 안 일어난다. 움직이는 기준은 기준이 아니다.
  */
+
+/**
+ * 끄는 면에서 한 칸을 옮기는 데 미는 거리 (px).
+ *
+ * 잣대와 손끝 감각을 맞춘다 — 트랙이 220px에 칸 사이가 넷이라 한 칸이
+ * 55px이다. 면에서도 같은 거리라야 두 곳을 오갈 때 손이 다시 배우지 않는다.
+ */
+const DRAG_STEP = 56;
 
 /** 견본 행간. 낱자 두 개('발화')일 때 쓰던 1은 문장에서 줄끼리 붙는다 */
 const STAGE_LH = 1.4;
@@ -101,6 +140,10 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
     const [tone, setTone] = useState<PartialTone>(initialTone);
     /** 'intro' = 설명하는 장 · 'work' = 조작하는 장 */
     const [step, setStep] = useState<'intro' | 'work'>('intro');
+    /** 패널에서 지금 세워 둔 항목 */
+    const [axis, setAxis] = useState('size');
+    /** '원본'을 누르고 있는 중인가 */
+    const [compare, setCompare] = useState(false);
     const lines = foldLines(text);
     const longest = Math.max(1, ...lines.map((l) => Array.from(l).length));
     /**
@@ -120,8 +163,10 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
      * 그 두 칸에는 기울기가 함께 붙어서, 좁아진 만큼을 기운 획이 도로
      * 가져간다.
      */
-    const fill = tone.size / 60;
-    const byLine = ((USE.w / longest) * fill / Math.max(1, tone.tone)).toFixed(2);
+    /** 지금 견본에 보이는 것. '원본'을 누르고 있는 동안만 다듬기 전이 선다 */
+    const shown = compare ? { ...DEFAULT_TONE, font: tone.font } : tone;
+    const fill = shown.size / 60;
+    const byLine = ((USE.w / longest) * fill / Math.max(1, shown.tone)).toFixed(2);
     const byHeight = ((USE.h / (lines.length * STAGE_LH)) * fill).toFixed(2);
     /**
      * 끌고 있는 축과 손가락이 지금 가 있는 자리(0~1).
@@ -138,15 +183,72 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
         setTone(t => ({ ...t, [a.key]: v, ...(a.key === 'tone' ? { slnt: slantFor(v) } : null) }));
     };
 
+    /**
+     * 패널이 다루는 것들. 축 셋과 말투를 **한 꼴로** 세운다.
+     *
+     * 말투는 값이 둘뿐이고 잣대가 아니라 버튼이지만, 탭에서는 나머지와
+     * 같은 항목이고 끄는 면에서도 같은 손짓으로 움직인다 — 다루는 방식이
+     * 항목마다 다르면 '편집 도구'가 아니라 화면 모음이 된다.
+     */
+    const tools = [
+        ...AXES.filter(a => a.key !== 'wght' || hasWeightAxis(tone.font)).map(a => ({
+            key: a.key as string,
+            label: a.label,
+            names: a.names as readonly string[],
+            at: nearest(a.stops, tone[a.key]),
+            set: (i: number) => pick(a, i),
+            manner: false
+        })),
+        ...(MANNER[tone.font] ? [{
+            key: 'manner',
+            label: '말투',
+            names: MANNER[tone.font].labels as readonly string[],
+            at: tone.manner ? 1 : 0,
+            set: (i: number) => setTone(t => ({ ...t, manner: i })),
+            manner: true
+        }] : [])
+    ];
+    /* 고른 항목이 없어질 수 있다 — 무게는 서체에 따라 있고 없다 */
+    const cur = tools.find(t => t.key === axis) ?? tools[0];
+    const last = cur.names.length - 1;
+
+    /**
+     * 끄는 면. 누른 자리를 0으로 삼고 **민 거리만큼** 값을 옮긴다.
+     *
+     * 절대 위치가 아니라 상대 이동이라, 엄지가 닿는 아무 데서나 시작해도
+     * 된다 — 한 손 조작을 푸는 것이 이 한 가지다.
+     */
+    const grab = useRef<{ x: number; at: number } | null>(null);
+    const padDown = (e: React.PointerEvent) => {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        grab.current = { x: e.clientX, at: cur.at };
+    };
+    const padMove = (e: React.PointerEvent) => {
+        const g = grab.current;
+        if (!g) return;
+        const i = Math.min(last, Math.max(0, g.at + Math.round((e.clientX - g.x) / DRAG_STEP)));
+        if (i !== cur.at) cur.set(i);
+    };
+    const padUp = () => { grab.current = null; };
+
+    /* 누르고 있는 동안만 원본. 손을 떼거나 손가락이 버튼 밖으로 나가면
+       바로 편집값으로 돌아온다 — 원본을 본 채로 잣대를 만질 길이 없다.
+       자판으로도 같다: 스페이스/엔터를 누르고 있는 동안만이다. */
+    const holdKey = (down: boolean) => (e: React.KeyboardEvent) => {
+        if (e.key !== ' ' && e.key !== 'Enter') return;
+        e.preventDefault();
+        setCompare(down);
+    };
+
     /* --optical-stroke: 무게 축이 없는 서체(당당한·다정한)에 획으로 대신
        답한다. 축이 있는 서체는 '0'이라 아무 일도 일어나지 않는다(palettes.ts). */
     const face = {
-        fontFamily: fontMap[tone.font], fontWeight: tone.wght,
-        fontVariationSettings: variationFor(tone.font, tone.wght, tone.manner),
-        transform: 'scaleX(' + tone.tone + ')',
-        fontStyle: tone.slnt ? `oblique ${Math.abs(tone.slnt)}deg` : 'normal',
-        fontSize: `calc(min(${byLine}cqw, ${byHeight}cqh) * ${opticalFix[tone.font]?.scale ?? 1})`,
-        '--optical-stroke': opticalStroke(tone.font, tone.wght)
+        fontFamily: fontMap[shown.font], fontWeight: shown.wght,
+        fontVariationSettings: variationFor(shown.font, shown.wght, shown.manner),
+        transform: 'scaleX(' + shown.tone + ')',
+        fontStyle: shown.slnt ? `oblique ${Math.abs(shown.slnt)}deg` : 'normal',
+        fontSize: `calc(min(${byLine}cqw, ${byHeight}cqh) * ${opticalFix[shown.font]?.scale ?? 1})`,
+        '--optical-stroke': opticalStroke(shown.font, shown.wght)
     } as CSSProperties;
 
     return <div className="z-frame z1 tone-adjust">
@@ -171,7 +273,7 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
    </div>
   </section>
 
-  {/* ── 둘째 장: 견본과 축 셋 ──────────────────────────────────── */}
+  {/* ── 둘째 장: 견본과 편집 패널 ──────────────────────────────── */}
   <section className="tone-pane tone-work">
    <div className="z-glyph-stage has-face">
     <div className="z-header">
@@ -182,37 +284,66 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
         한 겹을 더 두른 것은 **자리를 재기 위해서다** — 머리줄을 뺀 나머지가
         견본의 몫인데, 칸 전체를 기준으로 삼으면 머리줄 높이만큼 넘친다. */}
     <div className="z-glyph-fit">
-     <div className={'z-glyph is-line' + (tone.slnt ? ' is-gust' : '')} style={face}>
+     <div className={'z-glyph is-line' + (shown.slnt ? ' is-gust' : '')} style={face}>
       <span>{lines.map((l, i) => <b key={i} className="z-glyph-char">{l}</b>)}</span>
      </div>
     </div>
+    {/* 지금 보는 것이 무엇인지는 견본 위에서 말한다 — 버튼 쪽에서만 말하면
+        눈은 견본에 가 있는데 답은 손 밑에 있다 */}
+    {compare && <span className="tone-orig-chip">원본</span>}
    </div>
-   <div className="z-axes">
-    {/* 무게가 없는 얼굴에는 무게를 안 묻는다 — 없는 축의 손잡이를 밀면
-        아무 일도 안 일어나는데 손잡이만 움직인다(palettes.ts · MANNER).
-        그 자리는 아래의 말투 버튼이 받는다. */}
-    {AXES.filter(a => a.key !== 'wght' || hasWeightAxis(tone.font)).map(a => {
-        const at = nearest(a.stops, tone[a.key]);          // 값이 붙어 있는 눈금
-        const last = a.stops.length - 1;
-        // 손잡이 자리: 끄는 동안은 손가락, 놓으면 눈금
-        const pos = drag?.key === a.key ? drag.at : at / last;
-        return <div key={a.key} className="z-axis-line" role="group" aria-label={a.label}>
-          <div className="z-axis-head">
-            <span className="z-axis-label">{a.label}</span>
-            <span className="z-axis-value">{a.names[at]}</span>
-          </div>
-          <div className={'z-steps' + (drag?.key === a.key ? ' is-dragging' : '')}
-            style={{ '--at': pos } as CSSProperties}>
+
+   {/* ── 편집 패널 ─────────────────────────────────────────────── */}
+   <div className="tone-panel">
+    <div className="tone-tools">
+     <div className="tone-tabs" role="tablist" aria-label="조절할 것">
+      {tools.map(t =>
+        <button key={t.key} type="button" role="tab" aria-selected={t.key === cur.key}
+          className={'tone-tab' + (t.key === cur.key ? ' on' : '')}
+          onClick={() => setAxis(t.key)}>{t.label}</button>
+      )}
+     </div>
+     {/* 누르고 있는 동안만 원본. onPointerLeave까지 받는 이유는 손가락이
+         버튼 밖으로 미끄러진 채 떼면 눌린 상태로 남기 때문이다. */}
+     <button type="button" className={'tone-orig' + (compare ? ' on' : '')}
+       aria-pressed={compare} aria-label="원본과 비교. 누르고 있는 동안 다듬기 전이 보입니다"
+       onPointerDown={() => setCompare(true)} onPointerUp={() => setCompare(false)}
+       onPointerLeave={() => setCompare(false)} onPointerCancel={() => setCompare(false)}
+       onKeyDown={holdKey(true)} onKeyUp={holdKey(false)}>원본</button>
+    </div>
+
+    {/* 무엇을 만지는 중이고 지금 값이 무엇인지. 전에는 잣대 위 한 줄에
+        작게 좌우로 나뉘어 있었다 — 값이 주인공인 자리라 가운데에 크게 둔다. */}
+    <div className="tone-now" aria-live="polite">
+     <span className="tone-now-label">{cur.label}</span>
+     <span className="tone-now-value">{cur.names[cur.at]}</span>
+    </div>
+
+    {/* 잣대. 폭을 화면에서 떼어 냈다(350 → 220) — 여기는 '지금 어디쯤인가'를
+        보여주는 자리고, 미는 일은 아래 면이 받는다. */}
+    {cur.manner
+      ? <div className="z-manner" role="group" aria-label="말투">
+          {MANNER[tone.font].labels.map((name, i) =>
+            <button key={i} type="button"
+              className={'z-manner-btn' + (cur.at === i ? ' on' : '')}
+              aria-pressed={cur.at === i}
+              style={{ fontFamily: fontMap[tone.font],
+                fontVariationSettings: MANNER[tone.font].axes[i] } as CSSProperties}
+              onClick={() => cur.set(i)}>{name}</button>
+          )}
+        </div>
+      : <div className="tone-track">
+          <div className={'z-steps' + (drag?.key === cur.key ? ' is-dragging' : '')}
+            style={{ '--at': drag?.key === cur.key ? drag.at : cur.at / last } as CSSProperties}>
             <span className="z-steps-thumb" aria-hidden="true"/>
-            {/* 점이 커지는 것만으로 "왼쪽이 적고 오른쪽이 많다"만 말한다.
-                눈금 안에 글자를 넣으면 좁은 화면에서 잣대 이름이 잘린다. */}
-            {a.stops.map((_, i) =>
-              <span key={i} className={'z-step-dot' + (i === at ? ' on' : '')}
+            {cur.names.map((_, i) =>
+              <span key={i} className={'z-step-dot' + (i === cur.at ? ' on' : '')}
                 style={{ width: 6 + i * 3, height: 6 + i * 3 }} aria-hidden="true"/>
             )}
-            <input type="range" className="z-steps-input" min={0} max={1} step={0.001} value={pos}
-              aria-label={a.label} aria-valuetext={a.names[at]}
-              onChange={e => { const v = Number(e.target.value); setDrag({ key: a.key, at: v }); pick(a, Math.round(v * last)); }}
+            <input type="range" className="z-steps-input" min={0} max={1} step={0.001}
+              value={drag?.key === cur.key ? drag.at : cur.at / last}
+              aria-label={cur.label} aria-valuetext={cur.names[cur.at]}
+              onChange={e => { const v = Number(e.target.value); setDrag({ key: cur.key, at: v }); cur.set(Math.round(v * last)); }}
               onPointerUp={() => setDrag(null)} onPointerCancel={() => setDrag(null)}
               onBlur={() => setDrag(null)}
               onKeyDown={e => {
@@ -223,33 +354,21 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
                   if (!d) return;
                   e.preventDefault();
                   setDrag(null);
-                  pick(a, Math.min(last, Math.max(0, at + d)));
+                  cur.set(Math.min(last, Math.max(0, cur.at + d)));
               }}/>
           </div>
-        </div>;
-    })}
-    {/* 말투 — 값이 둘뿐이라 손잡이가 아니라 버튼이다. 안내서도 그렇게 그렸다.
-        고른 쪽의 이름이 그 얼굴로 쓰여 있어서, 누르기 전에 무엇이 되는지가
-        글자 자체로 보인다. */}
-    {MANNER[tone.font] && (
-      <div className="z-axis-line" role="group" aria-label="말투">
-        <div className="z-axis-head">
-          <span className="z-axis-label">말투</span>
-          <span className="z-axis-value">{MANNER[tone.font].labels[tone.manner ? 1 : 0]}</span>
-        </div>
-        <div className="z-manner">
-          {MANNER[tone.font].labels.map((name, i) =>
-            <button key={i} type="button"
-              className={'z-manner-btn' + ((tone.manner ? 1 : 0) === i ? ' on' : '')}
-              aria-pressed={(tone.manner ? 1 : 0) === i}
-              style={{ fontFamily: fontMap[tone.font],
-                fontVariationSettings: MANNER[tone.font].axes[i] } as CSSProperties}
-              onClick={() => setTone(t => ({ ...t, manner: i }))}>{name}</button>
-          )}
-        </div>
-      </div>
-    )}
+        </div>}
+
+    {/* 끄는 면. 잣대까지 손을 가져갈 필요가 없다 — 여기 아무 데나 눌러
+        좌우로 밀면 된다. 값을 절대 위치에서 떼어 내는 것이 한 손 조작의
+        전부다. 잣대와 말투 버튼이 의미를 들고 있으므로 여기는 감춘다. */}
+    <div className="tone-pad" aria-hidden="true"
+      onPointerDown={padDown} onPointerMove={padMove}
+      onPointerUp={padUp} onPointerCancel={padUp}>
+     <span>이 안에서 좌우로 끌어도 됩니다</span>
+    </div>
    </div>
+
    <button className="primary-action" onClick={() => onNext(tone)}>다음</button>
   </section>
 

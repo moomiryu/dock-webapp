@@ -129,7 +129,19 @@ export default function HomeCharacter() {
    * 감은 눈을 그리지 않고 눈판을 통째로 숨긴다 — 흰자가 한 점이라도
    * 보이면 그건 덩어리가 아니라 얼굴이다(WAKE).
    */
-  const [blind, setBlind] = useState(true);
+  /**
+   * 이 탭에서 이미 인사를 했는가.
+   *
+   * 인사는 **처음 온 사람에게 하는 것**이다. 소개를 보고 오거나 쓰다 말고
+   * 뒤로 온 사람에게 다시 "안녕하세요"라고 하면, 화면이 그 사람을 기억
+   * 못 하는 것이 된다.
+   *
+   * sessionStorage인 이유: 새로고침해도 이어지되 탭을 새로 열면 다시
+   * 인사한다. 설치물 앞에 다음 사람이 서는 것이 곧 새 탭이다.
+   */
+  const greetedOnce = typeof sessionStorage !== 'undefined'
+    && sessionStorage.getItem('mf-greeted') === '1';
+  const [blind, setBlind] = useState(!greetedOnce);
   // 뱉은 글자. 표정과 같은 이유로 React가 들고 있다 — 몇 초에 한 번뿐이라
   // 리렌더가 드물다. 자리와 크기는 매 프레임이라 여전히 DOM을 직접 만진다.
   const [say, setSay] = useState<{
@@ -148,6 +160,9 @@ export default function HomeCharacter() {
   const [frame, setFrame] = useState<HTMLElement | null>(null);
 
   useEffect(() => { setFrame((ref.current?.closest('.home-frame') as HTMLElement) ?? null); }, []);
+
+  /* 인사를 건너뛰면 깨어나는 연출도 없다 — 눈을 뜬 채로 시작한다 */
+  useEffect(() => { if (greetedOnce) setEyes('general'); }, [greetedOnce]);
 
   useEffect(() => {
     const el = ref.current!;
@@ -192,7 +207,8 @@ export default function HomeCharacter() {
      * 첫인사의 차례. 등 → 돌아섬 → '!' → 웃음 → 인사 넉 마디 → 평소.
      * 이 동안에는 떠다니지도 부풀지도 않는다.
      */
-    let intro: 'wake' | 'bang' | 'welcome' | null = 'wake';
+    let intro: 'wake' | 'bang' | 'welcome' | null = greetedOnce ? null : 'wake';
+    if (greetedOnce) charPos.greeted = true;   // 구경꾼과 배경 글이 곧바로 시작한다
     let introAt = 0;
     let wakeIdx = 0;
 
@@ -381,6 +397,7 @@ export default function HomeCharacter() {
           if (welcomeIdx >= WELCOME.length) {
             intro = null;
             charPos.greeted = true;      // 이제 나팔에서 남의 말이 나온다
+            try { sessionStorage.setItem('mf-greeted', '1'); } catch { /* 사파리 비공개 */ }
             setEyes('general');
             // 인사가 끝나면 곧바로 돌아선다. 정면은 인사하는 얼굴이었다.
             setPose(idlePose(), t);

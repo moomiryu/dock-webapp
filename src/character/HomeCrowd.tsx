@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react';
 import { charPos } from './pos';
 import {
   BODY, CLIP_H, EYE_LOOK, EYE_SHUT, EYE_SMILE, EYE_WHITE, EYE_WIDE,
-  HEAD, LEG_FAR, LEG_NEAR, SHADOW, VIEW, type WalkerEye
+  EYE_FAR_DX, HEAD, LEG_FAR, LEG_NEAR, SHADOW, SHADOW_FRONT, SHADOW_SIDE, VIEW,
+  type WalkerEye
 } from './walker';
 
 /**
@@ -113,6 +114,7 @@ export default function HomeCrowd() {
       p.live = true;
       p.el.dataset.tone = 'blue';
       p.el.dataset.eye = 'look';
+      p.el.dataset.face = 'side';
       p.el.style.opacity = first ? '0' : '1';
       p.born = t;
     };
@@ -149,10 +151,17 @@ export default function HomeCrowd() {
                 // 지나갈 수 없으니 왔던 쪽으로 되돌아 나간다
                 p.phase = 'leave';
                 p.dir = p.dir > 0 ? -1 : 1;
+                p.el.dataset.face = 'side';   // 걸으려면 다시 옆으로 선다
               } else {
                 const m = MEETING[p.beat];
                 p.el.dataset.eye = m.eye;
-                if (p.beat >= TURN_AT) p.el.dataset.tone = 'red';
+                // 웃는 칸에서 몸이 빨강이 되고, 그때 **이쪽으로 돌아선다.**
+                // 네 칸 동안 메가폰트를 보다가 마지막에 눈이 둘이 된다 —
+                // 발화자가 된 것을 보는 사람에게 건네는 자리다.
+                if (p.beat >= TURN_AT) {
+                  p.el.dataset.tone = 'red';
+                  p.el.dataset.face = 'front';
+                }
                 p.until = t + m.ms;
               }
             }
@@ -213,6 +222,7 @@ export default function HomeCrowd() {
           className="walker"
           data-tone="blue"
           data-eye="look"
+          data-face="side"
           style={{
             height: `${HEIGHT}px`,
             width: `${HEIGHT * RATIO}px`,
@@ -224,19 +234,35 @@ export default function HomeCrowd() {
             <defs>
               <clipPath id={`walker-clip-${i}`}><rect width={VIEW.w} height={CLIP_H} /></clipPath>
             </defs>
-            <ellipse fill={SHADOW.fill} cx={SHADOW.cx} cy={SHADOW.cy} rx={SHADOW.rx} ry={SHADOW.ry} />
+            {/* 자세에 따라 둘 중 하나만 보인다. 옆모습 것은 상자보다 넓어
+                밖으로 비어져 나간다 — 그 폭이 걷는 쪽을 말한다 */}
+            <ellipse className="w-shade w-shade-side" fill={SHADOW.fill}
+              cx={SHADOW_SIDE.cx} cy={SHADOW.cy} rx={SHADOW_SIDE.rx} ry={SHADOW.ry} />
+            <ellipse className="w-shade w-shade-front" fill={SHADOW.fill}
+              cx={SHADOW_FRONT.cx} cy={SHADOW.cy} rx={SHADOW_FRONT.rx} ry={SHADOW.ry} />
             <path className="w-leg w-far" fill="currentColor" d={LEG_FAR} />
             <path className="w-leg w-near" fill="currentColor" d={LEG_NEAR} />
             <g clipPath={`url(#walker-clip-${i})`}>
               <circle fill="currentColor" cx={HEAD.cx} cy={HEAD.cy} r={HEAD.r} />
               <path fill="currentColor" d={BODY} />
-              <circle fill="#fff" cx={EYE_WHITE.cx} cy={EYE_WHITE.cy} r={EYE_WHITE.r} />
-              {/* 표정 넷을 다 그려 두고 CSS가 하나만 보여 준다 — 바꿀 때마다
-                  React를 거치면 여섯이 초당 몇 번씩 다시 그려진다 */}
-              <circle className="w-eye w-eye-look" fill="currentColor" cx={EYE_LOOK.cx} cy={EYE_LOOK.cy} r={EYE_LOOK.r} />
-              <circle className="w-eye w-eye-wide" fill="currentColor" cx={EYE_WIDE.cx} cy={EYE_WIDE.cy} r={EYE_WIDE.r} />
-              <path className="w-eye w-eye-shut" d={EYE_SHUT} fill="none" stroke="currentColor" strokeWidth="20" strokeLinecap="round" />
-              <path className="w-eye w-eye-smile" d={EYE_SMILE} fill="none" stroke="currentColor" strokeWidth="24" strokeLinecap="round" />
+              {/* 눈 한 벌. 표정 넷을 다 그려 두고 CSS가 하나만 보여 준다 —
+                  바꿀 때마다 React를 거치면 여섯이 초당 몇 번씩 다시 그려진다 */}
+              <g>
+                <circle fill="#fff" cx={EYE_WHITE.cx} cy={EYE_WHITE.cy} r={EYE_WHITE.r} />
+                <circle className="w-eye w-eye-look" fill="currentColor" cx={EYE_LOOK.cx} cy={EYE_LOOK.cy} r={EYE_LOOK.r} />
+                <circle className="w-eye w-eye-wide" fill="currentColor" cx={EYE_WIDE.cx} cy={EYE_WIDE.cy} r={EYE_WIDE.r} />
+                <path className="w-eye w-eye-shut" d={EYE_SHUT} fill="none" stroke="currentColor" strokeWidth="20" strokeLinecap="round" />
+                <path className="w-eye w-eye-smile" d={EYE_SMILE} fill="none" stroke="currentColor" strokeWidth="24" strokeLinecap="round" />
+              </g>
+              {/* 정면으로 돌 때만 보이는 반대쪽 눈. 같은 한 벌을 옮겨 놓은
+                  것이라 표정도 저절로 따라온다 */}
+              <g className="w-eye-far" transform={`translate(${EYE_FAR_DX} 0)`}>
+                <circle fill="#fff" cx={EYE_WHITE.cx} cy={EYE_WHITE.cy} r={EYE_WHITE.r} />
+                <circle className="w-eye w-eye-look" fill="currentColor" cx={EYE_LOOK.cx} cy={EYE_LOOK.cy} r={EYE_LOOK.r} />
+                <circle className="w-eye w-eye-wide" fill="currentColor" cx={EYE_WIDE.cx} cy={EYE_WIDE.cy} r={EYE_WIDE.r} />
+                <path className="w-eye w-eye-shut" d={EYE_SHUT} fill="none" stroke="currentColor" strokeWidth="20" strokeLinecap="round" />
+                <path className="w-eye w-eye-smile" d={EYE_SMILE} fill="none" stroke="currentColor" strokeWidth="24" strokeLinecap="round" />
+              </g>
             </g>
           </svg>
         </span>

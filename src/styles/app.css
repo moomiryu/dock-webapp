@@ -2248,7 +2248,19 @@
    버튼 위에 얹히지 않게 손을 안 받는다. */
 .home-crowd{ position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .walker{ position: absolute; left: 0; top: 0; display: block; will-change: transform; }
-.walker-art{ display: block; width: 100%; height: 100%; }
+/* 옆모습 그림자가 화판(366)보다 넓다. 자르면 그 폭이 없어지므로 내보낸다 —
+   무리를 담은 .home-crowd가 inset: 0 · overflow: hidden이라 화면 밖으로는
+   못 나간다. */
+.walker-art{ display: block; width: 100%; height: 100%; overflow: visible; }
+
+/* 자세 둘. 옆모습으로 걸어와 메가폰트를 보다가, 웃는 칸에서 이쪽으로
+   돌아선다(HomeCrowd · TURN_AT). 돌아서면 눈이 하나 더 생기고 그림자가
+   발밑으로 모인다. 정면은 좌우가 같아서 뒤집혀도 그대로다. */
+.w-eye-far{ display: none; }
+.w-shade-front{ display: none; }
+.walker[data-face='front'] .w-eye-far{ display: block; }
+.walker[data-face='front'] .w-shade-front{ display: block; }
+.walker[data-face='front'] .w-shade-side{ display: none; }
 /* 몸 색. 파랑으로 들어와 메가폰트 앞에서 빨강이 된다 — 그 순간이 이
    장면의 내용이라 뚝 끊기지 않고 건너가야 한다. */
 .walker{ color: #2ce9f7; transition: color 620ms var(--ease-standard); }

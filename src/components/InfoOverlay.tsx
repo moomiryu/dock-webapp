@@ -18,8 +18,9 @@ import { EMPHASIS_SEC, STAY_DAYS } from '../lib/wall';
 //           걸어와 폰을 꽂고, 느낌표가 터진다. 되짚어 돌아오는 것이 거짓이
 //           아니다 — 실제로도 폰을 도로 빼면 그 큰 목소리가 거기서 끝난다.
 //
-// 같은 폴더의 `Artboard size_*.pdf`는 번들에 넣지 않는다 — 화면이 아니라
-// 작가가 준 기준이다.
+// 같은 폴더의 `Artboard size_*.pdf`는 번들에 넣지 않는다. 화면이 아니라
+// **기준**이다 — 그 페이지 크기(390×603)가 곧 삽화의 화판이고, 화면에서
+// 어디까지 보이고 어디가 잘려야 하는지를 그것이 정한다(app.css · --focus).
 import artAboutLit from '../../by_moomiryu/Renewal_v1/Tutorial/example_about_1.svg?raw';
 import artAboutFull from '../../by_moomiryu/Renewal_v1/Tutorial/example_about_2.svg?raw';
 import artGlyphs1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_1.svg?raw';
@@ -158,7 +159,7 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
     ),
     art: <Built name="dock" still={artDock3}
       make={(k) => chainSvg([artDock1, artDock2, artDock3], k, 8)} />,
-    artClass: 'is-figure'
+    artClass: 'is-wide'
   },
   {
     step: 'Step 4',

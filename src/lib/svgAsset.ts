@@ -544,6 +544,40 @@ function align(ia: Item[], ib: Item[]) {
   return { pair, onlyB, onlyA };
 }
 
+/**
+ * **시선의 중심**을 화면에 알려 준다. 화판은 건드리지 않는다.
+ *
+ * 2026-09-20에 한 번 반대로 했다 — 빈 자리를 잘라 내어 화판을 그림에 맞췄다.
+ * 작가가 `Artboard size_*.pdf`를 주면서 그게 틀렸다는 게 드러났다. 그 PDF의
+ * 페이지 크기가 정확히 390×603, 곧 **화판 자체가 의도한 화면**이다. 화판
+ * 밖으로 나간 것(Step 1 구경꾼의 그림자는 x 468까지 간다)은 잘려야 하는
+ * 것이지 끌어와 보여줄 것이 아니고, 화판 안의 빈 자리는 지울 여백이 아니라
+ * 구도다.
+ *
+ * 그래서 자르는 일은 CSS가 맡고(.info-art), 여기서는 **어디를 가운데에
+ * 두어야 하는지**만 백분율로 적어 보낸다. 그린 것들의 세로 한가운데다.
+ * 소개 화면이 내주는 높이는 글의 길이와 기기에 따라 달라지므로, 얼마나
+ * 잘릴지는 여기서 알 수 없다 — 잘려도 잃지 말아야 할 자리만 말해 준다.
+ *
+ * 컷 전부를 재는 이유: 움직이는 동안 자리를 옮기는 것이 있다. About의
+ * 구경꾼은 오른쪽 밖에서 들어오고 Step 1의 '가'는 위아래로 다닌다.
+ */
+function focusOn(root: Element, items: Item[]) {
+  const vb = (root.getAttribute('viewBox') ?? '').split(/[ ,]+/).map(Number);
+  if (vb.length !== 4 || !vb[3]) return;
+  let y0 = Infinity, y1 = -Infinity;
+  for (const it of items) {
+    const b = boxOf(it);
+    if (!b || !Number.isFinite(b.y) || !Number.isFinite(b.h)) continue;
+    if (b.w >= vb[2] * 0.99 && b.h >= vb[3] * 0.99) continue;   // 배경은 빼고 잰다
+    y0 = Math.min(y0, b.y); y1 = Math.max(y1, b.y + b.h);
+  }
+  if (!Number.isFinite(y0) || y1 <= y0) return;
+  // 화판 밖까지 뻗은 것은 화판 끝까지만 친다 — 어차피 잘리는 자리다
+  y0 = Math.max(y0, vb[1]); y1 = Math.min(y1, vb[1] + vb[3]);
+  const mid = ((y0 + y1) / 2 - vb[1]) / vb[3];
+  addStyle(root, `--focus:${r2(mid * 100)}%`);
+}
 
 /**
  * 다른 컷의 요소를 이 문서로 옮겨 심는다.
@@ -671,6 +705,7 @@ export function chainSvg(raws: string[], key: string, dur = 11): string {
       animateSeq(copy, 'opacity', order.map((k) => (g.at.has(k) ? '1' : '0')), t, dur);
     }
 
+    focusOn(base, items.flat());
     markEyes(base);
     return scopeSvg(new XMLSerializer().serializeToString(base), key);
   } catch {
@@ -770,6 +805,7 @@ export function aboutSvg(litRaw: string, fullRaw: string, key: string, dur = 12)
     }
     if (!lamps && !w.onlyB.length) return scopeSvg(fullRaw, key);
 
+    focusOn(B, [...ia, ...ib]);
     markEyes(B);
     return scopeSvg(new XMLSerializer().serializeToString(B), key);
   } catch {

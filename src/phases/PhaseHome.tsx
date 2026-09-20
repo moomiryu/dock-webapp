@@ -3,15 +3,12 @@ import InfoOverlay from '../components/InfoOverlay';
 import HomeCharacter from '../character/HomeCharacter';
 import HomeCrowd from '../character/HomeCrowd';
 import HomeVoices from '../components/HomeVoices';
-import HomeSky from '../components/HomeSky';
 interface Props { onStart: () => void; }
 export default function PhaseHome({ onStart }: Props) {
   const [info, setInfo] = useState(false);
   if (info) return <InfoOverlay onClose={() => setInfo(false)} onStart={onStart} />;
   return (
     <div className="home-frame">
-      {/* 달과 구름은 맨 뒤 — 하늘 그 자체다 */}
-      <HomeSky />
       {/* 구경꾼이 먼저 그려져야 메가폰트 뒤에 선다 */}
       <HomeCrowd />
       {/* 나팔에서 나오는 말은 캐릭터 뒤, 배경으로 흩어진다 */}

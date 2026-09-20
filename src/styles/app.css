@@ -254,21 +254,11 @@
 
 /* ─── 홈: 인사말, 캐릭터, 시작 선택 ─── */
 
-/* ── 홈은 밤하늘 아래 들판이다 ───────────────────────────────────────
-   지평선은 화면 높이의 55%다. 거기가 메가폰트의 눈이 지나는 자리라
-   (재서 확인: 844 화면에서 눈이 52~57%, 55%는 464px), 인물이 지평선에
-   걸쳐 선 구도가 된다.
-
-   두 색은 한 칸의 배경 하나로 깐다 — 겹을 나누면 그 경계가 또 하나의
-   띠가 된다. 화면 가장자리까지, 버튼 뒤로도 그대로 간다. */
 .home-frame{
   position: relative;
   overflow: hidden;
   padding: 0;
   gap: 0;
-  background: linear-gradient(to bottom,
-    var(--night-sky) 0 var(--horizon, 55%),
-    var(--field) var(--horizon, 55%) 100%);
 }
 
 .home-layer{
@@ -1997,12 +1987,10 @@
    견본 넷 위로 덮이고 버튼 아래로 깔린다(스케치 02b의 칠 순서). */
 /* 홈과 소개 화면도 같은 기운을 받는다 — 다섯 단계에만 있으면 들어올 때와
    나갈 때만 바닥이 차가워서, 그 둘이 이 앱이 아닌 것처럼 읽힌다. */
-/* 홈은 이 목록에서 빠졌다(2026-09-20). 바닥에 더운 기운을 깔면 들판
-   위에 또 한 겹의 띠가 생겨, 이어져야 할 초록이 두 조각으로 갈린다.
-   홈의 바닥은 들판 그 자체다. */
 /* 03 조율은 이 목록에서 빠졌다(2026-09-21). 아래가 불투명한 편집 패널
    (--grey-50)이라 받칠 붉은 면이 없고, 패널 아래로 삐져나온 125px만
    분홍 띠로 남아 패널과 '다음' 사이에 없는 경계를 그렸다. */
+.home-frame::after,
 .tone-choice::after, .compose-screen::after,
 .write-screen::after, .color-choice::after, .preview-screen::after,
 .info-overlay::after{
@@ -2043,8 +2031,9 @@
 .compose-screen > .primary-action, .color-choice > .primary-action,
 .write-screen > .primary-action, .write-screen > .compose-count,
 .preview-screen > .primary-action{ position: relative; z-index: 2; }
-/* 소개의 발치 줄은 그 기운 위에 앉는다 */
-.info-overlay > .info-nav{ position: relative; z-index: 2; }
+/* 홈의 두 버튼과 소개의 발치 줄은 그 기운 위에 앉는다 */
+.home-frame .home-gate, .info-overlay > .info-nav{ position: relative; z-index: 2; }
+.home-frame::after{ z-index: 900; }
 .tone-selected{ display: flex; align-items: center; justify-content: space-between; color: var(--body-text); font-size: var(--fs-body-s); }
 .tone-selected button{ border: 0; background: var(--grey-100); border-radius: var(--r-s); padding: var(--s3) var(--s5); min-height: 44px; color: var(--grey-700); font: inherit; cursor: pointer; }
 .tone-selected button:active{ background: var(--grey-200); }
@@ -2474,21 +2463,6 @@
 .home-char{ z-index: 500; }
 .home-frame > .home-layer{ z-index: 1000; }
 
-/* ── 밤하늘 위의 글과 버튼 ───────────────────────────────────────────
-   흰 종이를 앞에 두고 짠 색들이라 밤에서는 다시 정한다. 빨강은 **로고와
-   캐릭터와 채움 버튼**에 모아 두고, 안내하는 글은 중성색으로 갈라 둔다 —
-   빨강이 여기저기 흩어지면 무엇이 중심인지가 없어진다.
-
-   밝기로 위계를 만든다:
-     참여 안내(--sky-warm) > 로고(빨강) > 부제(--sky-text) > 부유 메시지(--sky-drift) */
-.home-frame .home-headline{ color: var(--brand-main); }
-.home-frame .home-subtitle{ color: var(--sky-text); }
-
-/* '처음이에요'는 빨강 바탕에 흰 글자 — 이 화면에서 제일 큰 손짓이다.
-   '써봤어요'는 밝은 중성 바탕에 어두운 글자. 밤하늘 위에서 흰 판이
-   떠 보이지 않게 종이(--paper)가 아니라 한 단 내린 회색을 쓴다. */
-.home-frame .home-info-btn{ background: var(--grey-200); color: var(--grey-900); border-color: var(--grey-200); }
-
 /* ── 큰 메가폰트 ────────────────────────────────────────────────── */
 /* 직접 만지는 크기. 340px에서 80%로 줄였다. */
 /* 2026-09-20: 끌어 옮기던 것을 걷어냈다. 손을 안 받으므로 커서도 평범하다 —
@@ -2606,10 +2580,7 @@
   font-size: calc(var(--char-box, 272px) * 0.1);
   /* 두 줄이 되었으므로 줄 사이가 필요하다. 1은 줄끼리 붙는다. */
   line-height: 1.35;
-  /* 참여 안내는 **따뜻한 흰색**이다. 밤하늘에서 제일 밝게 읽혀야 하는
-     글이라 — 로고(빨강)는 무엇인지를, 이 글은 무엇을 할 수 있는지를
-     말한다. 빨강으로 두면 로고와 같은 목소리가 된다. */
-  color: var(--sky-warm);
+  color: var(--brand-main);
   /* 줄바꿈은 작가가 끊어 준 자리 그대로(HomeCharacter · WELCOME).
      화면 폭에 맡기면 뜻이 안 끊기는 데서 끊긴다. */
   white-space: pre-line;
@@ -2666,57 +2637,6 @@
    위계는 층이 아니라 색·크기·속도가 낮춘다 — 옅은 회색에, 액자 폭의
    2.5~3.8%에, 가로지르는 데 18~30초. 굵기는 700 그대로다(작가가 정한
    값이라 건드리지 않았다). 물러나는 일은 나머지 셋이 한다. */
-/* ── 밤하늘의 달과 구름 ──────────────────────────────────────────────
-   그림은 src/components/HomeSky.tsx가 넣는다. 여기서는 **어디에 얼마나
-   흐리게** 걸릴지만 정한다.
-
-   자리는 실제로 재서 골랐다(390×844 기준): 부제가 16%에서 끝나고, 참여
-   안내가 22~27%에 서고, 캐릭터 상자가 36%에서 시작하고, 지평선이 55%다.
-   그 사이의 빈 하늘이 오른쪽 위(17~33%)와 왼쪽 아래(36~48%) 둘이다.
-
-   둘 다 화면 밖으로 걸쳐 둔다. 다 보이는 것은 주인공이 되고, 잘린 것은
-   배경이 된다 — 하늘이 화면보다 넓다는 말이기도 하다.
-
-   크기는 40%·42%에서 24%·26%로 내렸다(2026-09-21). 그만큼 크면 달이
-   화면 오른쪽 위를 통째로 차지해 로고·인사·캐릭터와 자리를 다툰다.
-   흐릿하게 깔아 두는 것만으로는 부족했다 — **위계는 밝기만이 아니라
-   면적으로도 정해진다.** 줄인 뒤 걸치는 폭도 같이 줄여서(-12%→-5%,
-   -13%→-6%) 주요 콘텐츠 둘레에 빈 하늘이 남게 했다. */
-.home-sky{ position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-.home-sky > div{ position: absolute; }
-.home-sky svg{ display: block; width: 100%; height: 100%; }
-
-/* 달. 오른쪽 위, 오른쪽 가장자리로 3분의 1쯤 나간다.
-   0.34까지 내린 이유: 원본의 노랑(#ffd84d)을 그대로 두면 밤하늘에서
-   참여 안내(--sky-warm)보다 밝다 — 안내보다 밝은 배경은 배경이 아니다. */
-/* 위를 22%로 잡은 것은 부제가 끝나는 자리 때문이다 — 어느 화면에서나
-   20% 안쪽에서 끝난다(844 16% · 640 20% · 932 16%). 18%였을 때 640에서
-   달의 윗머리가 부제 오른쪽 끝과 같은 줄에 걸렸다. */
-.sky-moon{ width: 24%; aspect-ratio: 1; right: -5%; top: 22%; opacity: 0.3; }
-
-/* 구름. 왼쪽, 캐릭터보다 아래에서 왼쪽 가장자리로 나간다.
-   흰색이라 달보다 훨씬 더 내린다. 0.22에서 0.15로 또 내린 이유는 밝기가
-   아니라 **그 위를 지나는 글** 때문이다 — 부유 메시지가 하늘을 가로지르니
-   구름 위를 반드시 지난다. 구름이 중간 밝기면 회청색 글자와 붙어 글이
-   한동안 안 읽힌다. 남색에 가깝게 내리면 글자가 둘 다보다 밝아진다. */
-.sky-cloud{ width: 26%; aspect-ratio: 312 / 203; left: -6%; opacity: 0.15;
-  /* 위가 아니라 **아래**를 기준으로 건다. 위를 기준으로 걸었더니 640
-     화면에서 밑동이 지평선 1.8% 앞까지 내려와 구름이 들판에 얹혀 있었다 —
-     화면이 짧을수록 같은 %가 더 두꺼워지기 때문이다. 지평선에서 늘 같은
-     만큼 띄우면 어느 화면에서나 하늘 한가운데에 뜬다. */
-  bottom: calc(100% - var(--horizon, 55%) + 8%); }
-
-@media (prefers-reduced-motion: no-preference){
-  /* 아주 느리게 오르내린다. 하늘이 정지 화면이 아니라는 표시 정도이고,
-     한 주기가 20초를 넘어 눈에 띄는 움직임으로는 읽히지 않는다. */
-  .sky-moon{ animation: skyFloat 26s ease-in-out infinite; }
-  .sky-cloud{ animation: skyFloat 21s ease-in-out infinite reverse; }
-}
-@keyframes skyFloat{
-  0%, 100%{ translate: 0 0; }
-  50%{ translate: 0 -1.4%; }
-}
-
 .home-voices{ position: absolute; inset: 0; pointer-events: none; overflow: hidden;
   z-index: 0; }
 .voice{
@@ -2726,14 +2646,10 @@
   /* 크기는 HomeVoices가 액자 폭에서 재어 인라인으로 준다 */
   font-size: 20px;
   line-height: 1;
-  /* 배경의 결이다. 빨강은 이 화면에서 캐릭터와 채움 버튼의 색이므로
-     배경까지 빨강이면 무엇이 주인공인지가 흐려진다.
-
-     밤하늘과 들판을 **둘 다 지난다.** 회청색 하나로 가는 이유가 그것이다 —
-     구간마다 색을 갈면 지평선을 넘는 순간 글자가 딴 것이 된다. 이 값은
-     남색 위에서도 초록 위에서도 밝은 쪽이라 양쪽에서 같은 만큼 읽힌다.
-     짙기는 깊이에 따라 JS가 opacity로 얹는다(HomeVoices). */
-  color: var(--sky-drift);
+  /* 배경의 결이라 --brand-main(빨강)에서 내려왔다. 빨강은 이 화면에서
+     캐릭터와 채움 버튼의 색이다 — 배경까지 같은 빨강이면 무엇이 주인공
+     인지가 흐려진다. 깊이에 따른 짙기는 JS가 opacity로 얹는다. */
+  color: var(--grey-300);
   white-space: nowrap;
   transform-origin: left center;
   will-change: transform, opacity;
@@ -2747,10 +2663,6 @@
    (HomeCrowd), 걷는 다리와 몸의 들썩임·몸 색만 CSS가 맡는다.
    버튼 위에 얹히지 않게 손을 안 받는다. */
 .home-crowd{ position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-/* 발밑 그림자는 들판 색을 따른다. 작가의 그림이 들고 온 보라(#5a5580)는
-   흰 바닥에 지는 그늘이라, 초록 위에서는 그것만 딴 데서 온 색이 된다. */
-.w-shade{ fill: var(--field-shade); }
-.home-char-shade{ background: var(--field-shade); }
 
 /* 여기에 앞선 구경꾼이 메가폰트 몸에 드리우는 그림자(drop-shadow)가
    있었다. 2026-09-20에 넣었다가 같은 날 걷어냈다 — 앞뒤는 발끝이 정하는

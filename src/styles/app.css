@@ -2567,6 +2567,48 @@
    위계는 층이 아니라 색·크기·속도가 낮춘다 — 옅은 회색에, 액자 폭의
    2.5~3.8%에, 가로지르는 데 18~30초. 굵기는 700 그대로다(작가가 정한
    값이라 건드리지 않았다). 물러나는 일은 나머지 셋이 한다. */
+/* ── 밤하늘의 달과 구름 ──────────────────────────────────────────────
+   그림은 src/components/HomeSky.tsx가 넣는다. 여기서는 **어디에 얼마나
+   흐리게** 걸릴지만 정한다.
+
+   자리는 실제로 재서 골랐다(390×844 기준): 부제가 16%에서 끝나고, 참여
+   안내가 22~27%에 서고, 캐릭터 상자가 36%에서 시작하고, 지평선이 55%다.
+   그 사이의 빈 하늘이 오른쪽 위(17~33%)와 왼쪽 아래(36~48%) 둘이다.
+
+   둘 다 화면 밖으로 걸쳐 둔다. 다 보이는 것은 주인공이 되고, 잘린 것은
+   배경이 된다 — 하늘이 화면보다 넓다는 말이기도 하다. */
+.home-sky{ position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.home-sky > div{ position: absolute; }
+.home-sky svg{ display: block; width: 100%; height: 100%; }
+
+/* 달. 오른쪽 위, 오른쪽 가장자리로 3분의 1쯤 나간다.
+   0.34까지 내린 이유: 원본의 노랑(#ffd84d)을 그대로 두면 밤하늘에서
+   참여 안내(--sky-warm)보다 밝다 — 안내보다 밝은 배경은 배경이 아니다. */
+.sky-moon{ width: 40%; aspect-ratio: 1; right: -12%; top: 16%; opacity: 0.3; }
+
+/* 구름. 왼쪽, 캐릭터보다 아래에서 왼쪽 가장자리로 나간다.
+   흰색이라 달보다 훨씬 더 내린다. 0.22에서 0.15로 또 내린 이유는 밝기가
+   아니라 **그 위를 지나는 글** 때문이다 — 부유 메시지가 하늘을 가로지르니
+   구름 위를 반드시 지난다. 구름이 중간 밝기면 회청색 글자와 붙어 글이
+   한동안 안 읽힌다. 남색에 가깝게 내리면 글자가 둘 다보다 밝아진다. */
+.sky-cloud{ width: 42%; aspect-ratio: 312 / 203; left: -13%; opacity: 0.15;
+  /* 위가 아니라 **아래**를 기준으로 건다. 위를 기준으로 걸었더니 640
+     화면에서 밑동이 지평선 1.8% 앞까지 내려와 구름이 들판에 얹혀 있었다 —
+     화면이 짧을수록 같은 %가 더 두꺼워지기 때문이다. 지평선에서 늘 같은
+     만큼 띄우면 어느 화면에서나 하늘 한가운데에 뜬다. */
+  bottom: calc(100% - var(--horizon, 55%) + 8%); }
+
+@media (prefers-reduced-motion: no-preference){
+  /* 아주 느리게 오르내린다. 하늘이 정지 화면이 아니라는 표시 정도이고,
+     한 주기가 20초를 넘어 눈에 띄는 움직임으로는 읽히지 않는다. */
+  .sky-moon{ animation: skyFloat 26s ease-in-out infinite; }
+  .sky-cloud{ animation: skyFloat 21s ease-in-out infinite reverse; }
+}
+@keyframes skyFloat{
+  0%, 100%{ translate: 0 0; }
+  50%{ translate: 0 -1.4%; }
+}
+
 .home-voices{ position: absolute; inset: 0; pointer-events: none; overflow: hidden;
   z-index: 0; }
 .voice{

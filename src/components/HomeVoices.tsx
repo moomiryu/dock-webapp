@@ -100,10 +100,20 @@ export default function HomeVoices() {
       el, live: false, born: 0, cross: 0, y: 0, from: 0, span: 0, ink: 0
     }));
 
-    /* 말이 흐르는 띠. 제목과 버튼을 액자 좌표로 재어 그 사이로 잡는다 —
-       수치를 적어 두면 글자 크기가 바뀔 때 그 줄이 먼저 죽는다. 버튼과
-       제목은 맨 위 층(1000)이라 거기까지 가면 도로 가려진다. */
+    /**
+     * 말이 흐르는 띠.
+     *
+     * 위는 제목을, 아래는 **지평선**을 액자 좌표로 재어 그 사이로 잡는다 —
+     * 수치를 적어 두면 글자 크기가 바뀔 때 그 줄이 먼저 죽는다.
+     *
+     * 아래가 지평선인 이유: 이 말들은 **하늘에 떠 있는 것**이다. 들판으로
+     * 내려오면 땅 위를 흘러가는 글이 되고, 거기는 구경꾼들이 걷는 자리라
+     * 배경끼리 겹친다. 전에는 버튼 윗선까지 썼는데 그러면 다섯 줄 중
+     * 아래 둘이 초록 위로 내려왔다.
+     */
     let band = { top: 0, height: 0 };
+    /** 지평선. 글자 **아래 끝**이 이 선을 넘지 않는다 */
+    let horizon = 0;
     /**
      * 비워 둘 자리 — **참여 안내**가 서는 곳이다.
      *
@@ -115,9 +125,12 @@ export default function HomeVoices() {
     const measure = () => {
       const f = frame.getBoundingClientRect();
       const sub = frame.querySelector('.home-subtitle')?.getBoundingClientRect();
-      const gate = frame.querySelector('.home-gate')?.getBoundingClientRect();
+      /* 배경이 하늘과 들판으로 갈리는 선. app.css가 --horizon으로 들고
+         있고 지금은 55%다. 값을 여기 베껴 적으면 둘 중 하나가 낡는다. */
+      const hz = getComputedStyle(frame).getPropertyValue('--horizon').trim();
+      horizon = f.height * ((parseFloat(hz) || 55) / 100);
       const top = (sub ? sub.bottom - f.top : f.height * 0.24) + f.height * GAP;
-      const bottom = (gate ? gate.top - f.top : f.height * 0.82) - f.height * GAP;
+      const bottom = horizon - f.height * GAP;
       band = { top, height: Math.max(0, bottom - top) };
       /* 안내는 지평선 위로 두 줄까지 선다. 그 높이를 실제로 재지 않고
          칸으로 잡는 이유: 안내는 몇 초만 떠 있다가 사라지는데, 자리를
@@ -170,6 +183,10 @@ export default function HomeVoices() {
 
       // 줄 한가운데에 앉히고, 줄 높이의 5분의 1만큼만 흔든다
       p.y = band.top + lane * lh + (lh - px) / 2 + random(-lh, lh) * 0.1;
+      /* 글자의 **아랫부분까지** 하늘 안에 있어야 한다. 줄 한가운데를
+         기준으로 잡으면 큰 글씨(가까운 것)의 밑동이 지평선을 넘는다 —
+         offsetHeight로 실제 상자를 재어 그만큼 올려 붙인다. */
+      p.y = Math.min(p.y, horizon - p.el.offsetHeight);
 
       // 왼쪽 밖에서 들어와 오른쪽 밖으로 나간다. 곧은 선이다.
       const w = p.el.offsetWidth;

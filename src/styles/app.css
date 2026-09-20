@@ -2218,27 +2218,39 @@
 }
 .home-char svg circle{ animation: none; }
 
-/* ── 나팔에서 흘러나오는 말 ─────────────────────────────────────── */
-/* ── 나팔에서 흘러나오는 말 ──────────────────────────────────────────
-   인사가 끝나면 나팔 쪽으로 짧은 말들이 줄줄 나와 배경으로 흩어진다.
-   캐릭터의 혼잣말이 아니라 **닿은 사람들이 맡기고 간 말**이다.
-   자리·투명도·글자는 JS가 프레임마다 적는다(HomeVoices) — CSS는 생김새만.
+/* ── 배경을 흘러가는 말 ──────────────────────────────────────────────
+   왼쪽 밖에서 들어와 곧은 가로선으로 오른쪽 밖까지 간다. 캐릭터의
+   혼잣말이 아니라 **닿은 사람들이 맡기고 간 말**이다.
+   자리·투명도·글자 크기는 JS가 프레임마다 적는다(HomeVoices) —
+   CSS는 생김새만.
 
-   층은 캐릭터(500) 위, 바닥 그라데이션(900) 아래다. 100에 두어 뒤로
-   보냈더니 나팔에서 나온 말이 **제 몸에 가려** 반쯤 지워졌다 — 배경으로
-   물러나는 것은 층이 아니라 옅어지는 것이 맡는다. */
+   ── 층: 맨 뒤다 (2026-09-20) ──────────────────────────────────────
+   2026-09-20까지 이것은 나팔에서 솟아 위로 오르는 말이었고, 층이 700
+   이라 캐릭터 **위로** 지나갔다. 나오는 자리가 몸 위라 실루엣에 걸려
+   한 줄이 반쯤 지워진 채로 읽혔고, 층을 올려 피한 것이 도로 배경을
+   전경으로 만들었다 — 배경이어야 할 글이 얼굴을 가로질렀다.
+
+   층으로 피하는 대신 **역할을 옮겼다.** 이제 맨 뒤(0)로 내려서
+   캐릭터와 구경꾼 뒤를 지나간다 — 구경꾼의 층은 발끝이 정하는데 1까지
+   내려갈 수 있어서(HomeCrowd · clamp), 그보다도 아래인 0이라야 한다.
+   가리는 것이 아니라 뒤를 지나는 것이라 겹치는 순간이 깊이로 읽힌다.
+   위계는 층이 아니라 색·크기·속도가 낮춘다 — 옅은 회색에, 액자 폭의
+   3.4~5.2%에, 가로지르는 데 18~30초. */
 .home-voices{ position: absolute; inset: 0; pointer-events: none; overflow: hidden;
-  z-index: 700; }
+  z-index: 0; }
 .voice{
   position: absolute; left: 0; top: 0; opacity: 0;
   font-family: 'Lineal VF', 'Pretendard Variable', sans-serif;
   font-weight: 700;
-  /* 크기는 HomeVoices가 캐릭터 상자에서 재어 인라인으로 준다 */
+  /* 크기는 HomeVoices가 액자 폭에서 재어 인라인으로 준다 */
   font-size: 20px;
   line-height: 1;
-  color: var(--brand-main);
+  /* 배경의 결이라 --brand-main(빨강)에서 내려왔다. 빨강은 이 화면에서
+     캐릭터와 채움 버튼의 색이다 — 배경까지 같은 빨강이면 무엇이 주인공
+     인지가 흐려진다. 깊이에 따른 짙기는 JS가 opacity로 얹는다. */
+  color: var(--grey-300);
   white-space: nowrap;
-  transform-origin: center;
+  transform-origin: left center;
   will-change: transform, opacity;
 }
 @media (prefers-reduced-motion: reduce){ .home-voices{ display: none; } }

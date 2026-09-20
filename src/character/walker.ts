@@ -34,7 +34,9 @@ export const VIEW = { w: 366, h: 574.1 };
  * 말하는 것이 이 폭이라, 상자에 맞춰 줄이면 그 말이 없어진다.
  * (`.walker-art`의 overflow: visible이 그 일을 한다)
  */
-export const SHADOW = { cy: 541.81, ry: 32.28, fill: '#5a5580' };
+/* 색은 여기 없다 — app.css의 .w-shade가 --char-shade로 칠한다.
+   여기 적어 두면 같은 색이 두 곳에 산다. */
+export const SHADOW = { cy: 541.81, ry: 32.28 };
 export const SHADOW_SIDE = { cx: 266.63, rx: 266.63 };
 export const SHADOW_FRONT = { cx: 183.24, rx: 183.46 };
 

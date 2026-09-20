@@ -304,9 +304,9 @@ export default function HomeCrowd() {
             </defs>
             {/* 자세에 따라 둘 중 하나만 보인다. 옆모습 것은 상자보다 넓어
                 밖으로 비어져 나간다 — 그 폭이 걷는 쪽을 말한다 */}
-            <ellipse className="w-shade w-shade-side" fill={SHADOW.fill}
+            <ellipse className="w-shade w-shade-side"
               cx={SHADOW_SIDE.cx} cy={SHADOW.cy} rx={SHADOW_SIDE.rx} ry={SHADOW.ry} />
-            <ellipse className="w-shade w-shade-front" fill={SHADOW.fill}
+            <ellipse className="w-shade w-shade-front"
               cx={SHADOW_FRONT.cx} cy={SHADOW.cy} rx={SHADOW_FRONT.rx} ry={SHADOW.ry} />
             {/* 다리 둘은 모양째로 바뀐다. 작가가 그린 65프레임을 그대로 돈다 —
                 멈춰 세울 때는 시간을 0으로 돌려 재운다(위 step) */}

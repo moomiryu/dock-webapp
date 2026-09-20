@@ -69,6 +69,14 @@ const EYE_R = 43.11;
 const EYE_BOX = 86.22;
 const EYE_PAIR = 206.06;
 /** 부리 색. 몸(#cf5b4c)과 이걸로 갈라낸다 */
+/**
+ * 나팔(작은 하늘색 삼각형)을 **골라내는 열쇠.**
+ *
+ * 칠하는 색이 아니라 작가의 SVG에서 어느 조각이 나팔인지 알아내는 지문이라
+ * 토큰(--char-cyan)으로 못 바꾼다 — 파일에 적힌 hex와 글자 그대로 맞춰
+ * 봐야 한다. 다만 **같은 색이어야 한다**: 작가가 나팔 색을 바꾸면 여기와
+ * tokens.css의 --char-cyan을 같이 고친다.
+ */
 const HAT_FILL = '#2ce9f7';
 
 const read = (name: string) =>

@@ -28,11 +28,17 @@ export default function PhasePreview({ text, tone, onConfirm, onBack, busy = fal
     return <div className="z-frame preview-screen"><div className="z-header"><BackButton label="색 다시 고르기" onClick={() => { if (!busy)
         onBack(); }}/><span className="z-step-of">5 / 5 · 미리보기</span></div>
  {/* 여기가 마지막이라는 것을 말로 해 둔다. 이 뒤(도킹)에는 '이전'이 없다 —
-     글은 이미 보내진 뒤라, 거기서 나가는 문은 처음으로만 난다. */}
+     글은 이미 보내진 뒤라, 거기서 나가는 문은 처음으로만 난다.
+
+     버튼이 '준비됐어요'였다. **진짜 잠기는 순간이 여기인데** 그 라벨은
+     무슨 일이 일어나는지 말하지 않는다 — 다른 확정 버튼은 전부 대상을
+     말한다('다 썼어요' · '이 색으로 할게요'). '이대로'가 방금 본 미리보기를
+     가리켜서 무엇이 보내지는지가 버튼 안에서 끝나고, 실패했을 때의
+     '다시 보낼게요'와도 말이 이어진다. */}
  <div className="z-ask is-brief"><h1>이렇게 보여요</h1><p>메시지를 수정할 수 있는 마지막 단계예요.</p></div><div className="proj-stage"><div className={'sim is-' + stage}><div className="sim-frame">
  <div className="sim-crowd" aria-hidden>{SAMPLE_MESSAGES.map((s, i) => { const m = messageColors(s.tone); return <div key={i} className="sim-lane" style={{ top: (i % 2 ? 80 : 20) + '%', animationDuration: '34s', animationDelay: -(i * 5) + 's' }}><span className="sim-crowd-item" style={{ background: m.bg, color: m.text, fontFamily: fontMap[s.tone.font] }}>{s.text}</span></div>; })}</div>
  <div className="sim-mine-lane"><div className="sim-mine"><VoiceBubble text={text} bg={colors.bg} color={colors.text} fontFamily={fontMap[tone.font]} font={tone.font} weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size} manner={tone.manner}/></div></div>
  </div><div className="sim-legend"><span className={stage === 'hold' || stage === 'burst' ? 'on' : ''}>꽂혀 있는 동안</span><span className={stage === 'ambient' || stage === 'settle' ? 'on' : ''}>그 뒤 {STAY_DAYS}일</span><button type="button" className="sim-replay" onClick={() => setRun(r => r + 1)}>다시 보기</button></div></div></div>
- {error && <p role="alert" className="error-banner">{error}<br />쓰신 글은 그대로 있어요. 사라지지 않았습니다.</p>}
- <button className="primary-action" disabled={busy} aria-busy={busy} aria-label={busy ? '전송 중' : error ? '다시 보낼게요' : '준비됐어요'} onClick={onConfirm}>{busy ? <span className="cta-loading" aria-hidden>…</span> : error ? '다시 보낼게요' : '준비됐어요'}</button></div>;
+ {error && <p role="alert" className="error-banner">{error}<br />쓰신 글은 그대로 있어요. 사라지지 않았어요.</p>}
+ <button className="primary-action" disabled={busy} aria-busy={busy} aria-label={busy ? '전송 중' : error ? '다시 보낼게요' : '이대로 보낼게요'} onClick={onConfirm}>{busy ? <span className="cta-loading" aria-hidden>…</span> : error ? '다시 보낼게요' : '이대로 보낼게요'}</button></div>;
 }

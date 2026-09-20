@@ -165,7 +165,7 @@
   padding: 0 20px;   /* 참조가 명시한 xlarge 버튼 좌우 여백 */
   border-radius: var(--r-xl);
   font-family: inherit;
-  font-size: 17px;
+  font-size: var(--fs-btn);
   font-weight: 500;
   letter-spacing: -0.01em;
   cursor: pointer;
@@ -307,7 +307,7 @@
   border: 1px solid var(--brand-strong);
   border-radius: var(--r-xl);
   font-family: inherit;
-  font-size: 17px;
+  font-size: var(--fs-btn);
   font-weight: 500;
   cursor: pointer;
   display: flex;
@@ -2546,7 +2546,7 @@
 .home-char[data-blind='true'] .home-char-eye{ visibility: hidden; }
 .home-char-shade{ position: absolute; left: 50%; top: calc(var(--shade-y, 0.87) * 100%);
   translate: -50% -50%; width: calc(var(--shade-w, 0.38) * 100%); height: 6%;
-  border-radius: 50%; background: #5a5580; opacity: 0.18; pointer-events: none;
+  border-radius: 50%; background: var(--char-shade); opacity: 0.18; pointer-events: none;
   /* 포즈가 바뀌면 실루엣이 달라진다. 글자·형태가 건너가는 260ms를 같이 탄다 */
   transition: width 260ms var(--ease-standard), top 260ms var(--ease-standard); }
 /* 가끔 뱉는 글자 (2026-09-15 홈_4 스케치).
@@ -2714,7 +2714,10 @@
 .walker[data-face='front'] .w-shade-side{ display: none; }
 /* 몸 색. 파랑으로 들어와 메가폰트 앞에서 빨강이 된다 — 그 순간이 이
    장면의 내용이라 뚝 끊기지 않고 건너가야 한다. */
-.walker{ color: #2ce9f7; transition: color 620ms var(--ease-standard); }
+.walker{ color: var(--char-cyan); transition: color 620ms var(--ease-standard); }
+/* 발밑 그림자도 여기서 칠한다. 전에는 HomeCrowd가 fill 속성으로 직접
+   적었는데, 그러면 같은 색이 CSS와 TS 두 곳에 살게 된다. */
+.w-shade{ fill: var(--char-shade); }
 .walker[data-tone='red']{ color: var(--brand-main); }
 /* 표정 넷을 다 그려 두고 하나만 보여 준다. 바꿀 때마다 React를 거치면
    여섯이 초당 몇 번씩 다시 그려진다. */

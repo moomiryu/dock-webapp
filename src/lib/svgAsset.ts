@@ -1125,15 +1125,30 @@ export function aboutSvg(litRaw: string, fullRaw: string, key: string, dur = 12)
       const cy = b.y + b.h / 2;
       return cy > wall.y && cy < wall.y + wall.h;
     };
-    // 벽면 안에 든 것만 밝기로 뜬다. 바깥에 선 사람은 처음부터 거기 있다.
-    for (const it of w.onlyB.filter(inWall)) say(it.el, ['0', '0', '1', '1', '0']);
+    /* ② 벽에 뜨는 말은 **한 글자씩 찍힌다.**
+       글자를 다루는 물건이 벽에 글을 올리는 장면이라, 한꺼번에 떠오르는
+       것보다 찍히는 편이 이 화면이 하는 일에 가깝다.
 
-    /* ③ 사람은 제일 오른쪽 끝보다 더 오른쪽에서 들어온다. 화판 밖으로
-       완전히 나가야 가장자리에서 반쯤 잘린 채로 기다리지 않는다. */
-    /* 구경꾼은 **처음부터 거기 서 있다.** 오른쪽 밖에서 걸어 들어오게
-       해 뒀었는데(2026-09-20), 들어오는 데 드는 두 걸음만큼 한 장을 읽는
-       시간이 길어졌다. 소개 화면의 인물은 장면을 설명하는 그림이지 살아
-       움직이는 배경이 아니다. 밝기도 자리도 건드리지 않는다. */
+       작가가 '내 생각은…'을 글자 윤곽 여럿으로 그려 두었으므로, 그것들을
+       **왼쪽부터 차례로** 켜면 그대로 찍히는 것이 된다. 하나가 켜지는 데는
+       제 몫의 60%만 쓴다 — 100%를 다 쓰면 앞 글자가 채 또렷해지기 전에
+       다음 글자가 겹쳐 흐릿한 띠로 보인다.
+
+       벽 바깥에 선 구경꾼은 처음부터 거기 있다(2026-09-20에 걸음을
+       걷어냈다). 밝기도 자리도 건드리지 않는다. */
+    const letters = w.onlyB.filter(inWall)
+      .map((it) => ({ it, x: boxOf(it)?.x ?? 0 }))
+      .sort((m, n) => m.x - n.x);
+    const from = t.at[3], span = t.at[4] - t.at[3];
+    letters.forEach(({ it }, i) => {
+      const on0 = from + (span * i) / letters.length;
+      const on1 = from + (span * (i + 0.6)) / letters.length;
+      put(it.el, 'animate', {
+        attributeName: 'opacity', values: '0;0;1;1;0;0',
+        keyTimes: `0;${r2(on0)};${r2(on1)};${r2(t.at[7])};${r2(t.at[8])};1`,
+        calcMode: 'linear', dur: `${dur}s`
+      });
+    });
 
     if (!lamps && !w.onlyB.length) return scopeSvg(fullRaw, key);
 

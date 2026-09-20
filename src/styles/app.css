@@ -943,8 +943,6 @@
   gap: var(--s5);
 }
 
-/* 찍히며 드는 본문. 줄바꿈이 글 안에 적혀 있으므로 그 자리를 지킨다 */
-.info-said p.is-typed{ white-space: pre-line; }
 .info-said p{
   font-size: var(--fs-body);
   line-height: 1.5;

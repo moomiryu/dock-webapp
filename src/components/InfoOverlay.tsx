@@ -73,19 +73,8 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
           <span className="info-step-label">{s.step}</span>
           {/* 줄바꿈이 적힌 제목은 그 자리를 지킨다(data-break). 나머지는
               balance가 알아서 두 줄을 고르게 나눈다 — 둘은 같이 못 쓴다. */}
-          <h2 data-break={s.title.includes('\n') ? 'true' : undefined}>
-            {s.typed ? <Typed text={s.title} cps={TYPE_CPS} /> : s.title}
-          </h2>
-          <div className="info-said">
-            {s.typed
-              ? <p className="is-typed">
-                  {/* 제목이 다 찍힌 뒤에 이어받는다. 둘이 같이 찍히면
-                      어디를 읽어야 하는지가 흐려진다. */}
-                  <Typed text={s.typed} cps={TYPE_CPS}
-                    delay={(Array.from(s.title).length / TYPE_CPS) * 1000 + 160} />
-                </p>
-              : s.body}
-          </div>
+          <h2 data-break={s.title.includes('\n') ? 'true' : undefined}>{s.title}</h2>
+          <div className="info-said">{s.body}</div>
           <div className={'info-art ' + (s.artClass ?? '')} aria-hidden>{s.art}</div>
         </section>
       </div>
@@ -99,41 +88,6 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
   );
 }
 
-
-/**
- * 한 글자씩 찍힌다.
- *
- * 글자를 **처음부터 다 심어 두고 보이기만 켠다.** 한 글자씩 이어 붙이면
- * 상자가 글자마다 커져 이미 찍힌 줄이 밀리고, 무엇보다 이 장은 읽는
- * 도구에게 통째로 한 번 읽히는 자리다(.info-track의 aria-live) — 글이
- * 자라면 그 한 번이 스물두 번이 된다. visibility는 글을 안 건드린다.
- *
- * 모션을 끈 사람에게는 처음부터 다 보인다.
- */
-function Typed({ text, cps = 22, delay = 0 }: { text: string; cps?: number; delay?: number }) {
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    if (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setN(text.length);
-      return;
-    }
-    setN(0);
-    let raf = 0;
-    const t0 = performance.now() + delay;
-    const step = (t: number) => {
-      const k = Math.floor(((t - t0) * cps) / 1000);
-      setN(Math.min(text.length, Math.max(0, k)));
-      if (k < text.length) raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [text, cps, delay]);
-  return <>{Array.from(text).map((ch, i) =>
-    <span key={i} style={i < n ? undefined : { visibility: 'hidden' }}>{ch}</span>)}</>;
-}
-
-/** 한 글자가 찍히는 빠르기 (초당). 홈의 인사와 같은 값이다 */
-const TYPE_CPS = 22;
 
 // ─── 슬라이드 ────────────────────────────────────────────────
 // 본문은 장당 40자 안쪽. 넘기는 형식은 한 장에 한 생각일 때만 살아 있다.
@@ -158,16 +112,16 @@ function Built({ name, still, make }: { name: string; still: string; make: (key:
 }
 
 
-const SLIDES: Array<{ step: string; title: string; body?: ReactNode; typed?: string;
-  art: ReactNode; artClass?: string }> = [
+const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNode; artClass?: string }> = [
   {
     step: 'About',
-    // 줄바꿈은 뜻이 끊기는 자리다. 화면 폭에 맡기면 '띄우는 / 나의'가
-    // 아니라 엉뚱한 데서 끊긴다.
-    title: '오밤중, 벽에 띄우는\n나의 한마디.',
-    /* 이 장만 글이 찍히며 든다. 제목이 다 찍힌 뒤 본문이 이어받는다.
-       <br/> 대신 줄바꿈이 적힌 한 덩이라야 글자를 셀 수 있다. */
-    typed: '소리 대신 빛으로 말해보세요.\n내가 쓴 한 줄이 벽에 떠올라\n같은 공간의 사람들에게 닿습니다.',
+    title: '소리 대신 빛으로 말해보세요.',
+    body: (
+      <p>
+        내가 쓴 한 줄이 벽에 떠올라<br />
+        같은 공간의 사람들에게 닿습니다.
+      </p>
+    ),
     art: <Built name="about" still={artAboutFull}
       make={(k) => aboutSvg(artAboutLit, artAboutFull, k)} />,
     artClass: 'is-bleed'

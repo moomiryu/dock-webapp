@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 533.26 574.1" width="533.26" height="574.1" role="img" aria-labelledby="title desc">
+<title id="title">캐릭터 — 자연스러운 옆모습 걷기</title>
+<desc id="desc">두 발이 앞뒤로 번갈아 움직이고, 발을 디딜 때 상체가 조금 내려갑니다. 그림자는 고정되어 있습니다.</desc>
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #5a5580;
+      }
+
+      .cls-2 {
+        fill: #fff;
+      }
+
+      .cls-3 {
+        fill: #2ce9f7;
+      }
+    </style>
+  </defs>
+<defs><clipPath id="upper-body-clip"><rect width="533.26" height="451"/></clipPath></defs>
+<g id="shadow"><ellipse class="cls-1" cx="266.63" cy="541.81" rx="266.63" ry="32.28"/></g>
+<g id="legs"><path id="far-leg" class="cls-3" d="M17.13 453 L349.34 453 C349.34 477 324.7048 501.9219 324.7048 513.9219 Q326.2055 529.9216 310.2057 531.4223 L200.8257 541.6813 Q184.826 543.182 183.3253 527.1822 C183.3253 515.1822 17.13 477 17.13 453 Z"></path><path id="near-leg" class="cls-3" d="M17.13 453 L349.34 453 C349.34 477 163.6592 515.6041 163.6592 527.6041 Q161.7008 543.5543 145.7506 541.5958 L36.7094 528.2073 Q20.7592 526.2488 22.7177 510.2986 C22.7177 498.2986 17.13 477 17.13 453 Z"></path></g>
+<g id="body-translation" transform="translate(0 4)">
+<g id="body-rotation" transform="rotate(0 183.23 449)">
+<g id="original-upper-body" clip-path="url(#upper-body-clip)"><circle class="cls-3" cx="183.23" cy="166.1" r="166.1"/><path class="cls-3" d="M349.34,166.11v332.2h-.01v27.43c0,8.88-7.19,16.07-16.07,16.07h-110.23c-8.87,0-16.07-7.19-16.07-16.07v-27.43c0-13.11-10.62-23.73-23.73-23.73s-23.73,10.62-23.73,23.73v27.43c0,8.88-7.19,16.07-16.07,16.07H33.2c-8.88,0-16.07-7.19-16.07-16.07V166.11h332.21Z"/>    <g>
+      <circle class="cls-2" cx="100.29" cy="147.4" r="59.67"/>
+      <circle class="cls-3" cx="90.29" cy="147.4" r="36.32"/>
+    </g></g>
+</g></g>
+</svg>

@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { charPos } from './pos';
 import {
-  BODY, CLIP_H, EYE_LOOK, EYE_SHUT, EYE_SMILE, EYE_WHITE, EYE_WIDE,
-  EYE_FAR_DX, HEAD, LEG_FAR, LEG_NEAR, SHADOW, SHADOW_FRONT, SHADOW_SIDE, VIEW,
+  BODY, CLIP_H, EYE_LOOK, EYE_SHUT, EYE_SMILE, EYE_WHITE, EYE_WIDE, EYE_FAR_DX,
+  HAND, HAND_FRONT, HAND_SIDE, HEAD, SHADOW, SHADOW_FRONT, SHADOW_SIDE, VIEW, WALK,
   type WalkerEye
 } from './walker';
 
@@ -36,8 +36,11 @@ const N = 6;
 /** 키 (px). 메가폰트 상자(272)의 5분의 1쯤 */
 const HEIGHT = 56;
 const RATIO = VIEW.w / VIEW.h;
-/** 한 걸음의 주기 (ms) */
-const WALK_MS = 900;
+/**
+ * 한 걸음의 주기 (ms). 그림에 적힌 1.28초를 그대로 쓴다.
+ * 여섯이 다 같으면 한 몸처럼 발을 맞추므로 저마다 조금씩 어긋나게 둔다.
+ */
+const walkMs = (i: number) => Math.round(WALK.ms * (0.82 + (i % 4) * 0.12));
 /** 걷는 빠르기 (px/s) */
 const SPEED = { min: 13, max: 26 };
 /**
@@ -92,9 +95,10 @@ export default function HomeCrowd() {
     const half = (HEIGHT * RATIO) / 2;
 
     type Walker = {
-      el: HTMLElement; x: number; y: number; dir: 1 | -1; speed: number;
+      el: HTMLElement; art: SVGSVGElement;
+      x: number; y: number; dir: 1 | -1; speed: number;
       phase: Phase; until: number; beat: number;
-      born: number; live: boolean;
+      born: number; live: boolean; moving: boolean;
     };
 
     /** 가장자리 밖에서 새로 들어온다. 파랑으로, 아직 아무것도 모른 채 */
@@ -121,9 +125,13 @@ export default function HomeCrowd() {
 
     const crowd: Walker[] = nodes.map((el, i) => {
       const p: Walker = {
-        el, x: 0, y: 0, dir: 1, speed: 0, phase: 'walk',
-        until: 0, beat: 0, born: 0, live: false
+        el, art: el.querySelector('svg')!,
+        x: 0, y: 0, dir: 1, speed: 0, phase: 'walk',
+        until: 0, beat: 0, born: 0, live: false, moving: false
       };
+      // 걸음은 그림 안의 움직임(SMIL)이라 CSS로 못 세운다. 나올 때까지 재워 둔다
+      p.art.setCurrentTime(0);
+      p.art.pauseAnimations();
       // 처음 여섯은 한꺼번에 들이닥치지 않게 차례로 들어온다
       p.el.style.opacity = '0';
       setTimeout(() => { p.born = -1; }, JOIN_DELAY + i * random(JOIN_GAP.min, JOIN_GAP.max));
@@ -189,7 +197,14 @@ export default function HomeCrowd() {
           p.el.style.opacity = age >= 1 ? '1' : age.toFixed(2);
         }
         const moving = !reduced && p.phase !== 'meet';
-        p.el.dataset.walking = String(moving);
+        if (moving !== p.moving) {
+          p.moving = moving;
+          p.el.dataset.walking = String(moving);
+          // 멈출 때는 시간을 0으로 돌리고 재운다. 0프레임이 곧 작가가 그린
+          // **서 있는 자세**라, 걷다 만 어정쩡한 걸음에서 멎지 않는다.
+          if (moving) p.art.unpauseAnimations();
+          else { p.art.setCurrentTime(0); p.art.pauseAnimations(); }
+        }
         // 메가폰트 앞에 섰을 때는 그를 본다. 그림이 왼쪽을 보고 있으므로
         // 오른쪽을 보려면 뒤집는다.
         const face = p.phase === 'meet'
@@ -216,19 +231,17 @@ export default function HomeCrowd() {
 
   return (
     <div className="home-crowd" ref={wrap} aria-hidden="true">
-      {Array.from({ length: N }, (_, i) => (
+      {Array.from({ length: N }, (_, i) => {
+        const dur = `${walkMs(i)}ms`;
+        return (
         <span
           key={i}
           className="walker"
           data-tone="blue"
           data-eye="look"
           data-face="side"
-          style={{
-            height: `${HEIGHT}px`,
-            width: `${HEIGHT * RATIO}px`,
-            // 걸음걸이가 다 같으면 여섯이 한 몸처럼 발을 맞춘다
-            '--walk-ms': `${Math.round(WALK_MS * (0.82 + (i % 4) * 0.12))}ms`
-          } as React.CSSProperties}
+          data-walking="false"
+          style={{ height: `${HEIGHT}px`, width: `${HEIGHT * RATIO}px` }}
         >
           <svg className="walker-art" viewBox={`0 0 ${VIEW.w} ${VIEW.h}`} aria-hidden="true" focusable="false">
             <defs>
@@ -240,11 +253,34 @@ export default function HomeCrowd() {
               cx={SHADOW_SIDE.cx} cy={SHADOW.cy} rx={SHADOW_SIDE.rx} ry={SHADOW.ry} />
             <ellipse className="w-shade w-shade-front" fill={SHADOW.fill}
               cx={SHADOW_FRONT.cx} cy={SHADOW.cy} rx={SHADOW_FRONT.rx} ry={SHADOW.ry} />
-            <path className="w-leg w-far" fill="currentColor" d={LEG_FAR} />
-            <path className="w-leg w-near" fill="currentColor" d={LEG_NEAR} />
+            {/* 다리 둘은 모양째로 바뀐다. 작가가 그린 65프레임을 그대로 돈다 —
+                멈춰 세울 때는 시간을 0으로 돌려 재운다(위 step) */}
+            <path className="w-leg w-far" fill="currentColor" d={WALK.farRest}>
+              <animate attributeName="d" dur={dur} repeatCount="indefinite"
+                calcMode="linear" keyTimes={WALK.keyTimes} values={WALK.far} />
+            </path>
+            <path className="w-leg w-near" fill="currentColor" d={WALK.nearRest}>
+              <animate attributeName="d" dur={dur} repeatCount="indefinite"
+                calcMode="linear" keyTimes={WALK.keyTimes} values={WALK.near} />
+            </path>
+            {/* 몸은 다리와 따로 논다. 발을 디딜 때 내려앉고(바깥) 그 박자로
+                기운다(안쪽) — 다리만 움직이면 미끄러지는 것으로 보인다 */}
+            <g transform={`translate(${WALK.bobRest})`}>
+              <animateTransform attributeName="transform" type="translate" dur={dur}
+                repeatCount="indefinite" calcMode="linear" keyTimes={WALK.keyTimes} values={WALK.bob} />
+            <g transform={`rotate(${WALK.tiltRest})`}>
+              <animateTransform attributeName="transform" type="rotate" dur={dur}
+                repeatCount="indefinite" calcMode="linear" keyTimes={WALK.keyTimes} values={WALK.tilt} />
             <g clipPath={`url(#walker-clip-${i})`}>
               <circle fill="currentColor" cx={HEAD.cx} cy={HEAD.cy} r={HEAD.r} />
               <path fill="currentColor" d={BODY} />
+              {/* 손은 멈춰 섰을 때만. 몸과 같은 색이라 실루엣의 혹으로 읽힌다 */}
+              <circle className="w-hand w-hand-side" fill="currentColor"
+                cx={HAND_SIDE} cy={HAND.cy} r={HAND.r} />
+              {HAND_FRONT.map((cx) => (
+                <circle key={cx} className="w-hand w-hand-front" fill="currentColor"
+                  cx={cx} cy={HAND.cy} r={HAND.r} />
+              ))}
               {/* 눈 한 벌. 표정 넷을 다 그려 두고 CSS가 하나만 보여 준다 —
                   바꿀 때마다 React를 거치면 여섯이 초당 몇 번씩 다시 그려진다 */}
               <g>
@@ -264,9 +300,12 @@ export default function HomeCrowd() {
                 <path className="w-eye w-eye-smile" d={EYE_SMILE} fill="none" stroke="currentColor" strokeWidth="24" strokeLinecap="round" />
               </g>
             </g>
+            </g>
+            </g>
           </svg>
         </span>
-      ))}
+        );
+      })}
     </div>
   );
 }

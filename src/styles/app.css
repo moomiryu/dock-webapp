@@ -2272,24 +2272,17 @@
 .walker[data-eye='wide'] .w-eye-wide,
 .walker[data-eye='shut'] .w-eye-shut,
 .walker[data-eye='smile'] .w-eye-smile{ display: block; }
-/* 다리는 엉덩이(화판의 183,430)에서 앞뒤로 흔들린다. 원본은 경로를 40프레임
-   모핑해 걷는데 그 값 목록만 28KB라, 회전으로 대신한다 — 56px에서는 같아
-   보인다. 두 다리가 서로 반대로 가야 걷는 것으로 읽힌다. */
-/* 축은 몸 속이다(윗변 360과 클립 416 사이). 여기서 돌아야 이음매가 안 보인다 */
-.w-leg{ transform-box: view-box; transform-origin: 183px 392px; }
-.walker[data-walking='true'] .w-far{ animation: walkFar var(--walk-ms, 900ms) ease-in-out infinite; }
-.walker[data-walking='true'] .w-near{ animation: walkNear var(--walk-ms, 900ms) ease-in-out infinite; }
-.walker[data-walking='true'] .walker-art{ animation: walkBob var(--walk-ms, 900ms) ease-in-out infinite; }
-@keyframes walkFar { 0%, 100% { rotate: 7deg; } 50% { rotate: -7deg; } }
-@keyframes walkNear{ 0%, 100% { rotate: -7deg; } 50% { rotate: 7deg; } }
-/* 걸을 때 몸이 한 번 뜬다. 다리만 흔들면 미끄러지는 것으로 보인다 */
-@keyframes walkBob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -3%; } }
-@media (prefers-reduced-motion: reduce){
-  .walker{ animation: none; }
-  .walker[data-walking='true'] .w-far,
-  .walker[data-walking='true'] .w-near,
-  .walker[data-walking='true'] .walker-art{ animation: none; }
-}
+/* 걷기는 여기에 없다. 다리 모양이 65프레임에 걸쳐 바뀌는 것이라 CSS로는
+   못 쓰고, 작가의 그림 안에 든 움직임(SMIL)을 그대로 돌린다(walker.ts).
+   세우고 다시 걷게 하는 것도 CSS가 못 하므로 HomeCrowd가 그림 하나씩
+   재우고 깨운다 — 2026-09-20 전에는 ±7도 회전으로 흉내 내고 있었다.
+
+   손은 **멈춰 섰을 때만** 든다. 걸을 때도 들면 56px에서 팔과 다리가
+   한 덩이로 읽힌다. 옆모습은 보는 쪽에 하나, 정면은 양쪽에 둘. */
+.w-hand{ display: none; }
+.walker[data-walking='false'] .w-hand-side{ display: block; }
+.walker[data-walking='false'][data-face='front'] .w-hand-side{ display: none; }
+.walker[data-walking='false'][data-face='front'] .w-hand-front{ display: block; }
 .home-layer{ z-index: 2; pointer-events: none; }
 .home-gate{ pointer-events: none; }
 .home-actions > button{ position: relative; pointer-events: auto; }

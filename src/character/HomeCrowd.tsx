@@ -2,8 +2,7 @@ import { useEffect, useRef } from 'react';
 import { charPos } from './pos';
 import {
   BODY, CLIP_H, EYE_LOOK, EYE_SHUT, EYE_SMILE, EYE_WHITE, EYE_WIDE, EYE_FAR_DX,
-  HAND, HAND_FRONT, HAND_SIDE, HEAD, SHADOW, SHADOW_FRONT, SHADOW_SIDE, VIEW, WALK,
-  type WalkerEye
+  HEAD, SHADOW, SHADOW_FRONT, SHADOW_SIDE, VIEW, WALK, type WalkerEye
 } from './walker';
 
 /**
@@ -274,13 +273,6 @@ export default function HomeCrowd() {
             <g clipPath={`url(#walker-clip-${i})`}>
               <circle fill="currentColor" cx={HEAD.cx} cy={HEAD.cy} r={HEAD.r} />
               <path fill="currentColor" d={BODY} />
-              {/* 손은 멈춰 섰을 때만. 몸과 같은 색이라 실루엣의 혹으로 읽힌다 */}
-              <circle className="w-hand w-hand-side" fill="currentColor"
-                cx={HAND_SIDE} cy={HAND.cy} r={HAND.r} />
-              {HAND_FRONT.map((cx) => (
-                <circle key={cx} className="w-hand w-hand-front" fill="currentColor"
-                  cx={cx} cy={HAND.cy} r={HAND.r} />
-              ))}
               {/* 눈 한 벌. 표정 넷을 다 그려 두고 CSS가 하나만 보여 준다 —
                   바꿀 때마다 React를 거치면 여섯이 초당 몇 번씩 다시 그려진다 */}
               <g>

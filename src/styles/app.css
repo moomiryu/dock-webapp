@@ -2277,12 +2277,8 @@
    세우고 다시 걷게 하는 것도 CSS가 못 하므로 HomeCrowd가 그림 하나씩
    재우고 깨운다 — 2026-09-20 전에는 ±7도 회전으로 흉내 내고 있었다.
 
-   손은 **멈춰 섰을 때만** 든다. 걸을 때도 들면 56px에서 팔과 다리가
-   한 덩이로 읽힌다. 옆모습은 보는 쪽에 하나, 정면은 양쪽에 둘. */
-.w-hand{ display: none; }
-.walker[data-walking='false'] .w-hand-side{ display: block; }
-.walker[data-walking='false'][data-face='front'] .w-hand-side{ display: none; }
-.walker[data-walking='false'][data-face='front'] .w-hand-front{ display: block; }
+   `data-walking`은 CSS가 안 쓴다. 지금 걷는 중인지가 밖에서 보여야
+   그림이 제때 서고 걷는지 잴 수 있어 남겨 둔다. */
 .home-layer{ z-index: 2; pointer-events: none; }
 .home-gate{ pointer-events: none; }
 .home-actions > button{ position: relative; pointer-events: auto; }

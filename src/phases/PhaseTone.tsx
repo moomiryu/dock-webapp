@@ -405,7 +405,7 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
         버튼은 손이 외울 수 없다. */}
     <div className="tone-aux">
      <button type="button" className="tone-aux-btn" disabled={cur.at === cur.def}
-       onClick={() => cur.set(cur.def)}>{cur.label} 되돌리기</button>
+       onClick={() => cur.set(cur.def)}>되돌리기</button>
      {/* 비교는 되돌리기와 **다른 일**이다. 누르고 있는 동안만 기본을 보여
          주고 손을 떼면 그대로 돌아온다 — 바꾼 것을 잃지 않는다.
          길게 누르기 어려운 사람을 위해 같은 버튼이 자판에서는 토글이다. */}
@@ -442,19 +442,20 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
        영역. 조절 영역은 도구에 따라 눈금자이거나 말투 버튼 둘이고, 자리와
        높이가 같아서 도구를 옮겨도 화면이 흔들리지 않는다. */}
    <div className="tone-panel">
-    {/* 지금 만지는 것 — 이름 위, 값 아래. 가운데에 선다.
-        왼쪽 끝에 붙어 있었다. 오른쪽 끝에 되돌리기·비교가 있어서 머리줄이
-        양끝으로 벌어진 모양이었는데, 그 둘이 위로 올라가면서 왼쪽에 남은
-        정보만 한쪽으로 쏠렸다. 아래의 도구 셋도 눈금도 가운데를 축으로
-        쓰므로 여기도 같은 축에 둔다. */}
-    <div className="tone-now" aria-live="polite">
-     <span className="tone-now-label">{cur.label}</span>
-     <span className="tone-now-value">{cur.names[cur.at]}</span>
-    </div>
+    {/* 여기에 '크기 / 보통' 두 줄이 있었다(2026-09-22 삭제). 같은 화면에
+        '크기'가 셋이었다 — 되돌리기 버튼, 이 라벨, 도구 이름. 고른 도구의
+        고리가 이미 이름을 말하므로 라벨은 중복이고, 값은 눈금자 밑으로
+        내려가 조절하는 자리 옆에 선다(아래 .tone-ruler-value). */}
 
     {/* 도구 셋. 고른 것은 테두리와 채움으로, 기본에서 바꾼 것은 점으로
         따로 표시한다 — 색 하나에 두 가지 뜻을 얹지 않는다. */}
     <div className="tone-picks" role="tablist" aria-label="조절할 것">
+     {/* 고리는 **하나**다. 도구를 바꾸면 그 원으로 미끄러져 간다 — 원마다
+         고리를 켜고 끄면 선택이 사라졌다 다른 데서 생기는 것으로 읽힌다.
+         한 고리가 옮겨가면 같은 선택이 이동한 것이다(transitions.dev의
+         tabs-sliding과 같은 결). */}
+     <i className="tone-ring" aria-hidden
+       style={{ '--i': tools.findIndex(x => x.key === cur.key) } as CSSProperties} />
      {tools.map(x =>
        <button key={x.key} type="button" role="tab" aria-selected={x.key === cur.key}
          className={'tone-pick' + (x.key === cur.key ? ' on' : '') + (x.at !== x.def ? ' moved' : '')}
@@ -469,7 +470,9 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
      )}
     </div>
 
-    {/* 공통 조절 영역 */}
+    {/* 공통 조절 영역. 눈금자일 때는 값이 그 밑에 붙고, 말투일 때는
+        버튼 둘 자체가 값이다. 어느 쪽이든 높이가 같아서 '다음'이 안 움직인다. */}
+    <div className="tone-area">
     {cur.manner
       ? <div className="z-manner" role="group" aria-label="말투">
           {MANNER[tone.font].labels.map((name, i) =>
@@ -510,6 +513,10 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
           <button type="button" className="tone-step" aria-label={`${cur.label} 한 칸 늘리기`}
             disabled={cur.at === last} onClick={() => cur.set(Math.min(last, cur.at + 1))}>+</button>
         </div>}
+    {/* 값은 가운데 금 바로 아래 — 조절하는 자리와 읽는 자리가 붙는다.
+        말투는 버튼 글자가 곧 값이라 여기 안 적는다. */}
+    {!cur.manner && <span className="tone-ruler-value" aria-live="polite">{cur.names[cur.at]}</span>}
+    </div>
    </div>
 
    <button className="primary-action" onClick={() => onNext(tone)}>다음</button>

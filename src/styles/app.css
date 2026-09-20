@@ -1719,38 +1719,30 @@
 .tone-choice .style-cards{ margin-top: 0; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr);
   gap: 1px; flex: 1; background: var(--line); border: 0; border-radius: 0; overflow: hidden;
   margin-inline: calc(var(--pad-x) * -1);
-  /* 트랙 목록은 길이가 같으면 보간된다. 고른 칸의 줄·칸만 1fr로 남기고
-     나머지를 0fr로 보내면, 판을 갈아 끼우지 않고도 그 칸이 자란다.
-     460ms에서는 자라는 게 아니라 **갈아 끼운 것으로** 보였다 — 한 칸이
-     화면 전체가 되는 큰 움직임이라 조율의 장 넘김(520ms)보다도 느려야
-     한다. 680ms로 뒀는데 그것도 빨랐다(2026-09-20) — 칸이 자라는 동안
-     글자도 함께 얼굴을 바꾸는데, 그 둘을 다 볼 시간이 안 났다. 갑절로
-     늘린다. 1360ms.
+  /* ── 여기에 모핑은 없다 (2026-09-20) ──────────────────────────────
+     고른 칸이 화면 전체로 **자라는** 연출이 있었다. 460 → 680 → 1360ms로
+     세 번 늘렸고, 4080ms에 튕기게도(--ease-boing) 해 봤다. 전부 걷어냈다.
 
-     2026-09-20에 두 가지를 해 봤다가 **둘 다 되돌렸다.**
+     늘려 보는 동안 드러난 것 둘:
 
-     하나는 4080ms에 튕기는 것(--ease-boing). 한 칸이 화면이 되는 것은
-     크지만 조용한 일이라, 벽에 부딪혀 되돌아오는 몸짓이 얹히니 장난스러워
-     졌다. 4초도 보는 시간이 아니라 기다리는 시간이 됐다.
+     · repeat(2, 1fr) 표기와 인라인의 `1fr 0fr`은 서로 보간되지 않는다.
+       1360ms를 줘도 칸은 그냥 튀었고(재서 확인: 52ms에 이미 94%), 그
+       시간 동안 실제로 움직인 것은 칸이 아니라 안 고른 칸의 여백이었다.
+     · 풀어 적어(`1fr 1fr`) 진짜로 자라게 만들어 보니, 한 칸이 화면이 되는
+       큰 움직임이 **급하게 밀어붙이는 인상**을 줬다. 고르는 일은 조용한
+       일인데 화면이 먼저 서둘렀다.
 
-     다른 하나는 이 줄의 `repeat(2, 1fr)`을 `1fr 1fr`로 푼 것이다.
-     **여기 적힌 '트랙 목록이 보간된다'는 실제로는 안 일어나고 있다.**
-     repeat() 표기와 인라인의 `1fr 0fr`은 서로 보간되지 않아서 칸이 그냥
-     튄다 — 위 1360ms 동안 움직이는 것은 칸이 아니라 안 고른 칸의 여백이다
-     (재서 확인: 52ms에 이미 94%). 풀어 적으면 1360ms가 실제로 쓰이는데,
-     그렇게 자라는 쪽이 더 낫지 않다는 판단이 나왔다. 튀는 쪽을 쓴다.
-     고치려고 다시 풀어 적기 전에 이 문단을 읽을 것. */
-  transition: grid-template-columns 1360ms var(--ease-emphasized),
-              grid-template-rows 1360ms var(--ease-emphasized); }
+     그래서 전환 자체를 없앤다. 누르면 그 자리에서 바뀐다. 무엇이 골라졌
+     는지는 움직임이 아니라 **색이 말한다**(고른 칸만 --brand-strong).
+     다시 넣기 전에 이 문단을 읽을 것. */ }
 .tone-choice .style-card{ overflow: hidden; min-width: 0; min-height: 0; }
 /* 접히는 칸은 글자가 먼저 사라진다 — 안 그러면 0폭 칸에서 글이 삐져나온다.
    안쪽 여백도 같이 접어야 한다. 0fr 트랙의 최소 크기는 내용이 정하는데,
    패딩은 min-width로 안 지워져서 칸마다 24px이 남아 있었다(재서 확인). */
-.tone-choice.is-picked .style-card:not(.on){ padding: 0;
-  transition: padding 1360ms var(--ease-emphasized); }
-/* 글자는 칸보다 먼저 비운다. 다만 너무 빨리 사라지면 칸만 홀로 줄어드는
-   것으로 보여서, 늘어나는 시간의 3분의 1쯤에 맞춘다. */
-.tone-choice.is-picked .style-card:not(.on) > *{ opacity: 0; transition: opacity 450ms; }
+.tone-choice.is-picked .style-card:not(.on){ padding: 0; }
+/* 접힌 칸의 글자는 같이 사라진다. 전환이 없어졌으므로 칸과 한 프레임에
+   간다 — 남겨 두면 0폭 칸에서 글자가 옆으로 삐져나온다. */
+.tone-choice.is-picked .style-card:not(.on) > *{ opacity: 0; }
 .tone-choice .style-card{ min-height: 0; border: 0; border-radius: 0;
   display: grid; place-items: center; padding: var(--s4); background: var(--paper);
   text-align: center; container-type: inline-size; }
@@ -2234,10 +2226,9 @@
 
    층으로 피하는 대신 **역할을 옮겼다.** 이제 맨 뒤(0)로 내려서
    캐릭터와 구경꾼 뒤를 지나간다 — 구경꾼의 층은 발끝이 정하는데 1까지
-   내려갈 수 있어서(HomeCrowd · clamp), 그보다도 아래인 0이라야 한다.
-   가리는 것이 아니라 뒤를 지나는 것이라 겹치는 순간이 깊이로 읽힌다.
-   위계는 층이 아니라 색·크기·속도가 낮춘다 — 옅은 회색에, 액자 폭의
-   3.4~5.2%에, 가로지르는 데 18~30초. */
+   내려갈 수 있어서(HomeCrowd · clamp), 그보다도 아래인 0이라야 한다. 가리는 것이 아니라 뒤를 지나는 것이라
+   겹치는 순간이 깊이로 읽힌다. 위계는 층이 아니라 색·크기·속도가
+   낮춘다 — 옅은 회색에, 액자 폭의 3.4~5.2%에, 가로지르는 데 18~30초. */
 .home-voices{ position: absolute; inset: 0; pointer-events: none; overflow: hidden;
   z-index: 0; }
 .voice{

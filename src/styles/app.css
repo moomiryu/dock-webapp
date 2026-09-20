@@ -1996,7 +1996,10 @@
 /* 홈은 이 목록에서 빠졌다(2026-09-20). 바닥에 더운 기운을 깔면 들판
    위에 또 한 겹의 띠가 생겨, 이어져야 할 초록이 두 조각으로 갈린다.
    홈의 바닥은 들판 그 자체다. */
-.tone-choice::after, .tone-adjust::after, .compose-screen::after,
+/* 03 조율은 이 목록에서 빠졌다(2026-09-21). 아래가 불투명한 편집 패널
+   (--grey-50)이라 받칠 붉은 면이 없고, 패널 아래로 삐져나온 125px만
+   분홍 띠로 남아 패널과 '다음' 사이에 없는 경계를 그렸다. */
+.tone-choice::after, .compose-screen::after,
 .write-screen::after, .color-choice::after, .preview-screen::after,
 .info-overlay::after{
   content: '';
@@ -2032,7 +2035,7 @@
    이제 아래로 갈수록 짙어져 그대로 끝난다. */
 /* 버튼은 그 기운 위에 또렷이 앉는다. 올려 두지 않으면 ::after가 나중에
    칠해져 버튼까지 덮는다 — 회색 비활성 버튼이 분홍으로 흐려졌다. */
-.tone-choice > .primary-action, .tone-adjust > .primary-action,
+.tone-choice > .primary-action,
 .compose-screen > .primary-action, .color-choice > .primary-action,
 .write-screen > .primary-action, .write-screen > .compose-count,
 .preview-screen > .primary-action{ position: relative; z-index: 2; }
@@ -2067,6 +2070,9 @@
    높이를 정하는 자리에 걸었다면 글자 크기가 0으로 풀렸을 것이다. */
 .tone-adjust .z-glyph-fit{ flex: 1; min-width: 0; min-height: 0; width: 100%;
   display: flex; align-items: center; justify-content: center;
+  /* '기본 상태' 표가 이 칸을 기준으로 앉는다(.tone-orig-chip). 없으면
+     위의 견본면을 기준으로 삼아 머리줄 위에 가서 붙는다. */
+  position: relative;
   container-type: size; }
 .tone-adjust .z-glyph-stage .z-back{ color: var(--paper); }
 .tone-adjust .z-glyph-stage .z-back:active{ background: rgb(255 255 255 / 16%); }
@@ -2083,71 +2089,113 @@
    "여기가 만지는 자리"라고 먼저 말한다. */
 .tone-panel{
   flex: none;
+  /* 바닥에서 올라오는 더운 기운(.tone-adjust::after · z-index 1) 위에
+     앉는다. 아래에 두면 125px짜리 그 기운이 눈금과 ±버튼을 덮어, 회색
+     눈금의 대비가 그 자리에서만 떨어진다 — 조절하는 자리를 흐리는 장식은
+     장식이 아니다. 기운의 일은 **붉은 견본면**을 바닥에 앉히는 것이다. */
+  position: relative; z-index: 2;
   margin-inline: calc(var(--pad-x) * -1);
-  padding: var(--s5) var(--pad-x);
+  /* 아래로 읽히는 차례가 셋이다: 항목 정보 → 도구 → 값 조절.
+     16px으로는 셋이 한 덩어리였다. 24px이면 세 켜로 갈린다. */
+  padding: var(--s6) var(--pad-x);
   background: var(--grey-50);
   border-top: 1px solid var(--line);
   display: grid;
-  gap: var(--s5);
+  gap: var(--s6);
 }
 
-/* 머리줄 — 왼쪽은 무엇을 만지는 중인가, 오른쪽은 되돌리기와 비교 */
-.tone-head{ display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s4); }
-.tone-now{ display: grid; gap: 2px; }
-.tone-now-label{
-  font-family: var(--label-font); font-size: var(--fs-cap-s);
-  letter-spacing: 0.06em; color: var(--muted);
-}
-.tone-now-value{ font-size: var(--fs-h3); font-weight: 700; color: var(--ink); line-height: 1.1; }
-.tone-acts{ display: flex; align-items: center; gap: var(--s2); flex: none; }
+/* ── 보조 도구 행 (미리보기 위) ───────────────────────────────────────
+   되돌리기와 비교는 **되무르는 일**이고, 아래 패널은 **만드는 일**이다.
+   한 덩어리에 있으면 값을 고르다 말고 되돌리기를 누르게 된다. 위아래로
+   가른다 — 위는 이 편집 전체에 대한 일, 아래는 지금 값에 대한 일.
 
-/* 되돌리기와 비교는 **다른 일**이다. 되돌리기는 값을 버리고, 비교는 값을
-   그대로 둔 채 잠깐 보여 준다. 나란히 두되 생김새를 다르게 해서 헷갈리지
-   않게 한다 — 되돌리기는 글자만, 비교는 테두리를 두른 알약. */
-.tone-undo{
-  border: 0; background: none; padding: var(--s2) var(--s3);
-  font-family: var(--ui-font); font-size: var(--fs-cap-s); color: var(--muted);
-  text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+   미리보기 위에 앉으므로 색이 바뀌는 면 위에서 읽혀야 한다(--face-scrim).
+   높이·모양·글자 크기를 둘이 똑같이 가져가고, 다음 버튼(56px 채움)보다
+   한 단 낮다 — 여기서 제일 큰 손짓은 '다음'이어야 한다. */
+.tone-aux{
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--s4); flex: none;
+  /* 견본칸이 가운데 정렬이라(.z-glyph-stage) 이 줄도 제 내용만큼만 좁아져
+     둘이 가운데 뭉쳤다. 칸 폭을 다 쓰게 해서 양끝으로 민다 — 왼쪽이
+     되무르기, 오른쪽이 견주기다. */
+  align-self: stretch;
 }
-.tone-undo:active{ color: var(--ink); }
-.tone-orig{
-  min-height: var(--btn-l); padding: 0 var(--s4);
-  border: 1px solid var(--line); border-radius: var(--r-full);
-  background: var(--paper); color: var(--body-text);
+.tone-aux-btn{
+  min-height: var(--btn-l); padding: 0 var(--s5);
+  border: 0; border-radius: var(--r-full);
+  background: var(--face-scrim); color: var(--paper);
   font-family: var(--ui-font); font-size: var(--fs-cap); line-height: 1;
   cursor: pointer; user-select: none; -webkit-user-select: none;
   -webkit-touch-callout: none; touch-action: manipulation; white-space: nowrap;
-  transition: background 120ms var(--ease-standard), color 120ms var(--ease-standard);
+  transition: background 120ms var(--ease-standard), opacity 120ms var(--ease-standard);
 }
-.tone-orig.on{ background: var(--ink); border-color: var(--ink); color: var(--paper); }
+/* 누르고 있는 동안(비교) 더 짙어진다 — 지금 무엇을 보고 있는지를 손 밑에서도 말한다 */
+.tone-aux-btn.on, .tone-aux-btn:active:not(:disabled){ background: var(--face-scrim-on); }
+/* 기본값이면 되돌릴 것이 없다. **자리는 그대로 두고** 끈다 — 나타났다
+   사라지는 버튼은 옆 버튼을 매번 밀어서 손이 자리를 못 외운다. */
+/* 통째로 흐리게 하면(opacity) 바탕까지 같이 옅어져 글자와 바탕이 함께
+   빨강에 묻힌다 — 재 보니 2.3:1이라 무슨 항목을 되돌리는지가 안 읽혔다.
+   바탕은 그대로 두고 글자만 내린다(3.5:1). 끈 것은 알아보되 무슨 버튼
+   인지는 읽혀야 한다. */
+.tone-aux-btn:disabled{ color: rgb(255 255 255 / 55%); cursor: default; }
+
+/* ── 지금 만지는 것 ───────────────────────────────────────────────────
+   이름은 작고 차분하게, 값은 그 아래에 또렷하게. 가운데에 선다 —
+   아래의 도구 셋도 눈금도 가운데를 축으로 쓴다. */
+.tone-now{ display: grid; gap: 2px; justify-items: center; text-align: center; }
+.tone-now-label{
+  font-family: var(--label-font); font-size: var(--fs-cap-s);
+  letter-spacing: 0.06em;
+  /* --muted(#6b7684)는 이 패널 바탕(--grey-50)에서 4.45:1이다. 12px
+     글자에 필요한 4.5에 0.05 모자란다 — 위와 같은 이유로 가려져 있었다.
+     한 단 내린 --body-text로 6.83:1. 값(--ink)보다는 여전히 조용하다. */
+  color: var(--body-text);
+}
+.tone-now-value{ font-size: var(--fs-h3); font-weight: 700; color: var(--ink); line-height: 1.1; }
 
 /* ── 도구 셋 ─────────────────────────────────────────────────────────
    원형 버튼에 표시 하나, 이름은 그 아래. 이름을 안쪽에 넣으면 '아주 묵직
    하게' 같은 긴 이름이 안 들어간다.
 
+   1fr 칸 셋에 원을 하나씩 가운데 놓았더니, 48px 원 사이에 70px씩 빈
+   자리가 생겨 셋이 흩어져 보였다(재서 확인). 원을 56px로 키우고 칸을
+   버리고 --s7 간격으로 모은다 — 한 줄로 읽히는 한 벌이 된다.
+
    상태가 둘인데 색 하나로 겹쳐 말하지 않는다:
-     고른 도구   = 채운 원 (.on)
+     고른 도구   = 키컬러 **테두리 고리** + 이름이 진해짐 (.on)
      바꾼 도구   = 원 위의 점 (.tone-moved) + 읽는 도구에는 '바뀜'
-   색을 못 보는 사람에게도 채움과 점은 남는다. */
-.tone-picks{ display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--s4); }
+   고리는 색이 아니라 **더해진 형태**이고, 점은 자리도 모양도 다르다.
+   색을 못 보는 사람에게도 둘이 갈린다. */
+.tone-picks{ display: flex; justify-content: center; gap: var(--s7); }
 .tone-pick{
-  display: grid; justify-items: center; gap: var(--s2);
+  display: grid; justify-items: center; gap: var(--s3);
   border: 0; background: none; padding: 0; cursor: pointer;
-  font-family: var(--ui-font); color: var(--muted);
+  /* 고른 것이 아닌 도구의 이름도 --muted로는 4.45:1이라 모자랐다.
+     고른 것과는 굵기(.on의 700)와 고리로 갈리므로, 색을 한 단 올려도
+     무엇이 골라져 있는지는 흐려지지 않는다. */
+  font-family: var(--ui-font); color: var(--body-text);
 }
 .tone-dial{
   position: relative;
-  width: var(--btn-l); height: var(--btn-l);
+  width: var(--btn-xl); height: var(--btn-xl);
   display: grid; place-items: center;
   border: 1px solid var(--line); border-radius: var(--r-full);
   background: var(--paper); color: var(--body-text);
-  transition: background 180ms var(--ease-standard), color 180ms var(--ease-standard),
+  transition: box-shadow 180ms var(--ease-standard), color 180ms var(--ease-standard),
     border-color 180ms var(--ease-standard);
 }
-.tone-dial svg{ width: 22px; height: 22px; fill: currentColor; stroke: currentColor; }
+.tone-dial svg{ width: 26px; height: 26px; fill: currentColor; stroke: currentColor; }
 .tone-dial svg [fill='none']{ fill: none; }
-.tone-pick.on .tone-dial{ background: var(--ink); border-color: var(--ink); color: var(--paper); }
-.tone-pick.on{ color: var(--ink); }
+/* 고리는 원 바깥에 띄워 두른다 — 테두리를 굵히면 원이 커진 것처럼 보여
+   크기로도 말하는 꼴이 된다. 크기는 셋이 늘 같아야 한다. */
+.tone-pick.on .tone-dial{
+  border-color: var(--brand-main);
+  /* 원과 고리 사이를 바탕색으로 한 겹 띄운다. 테두리에 바로 붙이면
+     굵은 테두리로 보여 원이 커진 것처럼 읽힌다 — 크기는 셋이 늘 같다. */
+  box-shadow: 0 0 0 2px var(--grey-50), 0 0 0 4px var(--brand-main);
+  color: var(--ink);
+}
+.tone-pick.on{ color: var(--ink); font-weight: 700; }
 .tone-pick-name{ font-size: var(--fs-cap-s); }
 .tone-pick:active .tone-dial{ background: var(--press-tint); }
 /* 기본에서 바꾼 도구에만 붙는 점. 고른 것과 다른 자리·다른 모양이다. */
@@ -2162,17 +2210,26 @@
    일이 없다 — 어디를 잡아 끌어도 민 만큼 옮겨간다(PhaseTone · DRAG_STEP).
    값이 절대 위치에서 풀리는 것이 한 손 조작을 푸는 전부다.
 
-   기본값 자리에는 눈금 아래 작은 표가 선다(.tone-home). 처음 상태에서
-   얼마나 옮겨 왔는지를 그것으로 읽는다. */
-.tone-dial-row{ display: flex; align-items: center; gap: var(--s3); }
+   ── 눈금은 세 가지 일을 하고, 셋이 서로 달라야 한다 ────────────────
+     가운데 금 (.tone-ruler-line)  지금 값.    붉은 선, 유일하게 안 움직인다
+     표        (.tone-home)        기본값.     청록 점, 눈금 아래에 붙어 같이 민다
+     눈금      (.tone-notch/-tick) 자리.       회색, 큰 것과 잔 것
+
+   값이 다섯 칸뿐이라 큰 눈금만 두면 화면이 56px씩 뚝뚝 건너뛰어, 미는
+   손과 보이는 것이 따로 논다. 칸마다 잔눈금 셋을 끼워 밀림이 이어져
+   보이게 한다. 잔눈금은 낮고 옅어서 **셀 것**과 안 헷갈린다. */
+.tone-dial-row{ display: flex; align-items: center; gap: var(--s4); }
+/* ±는 보조다. 도구 셋(56px 원·키컬러 고리)보다 작고 조용해야 한다 —
+   같은 세기면 무엇이 주된 조작인지가 없어진다. 48px은 손가락이 닿는
+   최소치라 더 줄이지 않고, 세기만 내린다(테두리 없이 옅은 면·회색 글자). */
 .tone-step{
   flex: none; width: var(--btn-l); height: var(--btn-l);
-  border: 1px solid var(--line); border-radius: var(--r-full);
-  background: var(--paper); color: var(--body-text);
+  border: 0; border-radius: var(--r-full);
+  background: var(--grey-100); color: var(--muted);
   font: inherit; font-size: var(--fs-h4); line-height: 1; cursor: pointer;
 }
 .tone-step:disabled{ opacity: 0.32; cursor: default; }
-.tone-step:active:not(:disabled){ background: var(--press-tint); }
+.tone-step:active:not(:disabled){ background: var(--grey-200); color: var(--ink); }
 
 .tone-ruler{
   position: relative; flex: 1; min-width: 0; height: var(--btn-xl);
@@ -2180,24 +2237,29 @@
   user-select: none; -webkit-user-select: none;
   --gap: var(--btn-xl);
 }
-/* 가운데 금 — 지금 값이 여기 온다 */
+/* 가운데 금 — 지금 값이 여기 온다. 눈금보다 길고 굵고 유일하게 붉다. */
 .tone-ruler-line{
-  position: absolute; left: 50%; top: var(--s2); bottom: var(--s2);
+  position: absolute; left: 50%; top: var(--s1); bottom: var(--s1);
   width: 2px; margin-left: -1px; border-radius: 1px;
-  background: var(--brand-main);
+  background: var(--brand-main); z-index: 1;
 }
-.tone-notch{
-  position: absolute; top: 50%; width: 2px; height: 14px; margin: -7px 0 0 -1px;
-  border-radius: 1px; background: var(--grey-300);
+.tone-notch, .tone-tick{
+  position: absolute; top: 50%; border-radius: 1px;
   left: calc(50% + (var(--i) - var(--at)) * var(--gap));
-  transition: left 220ms var(--ease-emphasized), height 180ms, background 180ms;
+  transition: left 220ms var(--ease-emphasized);
 }
-.tone-notch.on{ height: 22px; margin-top: -11px; background: var(--grey-500); }
-/* 기본값 자리 */
+/* 큰 눈금 — 값 하나가 여기에 있다. 셀 수 있어야 하므로 잔눈금보다 진하다. */
+.tone-notch{ width: 2px; height: 18px; margin: -9px 0 0 -1px; background: var(--grey-400); }
+/* 잔눈금 — 사이를 넷으로 쪼갠 자리. 읽는 것이 아니라 **움직임이 보이라고** 있다. */
+.tone-tick{ width: 1px; height: 8px; margin: -4px 0 0 -0.5px; background: var(--grey-300); }
+/* 기본값 자리 — 큰 눈금 아래에 붙어 같이 밀린다. 얼마나 옮겨 왔는지를
+   이것과 가운데 금 사이의 거리로 읽는다. */
 .tone-home{
-  position: absolute; left: 50%; top: 16px; translate: -50% 0;
-  width: 5px; height: 5px; border-radius: var(--r-full); background: var(--brand-sub);
+  position: absolute; left: 50%; top: 14px; translate: -50% 0;
+  width: 6px; height: 6px; border-radius: var(--r-full); background: var(--brand-sub);
 }
+@media (prefers-reduced-motion: reduce){ .tone-notch, .tone-tick{ transition: none; } }
+
 /* 진짜 입력은 눈금자를 통째로 덮는다. 자판과 읽는 도구가 이걸 잡는다. */
 .tone-ruler-input{
   position: absolute; inset: 0; z-index: 2;
@@ -2207,13 +2269,22 @@
 }
 .tone-ruler-input:focus-visible{ opacity: 0.001; }
 .tone-ruler:focus-within{ outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--r-s); }
-@media (prefers-reduced-motion: reduce){ .tone-notch{ transition: none; } }
+
+/* 짧은 화면에서는 패널이 한 칸씩 줄어든다.
+   640 화면에서 견본칸이 99px까지 눌렸다 — '기본 상태' 표와 견본 글자가
+   겹칠 만큼이다. 줄어들 수 있는 것은 패널의 켜 사이와 안쪽 여백뿐이고,
+   차례(정보 → 도구 → 조절)는 --s5로도 갈린다. 재서 확인: 99 → 139px. */
+@media (max-height: 700px){
+  .tone-panel{ padding: var(--s5) var(--pad-x); gap: var(--s5); }
+  .tone-pane{ gap: var(--s4); }
+}
 
 /* 원본을 보는 동안 견본 위에 뜨는 표식. 눈은 견본에 가 있는데 답이 손
    밑에만 있으면 무엇을 보고 있는지 모른다. */
 .tone-orig-chip{
-  /* 머리줄(위 여백 + 뒤로가기 버튼) 아래로 내려놓는다 */
-  position: absolute; top: calc(var(--s5) + var(--btn-l) + var(--s5));
+  /* 견본칸의 맨 위 가운데. 칸 안에 있으므로 위에 무엇이 몇 줄 있든 셈이
+     필요 없다(PhaseTone 주석). */
+  position: absolute; top: 0;
   left: 50%; translate: -50% 0;
   background: var(--ink); color: var(--paper);
   font-family: var(--label-font); font-size: var(--fs-cap-s); letter-spacing: 0.06em;
@@ -3221,7 +3292,12 @@
 .tone-adjust .z-glyph-stage > .z-header{ position: static; align-self: stretch; }
 .tone-adjust .z-glyph-stage .z-ask{ align-self: stretch; text-align: left; }
 .tone-adjust .z-glyph-stage .z-ask h1{ color: var(--paper); }
-.tone-adjust .z-glyph-stage .z-ask p{ color: rgb(255 255 255 / 86%); }
+/* 86%였다. 빨강(#ca4939) 위에서 3.87:1이라 16px 본문에 필요한 4.5에
+   못 미쳤는데, 이 화면 바닥에 깔려 있던 그라데이션 때문에 검사 도구가
+   배경을 못 읽어 '판정 불가'로 넘어가고 있었다. 그 기운을 걷어내자
+   드러났다 — 가려져 있었을 뿐 처음부터 모자란 값이었다. 흰색 그대로면
+   4.67:1이다. */
+.tone-adjust .z-glyph-stage .z-ask p{ color: var(--paper); }
 /* 견본은 제목 아래 남은 자리의 한가운데 */
 .tone-adjust .z-glyph{ margin-block: auto; }
 /* 견본이 제자리에서 두둥실 뜬다. 가만히 있으면 죽은 그림으로 읽힌다 —

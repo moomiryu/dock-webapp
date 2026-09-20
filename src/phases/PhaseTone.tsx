@@ -70,6 +70,15 @@ interface Props {
  */
 const DRAG_STEP = 56;
 
+/**
+ * 큰 눈금 하나를 몇으로 쪼개는가.
+ *
+ * 눈금의 일은 셋이고 서로 달라야 한다: **가운데 금**(붉은 선)이 지금 값,
+ * **표**(.tone-home)가 기본값, 나머지 눈금이 자리다. 그 나머지를 큰 것과
+ * 잔 것으로 다시 갈라서, 칸이 바뀌는 자리와 그 사이를 구별한다.
+ */
+const MINOR = 4;
+
 
 /* ─── 도구 아이콘 ────────────────────────────────────────────────────
    넷뿐이라 그림 없이 이름만으로도 되지만, 원형 버튼은 이름을 넣을 자리가
@@ -323,6 +332,26 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
      <BackButton label="설명 다시 보기" onClick={() => setStep('intro')}/>
      <span className="z-step-of">3 / 5 · 조율</span>
     </div>
+    {/* 보조 도구 행 — 되돌리기와 비교.
+        편집 패널 안에 있었다. 만지는 자리(도구·눈금)와 되무르는 자리가
+        한 덩어리로 보여서, 값을 고르다 말고 '되돌리기'를 잘못 누를 수
+        있는 배치였다. **손대는 일과 되무르는 일을 위아래로 가른다.**
+
+        되돌리기는 기본값일 때 사라지지 않고 **꺼진 채로 남는다.** 나타났다
+        사라지면 그 자리에 있던 비교 버튼이 매번 옮겨 간다 — 자리가 움직이는
+        버튼은 손이 외울 수 없다. */}
+    <div className="tone-aux">
+     <button type="button" className="tone-aux-btn" disabled={cur.at === cur.def}
+       onClick={() => cur.set(cur.def)}>{cur.label} 되돌리기</button>
+     {/* 비교는 되돌리기와 **다른 일**이다. 누르고 있는 동안만 기본을 보여
+         주고 손을 떼면 그대로 돌아온다 — 바꾼 것을 잃지 않는다.
+         길게 누르기 어려운 사람을 위해 같은 버튼이 자판에서는 토글이다. */}
+     <button type="button" className={'tone-aux-btn' + (compare ? ' on' : '')}
+       aria-pressed={compare} aria-label="기본과 비교. 누르고 있는 동안 고른 성격의 기본 상태가 보입니다"
+       onPointerDown={() => setCompare(true)} onPointerUp={() => setCompare(false)}
+       onPointerLeave={() => setCompare(false)} onPointerCancel={() => setCompare(false)}
+       onKeyDown={holdKey(true)} onKeyUp={holdKey(false)}>기본과 비교</button>
+    </div>
     {/* 견본은 글자뿐이다. 도형은 색을 고르는 화면에서 처음 나온다.
         한 겹을 더 두른 것은 **자리를 재기 위해서다** — 머리줄을 뺀 나머지가
         견본의 몫인데, 칸 전체를 기준으로 삼으면 머리줄 높이만큼 넘친다. */}
@@ -330,10 +359,15 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
      <div className={'z-glyph is-line' + (shown.slnt ? ' is-gust' : '')} style={face}>
       <span>{lines.map((l, i) => <b key={i} className="z-glyph-char">{l}</b>)}</span>
      </div>
+     {/* 지금 보는 것이 무엇인지는 견본 위에서 말한다 — 버튼 쪽에서만 말하면
+         눈은 견본에 가 있는데 답은 손 밑에 있다.
+
+         견본칸 **안에** 둔다. 바깥(견본면)에 두고 위에서부터 픽셀로 세어
+         내리던 때는, 머리줄 위에 보조 도구 행이 하나 더 생기자 그 셈이
+         틀려 표가 버튼과 겹쳤다. 칸 안에 두면 무엇이 위에 몇 줄 있든
+         언제나 견본 바로 위다. */}
+     {compare && <span className="tone-orig-chip">기본 상태</span>}
     </div>
-    {/* 지금 보는 것이 무엇인지는 견본 위에서 말한다 — 버튼 쪽에서만 말하면
-        눈은 견본에 가 있는데 답은 손 밑에 있다 */}
-    {compare && <span className="tone-orig-chip">기본 상태</span>}
    </div>
 
    {/* ── 편집 패널 ─────────────────────────────────────────────────
@@ -345,29 +379,14 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
        영역. 조절 영역은 도구에 따라 눈금자이거나 말투 버튼 둘이고, 자리와
        높이가 같아서 도구를 옮겨도 화면이 흔들리지 않는다. */}
    <div className="tone-panel">
-    <div className="tone-head">
-     {/* 무엇을 만지는 중이고 지금 값이 무엇인지 */}
-     <div className="tone-now" aria-live="polite">
-      <span className="tone-now-label">{cur.label}</span>
-      <span className="tone-now-value">{cur.names[cur.at]}</span>
-     </div>
-     <div className="tone-acts">
-      {/* 되돌리기는 **그 도구 하나**만 기본으로 되돌린다. 바꾼 것이 없으면
-          나오지 않는다 — 누를 것이 없는 버튼은 자리만 차지한다. */}
-      {cur.at !== cur.def && (
-        <button type="button" className="tone-undo" onClick={() => cur.set(cur.def)}>
-          {cur.label} 되돌리기
-        </button>
-      )}
-      {/* 비교는 되돌리기와 **다른 일**이다. 누르고 있는 동안만 기본을 보여
-          주고 손을 떼면 그대로 돌아온다 — 바꾼 것을 잃지 않는다.
-          길게 누르기 어려운 사람을 위해 같은 버튼이 자판에서는 토글이다. */}
-      <button type="button" className={'tone-orig' + (compare ? ' on' : '')}
-        aria-pressed={compare} aria-label="기본과 비교. 누르고 있는 동안 고른 성격의 기본 상태가 보입니다"
-        onPointerDown={() => setCompare(true)} onPointerUp={() => setCompare(false)}
-        onPointerLeave={() => setCompare(false)} onPointerCancel={() => setCompare(false)}
-        onKeyDown={holdKey(true)} onKeyUp={holdKey(false)}>기본과 비교</button>
-     </div>
+    {/* 지금 만지는 것 — 이름 위, 값 아래. 가운데에 선다.
+        왼쪽 끝에 붙어 있었다. 오른쪽 끝에 되돌리기·비교가 있어서 머리줄이
+        양끝으로 벌어진 모양이었는데, 그 둘이 위로 올라가면서 왼쪽에 남은
+        정보만 한쪽으로 쏠렸다. 아래의 도구 셋도 눈금도 가운데를 축으로
+        쓰므로 여기도 같은 축에 둔다. */}
+    <div className="tone-now" aria-live="polite">
+     <span className="tone-now-label">{cur.label}</span>
+     <span className="tone-now-value">{cur.names[cur.at]}</span>
     </div>
 
     {/* 도구 셋. 고른 것은 테두리와 채움으로, 기본에서 바꾼 것은 점으로
@@ -407,12 +426,20 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
           <div className="tone-ruler" style={{ '--at': drag?.key === cur.key ? drag.at : cur.at } as CSSProperties}
             onPointerDown={padDown} onPointerMove={padMove} onPointerUp={padUp} onPointerCancel={padUp}>
             <span className="tone-ruler-line" aria-hidden />
-            {cur.names.map((_, i) =>
-              <span key={i} className={'tone-notch' + (i === cur.at ? ' on' : '') + (i === cur.def ? ' home' : '')}
-                style={{ '--i': i } as CSSProperties} aria-hidden>
-                {i === cur.def && <i className="tone-home" />}
-              </span>
-            )}
+            {cur.names.flatMap((_, i) => {
+              const out = [
+                <span key={`n${i}`} className="tone-notch" style={{ '--i': String(i) } as CSSProperties} aria-hidden>
+                  {i === cur.def && <i className="tone-home" />}
+                </span>
+              ];
+              /* 칸 사이를 넷으로 쪼갠 잔눈금. 값은 다섯 칸뿐이라 큰 눈금만
+                 두면 화면이 56px씩 뚝뚝 건너뛰고, 미는 손과 눈금이 따로
+                 논다. 잔눈금이 있으면 얼마나 왔는지가 이어져 보인다. */
+              if (i < last) for (let j = 1; j < MINOR; j++)
+                out.push(<span key={`t${i}-${j}`} className="tone-tick"
+                  style={{ '--i': String(i + j / MINOR) } as CSSProperties} aria-hidden />);
+              return out;
+            })}
             <input type="range" className="tone-ruler-input" min={0} max={cur.names.length - 1} step={1}
               value={cur.at} aria-label={cur.label} aria-valuetext={cur.names[cur.at]}
               onChange={e => cur.set(Number(e.target.value))} />

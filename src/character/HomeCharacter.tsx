@@ -181,6 +181,8 @@ export default function HomeCharacter() {
     let geo: PoseGeo = from;   // 지금 이 순간의 형태
 
     let w = 0, h = 0, size = 0, x = 0, y = 0;
+    /** 액자에 마지막으로 적어 준 실루엣 자리. 안 바뀌었으면 다시 안 적는다 */
+    let saidX = Infinity, saidY = Infinity;
     /**
      * 이 캐릭터는 이제 **움직이지 않는다.**
      *
@@ -294,8 +296,19 @@ export default function HomeCharacter() {
           if (py < by0) by0 = py;
         }
       }
-      el.style.setProperty('--say-floor', `${(size * by0) / CANVAS}px`);
-      el.style.setProperty('--say-x', `${(size * (bx0 + bx1)) / 2 / CANVAS}px`);
+      /* 같은 자리를 **액자 좌표로도** 적어 둔다.
+         인사 문구는 액자에 직접 걸려 있어서(아래 createPortal) 캐릭터
+         상자 안의 좌표를 읽을 수 없다. 상자는 (x-size/2, y-size/2)로
+         옮겨진 뒤 가운데를 붙든 채 depth배 되므로, 상자 안의 점 p는
+         액자에서 x + (p - size/2) * depth 자리에 온다.
+
+         매 프레임 쓰지 않는다 — 값이 바뀌는 것은 포즈가 건너갈 때뿐인데
+         (두둥실은 CSS가 맡는다), 액자에 변수를 쓰면 그 변수를 읽는 모든
+         것이 다시 계산된다. 반 픽셀 넘게 움직였을 때만 적는다. */
+      const cx = x + ((size * (bx0 + bx1)) / 2 / CANVAS - size / 2) * depth;
+      const ty = y + ((size * by0) / CANVAS - size / 2) * depth;
+      if (Math.abs(cx - saidX) > 0.5) { saidX = cx; frame.style.setProperty('--say-cx', `${cx.toFixed(1)}px`); }
+      if (Math.abs(ty - saidY) > 0.5) { saidY = ty; frame.style.setProperty('--say-top', `${ty.toFixed(1)}px`); }
 
       // scale이 translate 뒤에 와야 상자 가운데를 붙든 채 커진다.
       el.style.transform = `translate(${x - size / 2}px, ${y - size / 2}px) scale(${depth.toFixed(3)})`;

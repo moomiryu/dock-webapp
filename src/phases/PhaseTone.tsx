@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import BackButton from '../components/BackButton';
-import { fontMap, opticalFix, opticalStroke } from '../lib/palettes';
+import { MANNER, fontMap, hasWeightAxis, opticalFix, opticalStroke, variationFor } from '../lib/palettes';
 import { type PartialTone } from '../lib/tone';
 import { foldLines } from '../lib/fit';
 
@@ -142,7 +142,7 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
        답한다. 축이 있는 서체는 '0'이라 아무 일도 일어나지 않는다(palettes.ts). */
     const face = {
         fontFamily: fontMap[tone.font], fontWeight: tone.wght,
-        fontVariationSettings: '"wght" ' + tone.wght,
+        fontVariationSettings: variationFor(tone.font, tone.wght, tone.manner),
         transform: 'scaleX(' + tone.tone + ')',
         fontStyle: tone.slnt ? `oblique ${Math.abs(tone.slnt)}deg` : 'normal',
         fontSize: `calc(min(${byLine}cqw, ${byHeight}cqh) * ${opticalFix[tone.font]?.scale ?? 1})`,
@@ -163,7 +163,7 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
         설명이 사라지는 계기가 **누르는 손**이어야 한다. '가'와 같이 간다. */}
     <div className="z-ask">
      <h1>전하고 싶은 느낌으로<br />조절해보세요</h1>
-     <p>발화의 크기, 빠르기, 무게를 정해봐요.</p>
+     <p>발화의 크기, 빠르기, {hasWeightAxis(tone.font) ? '무게' : '말투'}를 정해봐요.</p>
     </div>
     {/* 삽화 자리. 아직 그려지지 않았다 — 지금은 '가' 한 글자가 대신 선다. */}
     <div className="tone-figure" aria-hidden="true" style={{ fontFamily: fontMap[tone.font] }}>가</div>
@@ -188,7 +188,10 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
     </div>
    </div>
    <div className="z-axes">
-    {AXES.map(a => {
+    {/* 무게가 없는 얼굴에는 무게를 안 묻는다 — 없는 축의 손잡이를 밀면
+        아무 일도 안 일어나는데 손잡이만 움직인다(palettes.ts · MANNER).
+        그 자리는 아래의 말투 버튼이 받는다. */}
+    {AXES.filter(a => a.key !== 'wght' || hasWeightAxis(tone.font)).map(a => {
         const at = nearest(a.stops, tone[a.key]);          // 값이 붙어 있는 눈금
         const last = a.stops.length - 1;
         // 손잡이 자리: 끄는 동안은 손가락, 놓으면 눈금
@@ -225,6 +228,27 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
           </div>
         </div>;
     })}
+    {/* 말투 — 값이 둘뿐이라 손잡이가 아니라 버튼이다. 안내서도 그렇게 그렸다.
+        고른 쪽의 이름이 그 얼굴로 쓰여 있어서, 누르기 전에 무엇이 되는지가
+        글자 자체로 보인다. */}
+    {MANNER[tone.font] && (
+      <div className="z-axis-line" role="group" aria-label="말투">
+        <div className="z-axis-head">
+          <span className="z-axis-label">말투</span>
+          <span className="z-axis-value">{MANNER[tone.font].labels[tone.manner ? 1 : 0]}</span>
+        </div>
+        <div className="z-manner">
+          {MANNER[tone.font].labels.map((name, i) =>
+            <button key={i} type="button"
+              className={'z-manner-btn' + ((tone.manner ? 1 : 0) === i ? ' on' : '')}
+              aria-pressed={(tone.manner ? 1 : 0) === i}
+              style={{ fontFamily: fontMap[tone.font],
+                fontVariationSettings: MANNER[tone.font].axes[i] } as CSSProperties}
+              onClick={() => setTone(t => ({ ...t, manner: i }))}>{name}</button>
+          )}
+        </div>
+      </div>
+    )}
    </div>
    <button className="primary-action" onClick={() => onNext(tone)}>다음</button>
   </section>

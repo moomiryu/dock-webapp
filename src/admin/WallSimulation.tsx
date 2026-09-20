@@ -536,7 +536,7 @@ const WallBlock = memo(function WallBlock({ msg, index, ghost, onEl }: { msg: St
       <SpeechBubble shape={shape} box={box} side="var(--echo-side)" color={bg}
         strength={ECHO_STRENGTH} phase={`${breath}ms`}>
         <VoiceBubble text={lines.join('\n')} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght}
-          width={scaleX} slant={skew} align={msg.tone?.align} size={msg.tone?.size}
+          width={scaleX} slant={skew} align={msg.tone?.align} size={msg.tone?.size} manner={msg.tone?.manner}
           fontSize={`calc(var(--echo-side) * ${box.unit.toFixed(4)})`} />
       </SpeechBubble>
     </div>
@@ -574,7 +574,7 @@ const WallShowMessage = memo(function WallShowMessage({ msg, land }: { msg: Stor
         <SpeechBubble shape={shape} box={box} side="var(--big-side)" color={bg}
           strength={landing ? ECHO_STRENGTH : strength} style={calm}>
           <VoiceBubble text={lines.join('\n')} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght}
-            width={scaleX} slant={skew} align={msg.tone?.align} size={msg.tone?.size}
+            width={scaleX} slant={skew} align={msg.tone?.align} size={msg.tone?.size} manner={msg.tone?.manner}
             fontSize={`calc(var(--big-side) * ${box.unit.toFixed(4)})`} />
         </SpeechBubble>
       </div>

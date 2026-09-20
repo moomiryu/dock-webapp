@@ -1,6 +1,6 @@
 import type { ToneState } from '../types';
 export type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
-export const DEFAULT_TONE = { tone: 1, wght: 500, slnt: 0, size: 44 };
+export const DEFAULT_TONE = { tone: 1, wght: 500, slnt: 0, size: 44, manner: 0 };
 // 차례가 2×2 네 칸의 자리를 정한다 — 0·1이 윗줄(왼·오른), 2·3이 아랫줄.
 //
 // 2026-09-20: 넷째 칸의 이름이 '발랄한'에서 **'유머있는'**으로 바뀌었다.

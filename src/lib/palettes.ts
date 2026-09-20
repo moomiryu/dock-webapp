@@ -155,3 +155,49 @@ export const graphics: string[] = [
       .join('') +
     '</g></svg>'
 ];
+
+/**
+ * 서체마다 가진 축이 다르다 — 그래서 **묻는 것도 달라야 한다.**
+ *
+ * 2026-09-20까지는 넷에게 똑같이 크기·빠르기·무게 셋을 물었다. 그런데
+ * 당당한(둥켈)과 다정한(다카포)은 무게 축이 아예 없다. 없는 축의 손잡이를
+ * 밀면 아무 일도 안 일어나는데, 손잡이는 움직인다 — **거짓말하는 조작**이다.
+ *
+ * 작가의 '타입 안내'(2026-09-20)가 그 자리를 다시 짰다. 무게가 없는 얼굴
+ * 둘에게는 무게 대신 **말투**를 묻는다. 굵기가 아니라 글자의 생김새 자체를
+ * 바꾸는 축이 그 둘에는 있다:
+ *
+ *   당당한   GLAT 0 ↔ 1000    예리한 ↔ 온화한
+ *            둥켈의 Glatt 축이다. 모서리가 날카롭게 서 있다가 둥글게 눕는다.
+ *   유머있는 ELSH 0.8 ↔ 12    시니컬한 ↔ 귀여운
+ *            ELGR 1 ↔ 1.75    핸드젯은 점으로 글자를 짜는 얼굴이라, 점의
+ *            모양(ELement SHape)과 격자(ELement GRid)가 말투를 만든다.
+ *
+ * 값이 둘뿐이라 손잡이가 아니라 **버튼 둘**이다. 안내서도 그렇게 그려 놨다.
+ *
+ * 차분한(본명조)은 wght 250~900을 제대로 갖고 있으므로 무게를 그대로 묻는다.
+ * 다정한(다카포)은 축이 없어 획(-webkit-text-stroke)으로 대신 답한다 —
+ * 그건 opticalStroke가 이미 하고 있다.
+ */
+export const MANNER: Record<string, { labels: [string, string]; axes: [string, string] }> = {
+  ttoryeot: { labels: ['예리한', '온화한'], axes: ['"GLAT" 0', '"GLAT" 1000'] },
+  deulseok: {
+    labels: ['시니컬한', '귀여운'],
+    axes: ['"ELSH" 0.8, "ELGR" 1', '"ELSH" 12, "ELGR" 1.75']
+  }
+};
+
+/** 이 서체가 무게 축을 실제로 갖고 있는가 — 없으면 말투를 묻는다 */
+export const hasWeightAxis = (font: string) => !(font in MANNER);
+
+/**
+ * 이 서체에 넘길 font-variation-settings 한 줄.
+ *
+ * 한곳에서만 만든다. 전에는 화면마다 `'"wght" ' + weight`를 따로 적고
+ * 있었는데, 그러면 축이 서체마다 다르다는 사실이 네 군데에 흩어진다.
+ */
+export function variationFor(font: string, wght: number, manner = 0): string {
+  const m = MANNER[font];
+  if (m) return m.axes[manner ? 1 : 0];
+  return `"wght" ${wght}`;
+}

@@ -17,6 +17,14 @@ export interface ToneState {
   tone: number;       // scaleX (0.7 / 1.0 / 1.3)
   wght: number;       // 100..900
   slnt: number;       // 0 or -8
+  /**
+   * 말투 — 0이 날 선 쪽, 1이 부드러운 쪽.
+   *
+   * 무게 축이 없는 서체(당당한·유머있는)가 무게 대신 쓰는 축이다. 그 둘은
+   * 굵기 대신 **글자 모양 자체를 바꾸는 축**을 갖고 있다(palettes.ts · MANNER).
+   * 없어도 되는 값이라 옵션이다 — 벽에 떠 있는 옛 글은 이게 없고, 없으면 0이다.
+   */
+  manner?: number;
   size: number;       // px
   paletteIdx: number; // index into palettes
   graphicIdx: number; // -1 means off

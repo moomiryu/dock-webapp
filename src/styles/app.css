@@ -1949,6 +1949,28 @@
 /* 축 이름이 주인공이다 — 무엇을 만지는 중인지 먼저 읽혀야 한다. */
 .z-axis-label{ font-size: var(--fs-body); font-weight: 600; color: var(--ink); letter-spacing: -0.01em; }
 .z-axis-value{ font-size: var(--fs-body-s); color: var(--muted); }
+/* 말투 — 값이 둘뿐인 축이라 손잡이가 아니라 버튼 둘이다(안내서도 그렇게
+   그렸다). 이름이 **그 말투의 얼굴로** 쓰여 있어서, 누르기 전에 무엇이
+   되는지가 글자 자체로 보인다 — 잣대가 이름이 아니라 견본인 셈이다.
+
+   생김새는 옆의 눈금과 한 식구다: 회색 띠(--line) 위에 고른 것만 청록
+   알약(--brand-sub). 처음엔 검은 바탕인 줄 알고 흰 글자·흰 테두리를 줬는데,
+   이 칸은 흰 판이라 안 고른 쪽이 통째로 안 보였다. */
+.z-manner{
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+  padding: 4px; background: var(--line); border: 1px solid var(--line);
+  border-radius: var(--r-l);
+}
+.z-manner-btn{
+  min-height: 34px; padding: var(--s1) var(--s3);
+  border: 0; border-radius: var(--r-full);
+  background: none; color: var(--body-text);
+  font-size: var(--fs-body); line-height: 1.2; cursor: pointer;
+  transition: background 200ms var(--ease-standard), color 200ms var(--ease-standard);
+}
+.z-manner-btn.on{ background: var(--brand-sub); color: var(--ink); }
+.z-manner-btn:active{ background: var(--press-tint); }
+.z-manner-btn.on:active{ filter: brightness(0.94); }
 /* 보조 설명은 제목보다 한 칸 낮다(--muted · 4.64:1). 2026-09-07에 여기서
    --body-text로 올려 뒀었는데, 그러면 제목과 본문이 같은 세기로 읽힌다.
    기본 선언(.z-ask p · .guide-hero p)이 원래 --muted였다 — 거기로 돌린다.

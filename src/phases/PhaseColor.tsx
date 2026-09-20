@@ -76,7 +76,7 @@ export default function PhaseColor({ text, tone, onBack, onNext }: Props) {
    <div className="color-stage" style={{ '--color-area': AREA } as CSSProperties}>
     <SpeechBubble shape={shape} box={box} side="var(--color-area)" color={bg}>
      <VoiceBubble text={lines.join('\n')} bg={bg} color={fg} fontFamily={fontMap[tone.font]} font={tone.font}
-       weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size}
+       weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size} manner={tone.manner}
        fontSize={`calc(var(--color-area) * ${box.unit.toFixed(4)})`} />
     </SpeechBubble>
    </div>

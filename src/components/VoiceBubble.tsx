@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { fitFontSize } from '../lib/fit';
-import { opticalFix, opticalStroke } from '../lib/palettes';
+import { opticalFix, opticalStroke, variationFor } from '../lib/palettes';
 interface Props {
     children?: ReactNode;
     text: string;
@@ -16,6 +16,8 @@ interface Props {
     wave?: number;
     align?: 'left' | 'center' | 'right';
     size?: number;
+    /** 말투 — 무게 축이 없는 얼굴이 무게 대신 쓰는 축(palettes.ts · MANNER) */
+    manner?: number;
     /** 글자 크기를 부모 상자에 맞춰 채운다. 03·04의 물러선 상자만 쓴다 */
     fill?: boolean;
 }
@@ -78,7 +80,7 @@ function fitToBox(el: HTMLElement): number {
  * max를 씌워야 바닥이 진짜 바닥이 된다 — 안쪽 clamp에 넣으면 뒤따르는
  * 곱셈이 다시 깎는다.
  */
-export default function VoiceBubble({ text, bg, color, fontFamily, font, weight, width = 1, slant = 0, fontSize, align = 'center', size = 44, fill, children }: Props) {
+export default function VoiceBubble({ text, bg, color, fontFamily, font, weight, width = 1, slant = 0, fontSize, align = 'center', size = 44, manner = 0, fill, children }: Props) {
     const scale = Math.min(60, Math.max(28, size)) / 44;
     /* 서체마다 같은 크기가 다르게 보인다(palettes.ts · opticalFix). 02에서만
        고쳐 두고 여기서 안 고치면, 성격을 고른 화면과 그 뒤 화면들의 글자
@@ -102,7 +104,7 @@ export default function VoiceBubble({ text, bg, color, fontFamily, font, weight,
     }, [fill, text, fontFamily, weight, width, slant, align]);
     /* 무게 축이 없는 서체는 못 움직인다 — 그 칸에서만 획이 대신 답한다.
        나머지 서체는 '0'이 와서 -webkit-text-stroke가 아무 일도 안 한다. */
-    return <div ref={body} className={'voice-bubble line-bubble' + (fill ? ' is-fill' : '')} style={{ '--line-bg': bg, color, fontFamily, fontWeight: weight, fontVariationSettings: '"wght" ' + weight, '--optical-stroke': opticalStroke(font ?? '', weight), textAlign: align, fontSize: fill ? `${filled * optic}px` : `calc((${fontSize ?? `max(14px, calc(${fitFontSize(text, { min: 3, max: 240 })} * 0.52 * ${scale} / ${Math.max(1, width)}))`}) * ${optic})` } as CSSProperties}>
+    return <div ref={body} className={'voice-bubble line-bubble' + (fill ? ' is-fill' : '')} style={{ '--line-bg': bg, color, fontFamily, fontWeight: weight, fontVariationSettings: variationFor(font ?? '', weight ?? 500, manner), '--optical-stroke': opticalStroke(font ?? '', weight), textAlign: align, fontSize: fill ? `${filled * optic}px` : `calc((${fontSize ?? `max(14px, calc(${fitFontSize(text, { min: 3, max: 240 })} * 0.52 * ${scale} / ${Math.max(1, width)}))`}) * ${optic})` } as CSSProperties}>
   <div className="voice-bubble-text line-bubble-text" style={{ textAlign: align, transform: `scaleX(${width})`, transformOrigin: align }}>
    {text.split('\n').map((line, i) => <div className="message-line" key={i}><span className="message-line-fill"><span style={{ fontStyle: slant ? `oblique ${Math.abs(slant)}deg` : 'normal' }}>{line.split(/([A-Za-z0-9][A-Za-z0-9 .,!?'-]*)/g).map((part, j) => /[A-Za-z0-9]/.test(part) ? <span key={j} lang="en" style={{ fontStyle: slant ? 'italic' : 'normal' }}>{part}</span> : part || '\u200b')}</span></span></div>)}
    {children}

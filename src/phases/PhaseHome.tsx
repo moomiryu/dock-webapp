@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import InfoOverlay from '../components/InfoOverlay';
-import HomeCharacter from '../components/HomeCharacter';
-import HomeCrowd from '../components/HomeCrowd';
+import HomeCharacter from '../character/HomeCharacter';
+import HomeCrowd from '../character/HomeCrowd';
 import HomeVoices from '../components/HomeVoices';
 interface Props { onStart: () => void; }
 export default function PhaseHome({ onStart }: Props) {

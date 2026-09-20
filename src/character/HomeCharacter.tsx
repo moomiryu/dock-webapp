@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import {
   CANVAS, EYES, blendGeo, eyeMarkup, eyeOpacity, poseGeometry, toPathD, turnKind,
   type Eyes, type Pose, type PoseGeo
-} from '../lib/characterMorph';
-import { charPos } from '../lib/charPos';
+} from './morph';
+import { charPos } from './pos';
 
 /**
  * 캐릭터가 처음 서는 자리 — 화면 높이에 대한 비율. 가로는 늘 한가운데다.

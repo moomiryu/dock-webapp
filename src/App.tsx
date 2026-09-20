@@ -10,7 +10,7 @@ import PhaseColor from './phases/PhaseColor';
 import PhaseSubmit from './phases/PhaseSubmit';
 import PhaseOnWall from './phases/PhaseOnWall';
 import PhaseDone from './phases/PhaseDone';
-import { REST_Y } from './components/HomeCharacter';
+import { REST_Y } from './character/HomeCharacter';
 import { DRAFT_COLORS } from './lib/messageStyle';
 import {
   clearDraft,

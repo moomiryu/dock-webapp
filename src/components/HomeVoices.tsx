@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { charPos } from '../lib/charPos';
+import { charPos } from '../character/pos';
 
 /**
  * 나팔에서 흘러나오는 말들.

@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react';
-import { charPos } from '../lib/charPos';
+import { charPos } from './pos';
 import {
   BODY, CLIP_H, EYE_LOOK, EYE_SHUT, EYE_SMILE, EYE_WHITE, EYE_WIDE,
   HEAD, LEG_FAR, LEG_NEAR, SHADOW, VIEW, type WalkerEye
-} from '../lib/walker';
+} from './walker';
 
 /**
  * 배경을 오가는 작은 캐릭터들.

@@ -255,20 +255,6 @@
   gap: 0;
 }
 
-/* 캐릭터는 인사말과 시작 버튼 사이에서 움직인다. */
-
-.home-char {
-  position: absolute;
-  z-index: 1;
-  left: 50%;
-  top: 46%;
-  width: 44vw;
-  max-width: 170px;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  line-height: 0;
-}
-
 .home-layer{
   position: relative;
   z-index: 2;
@@ -1234,8 +1220,7 @@
   .dock-phone,
   .dock-arrow,
   .splash-bar i,
-  .send-wave,
-  .home-char {
+  .send-wave {
     animation: none !important;
   }
   .send-wave {
@@ -1730,7 +1715,6 @@
 .home-layer{ padding-top: max(var(--s5), env(safe-area-inset-top, 0px)); }
 .home-headline{ font-size: var(--fs-h2); font-weight: 600; line-height: 1.5; }
 .home-gate{ gap: var(--s5); pointer-events: auto; }
-.home-char{ top: 46%; }
 .primary-action, .home-cta, .home-info-btn{ font-weight: 600; padding-block: var(--s3); }
 .z-ask{ gap: var(--s3); }
 /* 제목 행간은 토스 실측을 따른다 — 1.3(--lh-head). 51장에서 잰 피치가
@@ -2105,10 +2089,43 @@
 /* 자판이 올라와 있는 동안은 비율 안내가 자리를 뺏을 뿐이다 */
 :root[data-keyboard='up'] .proj-meta > span:first-child{ display: none; }
 
+/* ═══ 캐릭터 ═══════════════════════════════════════════════════════
+   홈에는 캐릭터가 둘 있다. 한가운데 서 있는 큰 메가폰트 하나와, 배경을
+   가로질러 오가는 작은 것들. 이 섹션이 그 둘의 CSS 전부다.
+
+     큰 메가폰트   src/character/HomeCharacter.tsx   .home-char · .home-char-*
+     나팔의 말     src/components/HomeVoices.tsx     .home-voices · .voice
+     작은 것들     src/character/HomeCrowd.tsx       .home-crowd · .walker · .w-*
+
+   자리는 전부 JS가 프레임마다 transform으로 적는다(초당 60번 React를 거치면
+   홈이 그만큼 다시 그려진다). CSS는 생김새와 제자리 움직임만 맡는다.
+
+   2026-09-20에 한곳으로 모았다. 그 전에는 네 군데에 흩어져 있었고, 큰 것의
+   조각이 작은 것의 조각 뒤에 또 한 번 나왔다. 흩어진 값 둘은 뒤에서 덮여
+   죽어 있었는데도 살아 있는 척하고 있었다(같은 일이 토큰에서도 있었다 —
+   tokens.css 머리말). */
+
+/* ── 앞뒤: 셋이 한 장면에서 겹치는 차례 ─────────────────────────── */
+/* 앞뒤는 발끝이 정한다 — 2D에서 깊이를 만드는 방법은 그것뿐이다.
+   층 번호를 JS가 프레임마다 적는다(HomeCrowd · CHAR_Z=500). 메가폰트가
+   한가운데 서고 구경꾼이 그 위아래로 벌어지므로, 여섯과 메가폰트가 한 줄로
+   정렬된다 — 아래에 선 애가 위에 선 애를 가린다.
+
+   그 위로 두 겹이 더 있다: 바닥의 그라데이션(900)과 글자·버튼(1000).
+   누르려는 손을 가리면 안 되므로 버튼이 맨 위다. */
+.home-char{ z-index: 500; }
+.home-frame::after{ z-index: 900; }
+.home-frame > .home-layer{ z-index: 1000; }
+
+/* ── 큰 메가폰트 ────────────────────────────────────────────────── */
 /* 직접 만지는 크기. 340px에서 80%로 줄였다. */
 /* 2026-09-20: 끌어 옮기던 것을 걷어냈다. 손을 안 받으므로 커서도 평범하다 —
    grab 커서를 남겨 두면 잡을 수 있다고 거짓말을 한다. */
-.home-char{ left: 0; top: 0; width: min(70vw, 272px); max-width: none; height: auto; aspect-ratio: 1; border: 0; padding: 0; margin: 0; background: none; color: inherit; pointer-events: none; user-select: none; -webkit-user-select: none; transform: translate(0, 0); will-change: transform; }
+/* position과 line-height는 2026-09-07까지 홈 섹션 위쪽에 따로 서 있었다.
+   같이 있던 자리·크기 여섯(z-index 1 · left 50% · top 46% · width 44vw ·
+   max-width 170px · translate(-50%,-50%))은 아래 줄이 이미 덮고 있었다.
+   죽은 값이라 걷어내고, 살아 있던 둘만 아래로 합쳤다. */
+.home-char{ position: absolute; left: 0; top: 0; width: min(70vw, 272px); max-width: none; height: auto; aspect-ratio: 1; border: 0; padding: 0; margin: 0; background: none; color: inherit; pointer-events: none; user-select: none; -webkit-user-select: none; transform: translate(0, 0); will-change: transform; line-height: 0; }
 /* 회전은 --char-turn 이 가로로 한 번 좁혔다 편다. 기울기는 --char-tilt.
    포즈끼리는 path를 직접 보간하므로 겹쳐 놓고 페이드할 그림이 없다. */
 .home-char-motion{ display: block; position: relative; width: 100%; height: 100%;
@@ -2136,7 +2153,21 @@
 }
 @media (prefers-reduced-motion: reduce){
   .home-char-motion, .home-char-shade{ animation: none; }
+  .home-char{ animation: none !important; }
 }
+/* 이 캐릭터는 바닥에 선 것이 아니라 떠 있다. 그림자가 그것을 말한다 —
+   몸보다 아래, 몸보다 작게, 옅게. 상자에 대고 고정했더니(88%) 포즈마다
+   어긋났다 — 옆모습은 실루엣이 좁고 짧은데 그림자는 그대로였다. 이제
+   폭과 자리를 HomeCharacter가 실루엣에서 재어 내려준다. 그 줄이 구경꾼의
+   앞뒤를 가르는 바닥선이기도 하다(charPos.ground). */
+/* 얼굴이 돌아 들어올 때 가로로 열린다(HomeCharacter의 EYE_OPEN_FROM).
+   중첩 svg라 제 상자를 기준으로 잡아야 가운데에서 열린다. */
+.home-char-eye{ transform-box: fill-box; transform-origin: center; }
+.home-char-shade{ position: absolute; left: 50%; top: calc(var(--shade-y, 0.87) * 100%);
+  translate: -50% -50%; width: calc(var(--shade-w, 0.38) * 100%); height: 6%;
+  border-radius: 50%; background: #5a5580; opacity: 0.18; pointer-events: none;
+  /* 포즈가 바뀌면 실루엣이 달라진다. 글자·형태가 건너가는 260ms를 같이 탄다 */
+  transition: width 260ms var(--ease-standard), top 260ms var(--ease-standard); }
 /* 가끔 뱉는 글자 (2026-09-15 홈_4 스케치).
    몸 바깥에 둔다 — 몸이 기울고 눌릴 때 같이 일그러지면 글자로 안 읽힌다.
    상자에 걸린 scale은 같이 받으므로 멀리 있으면 글자도 작다.
@@ -2168,6 +2199,23 @@
    HomeCharacter가 실루엣에서 재어 내려준다). */
 .home-char-say[data-side='right']{ left: var(--say-x, 50%); }
 .home-char-say[data-side='left']{ right: calc(100% - var(--say-x, 50%)); }
+/* 인사가 아니라 할 일. 열한 자를 0.12배(32px)로 찍으면 nowrap이라 한 줄이
+   390 화면을 넘는다 — 0.072배(20px)면 245px로 들어간다. */
+.home-char-say[data-small='true']{ font-size: calc(var(--char-box, 272px) * 0.072); font-weight: 700; }
+/* '!'는 터지고 끝나는 것이라 뜨고 지는 시간도 짧다. 기본 1600ms를 그대로
+   쓰면 900ms에 사라지는 글자가 아직 또렷한 채로 잘린다. */
+.home-char-say[data-quick='true']{ animation-duration: 900ms; }
+/* translate가 이미 세로를 맡고 있어서 transform에 다시 쓰면 덮어쓴다.
+   회전과 크기만 transform에 둔다. */
+@keyframes charSay {
+  0%   { opacity: 0; transform: rotate(var(--say-tilt, 0deg)) scale(0.72); }
+  14%  { opacity: 1; transform: rotate(var(--say-tilt, 0deg)) scale(1); }
+  74%  { opacity: 1; transform: rotate(var(--say-tilt, 0deg)) scale(1); }
+  100% { opacity: 0; transform: rotate(var(--say-tilt, 0deg)) scale(1.12); }
+}
+.home-char svg circle{ animation: none; }
+
+/* ── 나팔에서 흘러나오는 말 ─────────────────────────────────────── */
 /* ── 나팔에서 흘러나오는 말 ──────────────────────────────────────────
    인사가 끝나면 나팔 쪽으로 짧은 말들이 줄줄 나와 배경으로 흩어진다.
    캐릭터의 혼잣말이 아니라 **닿은 사람들이 맡기고 간 말**이다.
@@ -2192,35 +2240,13 @@
 }
 @media (prefers-reduced-motion: reduce){ .home-voices{ display: none; } }
 
+/* ── 배경을 오가는 작은 것들 ────────────────────────────────────── */
 /* ── 배경을 오가는 캐릭터들 ──────────────────────────────────────────
    가장자리에서 걸어 들어와 지나가고, 얼마는 메가폰트 앞에 서서 웃고
    **빨강이 되어** 나간다. 자리는 JS가 프레임마다 transform으로 적고
    (HomeCrowd), 걷는 다리와 몸의 들썩임·몸 색만 CSS가 맡는다.
    버튼 위에 얹히지 않게 손을 안 받는다. */
 .home-crowd{ position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-/* 앞뒤는 발끝이 정한다 — 2D에서 깊이를 만드는 방법은 그것뿐이다.
-   층 번호를 JS가 프레임마다 적는다(HomeCrowd · CHAR_Z=500). 메가폰트가
-   한가운데 서고 구경꾼이 그 위아래로 벌어지므로, 여섯과 메가폰트가 한 줄로
-   정렬된다 — 아래에 선 애가 위에 선 애를 가린다.
-
-   그 위로 두 겹이 더 있다: 바닥의 그라데이션(900)과 글자·버튼(1000).
-   누르려는 손을 가리면 안 되므로 버튼이 맨 위다. */
-.home-char{ z-index: 500; }
-.home-frame::after{ z-index: 900; }
-.home-frame > .home-layer{ z-index: 1000; }
-/* 이 캐릭터는 바닥에 선 것이 아니라 떠 있다. 그림자가 그것을 말한다 —
-   몸보다 아래, 몸보다 작게, 옅게. 상자에 대고 고정했더니(88%) 포즈마다
-   어긋났다 — 옆모습은 실루엣이 좁고 짧은데 그림자는 그대로였다. 이제
-   폭과 자리를 HomeCharacter가 실루엣에서 재어 내려준다. 그 줄이 구경꾼의
-   앞뒤를 가르는 바닥선이기도 하다(charPos.ground). */
-/* 얼굴이 돌아 들어올 때 가로로 열린다(HomeCharacter의 EYE_OPEN_FROM).
-   중첩 svg라 제 상자를 기준으로 잡아야 가운데에서 열린다. */
-.home-char-eye{ transform-box: fill-box; transform-origin: center; }
-.home-char-shade{ position: absolute; left: 50%; top: calc(var(--shade-y, 0.87) * 100%);
-  translate: -50% -50%; width: calc(var(--shade-w, 0.38) * 100%); height: 6%;
-  border-radius: 50%; background: #5a5580; opacity: 0.18; pointer-events: none;
-  /* 포즈가 바뀌면 실루엣이 달라진다. 글자·형태가 건너가는 260ms를 같이 탄다 */
-  transition: width 260ms var(--ease-standard), top 260ms var(--ease-standard); }
 .walker{ position: absolute; left: 0; top: 0; display: block; will-change: transform; }
 .walker-art{ display: block; width: 100%; height: 100%; }
 /* 몸 색. 파랑으로 들어와 메가폰트 앞에서 빨강이 된다 — 그 순간이 이
@@ -2252,23 +2278,6 @@
   .walker[data-walking='true'] .w-near,
   .walker[data-walking='true'] .walker-art{ animation: none; }
 }
-
-/* 인사가 아니라 할 일. 열한 자를 0.12배(32px)로 찍으면 nowrap이라 한 줄이
-   390 화면을 넘는다 — 0.072배(20px)면 245px로 들어간다. */
-.home-char-say[data-small='true']{ font-size: calc(var(--char-box, 272px) * 0.072); font-weight: 700; }
-/* '!'는 터지고 끝나는 것이라 뜨고 지는 시간도 짧다. 기본 1600ms를 그대로
-   쓰면 900ms에 사라지는 글자가 아직 또렷한 채로 잘린다. */
-.home-char-say[data-quick='true']{ animation-duration: 900ms; }
-
-/* translate가 이미 세로를 맡고 있어서 transform에 다시 쓰면 덮어쓴다.
-   회전과 크기만 transform에 둔다. */
-@keyframes charSay {
-  0%   { opacity: 0; transform: rotate(var(--say-tilt, 0deg)) scale(0.72); }
-  14%  { opacity: 1; transform: rotate(var(--say-tilt, 0deg)) scale(1); }
-  74%  { opacity: 1; transform: rotate(var(--say-tilt, 0deg)) scale(1); }
-  100% { opacity: 0; transform: rotate(var(--say-tilt, 0deg)) scale(1.12); }
-}
-.home-char svg circle{ animation: none; }
 .home-layer{ z-index: 2; pointer-events: none; }
 .home-gate{ pointer-events: none; }
 .home-actions > button{ position: relative; pointer-events: auto; }

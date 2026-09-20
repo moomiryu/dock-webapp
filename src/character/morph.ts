@@ -1,4 +1,4 @@
-import { scopeSvg } from './svgAsset';
+import { scopeSvg } from '../lib/svgAsset';
 
 // 포즈 사이를 페이드로 갈아끼우면 두 그림이 겹쳐 보이면서 '바뀌었다'가 된다.
 // 캐릭터가 돌아본 것처럼 보이려면 형태가 이어져야 한다.

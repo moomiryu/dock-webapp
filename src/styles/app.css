@@ -70,6 +70,12 @@
 }
 
 /* 뒤로 가기 — 아이콘만. 좌상단의 고정 자리 */
+/* 손이 닿는 자리는 44인데 그 안의 ∨는 24이고, 그 24 안에서도 획은 7.5만큼
+   들어가 있다 — 합쳐서 17.5. 그대로 두면 아이콘이 본문 글자보다 17px 안쪽에
+   서서 화면의 왼쪽선이 둘로 갈린다(토스는 이 둘이 1px 안에서 맞는다).
+   상자를 16 끌어내 획을 글자 줄에 세운다. 닿는 자리는 44 그대로다. */
+.z-header > .z-back,
+.info-head > .z-back{ margin-left: calc(var(--s5) * -1); }
 .z-back{
   display: inline-flex;
   align-items: center;
@@ -331,11 +337,18 @@
 /* ─── 자형 (glyph) ──────────────────────────────────────────── */
 
 /* 무엇을 정하는 화면인지 제목이 먼저 말한다 */
+/* 제목과 그 아래 한 줄.
+   2026-09-20: 셋을 벌렸다. 머리줄에 제목이 붙어 있었고(잉크 사이 34 —
+   실측한 제품은 45였다), 제목과 설명이 8로 붙어 한 덩이로 읽혔으며,
+   설명과 아래 내용 사이가 16뿐이라 질문과 답이 한 묶음으로 보였다.
+   위로 8을 더해 24, 아래로 16을 더해 32. 제목·설명 사이는 12. */
 .z-ask{
   display: flex;
   flex-direction: column;
-  gap: var(--s1);
+  gap: var(--s4);
   flex: none;
+  margin-top: var(--s3);
+  margin-bottom: var(--s5);
 }
 
 .z-ask h1{
@@ -1722,7 +1735,7 @@
 .home-headline{ font-size: var(--fs-h2); font-weight: 600; line-height: 1.5; }
 .home-gate{ gap: var(--s5); pointer-events: auto; }
 .primary-action, .home-cta, .home-info-btn{ font-weight: 600; padding-block: var(--s3); }
-.z-ask{ gap: var(--s3); }
+.z-ask{ gap: var(--s4); }   /* 8 → 12. 제목과 설명이 한 덩이로 붙어 읽혔다 */
 /* 제목 행간은 토스 실측을 따른다 — 1.3(--lh-head). 51장에서 잰 피치가
    31px, 24px 활자에 1.3이었다(reference-capture-analysis.md).
    2026-09-15 스케치는 33/28 = 1.18이라 조금 더 좁았는데, 조판은 스케치가

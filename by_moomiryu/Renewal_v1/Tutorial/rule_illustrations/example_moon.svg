@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="603" viewBox="0 0 390 603" role="img" aria-labelledby="title description">
+  <title id="title">달</title>
+  <desc id="description">청록색 초승달이 커다란 눈 하나로 작은 별을 바라봅니다. 단순한 면과 흰색 눈, 보라색 그림자로 이루어진 삽화입니다.</desc>
+  <ellipse id="shadow" cx="187" cy="470" rx="90" ry="11" fill="#5a5580"/>
+  <path id="moon" fill="#2ce9f7" d="M303 207C278 183 245 169 207 169C129 169 66 231 66 309C66 387 129 449 207 449C245 449 278 435 303 411C307 407 304 402 299 403C285 407 272 409 258 409C189 409 134 364 134 309C134 254 189 209 258 209C272 209 285 211 299 215C304 216 307 211 303 207Z"/>
+  <circle id="eye" cx="105" cy="305" r="23" fill="#fff"/>
+  <circle id="pupil" cx="112" cy="301" r="13" fill="#2ce9f7"/>
+  <path id="large-star" fill="#fff" d="M260 232Q263 253 281 256Q263 259 260 280Q257 259 239 256Q257 253 260 232Z"/>
+  <path id="small-star" fill="#fff" d="M310 181Q312 192 322 194Q312 196 310 207Q308 196 298 194Q308 192 310 181Z"/>
+</svg>

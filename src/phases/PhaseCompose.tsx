@@ -32,12 +32,34 @@ interface Props {
  * 얼굴이 바뀌고, 그게 형식이 입혀지는 순간으로 읽힌다. 여기서 넷 중 하나를
  * 기본으로 깔면 시스템이 이미 하나를 고른 셈이 된다.
  */
+/**
+ * 막막할 때 여는 힌트.
+ *
+ * **예시는 정답이 아니다.** 그래서 눌러도 입력창에 들어가지 않는다 — 누르면
+ * 들어가게 해 두면 그중 하나를 고르는 일이 되고, 무엇을 쓸지 정하는 권한이
+ * 화면으로 넘어간다. 여기 있는 것은 "이런 것도 말이 된다"는 예일 뿐이다.
+ *
+ * 주제는 넷 다 다른 결이다 — 관찰 · 바람 · 건넴 · 외침. 하나로 쏠리면
+ * 그 결이 권장되는 것으로 읽힌다.
+ */
+const HINTS: Array<{ topic: string; line: string }> = [
+    { topic: '오늘 발견한 것', line: '이 시간의 캠퍼스는 생각보다 다정하다.' },
+    { topic: '이곳에 바라는 것', line: '잠깐 앉아 쉴 벤치가 더 있으면 좋겠다.' },
+    { topic: '누군가에게 건네는 말', line: '아직 작업 중인 사람, 나도 여기 있어요.' },
+    { topic: '그냥 외쳐보고 싶은 말', line: '과제도 광합성으로 끝낼 수 있으면 좋겠다.' }
+];
+
 export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
     const [text, setText] = useState(initialText);
+    /** 힌트가 펼쳐져 있는가. 글과 따로 사는 값이라 열고 닫아도 글은 그대로다 */
+    const [hint, setHint] = useState(false);
     const input = useRef<HTMLTextAreaElement>(null);
     const empty = !text.trim();
     const full = text.length === 60;
     useEffect(() => { input.current?.focus({ preventScroll: true }); }, []);
+    /* 닫으면 쓰던 자리로 돌려보낸다. 힌트를 보고 나서 다시 입력창을 찾아
+       누르게 하면, 힌트를 연 것이 작성을 끊은 것이 된다. */
+    const close = () => { setHint(false); input.current?.focus({ preventScroll: true }); };
     return <div className="z-frame z1 write-screen">
   <div className="z-header">
    <BackButton label="처음으로" onClick={() => onBack(text)}/>
@@ -45,7 +67,7 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
   </div>
   <div className="z-ask">
    <h1>어떤 발화를<br />시작해볼까요?</h1>
-   <p>하고 싶은 말을 적어주세요.</p>
+   <p>혼잣말도, 함께 나누고 싶은 생각도 좋아요.</p>
   </div>
   {/* 줄바꿈은 발화자가 정한다 — 자판의 줄바꿈이 그대로 남는다.
       계산도 상자도 끼어들지 않는다.
@@ -60,10 +82,42 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
   <div className="write-fit">
     <textarea ref={input} className="write-input" aria-label="벽에 올릴 한 줄"
       style={{ '--rows': Math.max(1, foldLines(text || ' ').length) } as React.CSSProperties}
-      value={text} maxLength={60} spellCheck={false} placeholder="여기를 눌러 쓰세요"
+      value={text} maxLength={60} spellCheck={false} placeholder="지금, 이곳에서 하고 싶은 말은?"
       onChange={e => setText(e.target.value.slice(0, 60))}/>
   </div>
   <span className={'compose-count' + (full ? ' is-full' : '')}>{text.length}<span>/60</span></span>
+
+  {/* 힌트는 **부르면 온다.** 저절로 뜨거나 돌아가지 않는다 — 보고 있지
+      않은 자리에서 글이 바뀌면, 쓰던 사람은 제 글이 바뀐 줄 안다. */}
+  <button type="button" className={'hint-open' + (hint ? ' on' : '')}
+    aria-expanded={hint} aria-controls="write-hint"
+    onClick={() => {
+      if (hint) { close(); return; }
+      /* 펼치면서 자판을 내린다. 자판이 올라와 있으면 남는 높이가 절반이라
+         힌트도 쓰던 글도 둘 다 눌린다 — 640 화면에서 입력창이 71px까지
+         내려앉았다. 닫으면 다시 초점을 돌려주므로 자판도 같이 돌아온다. */
+      input.current?.blur();
+      setHint(true);
+    }}>무슨 말을 쓸지 막막하다면</button>
+  {hint && (
+    <div className="write-hint" id="write-hint">
+      <div className="write-hint-head">
+        <span>이런 말도 좋아요</span>
+        <button type="button" className="hint-close" onClick={close}>닫기</button>
+      </div>
+      {/* 주제와 예시는 읽는 결이 다르다. 목록의 이름과 설명으로 둔다 —
+          예시가 버튼이 아니라는 것도 이 꼴이 말한다. */}
+      <dl className="write-hint-list">
+        {HINTS.map(h => (
+          <div key={h.topic}>
+            <dt>{h.topic}</dt>
+            <dd>{h.line}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  )}
+
   <button className="primary-action" disabled={empty} onClick={() => onSubmit(text.trim())}>다 썼어요</button>
  </div>;
 }

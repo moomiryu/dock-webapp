@@ -1833,6 +1833,86 @@
    본문 회색으로 한 단 내린다. */
 .write-screen .compose-count{ position: static; align-self: flex-end; color: var(--body-text); }
 
+/* ── 막막할 때 여는 힌트 ─────────────────────────────────────────────
+   입력창이 이 화면의 가운데다. 힌트는 **부를 때만 오는 보조**이므로
+   채움 버튼도 테두리도 없는 글자 한 줄로 둔다 — 그것이 위계다.
+
+   펼쳐지는 자리는 입력창과 '다 썼어요' 사이다. 입력창 위에 얹으면 쓰던
+   글을 가리고, 버튼 아래로 보내면 스크롤 밖으로 나간다. 빈 자리는 원래
+   입력창의 위아래 auto 여백이 먹고 있던 것이라, 펼쳐도 입력창은 제자리다. */
+.hint-open{
+  align-self: center;
+  border: 0; background: none; padding: var(--s3) var(--s4);
+  font-family: var(--ui-font); font-size: var(--fs-body-s); color: var(--muted);
+  text-decoration: underline; text-underline-offset: 4px;
+  cursor: pointer; min-height: var(--btn-l);
+}
+.hint-open:active{ color: var(--ink); }
+.hint-open.on{ color: var(--ink); }
+
+/* 이 화면만 높이를 못 박는다. .z-frame은 min-height라 내용이 길어지면
+   틀이 같이 길어지는데, 그러면 힌트를 펼친 만큼 '다 썼어요'가 화면 밖으로
+   밀린다(재서 확인: 844 화면에서 버튼 아래가 978이었다). 높이를 박으면
+   남는 자리가 없을 때 줄어들 수 있는 것부터 줄어든다 — 힌트가 그것이다. */
+.write-screen{ height: 100dvh; }
+/* 입력창은 **줄어들지 않는다.** 2.4/1.5는 벽의 비율이고, 쓰는 동안 보는
+   줄모양이 곧 벽의 줄모양이라는 이 화면의 약속이 거기 걸려 있다.
+
+   자리를 나눠 주려고 두 번 시도했다가 둘 다 되돌렸다(2026-09-20):
+   높이만 눌렀더니 가로세로가 둘 다 정해져 비율이 무시됐고(640 화면에서
+   320×112 — 2.86:1), 폭을 내용에 맡겼더니 높이가 flex에서 오는 값이라
+   폭이 0이 되어 입력창이 통째로 사라졌다.
+
+   그래서 힌트 쪽이 덮는다(아래 .write-hint). */
+
+/* 힌트는 자리를 나눠 받지 않고 **덮는다.** 입력창이 줄어들 수 없으므로
+   나눠 받을 자리가 애초에 없다 — 640 화면에서 남는 높이는 37px이었다.
+   덮되 '다 썼어요'는 덮지 않는다. 닫는 길과 나가는 길은 늘 보여야 한다. */
+.write-hint{
+  position: absolute; z-index: 3;
+  left: var(--pad-x); right: var(--pad-x);
+  bottom: calc(var(--btn-xl) + var(--s5) + max(var(--s6), env(safe-area-inset-bottom, 0px)));
+  max-height: 56vh; overflow-y: auto; overscroll-behavior: contain;
+  padding: var(--s4) var(--s5); border-radius: var(--r-l);
+  background: var(--grey-50); border: 1px solid var(--line);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 10%);
+  text-align: left;
+  animation: hintOpen 220ms var(--ease-standard) both;
+}
+@keyframes hintOpen{ from{ opacity: 0; translate: 0 6px; } to{ opacity: 1; translate: 0 0; } }
+@media (prefers-reduced-motion: reduce){ .write-hint{ animation: none; } }
+
+.write-hint-head{
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s4);
+  font-family: var(--label-font); font-size: var(--fs-cap-s);
+  letter-spacing: 0.06em; color: var(--muted);
+  padding-bottom: var(--s3); border-bottom: 1px solid var(--line);
+}
+.hint-close{
+  border: 0; background: none; padding: var(--s2) var(--s3); margin: calc(var(--s2) * -1) calc(var(--s3) * -1);
+  font-family: var(--ui-font); font-size: var(--fs-cap); color: var(--body-text);
+  cursor: pointer; min-height: 44px;
+}
+.hint-close:active{ color: var(--ink); }
+
+/* 주제는 이름, 예시는 그 설명이다. 예시가 눌러야 할 것으로 보이지 않게
+   버튼 꼴을 일절 안 쓴다 — 눌러도 입력창에 들어가지 않는다(PhaseCompose). */
+.write-hint-list{ display: flex; flex-direction: column; }
+.write-hint-list > div{ padding: var(--s3) 0; border-bottom: 1px solid var(--line); }
+.write-hint-list > div:last-child{ border-bottom: 0; padding-bottom: 0; }
+.write-hint-list dt{
+  font-size: var(--fs-cap); color: var(--muted); margin-bottom: 2px;
+}
+.write-hint-list dd{
+  font-size: var(--fs-body); line-height: 1.5; color: var(--ink);
+}
+/* 자판이 올라와 있으면 남는 높이가 절반이다. 힌트가 그 자리를 다 먹으면
+   쓰던 글이 안 보이므로 천장을 씌우고 그 안에서 스크롤한다. */
+:root[data-keyboard='up'] .write-hint{ max-height: 40vh; }
+/* 짧은 화면에서는 반보다 조금 더 내준다 — 네 주제가 두엇은 보여야
+   "이런 것도 된다"가 읽힌다 */
+@media (max-height: 700px){ .write-hint{ max-height: 62vh; } }
+
 /* 02 성격을 고르고 난 뒤 — 그 칸 안에 내 글 전문이 그 얼굴로 선다.
    칸이 자라서 아래를 통째로 차지하므로 따로 판을 만들지 않는다. */
 .glyph-full-text{ text-align: center; line-height: 1.4; white-space: pre-wrap;

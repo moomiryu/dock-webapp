@@ -17,14 +17,14 @@ import { EMPHASIS_SEC, STAY_DAYS } from '../lib/wall';
 // 어느 컷이 '나중'인지는 작가가 같은 폴더에 넣어 둔 example_full.svg
 // (소개 여섯 장을 통째로 그린 시안)가 정한다. 그 시안 자체는 번들에 넣지
 // 않는다 — 268KB짜리고, 화면이 아니라 지시서다.
-import artAboutFrom from '../../by_moomiryu/Renewal_v1/example_about_3.svg?raw';
-import artAboutTo from '../../by_moomiryu/Renewal_v1/example_about_1.svg?raw';
+import artAboutFrom from '../../by_moomiryu/Renewal_v1/Tutorial/example_about_3.svg?raw';
+import artAboutTo from '../../by_moomiryu/Renewal_v1/Tutorial/example_about_1.svg?raw';
 // Step 1은 세 컷이다 — 1 → 2 → 3으로 이어 돈다 (작가가 _3을 덧붙였다)
-import artGlyphs1 from '../../by_moomiryu/Renewal_v1/example_step1_1.svg?raw';
-import artGlyphs2 from '../../by_moomiryu/Renewal_v1/example_step1_2.svg?raw';
-import artGlyphs3 from '../../by_moomiryu/Renewal_v1/example_step1_3.svg?raw';
-import artDockFrom from '../../by_moomiryu/Renewal_v1/example_step3_1.svg?raw';
-import artDockTo from '../../by_moomiryu/Renewal_v1/example_step3_2.svg?raw';
+import artGlyphs1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_1.svg?raw';
+import artGlyphs2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_2.svg?raw';
+import artGlyphs3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_3.svg?raw';
+import artDockFrom from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_1.svg?raw';
+import artDockTo from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_2.svg?raw';
 
 interface Props { onClose: () => void; onStart: () => void; }
 

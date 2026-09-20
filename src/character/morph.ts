@@ -21,19 +21,26 @@ import { scopeSvg } from '../lib/svgAsset';
 // 두 번 겪었다: 홈 스케치가 들어왔을 때 219KB→296KB, example_*가 들어왔을
 // 때 227KB→525KB(example_full 한 장이 268KB다).
 //
-// 그래서 '아닌 것을 빼는' 대신 **필요한 이름만 부른다.** 포즈 아홉과 눈
-// 아홉의 이름 족보가 이게 전부고, 새 파일이 들어와도 여기 안 걸리면
-// 따라 들어오지 않는다.
+// 그래서 '아닌 것을 빼는' 대신 **필요한 것만 부른다.**
+//
+// 2026-09-20에 작가가 폴더를 갈랐다. 전에는 한 폴더에 다 있어서 이름
+// 족보(front_* · back_* · left* · right* · eye_*)로 걸러야 했는데, 이제는
+// **폴더가 그 일을 한다** — megafont에 포즈 아홉, eye에 눈 아홉이 정확히
+// 그것만 들어 있다. 스케치와 견본은 Tutorial·Slider로 빠졌다.
 const files = import.meta.glob(
   [
-    '../../by_moomiryu/Renewal_v1/front_*.svg',
-    '../../by_moomiryu/Renewal_v1/back_*.svg',
-    '../../by_moomiryu/Renewal_v1/left*.svg',
-    '../../by_moomiryu/Renewal_v1/right*.svg',
-    '../../by_moomiryu/Renewal_v1/eye_*.svg'
+    '../../by_moomiryu/Renewal_v1/Character/megafont/*.svg',
+    '../../by_moomiryu/Renewal_v1/Character/eye/*.svg'
   ],
   { query: '?raw', import: 'default', eager: true }
 ) as Record<string, string>;
+
+// 포즈와 눈이 서로 다른 폴더에 있으므로 경로째로는 못 찾는다. 파일 이름만
+// 남긴 표를 따로 짠다 — 부르는 쪽은 'front_left', 'eye_happy'만 알면 된다.
+const byName: Record<string, string> = {};
+for (const [path, raw] of Object.entries(files)) {
+  byName[path.slice(path.lastIndexOf('/') + 1, -'.svg'.length)] = raw;
+}
 
 export const POSES = [
   'front_center', 'front_left', 'front_right',
@@ -65,8 +72,7 @@ const EYE_PAIR = 206.06;
 const HAT_FILL = '#2ce9f7';
 
 const read = (name: string) =>
-  new DOMParser().parseFromString(files[`../../by_moomiryu/Renewal_v1/${name}.svg`], 'image/svg+xml')
-    .documentElement;
+  new DOMParser().parseFromString(byName[name], 'image/svg+xml').documentElement;
 
 /** `.cls-3 { fill: #cf5b4c }` 같은 내부 스타일을 클래스→색 표로 바꾼다 */
 function fillTable(root: Element): Record<string, string> {

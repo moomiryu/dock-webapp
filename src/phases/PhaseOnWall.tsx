@@ -48,7 +48,7 @@ export default function PhaseOnWall({ onDone }: Props) {
 /**
  * 눈 하나.
  *
- * 도형은 작가의 것을 그대로 가져왔다 (`by_moomiryu/Renewal_v1/eye_general.svg`,
+ * 도형은 작가의 것을 그대로 가져왔다 (`by_moomiryu/Renewal_v1/Character/eye/eye_general.svg`,
  * `eye_twinkle.svg`). 화판이 412.12×172.43에 눈이 둘이라, 왼쪽 눈 한 짝만
  * 172.43 정사각으로 잘라 쓴다 — 좌표는 원본 그대로다(가운데 86.21, 반지름 86.21).
  *

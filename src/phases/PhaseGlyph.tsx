@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import BackButton from '../components/BackButton';
 import { fontMap, opticalFix, opticalStroke } from '../lib/palettes';
 import { foldLines } from '../lib/fit';
@@ -43,7 +43,28 @@ export default function PhaseGlyph({ text, initialTone, onBack, onNext }: Props)
   // 전문이 붉은 면 폭의 82%에 들어가되, 줄이 많아지면 높이가 먼저 걸린다.
   // 높이는 vh로 잰다 — cqh를 쓰려면 container-type: size가 필요한데, 그러면
   // 붉은 면이 제 내용으로 높이를 못 정해 글자 크기가 0으로 풀린다.
-  const size = `min(${(82 / longest).toFixed(1)}cqw, ${(52 / lines.length).toFixed(1)}vh, 44px)`;
+  const guess = `min(${(82 / longest).toFixed(1)}cqw, ${(52 / lines.length).toFixed(1)}vh, 44px)`;
+  /**
+   * 고른 카드의 견본은 **잰 폭**으로 채운다(2026-09-22).
+   *
+   * 위의 guess는 한 글자를 1em으로 치는 어림이라 — 03과 같은 문제 — 실제
+   * 자폭(0.5~0.8em)에서는 카드 폭의 35%만 썼다. 그린 것을 재서 카드 폭의
+   * 86%, 높이의 55%에 먼저 닿는 쪽으로 맞춘다. 자폭은 크기에 정비례하므로
+   * 한 번 재면 끝이고 1% 안의 흔들림은 버린다(PhaseTone과 같은 결).
+   */
+  const full = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = full.current;
+    if (!el) return;
+    const fs = parseFloat(getComputedStyle(el).fontSize);
+    const card = el.parentElement as HTMLElement;
+    if (!fs || !card) return;
+    const per = { w: el.offsetWidth / fs, h: el.offsetHeight / fs };
+    const next = Math.min((card.clientWidth * 0.86) / per.w, (card.clientHeight * 0.55) / per.h);
+    if (next > 0 && (fit === null || Math.abs(next - fit) / next > 0.01)) setFit(next);
+  });
+  const size = fit === null ? guess : `${fit.toFixed(1)}px`;
   // 고른 칸의 줄·칸만 남기고 나머지를 0으로 접는다 (0·1번 = 윗줄, 0·2번 = 왼칸)
   const grid: CSSProperties | undefined = at < 0 ? undefined : {
     gridTemplateColumns: at % 2 === 0 ? '1fr 0fr' : '0fr 1fr',
@@ -58,19 +79,21 @@ export default function PhaseGlyph({ text, initialTone, onBack, onNext }: Props)
       </div>
       <div className="z-ask">
         <h1>어떤 성격으로<br />말해볼까요?</h1>
-        {at < 0
-          ? <p>마음에 드는 것을 골라주세요.</p>
-          /* 머리줄의 뒤로가기는 **단계**를 되돌린다(한 줄로). 이 안의 걸음을
-             되돌리는 것은 다른 일이라 다른 자리에 다른 모양으로 둔다. */
-          : <button type="button" className="glyph-reset" onClick={() => setFont(null)}>다른 성격 보기</button>}
+        {at < 0 && <p>마음에 드는 것을 골라주세요.</p>}
       </div>
 
       <div className="style-cards" role="group" aria-label="성격 고르기" style={grid}>
+        {/* '다른 성격 보기'는 제목 밑에 혼자 서 있었다 — 무엇을 되무르는지와
+            떨어져 있어 독립된 버튼처럼 읽혔다. 되무를 대상(붉은 카드) 위에
+            올린다. 옷은 03의 '되돌리기'와 같다(반투명 알약, .tone-aux-btn) —
+            두 화면이 같은 자리에서 같은 손짓을 갖는다. 머리줄의 뒤로가기는
+            **단계**를 되돌리고, 이건 이 안의 걸음을 되돌린다. */}
+        {at >= 0 && <button type="button" className="glyph-reset" onClick={() => setFont(null)}>다른 성격 보기</button>}
         {STYLE_OPTIONS.map((s, i) => (
           <button key={s.val} type="button" className={'style-card ' + (at === i ? 'on' : '')}
             aria-pressed={at === i} aria-label={s.label} onClick={() => setFont(s.val)}>
             {at === i ? (
-              <div className="glyph-full-text" style={{
+              <div ref={full} className="glyph-full-text" style={{
                 fontFamily: fontMap[s.val],
                 fontSize: size,
                 '--optical-stroke': opticalStroke(s.val, 400),

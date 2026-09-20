@@ -58,7 +58,10 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
   const back = () => (idx === 0 ? onClose() : setIdx(idx - 1));
   const s = SLIDES[idx];
   return (
-    <div className="info-overlay" aria-label="메가폰트 소개">
+    /* 밤 장면일 때는 덮개 바닥까지 검정이다 — 삽화의 검정과 이어져야
+       바닥의 더운 기운이 그 위에 얹힌 한 겹으로 읽힌다(app.css · is-dark) */
+    <div className={'info-overlay' + (s.artClass === 'is-bleed' ? ' is-dark' : '')}
+      aria-label="메가폰트 소개">
       <div className="info-head">
         <BackButton label={idx === 0 ? '처음으로' : '이전 설명'} onClick={back} />
         <span>{idx + 1} / {SLIDES.length}</span>

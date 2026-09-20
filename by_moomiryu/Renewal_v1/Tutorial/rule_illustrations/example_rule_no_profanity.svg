@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 603" width="390" height="603" role="img" aria-labelledby="title description">
+<title id="title">비속어는 사용할 수 없어요</title>
+<desc id="description">붉은 말풍선 속 욕설을 뜻하는 기호 위에 청록색 금지 표시가 겹쳐 있고, 옆 캐릭터가 이를 바라봅니다.</desc>
+
+  <g id="profanity-speech-bubble">
+    <path fill="#cf5b4c" d="M48 160H283Q291 160 291 168V367Q291 375 283 375H250V389Q250 393 247 390L230 375H48Q40 375 40 367V168Q40 160 48 160Z"/>
+    <g id="symbolic-swearing" fill="#fff">
+      <path d="M106 247L100 281 M124 247L118 281 M94 257H130 M92 271H128" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
+      <polygon points="161.00,243.00 166.58,256.31 180.97,257.51 170.04,266.94 173.34,280.99 161.00,273.50 148.66,280.99 151.96,266.94 141.03,257.51 155.42,256.31"/>
+      <path d="M204 242H215L213 272H206Z"/>
+      <circle cx="209.5" cy="282" r="5.5"/>
+    </g>
+    <g id="prohibition-sign" fill="none" stroke="#2ce9f7" stroke-width="10">
+      <circle cx="162" cy="264" r="76"/>
+      <path d="M108.26 317.74L215.74 210.26"/>
+    </g>
+  </g>
+<g id="reference-character" transform="translate(10 30) scale(.9)">  <g>
+    <ellipse fill="#5a5580" cx="366.7" cy="498.2" rx="101.22" ry="12.26"/>
+    <circle fill="#2ce9f7" cx="335.04" cy="355.56" r="63.06"/>
+    <path fill="#2ce9f7" d="M398.11,355.57v126.12h0v10.41c0,3.37-2.73,6.1-6.1,6.1h-41.85c-3.37,0-6.1-2.73-6.1-6.1v-10.41c0-4.98-4.03-9.01-9.01-9.01s-9.01,4.03-9.01,9.01v10.41c0,3.37-2.73,6.1-6.1,6.1h-41.85c-3.37,0-6.1-2.73-6.1-6.1v-136.53h126.12Z"/>
+    <g>
+      <circle fill="#fff" cx="303.56" cy="348.46" r="22.65"/>
+      <circle fill="#2ce9f7" cx="298.68" cy="345.23" r="13.79"/>
+    </g>
+    <circle fill="#2ce9f7" cx="271.99" cy="391.98" r="14.81"/>
+  </g>
+</g>
+</svg>

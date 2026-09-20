@@ -1643,14 +1643,54 @@
    (2026-09-20) — 화판이 곧 의도한 화면이라 좁히면 구도가 작아진다. */
 /* 남은 높이를 받아 그 안에서 자른다. flex: 0 1 auto면 제 내용이 높이를
    정하는데, 그 내용이 603짜리 화판이라 칸이 넘쳐 아래가 통째로 없어진다. */
+/* 작가의 삽화는 **화면 끝까지** 간다. 제목·설명·버튼의 여백은 그대로 두고
+   삽화만 그 여백을 되물린다(2026-09-20).
+
+   그 전까지 is-wide는 장의 좌우 여백(--pad-x + --s1 = 24) 안에 들어 있었다.
+   그래서 화판 밖으로 나가도록 그려진 것이 **화면 끝에 닿기 전에** 잘렸다 —
+   Step 2 구경꾼이 x 366에서 세로로 뎅강 잘려 있었다(재서 확인: 삽화가
+   24~366, 화면은 0~390). 잘리는 자리는 화면 끝이어야 한다. */
 .info-art.is-bleed,
-.info-art.is-wide{ aspect-ratio: auto; padding: 0; flex: 1 1 0; min-height: 0; width: 100%; }
+.info-art.is-wide{
+  aspect-ratio: auto; padding: 0; flex: 1 1 0; min-height: 0;
+  align-self: stretch; width: auto;
+  margin-inline: calc((var(--pad-x) + var(--s1)) * -1);
+}
 /* 가장자리까지 나가려면 덮개(--pad-x)와 장(--s1) 두 겹의 여백을 되물린다.
    그러고도 흰 띠가 남았다: About의 검은 판이 제 화판(416) 안에서 x 15~405만
    차지해서, 390 화면에서 왼쪽 14px·오른쪽 10px이 비쳤다. 그림을 잘라 내는
    대신(그러면 가장자리로 흘러나간 두 그림자가 잘린다) 자리에 같은 검정을
    깔아 이음매를 없앤다 — 판의 검정도 순검정이라 경계가 안 보인다. */
-.info-art.is-bleed{ align-self: stretch; margin-inline: calc((var(--pad-x) + var(--s1)) * -1); width: auto; background: var(--ink); }
+.info-art.is-bleed{ background: var(--night); }
+
+/* ── About의 밤은 화면 맨 아래까지 간다 ──────────────────────────────
+   검정이 삽화 칸에서 끝나면(y 724) 그 아래 120px이 흰 종이로 남고, 거기에
+   바닥의 더운 기운이 얹혀 **검정과 분홍이 따로 노는 두 층**으로 보였다.
+   밤은 발밑까지 이어져야 하고, 기운은 그 위에 얹혀야 한다.
+
+   삽화 칸을 늘리는 대신 덮개 바닥에 같은 검정을 깐다 — 칸을 늘리려면
+   .info-track의 잘라내기를 풀어야 하는데, 그건 한 장이 한 쪽보다 길어질 때
+   글이 버튼 위로 삐져나오지 말라고 걸어 둔 것이다.
+
+   띠의 높이는 삽화 칸 아래에 있는 것들의 합이다. 삽화는 남은 자리를 다
+   받으므로(flex: 1 1 0) 그 아래는 늘 이 넷뿐이다:
+     장의 아래 여백(--s7) + 덮개의 사이(--s3) + 버튼(--btn-xl) + 덮개의 아래 여백
+   층은 기운(::after, 1)과 버튼(2) 아래다. */
+.info-overlay.is-dark::before{
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: calc(var(--s7) + var(--s3) + var(--btn-xl) + max(var(--s6), env(safe-area-inset-bottom, 0px)));
+  background: var(--night);
+  pointer-events: none;
+}
+@media (max-height: 700px){
+  /* 짧은 화면에서는 장의 위아래 여백이 한 칸 좁다(--s5) */
+  .info-overlay.is-dark::before{
+    height: calc(var(--s5) + var(--s3) + var(--btn-xl) + max(var(--s6), env(safe-area-inset-bottom, 0px)));
+  }
+}
 
 /* ── 작가의 삽화는 **줄이지 않고 자른다** (2026-09-20) ────────────────
    작가가 `Artboard size_*.pdf`로 기준을 줬다. 그 페이지 크기가 정확히

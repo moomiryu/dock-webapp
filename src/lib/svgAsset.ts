@@ -42,16 +42,33 @@ function normalizeD(d: string): string | null {
   const t = d.match(/[A-Za-z]|-?\d*\.?\d+(?:e[-+]?\d+)?/g) ?? [];
   let i = 0, cx = 0, cy = 0, sx = 0, sy = 0, cmd = '';
   /* 직전 곡선의 **두 번째 손잡이**. s(부드러운 곡선)는 그것을 거울처럼
-     뒤집어 제 첫 손잡이로 쓴다. 곡선이 아니었으면 지금 점이 그 자리다. */
+     뒤집어 제 첫 손잡이로 쓴다. 곡선이 아니었으면 지금 점이 그 자리다.
+     q(2차 곡선)의 손잡이는 따로 센다 — t가 그것을 뒤집어 쓴다. */
   let bx = 0, by = 0, curved = false;
+  let qx = 0, qy = 0, quad = false;
   const out: string[] = [];
   const num = () => Number(t[i++]);
   const to = (x: number, y: number, c: 'M' | 'L') => {
-    out.push(`${c}${r2(x)},${r2(y)}`); cx = x; cy = y; curved = false;
+    out.push(`${c}${r2(x)},${r2(y)}`); cx = x; cy = y; curved = false; quad = false;
   };
   const curve = (ax: number, ay: number, dx: number, dy: number, x: number, y: number) => {
     out.push(`C${r2(ax)},${r2(ay)} ${r2(dx)},${r2(dy)} ${r2(x)},${r2(y)}`);
-    bx = dx; by = dy; cx = x; cy = y; curved = true;
+    bx = dx; by = dy; cx = x; cy = y; curved = true; quad = false;
+  };
+  /**
+   * 2차 곡선을 3차로 바꾼다. 손잡이 하나를 셋 중 둘로 나누어 놓는 것인데,
+   * 같은 곡선이 정확히 나온다(근사가 아니다).
+   *
+   * 홈 캐릭터의 **다리**가 Q를 쓴다. 2026-09-20까지 여기서 null로 물러났고,
+   * 그 바람에 다리의 겉넓이를 못 재어 몸을 자르는 자리가 Infinity가 됐다 —
+   * 인물의 몸이 통째로 사라졌다.
+   */
+  const quadTo = (ax: number, ay: number, x: number, y: number) => {
+    const x0 = cx, y0 = cy;
+    qx = ax; qy = ay;
+    curve(x0 + (2 / 3) * (ax - x0), y0 + (2 / 3) * (ay - y0),
+      x + (2 / 3) * (ax - x), y + (2 / 3) * (ay - y), x, y);
+    quad = true;
   };
   while (i < t.length) {
     if (/[A-Za-z]/.test(t[i])) cmd = t[i++];
@@ -83,7 +100,22 @@ function normalizeD(d: string): string | null {
         const ax = curved ? 2 * cx - bx : cx, ay = curved ? 2 * cy - by : cy;
         curve(ax, ay, x0 + num(), y0 + num(), x0 + num(), y0 + num()); break;
       }
-      case 'Z': case 'z': out.push('Z'); cx = sx; cy = sy; curved = false; break;
+      /* 2차 곡선. 다리가 이것으로 그려져 있다. */
+      case 'Q': { const a = num(), b = num(), x = num(), y = num(); quadTo(a, b, x, y); break; }
+      case 'q': {
+        const x0 = cx, y0 = cy;
+        quadTo(x0 + num(), y0 + num(), x0 + num(), y0 + num()); break;
+      }
+      case 'T': {
+        const ax = quad ? 2 * cx - qx : cx, ay = quad ? 2 * cy - qy : cy;
+        quadTo(ax, ay, num(), num()); break;
+      }
+      case 't': {
+        const x0 = cx, y0 = cy;
+        const ax = quad ? 2 * cx - qx : cx, ay = quad ? 2 * cy - qy : cy;
+        quadTo(ax, ay, x0 + num(), y0 + num()); break;
+      }
+      case 'Z': case 'z': out.push('Z'); cx = sx; cy = sy; curved = false; quad = false; break;
       default: return null;
     }
   }
@@ -649,6 +681,27 @@ const RIG = { left: 17.13, width: 332.21, hipX: 183.23, hipY: 449, footY: 541.81
 /** 다리는 몇 프레임마다 한 장씩 쓸지 */
 const LEG_STEP = 3;
 
+/**
+ * 다리가 시작하는 높이. 몸을 자르는 자리(CLIP_H)보다 **아래**다.
+ *
+ * 451에서 자르는데 다리는 453부터 그려져서, 그 2단위가 아무것도 없는 틈으로
+ * 남았다. 홈에서는 인물이 56px이라 0.2px이라 안 보이지만, 소개 화면의 Step 3
+ * 인물은 205px이라 허리에 **흰 선 한 줄**로 드러났다. 자르는 자리를 다리
+ * 맨 위보다 한 단위 더 내려 겹쳐 준다 — 겹치는 한 단위는 몸도 다리도 같은
+ * 색이고 그 높이에서는 둘 다 폭이 같아서 보이지 않는다.
+ *
+ * 수치를 적어 두지 않고 그림에서 읽는다. 작가가 다리를 다시 그리면 이 값이
+ * 먼저 낡는다.
+ */
+const LEG_TOP = Math.min(
+  ...[WALK.farRest, WALK.nearRest].flatMap((raw) => {
+    // 먼저 절대좌표 x,y 짝으로 편다. 원본은 v·h·c가 섞여 있어 홀짝으로
+    // 세면 x를 y로 읽는다 — 그렇게 읽었더니 틈이 그대로 남았다.
+    const d = normalizeD(raw);
+    return d ? (d.match(/-?\d*\.?\d+/g) ?? []).map(Number).filter((_, i) => i % 2 === 1) : [];
+  })
+);
+
 interface Rig { tx: number; ty: number; s: number; r: number; cx: number; cy: number }
 
 /**
@@ -686,6 +739,18 @@ function entryDx(vb: number[], box: { x: number; y: number; w: number; h: number
   return box.x + box.w / 2 < vb[0] + vb[2] / 2
     ? r2(-(box.x + box.w - vb[0] + margin))
     : r2(vb[0] + vb[2] - box.x + margin);
+}
+
+/** 제 변환까지 먹인 한가운데. 잣대 손잡이는 돌려서 놓여 있어 bbox만으로는 모자란다 */
+function centreOf(it: Item): [number, number] | null {
+  const b = boxOf(it);
+  if (!b) return null;
+  const c: [number, number] = [b.x + b.w / 2, b.y + b.h / 2];
+  const tf = transformOf(it.el);
+  if (!tf) return c;
+  const r = (tf.rotate[0] * Math.PI) / 180, co = Math.cos(r), si = Math.sin(r);
+  const x = c[0] * tf.scale[0], y = c[1] * tf.scale[1];
+  return [tf.translate[0] + x * co - y * si, tf.translate[1] + x * si + y * co];
 }
 
 /** 그 인물의 몸이 차지하는 칸 */
@@ -732,8 +797,20 @@ function walkIn(root: Element, els: Item[], g: Rig, key: string, seg: [number, n
     bobs: string[] = [], tilts: string[] = [], xs: string[] = [];
   const hip = [g.tx + RIG.hipX * g.s, g.ty + RIG.hipY * g.s];
   const total = laps * each;
+
+  /* 마지막 걸음에서 **속도를 줄인다.**
+     한 걸음 한 걸음에 드는 시간을 뒤로 갈수록 길게 준다. 시간표가 다리·몸·
+     자리 셋에 공통이라, 늘린 만큼 걸음도 같이 느려진다 — 몸만 멎고 발은
+     제 박자로 도는 어긋남이 생길 수 없다.
+     같은 자리에 멈추는 것은 그대로다. 마지막 표본이 0프레임(선 자세)이고
+     그 뒤로 그 자세가 이어지므로, 발이 굳거나 튀는 자리가 없다. */
+  const weight = (k: number) => 1 + 0.7 * Math.max(0, (k / total - 0.75) / 0.25);
+  const span01: number[] = [0];
+  for (let k = 1; k <= total; k++) span01.push(span01[k - 1] + weight(k));
+  const stretch = span01[total];
+
   for (let k = 0; k <= total; k++) {
-    const at = a + ((b - a) * k) / total;
+    const at = a + ((b - a) * span01[k]) / stretch;
     const f = ((k % each) * LEG_STEP) % (frames - 1);
     times.push(at);
     legFar.push(far[f]); legNear.push(near[f]);
@@ -775,7 +852,11 @@ function walkIn(root: Element, els: Item[], g: Rig, key: string, seg: [number, n
 
   // 다리 — 홈의 그 다리다
   const legs = make('g');
-  legs.setAttribute('transform', `translate(${r2(g.tx)},${r2(g.ty)}) scale(${r2(g.s)})`);
+  /* 배율만은 소수점 둘째 자리로 자르면 안 된다. 0.35785를 0.36으로 읽으면
+     453단위 아래에서 2.7단위(화면 1px)가 어긋나 허리에 흰 선이 생긴다 —
+     실제로 그랬다(클립 아래 584.6px · 다리 맨 위 585.2px). 자리는 둘째
+     자리로 충분하지만 배율은 곱해지는 값이라 오차도 같이 곱해진다. */
+  legs.setAttribute('transform', `translate(${r2(g.tx)},${r2(g.ty)}) scale(${g.s.toFixed(5)})`);
   const skin = body.find((it) => it.tag === 'path')?.fill ?? '#000';
   for (const [d, vals] of [[WALK.farRest, legFar], [WALK.nearRest, legNear]] as Array<[string, string[]]>) {
     const leg = make('path');
@@ -792,7 +873,7 @@ function walkIn(root: Element, els: Item[], g: Rig, key: string, seg: [number, n
   const rect = make('rect');
   rect.setAttribute('x', r2(g.tx - g.r) + ''); rect.setAttribute('y', r2(g.ty - g.r) + '');
   rect.setAttribute('width', r2(RIG.width * g.s + g.r * 2) + '');
-  rect.setAttribute('height', r2(CLIP_H * g.s + g.r) + '');
+  rect.setAttribute('height', r2(Math.max(CLIP_H, LEG_TOP + 1) * g.s + g.r) + '');
   clip.appendChild(rect);
   (root.querySelector('defs') ?? root.insertBefore(make('defs'), root.firstChild)).appendChild(clip);
 
@@ -802,7 +883,203 @@ function walkIn(root: Element, els: Item[], g: Rig, key: string, seg: [number, n
   put2(trunk, 'animateTransform', { attributeName: 'transform', type: 'rotate', additive: 'sum', values: tilts.join(';') });
   for (const it of body) trunk.appendChild(it.el);
   outer.appendChild(trunk);
+
+  /* ── 멈출 때는 **작가가 그린 그 자세**로 선다 ────────────────────────
+     걸음의 0프레임도 선 자세이긴 하지만 작가가 그린 발 모양과 같지는 않다.
+     서 있는 그림이 이미 파일에 있는데(example_about_2) 그것을 안 쓰고
+     걸음의 한 프레임으로 서 있으면, 멈춘 자세가 그림과 어긋난다.
+
+     그래서 도착하는 자리에서 **갈아 끼운다.** 걷는 동안에는 움직이는 다리를,
+     멈춘 뒤에는 작가의 몸을 통째로 보여준다. 갈아 끼우는 자리는 다리와
+     잘린 몸통 **사이**다 — 작가의 몸이 다리를 덮고, 잘린 몸통(머리·눈까지
+     들었다)은 그 위에 그대로 남는다. 허리 위는 두 몸이 같은 모양·같은
+     색이라 겹쳐도 보이지 않는다. */
+  const hipY = g.ty + Math.max(CLIP_H, LEG_TOP + 1) * g.s;
+  const lower = body.find((it) => {
+    const bb = boxOf(it);
+    return !!bb && bb.y + bb.h > hipY + g.r * 0.1;
+  });
+  if (lower) {
+    const still = lower.el.cloneNode(true) as Element;
+    outer.insertBefore(still, trunk);
+    const swap = `0;${r2(Math.max(0, b - 0.015))};${r2(b)};1`;
+    const fade = (el: Element, values: string) => {
+      const n = make('animate');
+      n.setAttribute('attributeName', 'opacity');
+      n.setAttribute('values', values);
+      n.setAttribute('keyTimes', swap);
+      n.setAttribute('calcMode', 'linear');
+      n.setAttribute('dur', `${dur}s`);
+      n.setAttribute('repeatCount', 'indefinite');
+      el.appendChild(n);
+    };
+    fade(still, '0;0;1;1');
+    fade(legs, '1;1;0;0');
+  }
   return outer;
+}
+
+
+/* ═══ 폰을 홈에 꽂기 ═══════════════════════════════════════════════════
+   작가는 폰과 홈을 **같은 네모 하나**로 그렸다. 손에 들렸을 때는 검정으로
+   세워 두고, 홈에 들어가면 기기의 빨강으로 눕혀 둔다(재서 확인: 셋 다
+   42.16×13.21, 컷 2만 #0d0d0d이고 자세가 90도 다르다).
+
+   색이 다르면 짝이 되지 않는다. 그냥 두면 손의 검은 폰이 사라지고 홈의
+   빨간 네모가 나타나 — 자세가 270도 떨어져 있어서 **한 바퀴 도는 것처럼**
+   읽힌다. 하나로 묶어 짧은 쪽으로 90도만 돌린다. 손목이 도는 만큼이다.
+
+   꽂는 것은 두 걸음이다. 홈에 **맞춰 대고**(돌리며 이동), 그다음 **그대로
+   밀어 넣는다**(돌지 않고 제 축으로만). 밀려 들어간 만큼은 오려 내어
+   가린다 — 기기 뒤로 보내지 않는 이유는, 손에 들려 있는 동안에는 폰이
+   사람보다 앞이어야 하기 때문이다.
+
+   색은 들어가는 그 순간에 바뀐다. 손에 있을 때 검정, 꽂히면 빨강. */
+
+/** 밀어 넣는 깊이 — 폰 길이에 대한 비율 */
+const DOCK_DEEP = 0.55;
+/**
+ * 손이 폰을 따라가는 몫.
+ *
+ * 작가의 손은 몸통 옆에 붙은 작은 혹이다 — 팔이 아니라서 멀리 못 간다.
+ * 절반(0.5)을 줬더니 폰을 따라 몸에서 **떨어져 나가** 허공에 동그라미가
+ * 하나 떴다. 폰이 가는 거리의 6분의 1쯤이면 팔을 뻗는 것으로 읽히고
+ * 몸에서는 안 떨어진다.
+ */
+const HAND_FOLLOW = 0.17;
+
+/**
+ * 손에 든 폰을 홈에 꽂는다.
+ *
+ * @param home 기기 쪽 자세(작가가 홈에 눕혀 둔 것) — 이 요소가 폰이 된다
+ * @param held 손에 든 자세(다른 컷에 있던 같은 네모)
+ * @param hand 함께 움직일 손. 없으면 폰만 간다
+ * @param at   손에 들려 있는 컷 번호들
+ */
+function dockPhone(root: Element, home: Item, held: Item, hand: Item | null,
+  order: number[], at: Set<number>, t: { at: number[] }, dur: number) {
+  const A = transformOf(home.el), B = transformOf(held.el);
+  const box = boxOf(home);
+  if (!A || !B || !box || t.at.length < 10) return false;
+
+  /* 돌아가는 길을 짧은 쪽으로. 102도에서 -168도로 가면 270도를 도는데,
+     같은 자세인 192도로 적으면 90도만 돌면 된다. */
+  let turn = A.rotate[0];
+  while (turn - B.rotate[0] > 180) turn -= 360;
+  while (turn - B.rotate[0] < -180) turn += 360;
+
+  /* 네모의 한가운데. translate와 rotate는 **따로** 보간되므로, 자세가
+     도는 동안 translate만 곧게 이으면 네모의 한가운데가 엉뚱한 호를 그린다
+     (재서 확인: 손 (169,490)에서 홈 (192,481)로 가는데 중간이 (103,437)
+     이었다 — 화면 왼쪽 위로 크게 튀어 나갔다).
+     그래서 **한가운데를 곧게 끌고**, 자세는 그 한가운데를 지키도록 매
+     걸음마다 거꾸로 계산해 넣는다. */
+  const c: [number, number] = [box.x + box.w / 2, box.y + box.h / 2];
+  const at2 = (deg: number, mid: [number, number]): [number, number] => {
+    const r = (deg * Math.PI) / 180, co = Math.cos(r), si = Math.sin(r);
+    return [mid[0] - (c[0] * co - c[1] * si), mid[1] - (c[0] * si + c[1] * co)];
+  };
+  const midOf = (tr: number[], deg: number): [number, number] => {
+    const r = (deg * Math.PI) / 180, co = Math.cos(r), si = Math.sin(r);
+    return [tr[0] + c[0] * co - c[1] * si, tr[1] + c[0] * si + c[1] * co];
+  };
+
+  const held0 = midOf(B.translate, B.rotate[0]);     // 손에 들린 한가운데
+  const slot = midOf(A.translate, turn);             // 홈에 댄 한가운데
+  // 꽂히는 축 = 네모의 긴 축. 그 방향으로 제 길이의 절반쯤 들어간다.
+  const long = Math.max(box.w, box.h);
+  const rad = (turn * Math.PI) / 180;
+  const deep: [number, number] = [slot[0] - Math.cos(rad) * long * DOCK_DEEP,
+    slot[1] - Math.sin(rad) * long * DOCK_DEEP];
+
+  const xy = (v: number[]) => `${r2(v[0])} ${r2(v[1])}`;
+  const rot = (deg: number) => `${r2(deg)} ${r2(A.rotate[1])} ${r2(A.rotate[2])}`;
+
+  /** 한가운데와 자세를 곧게 이으며 여러 걸음으로 나눈다 */
+  const STEPS = 6;
+  const times: number[] = [], moves: string[] = [], turns: string[] = [], hands: string[] = [];
+  const add = (time: number, mid: [number, number], deg: number) => {
+    times.push(time);
+    moves.push(xy(at2(deg, mid)));
+    turns.push(rot(deg));
+    hands.push(xy([(mid[0] - held0[0]) * HAND_FOLLOW, (mid[1] - held0[1]) * HAND_FOLLOW]));
+  };
+  const glide = (t0: number, t1: number, m0: [number, number], m1: [number, number], d0: number, d1: number, from = 1) => {
+    for (let i = from; i <= STEPS; i++) {
+      const u = i / STEPS;
+      add(t0 + (t1 - t0) * u, [m0[0] + (m1[0] - m0[0]) * u, m0[1] + (m1[1] - m0[1]) * u], d0 + (d1 - d0) * u);
+    }
+  };
+
+  const k = t.at;
+  const align = k[3] + (k[4] - k[3]) * 0.55;       // 홈에 맞춰 대기까지
+  const pull = k[5] + (k[6] - k[5]) * 0.45;        // 되돌아 빼내기
+  add(k[0], held0, B.rotate[0]);
+  add(k[1], held0, B.rotate[0]);
+  add(k[2], held0, B.rotate[0]);
+  add(k[3], held0, B.rotate[0]);
+  glide(k[3], align, held0, slot, B.rotate[0], turn);      // ① 맞춰 댄다
+  add(k[4], deep, turn);                                   // ② 그대로 밀어 넣는다
+  add(k[5], deep, turn);
+  add(pull, slot, turn);                                   // 빼낸다
+  glide(pull, k[6], slot, held0, turn, B.rotate[0]);       // 손으로 되돌아온다
+  add(k[7], held0, B.rotate[0]);
+  add(k[8], held0, B.rotate[0]);
+  add(1, held0, B.rotate[0]);
+
+  const kt = times.map((x) => r2(x)).join(';');
+  const put3 = (el: Element, tag: string, attrs: Record<string, string>, keyTimes = kt, n = times.length) => {
+    const node = el.ownerDocument.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const [key, v] of Object.entries(attrs)) node.setAttribute(key, v);
+    node.setAttribute('keyTimes', keyTimes);
+    node.setAttribute('calcMode', 'spline');
+    node.setAttribute('keySplines', Array(n - 1).fill('0.4 0 0.2 1').join(';'));
+    node.setAttribute('dur', `${dur}s`);
+    node.setAttribute('repeatCount', 'indefinite');
+    el.appendChild(node);
+  };
+
+  home.el.removeAttribute('transform');
+  home.el.setAttribute('fill', held.fill);
+  put3(home.el, 'animateTransform', { attributeName: 'transform', type: 'translate', values: moves.join(';') });
+  put3(home.el, 'animateTransform', { attributeName: 'transform', type: 'rotate', additive: 'sum', values: turns.join(';') });
+
+  /* 폰은 사람의 것이다. 사람이 오기 전에는 없다. 걸어 들어오는 동안
+     반투명하면 스며 나온 것이 되므로 걸음이 시작되는 자리에서 한 번에 켠다. */
+  const first = Math.min(...[...at]);
+  const gone = order.map((cut, i) => (cut < first && !at.has(cut) ? i : -1)).filter((i) => i >= 0);
+  put3(home.el, 'animate', { attributeName: 'opacity', values: '0;0;1;1;0' },
+    `0;${r2(k[1])};${r2(Math.min(k[1] + 0.01, k[2]))};${r2(k[gone.length ? gone[gone.length - 1] * 2 : 8])};1`, 5);
+
+  /* 색은 꽂히는 순간에 바뀐다. 손에 있을 때 검정, 홈에 들어가면 기기의 빨강. */
+  put3(home.el, 'animate', { attributeName: 'fill', values: `${held.fill};${held.fill};${home.fill};${home.fill};${held.fill}` },
+    `0;${r2(align)};${r2(k[4])};${r2(pull)};1`, 5);
+
+  /* 들어간 만큼 가린다. 홈에 다 댔을 때의 앞 끝에 벽을 세우고 그 앞쪽만
+     남긴다 — 밀려 들어갈수록 벽을 넘은 부분이 사라진다. */
+  const tip = slot[0] + Math.abs(Math.cos(rad)) * long * 0.5;
+  const doc = root.ownerDocument;
+  const NS = 'http://www.w3.org/2000/svg';
+  const clip = doc.createElementNS(NS, 'clipPath');
+  const id = `mf-slot-${r2(Math.abs(tip))}`;
+  clip.setAttribute('id', id);
+  clip.setAttribute('clipPathUnits', 'userSpaceOnUse');
+  const wall = doc.createElementNS(NS, 'rect');
+  wall.setAttribute('x', r2(tip - 4000) + '');
+  wall.setAttribute('y', '-4000');
+  wall.setAttribute('width', '4000');
+  wall.setAttribute('height', '8000');
+  clip.appendChild(wall);
+  (root.querySelector('defs') ?? root.insertBefore(doc.createElementNS(NS, 'defs'), root.firstChild)).appendChild(clip);
+  home.el.setAttribute('clip-path', `url(#${id})`);
+
+  // 손은 폰과 함께 간다. 팔이 늘어나는 만큼이라 절반쯤이다.
+  if (hand) {
+    put3(hand.el, 'animateTransform', {
+      attributeName: 'transform', type: 'translate', additive: 'sum', values: hands.join(';')
+    });
+  }
+  return true;
 }
 
 /**
@@ -858,6 +1135,10 @@ export function chainSvg(raws: string[], key: string, dur = 11): string {
     }
 
     let moved = 0;
+    /* 잣대 손잡이가 컷마다 얼마나 옮겨 갔는지 모아 둔다 — 그 손잡이를
+       잡고 있는 손이 같은 박자로 따라가야 하기 때문이다(아래 handOn). */
+    const drag: Array<[number, number]> = order.map(() => [0, 0]);
+    let draggers = 0;
     for (const a of items[0]) {
       const per = order.map((k) => of[k].get(a.el));
       /* 그 컷에 없으면 제일 가까운 컷의 모습을 빌려 온다 — 물러나 있는
@@ -884,6 +1165,44 @@ export function chainSvg(raws: string[], key: string, dur = 11): string {
         }
       }
       if (animateTransformSeq(a.el, per.map((x, i) => transformOf((x ?? near(i)).el)), t, dur)) moved++;
+
+      // 손잡이 = 컷마다 자리를 옮기는 작은 네모
+      const ab = boxOf(a);
+      if (a.tag !== 'rect' || !ab || Math.max(ab.w, ab.h) > 26) continue;
+      const c0 = centreOf(a);
+      if (!c0) continue;
+      const cs = per.map((x, i) => centreOf(x ?? near(i)) ?? c0);
+      if (!cs.some((c) => Math.hypot(c[0] - c0[0], c[1] - c0[1]) > 0.5)) continue;
+      draggers++;
+      cs.forEach((c, i) => { drag[i][0] += c[0] - c0[0]; drag[i][1] += c[1] - c0[1]; });
+    }
+
+    /* ── 잣대를 잡은 손 ─────────────────────────────────────────────
+       Step 2는 캐릭터가 제 발화를 **직접 다듬는** 장면이다. 손이 가만히
+       있으면 잣대가 저절로 움직이는 것으로 보인다. 손잡이들이 옮겨 간
+       평균만큼, 같은 시간표 위에서 손도 따라간다 — 따로 흔드는 것이 아니라
+       잣대·글자와 한 박자로 움직여야 '내가 만지고 있다'가 된다.
+
+       손은 몸통 옆에 붙은 작은 혹이라 멀리 못 간다. 제일 크게 옮겨 간
+       컷에서 머리 반지름의 5분의 1쯤 움직이도록 몫을 맞춘다. */
+    if (draggers) {
+      const far = Math.max(...drag.map((d) => Math.hypot(d[0], d[1]) / draggers));
+      for (const head of items[0]) {
+        const rg = rigOf(head, items[0]);
+        if (!rg || far < 0.01) continue;
+        const nub = items[0]
+          .map((x) => ({ x, c: centreOf(x), b: boxOf(x) }))
+          .filter((o) => o.x.tag === 'circle' && o.c && o.b && o.b.w < rg.r
+            && Math.hypot(o.c[0] - rg.cx, o.c[1] - rg.cy) > rg.r)
+          .sort((m, n) => Math.hypot(m.c![0] - rg.cx, m.c![1] - rg.cy) - Math.hypot(n.c![0] - rg.cx, n.c![1] - rg.cy))[0];
+        if (!nub) continue;
+        const k = (rg.r * 0.2) / far / draggers;
+        put(nub.x.el, 'animateTransform', {
+          attributeName: 'transform', type: 'translate', additive: 'sum',
+          values: doubled(drag.map((d) => `${r2(d[0] * k)} ${r2(d[1] * k)}`)).join(';'),
+          keyTimes: t.keyTimes, keySplines: t.keySplines, calcMode: 'spline', dur: `${dur}s`
+        });
+      }
     }
     if (!moved) { markEyes(base); return scopeSvg(new XMLSerializer().serializeToString(base), key); }
 
@@ -899,12 +1218,15 @@ export function chainSvg(raws: string[], key: string, dur = 11): string {
       const copy = cloneInto(base, g.item.el, null);
       planted.push({ it: itemOf(copy), at: g.at });
     }
+    const rest = [...planted];
 
     /* 첫 컷에 없던 것 가운데 **사람**이 있으면 밝기로 나타나지 않고 걸어
        들어온다. Step 3이 그렇다 — 메가폰트만 서 있다가 누가 걸어와 폰을
        꽂는다. 걷는 구간은 첫 컷에서 둘째 컷으로 가는 동안이다. */
     const vbn = (base.getAttribute('viewBox') ?? '').split(/[ ,]+/).map(Number);
-    const rest = [...planted];
+    const crew: Item[] = [];
+    /** 걸어 들어온 사람이 서 있는 컷들 — 폰도 같은 컷에 있다 */
+    const crewAt = new Set<number>();
     if (vbn.length === 4) {
       for (const { it } of planted) {
         const rg = rigOf(it, planted.map((x) => x.it));
@@ -914,7 +1236,12 @@ export function chainSvg(raws: string[], key: string, dur = 11): string {
         const outer = walkIn(base, mine.map((x) => x.it), rg, key,
           [t.at[1], t.at[2]], entryDx(vbn, rigBox(rg)), dur);
         if (!outer) continue;
-        for (const x of mine) { const k = rest.indexOf(x); if (k >= 0) rest.splice(k, 1); }
+        for (const x of mine) {
+          const i = rest.indexOf(x);
+          if (i >= 0) rest.splice(i, 1);
+          crew.push(x.it);
+          for (const c of x.at) crewAt.add(c);
+        }
         /* 걷는 동안 반투명하면 걸어오는 것이 아니라 스며 나오는 것이 된다.
            걸음이 시작되는 자리에서 한 번에 켜고, 장면이 처음으로 돌아갈 때
            끈다 — 돌아가는 길에 뒷걸음질을 시키지 않으려고 걷지 않고 진다. */
@@ -926,6 +1253,35 @@ export function chainSvg(raws: string[], key: string, dur = 11): string {
         });
       }
     }
+
+    /* 색만 다르고 덩치가 같은 짝이 있으면 **같은 물건이 색을 갈아입은
+       것**이다. 손의 검은 폰과 홈의 빨간 네모가 그렇다. 하나로 묶어 꽂는다.
+       사람을 세운 **뒤에** 찾는다 — 먼저 찾으면 함께 움직일 손을 첫 컷에서
+       고르게 되는데, 거기엔 사람이 없어서 메가폰트의 눈이 손으로 뽑혔다. */
+    /* 폰은 사람의 손에 들려 함께 걸어 들어오므로, 걷는 무리에 섞여 있다.
+       두 목록을 다 뒤진다 — 무리 쪽에 있으면 그대로 두고 그 자리에서
+       꽂는다(무리의 변환은 도착 뒤 항등이라 좌표가 어긋나지 않는다). */
+    for (const g of [...rest, ...crew.map((it) => ({ it, at: new Set<number>() }))]) {
+      const gb = boxOf(g.it);
+      if (g.it.tag === 'path' || !gb) continue;
+      const twin = items[0].find((x) => x.tag === g.it.tag && x.size === g.it.size
+        && x.fill !== g.it.fill
+        && (x.el.getAttribute('transform') ?? '') !== (g.it.el.getAttribute('transform') ?? ''));
+      if (!twin) continue;
+      // 함께 움직일 손 = 걸어 들어온 사람의 조각 가운데 폰에 제일 가까운 작은 동그라미
+      const hand = crew
+        .map((x) => ({ x, b: boxOf(x) }))
+        .filter((o) => o.x.tag === 'circle' && o.b && o.b.w < gb.w * 1.2)
+        .sort((m, n) => Math.hypot(m.b!.x - gb.x, m.b!.y - gb.y) - Math.hypot(n.b!.x - gb.x, n.b!.y - gb.y))[0];
+      /* 손에 들린 컷이 어느 것인지는 같이 걸어 들어온 무리가 안다 */
+      const at = g.at.size ? g.at : new Set(crewAt);
+      if (!dockPhone(base, twin, g.it, hand?.x ?? null, order, at, t, dur)) continue;
+      g.it.el.parentNode?.removeChild(g.it.el);
+      const i = rest.indexOf(g as { it: Item; at: Set<number> });
+      if (i >= 0) rest.splice(i, 1);
+      break;
+    }
+
     for (const { it, at } of rest) {
       animateSeq(it.el, 'opacity', order.map((k) => (at.has(k) ? '1' : '0')), t, dur);
     }

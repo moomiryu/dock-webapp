@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import BackButton from '../components/BackButton';
 import { MANNER, fontMap, hasWeightAxis, opticalFix, opticalStroke, variationFor } from '../lib/palettes';
 import { DEFAULT_TONE, type PartialTone } from '../lib/tone';
@@ -215,8 +215,44 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
     /** 지금 견본에 보이는 것. '원본'을 누르고 있는 동안만 다듬기 전이 선다 */
     const shown = compare ? { ...DEFAULT_TONE, font: tone.font } : tone;
     const fill = shown.size / 60;
-    const byLine = ((USE.w / longest) * fill / Math.max(1, shown.tone)).toFixed(2);
-    const byHeight = ((USE.h / (lines.length * STAGE_LH)) * fill).toFixed(2);
+    /**
+     * 제일 긴 줄이 **글자 크기 1px당 몇 px인가.** 재서 안다.
+     *
+     * 여기 있던 계산은 한 글자를 1em으로 쳤다(USE.w / 글자수). 실제로는
+     * 재 보니 0.51~0.81em이라 — 서체마다 다르다 — '아주 크게'가 칸의
+     * 44~69%밖에 안 썼고, 같은 '아주 크게'인데 당당한과 다정한이 한눈에
+     * 다른 크기였다(390 화면 실측: 153px 대 243px).
+     *
+     * 자폭은 서체만이 아니라 **말투(가변 축)와 무게와 글자 자체**가 정한다.
+     * 넷을 표로 들고 있으면 서체가 갈릴 때마다 그 표가 낡는다 — 실제로
+     * 2026-09-20에 서체 넷이 통째로 갈렸다. 그래서 적어 두지 않고 그려진
+     * 것을 잰다. 자폭은 크기에 정비례하므로 한 번 재면 끝이고(1px당 값),
+     * 1%보다 적게 달라진 재기는 버려서 다시 그리지 않는다.
+     */
+    const glyph = useRef<HTMLDivElement>(null);
+    const optic = opticalFix[shown.font]?.scale ?? 1;
+    const [run, setRun] = useState<{ w: number; h: number } | null>(null);
+    useLayoutEffect(() => {
+        const el = glyph.current;
+        if (!el) return;
+        /* **바탕 크기**로 나눈다. 최종 크기에는 서체별 잉크 보정(optic)이
+           이미 곱해져 있는데, 아래 계산은 그 보정을 곱하기 **전**의 값을
+           내놓기 때문이다. 같은 자리에서 재야 셈이 딱 맞는다. */
+        const base = parseFloat(getComputedStyle(el).fontSize) / optic;
+        if (!base) return;
+        /* offsetWidth·offsetHeight는 배치 값이라 scaleX(빠르기)가 안 들어간다 —
+           장평은 아래에서 따로 나눈다. */
+        let w = 0;
+        el.querySelectorAll<HTMLElement>('.z-glyph-char').forEach((b) => { w = Math.max(w, b.offsetWidth); });
+        const next = { w: w / base, h: el.offsetHeight / base };
+        const off = (a: number, b: number) => !b || Math.abs(a - b) / a > 0.01;
+        if (next.w > 0 && (!run || off(next.w, run.w) || off(next.h, run.h))) setRun(next);
+    });
+    /* 아직 한 번도 못 쟀으면 옛 어림값(한 글자 = 1em)으로 그린다. 그 한
+       프레임 뒤에 잰 값으로 다시 선다. */
+    const shape = run ?? { w: longest, h: lines.length * STAGE_LH };
+    const byLine = ((USE.w / (shape.w * Math.max(1, shown.tone))) * fill).toFixed(2);
+    const byHeight = ((USE.h / shape.h) * fill).toFixed(2);
     /**
      * 끌고 있는 축과 손가락이 지금 가 있는 자리(0~1).
      *
@@ -225,7 +261,7 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
      * 자석이 당기는 것처럼 보이는 건 그 미끄러짐이다(CSS transition).
      * 끄는 동안에는 그 transition을 꺼야 손가락이 늦게 따라온다.
      */
-    const [drag] = useState<{ key: string; at: number } | null>(null);
+    const [drag, setDrag] = useState<{ key: string; at: number } | null>(null);
     /** 한 축을 i번 눈금으로. '빠르기'는 기울기도 같이 가져간다 */
     const pick = (a: Axis, i: number) => {
         const v = a.stops[i];
@@ -274,14 +310,20 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
     const padDown = (e: React.PointerEvent) => {
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
         grab.current = { x: e.clientX, at: cur.at };
+        setDrag({ key: cur.key, at: cur.at });
     };
     const padMove = (e: React.PointerEvent) => {
         const g = grab.current;
         if (!g) return;
-        const i = Math.min(last, Math.max(0, g.at + Math.round((e.clientX - g.x) / DRAG_STEP)));
+        /* 눈금은 **손가락을 그대로** 따라간다(소수점 자리). 값은 그중
+           제일 가까운 눈금으로 붙는다. 둘을 갈라 놓아야 미는 동안 화면이
+           손과 같이 가고, 손을 뗄 때 자석처럼 붙는 것이 보인다. */
+        const raw = Math.min(last, Math.max(0, g.at + (e.clientX - g.x) / DRAG_STEP));
+        setDrag({ key: cur.key, at: raw });
+        const i = Math.round(raw);
         if (i !== cur.at) cur.set(i);
     };
-    const padUp = () => { grab.current = null; };
+    const padUp = () => { grab.current = null; setDrag(null); };
 
     /* 누르고 있는 동안만 원본. 손을 떼거나 손가락이 버튼 밖으로 나가면
        바로 편집값으로 돌아온다 — 원본을 본 채로 잣대를 만질 길이 없다.
@@ -299,11 +341,11 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
         fontVariationSettings: variationFor(shown.font, shown.wght, shown.manner),
         transform: 'scaleX(' + shown.tone + ')',
         fontStyle: shown.slnt ? `oblique ${Math.abs(shown.slnt)}deg` : 'normal',
-        fontSize: `calc(min(${byLine}cqw, ${byHeight}cqh) * ${opticalFix[shown.font]?.scale ?? 1})`,
+        fontSize: `calc(min(${byLine}cqw, ${byHeight}cqh) * ${optic})`,
         '--optical-stroke': opticalStroke(shown.font, shown.wght)
     } as CSSProperties;
 
-    return <div className="z-frame z1 tone-adjust">
+    return <div className={'z-frame z1 tone-adjust' + (drag ? ' is-dragging' : '')}>
  <div className="tone-deck" data-step={step}>
 
   {/* ── 첫 장: 무엇을 하는 자리인지만 ───────────────────────────── */}
@@ -356,7 +398,7 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
         한 겹을 더 두른 것은 **자리를 재기 위해서다** — 머리줄을 뺀 나머지가
         견본의 몫인데, 칸 전체를 기준으로 삼으면 머리줄 높이만큼 넘친다. */}
     <div className="z-glyph-fit">
-     <div className={'z-glyph is-line' + (shown.slnt ? ' is-gust' : '')} style={face}>
+     <div ref={glyph} className={'z-glyph is-line' + (shown.slnt ? ' is-gust' : '')} style={face}>
       <span>{lines.map((l, i) => <b key={i} className="z-glyph-char">{l}</b>)}</span>
      </div>
      {/* 지금 보는 것이 무엇인지는 견본 위에서 말한다 — 버튼 쪽에서만 말하면

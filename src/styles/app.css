@@ -1973,7 +1973,11 @@
    것은 바깥 덩어리 하나가 맡는다 — 줄마다 따로 뜨면 문단이 흔들린다. */
 .z-glyph.is-line{ line-height: 1.4; }
 .z-glyph.is-line > span{ display: flex; flex-direction: column; align-items: center; }
-.z-glyph.is-line .z-glyph-char{ display: block; animation: none; }
+/* 줄은 작가가 끊은 그대로다(foldLines). 칸보다 길어도 **다시 접지
+   않는다** — 접히면 그 줄의 폭이 칸 폭으로 읽혀, 크기를 재서 맞추는
+   쪽(PhaseTone)이 "아직 덜 찼다"고 보고 더 키우다가 끝없이 커진다.
+   실제로 유머있는이 그렇게 칸을 넘어 두 줄이 다섯 줄이 됐다. */
+.z-glyph.is-line .z-glyph-char{ display: block; animation: none; white-space: nowrap; }
 /* 크기는 두 가지가 함께 정한다.
    --optical: 서체별 잉크 높이 보정(palettes.ts에서 잰 값. 네 서체 모두 걸린다).
    29cqw:     칸이 좁아져도 글자가 칸 밖으로 나가지 않게 잡는 상한.
@@ -2252,6 +2256,18 @@
 .tone-notch{ width: 2px; height: 18px; margin: -9px 0 0 -1px; background: var(--grey-400); }
 /* 잔눈금 — 사이를 넷으로 쪼갠 자리. 읽는 것이 아니라 **움직임이 보이라고** 있다. */
 .tone-tick{ width: 1px; height: 8px; margin: -4px 0 0 -0.5px; background: var(--grey-300); }
+/* ── 미는 동안에는 뒤따라오지 않는다 ────────────────────────────────
+   눈금은 220ms, 견본 글자는 260ms를 물고 있다. 칸에서 칸으로 **건너뛸**
+   때는 그 물림이 획이 자라는 것으로 보이게 하지만, 손가락이 밀고 있는
+   동안에는 밀어 놓고 기다리는 것이 된다 — 민 만큼 바로 바뀌어야 얼마나
+   밀었는지를 손이 안다.
+
+   그래서 끄는 동안만 끈다. 손을 떼면 다시 물려서, 눈금이 제 자리로
+   붙는 그 미끄러짐만 남는다(--at이 소수에서 정수로 돌아간다). */
+.tone-adjust.is-dragging .tone-notch,
+.tone-adjust.is-dragging .tone-tick,
+.tone-adjust.is-dragging .z-glyph{ transition: none; }
+
 /* 기본값 자리 — 큰 눈금 아래에 붙어 같이 밀린다. 얼마나 옮겨 왔는지를
    이것과 가운데 금 사이의 거리로 읽는다. */
 .tone-home{
@@ -2260,9 +2276,14 @@
 }
 @media (prefers-reduced-motion: reduce){ .tone-notch, .tone-tick{ transition: none; } }
 
-/* 진짜 입력은 눈금자를 통째로 덮는다. 자판과 읽는 도구가 이걸 잡는다. */
+/* 진짜 입력은 눈금자를 통째로 덮는다. 자판과 읽는 도구가 이걸 잡는다.
+   **손가락은 안 받는다**(pointer-events: none). 받게 두면 네이티브 range의
+   규칙대로 누른 자리로 값이 **순간이동**하는데, 이 눈금자는 가운데 금이
+   붙박이고 눈금이 밀리는 그림이라 그 규칙과 어긋난다 — 가운데를 눌렀는데
+   값이 가운데로 튀는 일이 생긴다. 손가락은 아래 .tone-ruler가 받아 민
+   거리만큼 옮긴다. 초점과 화살표키는 pointer-events와 무관하다. */
 .tone-ruler-input{
-  position: absolute; inset: 0; z-index: 2;
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
   width: 100%; height: 100%; margin: 0; padding: 0;
   background: none; appearance: none; -webkit-appearance: none; opacity: 0;
   cursor: ew-resize;
@@ -2305,12 +2326,16 @@
    생김새는 옆의 눈금과 한 식구다: 회색 띠(--line) 위에 고른 것만 청록
    알약(--brand-sub). 처음엔 검은 바탕인 줄 알고 흰 글자·흰 테두리를 줬는데,
    이 칸은 흰 판이라 안 고른 쪽이 통째로 안 보였다. */
-.z-manner{
+/* 눈금자와 **같은 높이**여야 한다(--btn-xl). 58px이라 눈금자(56)와 2px
+   어긋났고, 도구를 오갈 때마다 아래의 '다음'이 그만큼 들썩였다. */
+.z-manner{ height: var(--btn-xl); align-items: center;
   display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
   padding: 4px; background: var(--line); border: 1px solid var(--line);
   border-radius: var(--r-l);
 }
 .z-manner-btn{
+  /* 48 + 위아래 4씩 = 56. 눈금자와 같은 높이라야 도구를 오갈 때 이 줄이
+     제자리에 있는다(--btn-l에 --s1 두 겹을 더한 값이 --btn-xl이다). */
   min-height: var(--btn-l); padding: var(--s1) var(--s3);
   border: 0; border-radius: var(--r-full);
   background: none; color: var(--body-text);

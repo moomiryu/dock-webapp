@@ -2633,7 +2633,12 @@
   /* 0.12배(32px)였다. 한 마디가 '안녕하세요' 다섯 자일 때는 맞았지만,
      '발화를 시작해보세요.' 열한 자가 되자 360 화면에서 한 줄이 넘쳤다.
      0.10배면 열한 자가 268px이라 제일 좁은 화면에도 든다. */
-  font-size: calc(var(--char-box, 272px) * 0.1);
+  /* 2026-09-22에 사다리 값으로 내렸다(--fs-h4 · 22px). 0.1배는 27px이었고
+     "인사가 너무 크다"는 지적이 있었다. 게다가 이 글은 액자에 걸려 있어서
+     (createPortal) 캐릭터 상자의 --char-box를 못 받았다 — 어느 화면에서나
+     272px 폴백으로 27px이었다. 캐릭터에 비례할 이유도 없다: 읽는 글이지
+     캐릭터의 일부가 아니다. */
+  font-size: var(--fs-h4);
   /* 두 줄이 되었으므로 줄 사이가 필요하다. 1은 줄끼리 붙는다. */
   line-height: 1.35;
   color: var(--brand-main);
@@ -2807,7 +2812,10 @@
 .compose-ask{ position: absolute; top: calc(var(--s5) + 44px + var(--s5)); left: var(--pad-x); right: var(--pad-x);
   z-index: 1; color: var(--paper); opacity: 0; pointer-events: none;
   transition: opacity 420ms var(--ease-emphasized); }
-.compose-editor.is-pulled .compose-ask{ opacity: 1; animation: askBrief 420ms var(--ease-emphasized) 3s forwards; }
+/* 3초 뒤 흐려지던 것을 2026-09-22에 멈췄다. 색을 고르는 동안 무엇을 하는
+   자리인지가 화면에서 없어졌다 — 제목은 절대 위치라 자리를 안 먹으니
+   서 있어도 잃는 것이 없다. */
+.compose-editor.is-pulled .compose-ask{ opacity: 1; }
 
 /* ─── 제목은 3초만 서 있는다 ───────────────────────────────────
    무엇을 정하는 화면인지 한 번 말하고 물러난다. 계속 서 있으면 발화와
@@ -3074,6 +3082,15 @@
 .compose-screen{ background: var(--pane-bg, var(--ink)); transition: background 420ms var(--ease-emphasized); }
 .compose-screen.is-pulled{ background: var(--ink); }
 .color-choice .z-step-of{ color: var(--chrome-ink, var(--paper)); }
+/* '이 색으로 할게요'가 **그 색**이다. 고른 짝(배경·글자)을 버튼이 그대로
+   입는다 — 누르기 전에 결과가 버튼 안에 있다. 경계는 글자색 1px: 짝은
+   글자가 배경 위에서 읽히도록 고른 것이라 그 선도 같은 근거로 갈린다.
+   검은 화면 위 검은 배경 짝이 와도 이 선이 버튼을 남긴다. */
+.color-choice > .primary-action{
+  background: var(--pane-bg); color: var(--chrome-ink);
+  border: 1px solid var(--chrome-ink);
+  transition: background 420ms var(--ease-emphasized), color 420ms var(--ease-emphasized), border-color 420ms var(--ease-emphasized);
+}
 .compose-input { cursor:text; caret-color:var(--paper); color:transparent; font-family:inherit; }
 .compose-input:focus-visible { outline:none; }
 .sim-mine { width:100%; display:grid; place-items:center; }

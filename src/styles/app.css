@@ -254,11 +254,21 @@
 
 /* ─── 홈: 인사말, 캐릭터, 시작 선택 ─── */
 
+/* ── 홈은 밤하늘 아래 들판이다 ───────────────────────────────────────
+   지평선은 화면 높이의 55%다. 거기가 메가폰트의 눈이 지나는 자리라
+   (재서 확인: 844 화면에서 눈이 52~57%, 55%는 464px), 인물이 지평선에
+   걸쳐 선 구도가 된다.
+
+   두 색은 한 칸의 배경 하나로 깐다 — 겹을 나누면 그 경계가 또 하나의
+   띠가 된다. 화면 가장자리까지, 버튼 뒤로도 그대로 간다. */
 .home-frame{
   position: relative;
   overflow: hidden;
   padding: 0;
   gap: 0;
+  background: linear-gradient(to bottom,
+    var(--night-sky) 0 var(--horizon, 55%),
+    var(--field) var(--horizon, 55%) 100%);
 }
 
 .home-layer{
@@ -1983,7 +1993,9 @@
    견본 넷 위로 덮이고 버튼 아래로 깔린다(스케치 02b의 칠 순서). */
 /* 홈과 소개 화면도 같은 기운을 받는다 — 다섯 단계에만 있으면 들어올 때와
    나갈 때만 바닥이 차가워서, 그 둘이 이 앱이 아닌 것처럼 읽힌다. */
-.home-frame::after,
+/* 홈은 이 목록에서 빠졌다(2026-09-20). 바닥에 더운 기운을 깔면 들판
+   위에 또 한 겹의 띠가 생겨, 이어져야 할 초록이 두 조각으로 갈린다.
+   홈의 바닥은 들판 그 자체다. */
 .tone-choice::after, .tone-adjust::after, .compose-screen::after,
 .write-screen::after, .color-choice::after, .preview-screen::after,
 .info-overlay::after{
@@ -2024,8 +2036,8 @@
 .compose-screen > .primary-action, .color-choice > .primary-action,
 .write-screen > .primary-action, .write-screen > .compose-count,
 .preview-screen > .primary-action{ position: relative; z-index: 2; }
-/* 홈의 두 버튼과 소개의 발치 줄은 그 기운 위에 앉는다 */
-.home-frame .home-gate, .info-overlay > .info-nav{ position: relative; z-index: 2; }
+/* 소개의 발치 줄은 그 기운 위에 앉는다 */
+.info-overlay > .info-nav{ position: relative; z-index: 2; }
 .tone-selected{ display: flex; align-items: center; justify-content: space-between; color: var(--body-text); font-size: var(--fs-body-s); }
 .tone-selected button{ border: 0; background: var(--grey-100); border-radius: var(--r-s); padding: var(--s3) var(--s5); min-height: 44px; color: var(--grey-700); font: inherit; cursor: pointer; }
 .tone-selected button:active{ background: var(--grey-200); }
@@ -2364,8 +2376,22 @@
    그 위로 두 겹이 더 있다: 바닥의 그라데이션(900)과 글자·버튼(1000).
    누르려는 손을 가리면 안 되므로 버튼이 맨 위다. */
 .home-char{ z-index: 500; }
-.home-frame::after{ z-index: 900; }
 .home-frame > .home-layer{ z-index: 1000; }
+
+/* ── 밤하늘 위의 글과 버튼 ───────────────────────────────────────────
+   흰 종이를 앞에 두고 짠 색들이라 밤에서는 다시 정한다. 빨강은 **로고와
+   캐릭터와 채움 버튼**에 모아 두고, 안내하는 글은 중성색으로 갈라 둔다 —
+   빨강이 여기저기 흩어지면 무엇이 중심인지가 없어진다.
+
+   밝기로 위계를 만든다:
+     참여 안내(--sky-warm) > 로고(빨강) > 부제(--sky-text) > 부유 메시지(--sky-drift) */
+.home-frame .home-headline{ color: var(--brand-main); }
+.home-frame .home-subtitle{ color: var(--sky-text); }
+
+/* '처음이에요'는 빨강 바탕에 흰 글자 — 이 화면에서 제일 큰 손짓이다.
+   '써봤어요'는 밝은 중성 바탕에 어두운 글자. 밤하늘 위에서 흰 판이
+   떠 보이지 않게 종이(--paper)가 아니라 한 단 내린 회색을 쓴다. */
+.home-frame .home-info-btn{ background: var(--grey-200); color: var(--grey-900); border-color: var(--grey-200); }
 
 /* ── 큰 메가폰트 ────────────────────────────────────────────────── */
 /* 직접 만지는 크기. 340px에서 80%로 줄였다. */
@@ -2433,15 +2459,30 @@
      제 높이만큼 끌어올리므로 글자 상자가 몸에 닿지 않는다.
      0.08이었는데 몸이 두둥실 오르내리는 만큼(±1.7%) 틈이 같이 좁아져
      제일 올라왔을 때 10px까지 붙었다. 0.11로 넓힌다. */
-  top: calc(var(--say-floor, 0px) - var(--char-box, 272px) * 0.11);
+
+  /* 밤하늘의 정해진 자리에 선다(2026-09-20).
+
+     전에는 캐릭터의 실루엣 윗변을 따라다니며 같이 두둥실했다. 캐릭터가
+     제자리에서 오르내리고 기우는 동안 글도 같이 흔들렸는데, 한 낱말짜리
+     인사일 때는 그게 생기였지만 **읽을 문장**이 되자 읽는 눈이 흔들리는
+     것을 쫓아야 했다. 이제 액자에 직접 걸려(HomeCharacter의 createPortal)
+     캐릭터가 무엇을 하든 여기 가만히 있다.
+
+     자리는 **부제와 캐릭터 사이**로 못 박는다. 지평선 아래(들판)로도,
+     로고 쪽으로도 가지 않는다. 지평선에 맞춰 아래에서 잡았더니 캐릭터
+     머리 위로 올라타서(844에서 43~51%, 캐릭터가 35%부터다), 부제 쪽에서
+     내려오는 것으로 바꿨다 — 부제가 끝나는 자리는 어느 화면에서나
+     20% 안쪽이다(844 16% · 640 20% · 932 16%). */
+  top: 22%;
+  z-index: 1100;
   /* 캐릭터 머리 위 **한가운데**에 선다(2026-09-20).
      전에는 마디마다 좌우로 번갈아 붙고 ±5도씩 기울었다. 마디가 짧은
      인사 셋일 때는 그 들쭉날쭉이 생기였는데, 두 줄짜리 문장이 되자
      읽는 눈이 매번 다른 데서 시작해야 했다. 읽을 것이 생기면 축이 하나여야
      한다. 가로로는 제 폭의 절반, 세로로는 제 높이만큼 끌어올린다 —
      두둥실(saySway)이 이 값을 물고 흔들므로 여기가 그 기준점이다. */
-  left: var(--say-x, 50%);
-  translate: -50% -100%;
+  left: 50%;
+  translate: -50% 0;
   text-align: center;
   /* 제 내용만큼만 넓다. 안 주면 상자가 오른쪽 끝까지 늘어나 pre-line이
      작가가 끊어 준 자리 말고 엉뚱한 데서도 줄을 바꾼다(두 줄이 세 줄이
@@ -2466,7 +2507,10 @@
   font-size: calc(var(--char-box, 272px) * 0.1);
   /* 두 줄이 되었으므로 줄 사이가 필요하다. 1은 줄끼리 붙는다. */
   line-height: 1.35;
-  color: var(--brand-main);
+  /* 참여 안내는 **따뜻한 흰색**이다. 밤하늘에서 제일 밝게 읽혀야 하는
+     글이라 — 로고(빨강)는 무엇인지를, 이 글은 무엇을 할 수 있는지를
+     말한다. 빨강으로 두면 로고와 같은 목소리가 된다. */
+  color: var(--sky-warm);
   /* 줄바꿈은 작가가 끊어 준 자리 그대로(HomeCharacter · WELCOME).
      화면 폭에 맡기면 뜻이 안 끊기는 데서 끊긴다. */
   white-space: pre-line;
@@ -2476,24 +2520,15 @@
      (charSay), 뒤는 글자가 서 있는 내내 돈다(saySway). */
   /* 뜨고 지는 시간은 그 마디가 떠 있는 시간이다. 1600ms로 박아 뒀더니
      2300ms짜리 마디가 다 읽히기도 전에 사라지고 700ms를 빈 채로 기다렸다. */
-  animation: charSay var(--say-life, 1600ms) var(--ease-standard) both,
-             saySway 5.2s ease-in-out infinite;
+  animation: charSay var(--say-life, 1600ms) var(--ease-standard) both;
 }
 /* 캐릭터와 같은 박자로 두둥실(5.2s · ±1.7%). 몸이 charFloat으로 오르내리는
    그 폭을 글자에도 같은 값으로 준다 — 글자만 제자리에 붙박여 있으면 몸은
    떠 있고 말은 벽에 붙은 것이 된다. 같은 위상이라 둘 사이의 틈이 늘 같다.
    translate는 transform과 따로 노는 속성이라 기울기(--say-tilt)를 안 덮는다. */
-/* 가로의 -50%를 여기서도 들고 있어야 한다. translate 한 속성이라
-   애니메이션이 도는 동안 위의 선언을 통째로 덮는다 — X를 빼먹었더니
-   글자가 가운데에 서지 않고 가운데선에서 오른쪽으로만 뻗었다. */
-@keyframes saySway {
-  0%, 100% { translate: -50% calc(-100% - var(--char-box, 272px) * 0.017); }
-  50%      { translate: -50% calc(-100% + var(--char-box, 272px) * 0.017); }
-}
-/* 가운데선에서 한쪽으로 뻗는다. 몸 위에 있으므로 옆으로는 겹칠 일이 없다. */
-/* 몸의 한가운데에서 좌우로 뻗는다. 상자 한가운데(50%)가 아니다 — 옆모습은
-   몸이 한쪽으로 쏠려 있어 그러면 글자가 몸에서 떨어진다(--say-x는
-   HomeCharacter가 실루엣에서 재어 내려준다). */
+/* 여기에 글자가 캐릭터와 같이 두둥실하는 결(saySway)이 있었다.
+   2026-09-20에 걷어냈다 — 안내가 캐릭터를 따라 흔들리면 안 된다. */
+
 /* 라틴만 900. 이 글자들은 Lineal이 그리므로 위의 환산이 필요 없다. */
 .home-char-say[data-latin='true']{ font-weight: 900; }
 /* '!'도 제 시간(BANG_MS)을 --say-life로 받는다 — 따로 적지 않는다. */
@@ -2541,10 +2576,14 @@
   /* 크기는 HomeVoices가 액자 폭에서 재어 인라인으로 준다 */
   font-size: 20px;
   line-height: 1;
-  /* 배경의 결이라 --brand-main(빨강)에서 내려왔다. 빨강은 이 화면에서
-     캐릭터와 채움 버튼의 색이다 — 배경까지 같은 빨강이면 무엇이 주인공
-     인지가 흐려진다. 깊이에 따른 짙기는 JS가 opacity로 얹는다. */
-  color: var(--grey-300);
+  /* 배경의 결이다. 빨강은 이 화면에서 캐릭터와 채움 버튼의 색이므로
+     배경까지 빨강이면 무엇이 주인공인지가 흐려진다.
+
+     밤하늘과 들판을 **둘 다 지난다.** 회청색 하나로 가는 이유가 그것이다 —
+     구간마다 색을 갈면 지평선을 넘는 순간 글자가 딴 것이 된다. 이 값은
+     남색 위에서도 초록 위에서도 밝은 쪽이라 양쪽에서 같은 만큼 읽힌다.
+     짙기는 깊이에 따라 JS가 opacity로 얹는다(HomeVoices). */
+  color: var(--sky-drift);
   white-space: nowrap;
   transform-origin: left center;
   will-change: transform, opacity;
@@ -2558,6 +2597,10 @@
    (HomeCrowd), 걷는 다리와 몸의 들썩임·몸 색만 CSS가 맡는다.
    버튼 위에 얹히지 않게 손을 안 받는다. */
 .home-crowd{ position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+/* 발밑 그림자는 들판 색을 따른다. 작가의 그림이 들고 온 보라(#5a5580)는
+   흰 바닥에 지는 그늘이라, 초록 위에서는 그것만 딴 데서 온 색이 된다. */
+.w-shade{ fill: var(--field-shade); }
+.home-char-shade{ background: var(--field-shade); }
 
 /* 여기에 앞선 구경꾼이 메가폰트 몸에 드리우는 그림자(drop-shadow)가
    있었다. 2026-09-20에 넣었다가 같은 날 걷어냈다 — 앞뒤는 발끝이 정하는

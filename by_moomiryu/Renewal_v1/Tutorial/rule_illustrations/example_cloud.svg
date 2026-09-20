@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="603" viewBox="0 0 390 603" role="img" aria-labelledby="title description">
+  <title id="title">구름</title>
+  <desc id="description">둥근 덩어리들이 이어진 흰 구름이 커다란 눈 하나로 오른쪽을 바라봅니다. 연보라색 면이 아래쪽에 포개지고 보라색 그림자 위에 떠 있습니다.</desc>
+  <ellipse id="shadow" cx="195" cy="470" rx="99" ry="11" fill="#5a5580"/>
+  <path id="cloud" fill="#fff" d="M105 399C66 399 39 374 39 341C39 311 60 288 89 284C87 251 111 225 142 225C153 225 164 229 173 235C184 210 205 196 230 196C267 196 293 223 293 259C293 265 292 271 291 276C326 278 351 304 351 338C351 373 324 399 289 399Z"/>
+  <path id="cloud-fold" fill="#dedbea" d="M53 368C68 382 85 384 105 384H285C307 384 329 374 342 359C334 383 314 399 289 399H105C81 399 63 388 53 368Z"/>
+  <circle id="eye" cx="269" cy="315" r="26" fill="#5a5580"/>
+  <circle id="eye-white" cx="269" cy="315" r="21" fill="#fff"/>
+  <circle id="pupil" cx="276" cy="312" r="13" fill="#5a5580"/>
+</svg>

@@ -1,11 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="390" height="603" viewBox="0 0 390 603" role="img" aria-labelledby="title description">
   <title id="title">달</title>
-  <desc id="description">청록색 초승달이 커다란 눈 하나로 작은 별을 바라봅니다. 단순한 면과 흰색 눈, 보라색 그림자로 이루어진 삽화입니다.</desc>
+  <desc id="description">노란 보름달이 커다란 눈 하나로 작은 별을 바라봅니다. 표면에는 황토색의 둥근 크레이터와 부드러운 얼룩이 있고, 아래에는 보라색 그림자가 놓여 있습니다.</desc>
   <ellipse id="shadow" cx="187" cy="470" rx="90" ry="11" fill="#5a5580"/>
-  <path id="moon" fill="#2ce9f7" d="M303 207C278 183 245 169 207 169C129 169 66 231 66 309C66 387 129 449 207 449C245 449 278 435 303 411C307 407 304 402 299 403C285 407 272 409 258 409C189 409 134 364 134 309C134 254 189 209 258 209C272 209 285 211 299 215C304 216 307 211 303 207Z"/>
-  <circle id="eye" cx="105" cy="305" r="23" fill="#fff"/>
-  <circle id="pupil" cx="112" cy="301" r="13" fill="#2ce9f7"/>
-  <path id="large-star" fill="#fff" d="M260 232Q263 253 281 256Q263 259 260 280Q257 259 239 256Q257 253 260 232Z"/>
-  <path id="small-star" fill="#fff" d="M310 181Q312 192 322 194Q312 196 310 207Q308 196 298 194Q308 192 310 181Z"/>
+  <circle id="moon" cx="187" cy="309" r="140" fill="#ffd84d"/>
+  <g id="lunar-surface">
+    <path id="lunar-patch" fill="#f2c442" d="M88 310C102 299 122 305 129 320C136 332 149 330 158 341C171 357 164 378 147 386C127 396 105 385 95 370C83 353 70 326 88 310Z"/>
+    <g id="craters" fill="#e7b638">
+      <circle cx="130" cy="247" r="27"/>
+      <ellipse cx="207" cy="372" rx="24" ry="21"/>
+      <circle cx="185" cy="205" r="11"/>
+      <ellipse cx="286" cy="329" rx="10" ry="14"/>
+      <circle cx="107" cy="346" r="12"/>
+    </g>
+    <g id="crater-floors" fill="#f2c442">
+      <ellipse cx="135" cy="252" rx="21" ry="20"/>
+      <ellipse cx="211" cy="376" rx="19" ry="16"/>
+    </g>
+  </g>
+  <circle id="eye" cx="250" cy="270" r="23" fill="#fff"/>
+  <circle id="pupil" cx="257" cy="266" r="13" fill="#ffd84d"/>
+  <path id="large-star" fill="#fff" d="M335 219Q338 240 356 243Q338 246 335 267Q332 246 314 243Q332 240 335 219Z"/>
+  <path id="small-star" fill="#fff" d="M287 147Q289 158 299 160Q289 162 287 173Q285 162 275 160Q285 158 287 147Z"/>
 </svg>

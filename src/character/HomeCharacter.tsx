@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   CANVAS, EYES, blendGeo, eyeMarkup, eyeOpacity, poseGeometry, toPathD, turnKind,
   type Eyes, type Pose, type PoseGeo
@@ -43,21 +44,23 @@ const POSE_DWELL = 900;
  * 272로 나누면 0.63 · 1.43 · 2.23. 그 폭을 그대로 쓴다.
  */
 /**
- * 처음 오는 사람에게 건네는 세 마디.
+ * 처음 오는 사람에게 건네는 두 마디.
  *
- * 2026-09-20까지는 '안녕하세요 · こんにちは · Hello' 셋이었다. 인사를 세
- * 나라 말로 하는 것은 이 물건이 누구에게나 열려 있다는 말이었지만, 그
- * 다음에 무엇을 해야 하는지는 끝내 말하지 않았다. 처음 여는 화면이
- * 할 일은 인사하고 **데려가는 것**이라 셋을 그 차례로 바꿨다.
+ * 인사 한 마디와 **할 수 있는 일** 한 마디다. 화면 위쪽의 부제가 이 물건이
+ * 무엇인지를 말하고(대학 내 공공발화를 위한 카트), 여기가 당신이 무엇을
+ * 할 수 있는지를 말한다 — 둘이 같은 말을 두 번 하지 않게 나눠 맡는다.
+ *
+ * 처음엔 셋이었고 마지막이 '아래 버튼을 눌러서…'였다. 버튼 둘이 바로
+ * 아래에 크게 서 있는데 그걸 누르라고 말로 이르는 것은 화면을 못 믿는
+ * 다는 뜻이라 뺐다.
  *
  * 줄바꿈은 작가가 끊어 준 자리다. 뜻이 끊기는 데서 끊는다 —
  * '메가폰트 웹에 오신 걸 / 환영합니다', '아래 버튼을 눌러서 / 발화를
  * 시작해보세요'. 자동 줄바꿈에 맡기면 화면 폭에 따라 엉뚱한 데서 끊긴다.
  */
 const WELCOME: Array<{ text: string; ms: number }> = [
-  { text: '안녕하세요.', ms: 1250 },
-  { text: '메가폰트 웹에 오신 걸\n환영합니다.', ms: 1900 },
-  { text: '아래 버튼을 눌러서,\n발화를 시작해보세요.', ms: 2300 }
+  { text: '안녕하세요.', ms: 1400 },
+  { text: '당신의 한마디를\n벽에 띄워보세요.', ms: 2600 }
 ];
 /** 다음 마디까지의 틈. 떠 있는 시간은 마디마다 다르다 — 길면 읽을 짬이 든다 */
 const WELCOME_GAP = 220;
@@ -135,6 +138,16 @@ export default function HomeCharacter() {
   } | null>(null);
   /** 찍히는 중인 글자를 프레임마다 적는 자리. React를 거치지 않는다 */
   const sayEl = useRef<HTMLSpanElement>(null);
+  /**
+   * 안내 문구를 **액자에 직접** 건다.
+   *
+   * 캐릭터 안에 두면 캐릭터가 움직이고 기울 때 같이 흔들린다 — 읽을 것이
+   * 생긴 이상 그러면 안 된다. 액자로 내보내면 캐릭터가 무엇을 하든 밤하늘
+   * 한 자리에 가만히 선다.
+   */
+  const [frame, setFrame] = useState<HTMLElement | null>(null);
+
+  useEffect(() => { setFrame((ref.current?.closest('.home-frame') as HTMLElement) ?? null); }, []);
 
   useEffect(() => {
     const el = ref.current!;
@@ -490,14 +503,13 @@ export default function HomeCharacter() {
       role="img"
       aria-label="메가폰트 캐릭터"
     >
-      {say && !matchMedia('(prefers-reduced-motion: reduce)').matches && (
+      {frame && say && !matchMedia('(prefers-reduced-motion: reduce)').matches && createPortal(
         /* 글자는 비워 둔다 — 찍는 쪽(rAF)이 프레임마다 채운다. 여기에
            {say.text}를 적어 두면 React가 다시 그릴 때마다 다 찍힌 글로
            되돌아간다. */
         <span className="home-char-say" aria-hidden="true" ref={sayEl}
           data-latin={isLatin(say.text) ? 'true' : undefined}
-          style={{ '--say-life': `${say.ms}ms` } as React.CSSProperties} />
-      )}
+          style={{ '--say-life': `${say.ms}ms` } as React.CSSProperties} />, frame)}
       {/* 떠 있다는 것은 그림자가 말한다. 몸보다 아래, 몸보다 작게. */}
       <span className="home-char-shade" aria-hidden="true" />
       <span className="home-char-motion" aria-hidden="true">

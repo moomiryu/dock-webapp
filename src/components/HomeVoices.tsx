@@ -104,6 +104,14 @@ export default function HomeVoices() {
        수치를 적어 두면 글자 크기가 바뀔 때 그 줄이 먼저 죽는다. 버튼과
        제목은 맨 위 층(1000)이라 거기까지 가면 도로 가려진다. */
     let band = { top: 0, height: 0 };
+    /**
+     * 비워 둘 자리 — **참여 안내**가 서는 곳이다.
+     *
+     * 읽어야 하는 글과 배경으로 흘러가는 글이 같은 높이에서 겹치면, 둘 다
+     * 안 읽힌다. 안내는 밤하늘의 정해진 자리에 붙박여 있으므로(app.css의
+     * .home-char-say) 그 칸을 통째로 비우고 위아래로만 흘린다.
+     */
+    let keep = { top: 0, bottom: 0 };
     const measure = () => {
       const f = frame.getBoundingClientRect();
       const sub = frame.querySelector('.home-subtitle')?.getBoundingClientRect();
@@ -111,6 +119,10 @@ export default function HomeVoices() {
       const top = (sub ? sub.bottom - f.top : f.height * 0.24) + f.height * GAP;
       const bottom = (gate ? gate.top - f.top : f.height * 0.82) - f.height * GAP;
       band = { top, height: Math.max(0, bottom - top) };
+      /* 안내는 지평선 위로 두 줄까지 선다. 그 높이를 실제로 재지 않고
+         칸으로 잡는 이유: 안내는 몇 초만 떠 있다가 사라지는데, 자리를
+         그때그때 재면 뜰 때마다 흐르는 줄이 비켜나 화면이 들썩인다. */
+      keep = { top: f.height * 0.2, bottom: f.height * 0.36 };
     };
     measure();
     window.addEventListener('resize', measure);
@@ -131,7 +143,15 @@ export default function HomeVoices() {
     const emit = (t: number, head = 0) => {
       const p = pool.find((v) => !v.live);
       if (!p) return;
-      const open = laneFree.map((free, i) => (free <= t ? i : -1)).filter((i) => i >= 0);
+      const lh = band.height / LANES;
+      const open = laneFree
+        .map((free, i) => (free <= t ? i : -1))
+        .filter((i) => i >= 0)
+        // 안내가 서는 칸은 건너뛴다
+        .filter((i) => {
+          const mid = band.top + (i + 0.5) * lh;
+          return mid < keep.top || mid > keep.bottom;
+        });
       if (!open.length) return;
       const lane = pick(open);
 
@@ -149,7 +169,6 @@ export default function HomeVoices() {
       p.el.textContent = pick(free.length ? free : VOICES);
 
       // 줄 한가운데에 앉히고, 줄 높이의 5분의 1만큼만 흔든다
-      const lh = band.height / LANES;
       p.y = band.top + lane * lh + (lh - px) / 2 + random(-lh, lh) * 0.1;
 
       // 왼쪽 밖에서 들어와 오른쪽 밖으로 나간다. 곧은 선이다.

@@ -63,12 +63,21 @@ const BLOCK = { x: 0.42, y: 0.34 };
  */
 const FRONT = { x: 0.1, y: 1.05 };
 /**
- * 첫 여섯이 하나씩 들어오는 간격 (ms). 메가폰트의 첫인사가 끝날 즈음부터.
+ * 첫 여섯이 들어오기 시작하는 때 · 서로의 간격 (ms).
+ *
+ * 2026-09-20까지 화면이 열리고 4200ms 뒤라는 **적어 둔 숫자**였다. 그때는
+ * 인사가 한 낱말씩 셋이라 4.2초면 끝났는데, 인사가 두 줄짜리 문장 셋이
+ * 되면서 8초 가까이 걸리게 됐다 — 구경꾼이 인사 도중에 들이닥쳤다.
+ *
+ * 이제 시계가 아니라 **메가폰트를 본다.** 인사를 마치고 옆모습으로 돌아선
+ * 그 순간(charPos.greeted)부터 센다. 돌아선 다음에 사람이 들어오는 것이
+ * 이 화면의 차례다 — 인사는 보는 사람에게 하는 것이고, 구경꾼은 그 뒤에
+ * 오는 배경이다.
  *
  * 간격을 고르게 두면 여섯이 비슷한 때에 메가폰트 앞에 닿아 **한꺼번에
  * 빨개진다.** 그건 흐름이 아니라 신호에 맞춘 것이다. 간격을 넓게 흩는다.
  */
-const JOIN_DELAY = 4200, JOIN_GAP = { min: 700, max: 2600 };
+const JOIN_DELAY = 500, JOIN_GAP = { min: 700, max: 2600 };
 /** 메가폰트 앞에서 보이는 표정의 차례 */
 const MEETING: Array<{ eye: WalkerEye; ms: number }> = [
   { eye: 'look', ms: 900 },
@@ -107,6 +116,8 @@ export default function HomeCrowd() {
       x: number; y: number; dir: 1 | -1; speed: number;
       phase: Phase; until: number; beat: number;
       born: number; live: boolean; moving: boolean;
+      /** 메가폰트가 돌아선 뒤 이만큼(ms) 있다가 들어온다 */
+      wait: number;
     };
 
     /** 가장자리 밖에서 새로 들어온다. 파랑으로, 아직 아무것도 모른 채 */
@@ -135,26 +146,31 @@ export default function HomeCrowd() {
       const p: Walker = {
         el, art: el.querySelector('svg')!,
         x: 0, y: 0, dir: 1, speed: 0, phase: 'walk',
-        until: 0, beat: 0, born: 0, live: false, moving: false
+        until: 0, beat: 0, born: 0, live: false, moving: false, wait: 0
       };
       // 걸음은 그림 안의 움직임(SMIL)이라 CSS로 못 세운다. 나올 때까지 재워 둔다
       p.art.setCurrentTime(0);
       p.art.pauseAnimations();
-      // 처음 여섯은 한꺼번에 들이닥치지 않게 차례로 들어온다
+      // 처음 여섯은 한꺼번에 들이닥치지 않게 차례로 들어온다. 시각은
+      // 메가폰트가 돌아선 뒤에 정해진다(아래 step).
       p.el.style.opacity = '0';
-      setTimeout(() => { p.born = -1; }, JOIN_DELAY + i * random(JOIN_GAP.min, JOIN_GAP.max));
+      p.wait = JOIN_DELAY + i * random(JOIN_GAP.min, JOIN_GAP.max);
       return p;
     });
 
     let raf = 0, last = 0;
+    /** 메가폰트가 인사를 마치고 돌아선 때. 구경꾼의 시계는 여기서 0이다 */
+    let turned = 0;
     const step = (t: number) => {
       const dt = Math.min((t - (last || t)) / 1000, 0.05);
       last = t;
       const w = frame.clientWidth;
+      if (!turned && charPos.greeted) turned = t;
 
       for (const p of crowd) {
         if (!p.live) {
-          if (p.born !== -1) continue;             // 아직 나올 때가 아니다
+          // 아직 나올 때가 아니다 — 돌아서기 전이거나 제 차례가 안 됐다
+          if (p.born !== -1 && (!turned || t - turned < p.wait)) continue;
           spawn(p, t);
         }
 

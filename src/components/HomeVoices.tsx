@@ -56,6 +56,14 @@ const INK = { far: 0.45, near: 1 };
 const LANES = 5;
 /** 제목·버튼에서 이만큼은 비운다 (액자 높이의 비율) */
 const GAP = 0.04;
+/**
+ * 메가폰트가 돌아선 뒤 이만큼(ms) 있다가 첫 말이 뜬다.
+ *
+ * 차례가 있다: 인사가 끝나고 → 돌아서고 → 사람들이 걸어 들어오고 →
+ * 그제야 배경에 말이 흐른다. 돌아서자마자 다 같이 시작하면 화면이 한
+ * 박자에 통째로 살아나 무엇을 볼지가 없다. 구경꾼 둘셋이 들어온 뒤다.
+ */
+const AFTER_TURN = 3200;
 
 /**
  * 지나간 사람들이 맡기고 간 말.
@@ -107,6 +115,8 @@ export default function HomeVoices() {
     measure();
     window.addEventListener('resize', measure);
 
+    /** 메가폰트가 돌아선 때. 여기서 AFTER_TURN을 세고 시작한다 */
+    let turned = 0;
     /** 각 줄이 다시 비는 시각 */
     const laneFree = new Array(LANES).fill(0);
     /** 다음 말까지 남은 시간 */
@@ -157,7 +167,8 @@ export default function HomeVoices() {
     let seeded = false;
     let raf = 0;
     const step = (t: number) => {
-      if (!media.matches && charPos.ready && charPos.greeted) {
+      if (!turned && charPos.greeted) turned = t;
+      if (!media.matches && charPos.ready && turned && t - turned > AFTER_TURN) {
         if (!seeded) {
           seeded = true;
           for (const head of [0.62, 0.38, 0.16]) emit(t, head);

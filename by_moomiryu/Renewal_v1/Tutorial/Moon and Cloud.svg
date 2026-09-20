@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_레이어_1" data-name="레이어 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 888 464">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fff;
+      }
+
+      .cls-2 {
+        fill: #ffd84d;
+      }
+
+      .cls-3 {
+        fill: #f2c442;
+      }
+    </style>
+  </defs>
+  <g>
+    <circle id="moon" class="cls-2" cx="239.22" cy="249.11" r="140"/>
+    <g id="lunar-surface">
+      <path id="lunar-patch" class="cls-3" d="M140.22,250.11c14-11,34-5,41,10,7,12,20,10,29,21,13,16,6,37-11,45-20,10-42-1-52-16-12-17-25-44-7-60Z"/>
+      <g id="crater-floors">
+        <ellipse class="cls-3" cx="187.22" cy="192.11" rx="21" ry="20"/>
+        <ellipse class="cls-3" cx="263.22" cy="316.11" rx="19" ry="16"/>
+      </g>
+    </g>
+  </g>
+  <path id="cloud" class="cls-1" d="M531.3,338.11c-39,0-66-25-66-58,0-30,21-53,50-57-2-33,22-59,53-59,11,0,22,4,31,10,11-25,32-39,57-39,37,0,63,27,63,63,0,6-1,12-2,17,35,2,60,28,60,62s-27,61-62,61h-184Z"/>
+</svg>

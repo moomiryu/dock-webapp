@@ -1,4 +1,4 @@
-import raw from '../../by_moomiryu/Renewal_v1/Asset/Moon and Cloud.svg?raw';
+import raw from '../../by_moomiryu/Renewal_v1/Tutorial/Moon and Cloud.svg?raw';
 
 /**
  * 밤하늘에 걸리는 달과 구름.
@@ -8,10 +8,16 @@ import raw from '../../by_moomiryu/Renewal_v1/Asset/Moon and Cloud.svg?raw';
  * 달과 구름 하나씩이 그 면을 하늘로 만든다.
  *
  * ── 어느 그림을 쓰는가 ────────────────────────────────────────────────
- * `Asset/Moon and Cloud.svg` 한 장이다. Tutorial/rule_illustrations에도
- * 달과 구름이 있지만 그쪽은 **얼굴이 달린 캐릭터**다 — 눈이 있고 발밑에
+ * `Tutorial/Moon and Cloud.svg` 한 장이다. rule_illustrations에도 달과
+ * 구름이 있지만 그쪽은 **얼굴이 달린 캐릭터**다 — 눈이 있고 발밑에
  * 그림자가 눕는다. 하늘에 걸 것은 풍경이라 눈도 그림자도 없는 이 판을
  * 쓴다. 작가가 둘을 한 화판(888×464)에 나란히 그려 두었다.
+ *
+ * 2026-09-21에 Asset/ 쪽에서 이 판으로 옮겼다. 크기를 줄이라는 말에
+ * 작가가 **그림 자체를 덜어낸** 판을 내놓았다 — 달의 짙은 크레이터와
+ * 구름 밑동의 그늘이 빠졌다. 줄이기만 하면 작은 그림이 되지만 덜어내면
+ * 배경이 된다. 화판도 두 덩어리의 자리도 그대로라 아래 창은 안 바뀐다
+ * (getBBox로 대조: 달 99.22,109.11 280×280 · 구름 465.3,135.11 312×203).
  *
  * ── 한 파일에서 둘을 꺼내는 법 ────────────────────────────────────────
  * 잘라 내지 않는다. 같은 그림을 두 번 걸고 **보는 창(viewBox)만 다르게**

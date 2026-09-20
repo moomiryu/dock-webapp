@@ -31,7 +31,6 @@ import artGlyphs3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_3.sv
 import artGlyphs4 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_4.svg?raw';
 import artDock1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_1.svg?raw';
 import artDock2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_2.svg?raw';
-import artDock3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_3.svg?raw';
 
 interface Props { onClose: () => void; onStart: () => void; }
 
@@ -169,8 +168,12 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
         메가폰트를 작동시키세요.
       </p>
     ),
-    art: <Built name="dock" still={artDock3}
-      make={(k) => chainSvg([artDock1, artDock2, artDock3], k, 11)} />,
+    /* 두 컷이다. 셋째 컷은 2026-09-21에 작가가 지웠고, 그 그림이 둘째
+       컷으로 들어왔다 — 셋째와 둘째가 같은 그림이 되어 가운데 전환이
+       아무 일도 안 하는 박자로 남았다. 빈 메가폰 앞에 사람이 와서 꽂고,
+       그 순간 느낌표가 뜬다. 그 둘이면 다 말한다. */
+    art: <Built name="dock" still={artDock2}
+      make={(k) => chainSvg([artDock1, artDock2], k, 11)} />,
     artClass: 'is-wide'
   },
   {

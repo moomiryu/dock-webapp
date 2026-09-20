@@ -180,10 +180,13 @@ export const graphics: string[] = [
  * 그건 opticalStroke가 이미 하고 있다.
  */
 export const MANNER: Record<string, { labels: [string, string]; axes: [string, string] }> = {
-  ttoryeot: { labels: ['예리한', '온화한'], axes: ['"GLAT" 0', '"GLAT" 1000'] },
+  // 차례는 안내서가 적어 둔 차례다 — 온화한이 먼저, 예리한이 나중.
+  ttoryeot: { labels: ['온화한', '예리한'], axes: ['"GLAT" 1000', '"GLAT" 0'] },
   deulseok: {
-    labels: ['시니컬한', '귀여운'],
-    axes: ['"ELSH" 0.8, "ELGR" 1', '"ELSH" 12, "ELGR" 1.75']
+    // 시니컬한의 ELSH는 **8.8**이다. 0.8로 적혀 있었다(2026-09-20에 안내서와
+    // 대조해 고쳤다) — 0.8이면 획이 거의 사라져 글자가 점선으로 흩어진다.
+    labels: ['귀여운', '시니컬한'],
+    axes: ['"ELSH" 12, "ELGR" 1.75', '"ELSH" 8.8, "ELGR" 1']
   }
 };
 

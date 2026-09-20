@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties } from 'react';
+import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import BackButton from '../components/BackButton';
 import { MANNER, fontMap, hasWeightAxis, opticalFix, opticalStroke, variationFor } from '../lib/palettes';
 import { DEFAULT_TONE, type PartialTone } from '../lib/tone';
@@ -69,6 +69,46 @@ interface Props {
  * 55px이다. 면에서도 같은 거리라야 두 곳을 오갈 때 손이 다시 배우지 않는다.
  */
 const DRAG_STEP = 56;
+
+
+/* ─── 도구 아이콘 ────────────────────────────────────────────────────
+   넷뿐이라 그림 없이 이름만으로도 되지만, 원형 버튼은 이름을 넣을 자리가
+   좁다. 이름은 버튼 아래에 따로 적고 안쪽에는 표시만 둔다.
+
+   글자를 그리지 않는다 — 여기 놓일 '가'는 지금 고른 서체로 그려야 맞는데,
+   서체마다 굵기도 폭도 달라 넷이 한 줄에 서면 크기가 제각각이 된다.
+   무엇을 만지는지를 **도형의 성질**로 말한다: 크기는 커지는 사각형,
+   빠르기는 기운 획, 무게는 굵기가 다른 두 줄, 말투는 모난 것과 둥근 것. */
+const ICON: Record<string, ReactNode> = {
+  size: (
+    <svg viewBox="0 0 24 24" aria-hidden focusable="false">
+      {/* 작은 것과 큰 것. 둘을 붙여 놨더니 한 덩어리로 읽혀서, 작은 쪽은
+          테두리만 남기고 사이를 벌렸다. */}
+      <rect x="2.5" y="14" width="7" height="7" rx="1.4" fill="none" strokeWidth="1.8" />
+      <rect x="13" y="3" width="8.5" height="18" rx="1.8" />
+    </svg>
+  ),
+  tone: (
+    <svg viewBox="0 0 24 24" aria-hidden focusable="false">
+      <path d="M13.4 3.5 8.2 20.5" strokeWidth="3.4" strokeLinecap="round" />
+      <path d="M19.4 3.5 16.6 20.5" strokeWidth="2" strokeLinecap="round" opacity=".45" />
+      <path d="M6.2 3.5 4.6 20.5" strokeWidth="2" strokeLinecap="round" opacity=".45" />
+    </svg>
+  ),
+  wght: (
+    <svg viewBox="0 0 24 24" aria-hidden focusable="false">
+      <rect x="3" y="5" width="18" height="2.2" rx="1.1" />
+      <rect x="3" y="11" width="18" height="3.6" rx="1.8" />
+      <rect x="3" y="17.6" width="18" height="1.2" rx=".6" />
+    </svg>
+  ),
+  manner: (
+    <svg viewBox="0 0 24 24" aria-hidden focusable="false">
+      <path d="M3.4 20.6 12 3.4l3.1 6.2" strokeWidth="2.2" fill="none" strokeLinejoin="round" />
+      <circle cx="16.2" cy="16" r="5.2" />
+    </svg>
+  )
+};
 
 /** 견본 행간. 낱자 두 개('발화')일 때 쓰던 1은 문장에서 줄끼리 붙는다 */
 const STAGE_LH = 1.4;
@@ -176,7 +216,7 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
      * 자석이 당기는 것처럼 보이는 건 그 미끄러짐이다(CSS transition).
      * 끄는 동안에는 그 transition을 꺼야 손가락이 늦게 따라온다.
      */
-    const [drag, setDrag] = useState<{ key: string; at: number } | null>(null);
+    const [drag] = useState<{ key: string; at: number } | null>(null);
     /** 한 축을 i번 눈금으로. '빠르기'는 기울기도 같이 가져간다 */
     const pick = (a: Axis, i: number) => {
         const v = a.stops[i];
@@ -196,6 +236,8 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
             label: a.label,
             names: a.names as readonly string[],
             at: nearest(a.stops, tone[a.key]),
+            /** 고른 성격의 기본 자리. 여기서 얼마나 옮겼는지를 이걸로 잰다 */
+            def: nearest(a.stops, DEFAULT_TONE[a.key]),
             set: (i: number) => pick(a, i),
             manner: false
         })),
@@ -204,6 +246,7 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
             label: '말투',
             names: MANNER[tone.font].labels as readonly string[],
             at: tone.manner ? 1 : 0,
+            def: DEFAULT_TONE.manner,
             set: (i: number) => setTone(t => ({ ...t, manner: i })),
             manner: true
         }] : [])
@@ -290,37 +333,61 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
     </div>
     {/* 지금 보는 것이 무엇인지는 견본 위에서 말한다 — 버튼 쪽에서만 말하면
         눈은 견본에 가 있는데 답은 손 밑에 있다 */}
-    {compare && <span className="tone-orig-chip">원본</span>}
+    {compare && <span className="tone-orig-chip">기본 상태</span>}
    </div>
 
-   {/* ── 편집 패널 ─────────────────────────────────────────────── */}
+   {/* ── 편집 패널 ─────────────────────────────────────────────────
+       사진 보정 앱의 짜임을 따른다: 큰 미리보기를 보면서 **도구를 하나
+       고르고**, 그 아래 한 자리에서 다듬는다. 도구가 셋뿐이라 숨기지 않고
+       다 내놓는다.
+
+       위에서 아래로 — 지금 만지는 것의 이름과 값 · 도구 셋 · 공통 조절
+       영역. 조절 영역은 도구에 따라 눈금자이거나 말투 버튼 둘이고, 자리와
+       높이가 같아서 도구를 옮겨도 화면이 흔들리지 않는다. */}
    <div className="tone-panel">
-    <div className="tone-tools">
-     <div className="tone-tabs" role="tablist" aria-label="조절할 것">
-      {tools.map(t =>
-        <button key={t.key} type="button" role="tab" aria-selected={t.key === cur.key}
-          className={'tone-tab' + (t.key === cur.key ? ' on' : '')}
-          onClick={() => setAxis(t.key)}>{t.label}</button>
-      )}
+    <div className="tone-head">
+     {/* 무엇을 만지는 중이고 지금 값이 무엇인지 */}
+     <div className="tone-now" aria-live="polite">
+      <span className="tone-now-label">{cur.label}</span>
+      <span className="tone-now-value">{cur.names[cur.at]}</span>
      </div>
-     {/* 누르고 있는 동안만 원본. onPointerLeave까지 받는 이유는 손가락이
-         버튼 밖으로 미끄러진 채 떼면 눌린 상태로 남기 때문이다. */}
-     <button type="button" className={'tone-orig' + (compare ? ' on' : '')}
-       aria-pressed={compare} aria-label="원본과 비교. 누르고 있는 동안 다듬기 전이 보입니다"
-       onPointerDown={() => setCompare(true)} onPointerUp={() => setCompare(false)}
-       onPointerLeave={() => setCompare(false)} onPointerCancel={() => setCompare(false)}
-       onKeyDown={holdKey(true)} onKeyUp={holdKey(false)}>원본</button>
+     <div className="tone-acts">
+      {/* 되돌리기는 **그 도구 하나**만 기본으로 되돌린다. 바꾼 것이 없으면
+          나오지 않는다 — 누를 것이 없는 버튼은 자리만 차지한다. */}
+      {cur.at !== cur.def && (
+        <button type="button" className="tone-undo" onClick={() => cur.set(cur.def)}>
+          {cur.label} 되돌리기
+        </button>
+      )}
+      {/* 비교는 되돌리기와 **다른 일**이다. 누르고 있는 동안만 기본을 보여
+          주고 손을 떼면 그대로 돌아온다 — 바꾼 것을 잃지 않는다.
+          길게 누르기 어려운 사람을 위해 같은 버튼이 자판에서는 토글이다. */}
+      <button type="button" className={'tone-orig' + (compare ? ' on' : '')}
+        aria-pressed={compare} aria-label="기본과 비교. 누르고 있는 동안 고른 성격의 기본 상태가 보입니다"
+        onPointerDown={() => setCompare(true)} onPointerUp={() => setCompare(false)}
+        onPointerLeave={() => setCompare(false)} onPointerCancel={() => setCompare(false)}
+        onKeyDown={holdKey(true)} onKeyUp={holdKey(false)}>기본과 비교</button>
+     </div>
     </div>
 
-    {/* 무엇을 만지는 중이고 지금 값이 무엇인지. 전에는 잣대 위 한 줄에
-        작게 좌우로 나뉘어 있었다 — 값이 주인공인 자리라 가운데에 크게 둔다. */}
-    <div className="tone-now" aria-live="polite">
-     <span className="tone-now-label">{cur.label}</span>
-     <span className="tone-now-value">{cur.names[cur.at]}</span>
+    {/* 도구 셋. 고른 것은 테두리와 채움으로, 기본에서 바꾼 것은 점으로
+        따로 표시한다 — 색 하나에 두 가지 뜻을 얹지 않는다. */}
+    <div className="tone-picks" role="tablist" aria-label="조절할 것">
+     {tools.map(x =>
+       <button key={x.key} type="button" role="tab" aria-selected={x.key === cur.key}
+         className={'tone-pick' + (x.key === cur.key ? ' on' : '') + (x.at !== x.def ? ' moved' : '')}
+         onClick={() => setAxis(x.key)}>
+         <span className="tone-dial">
+           {ICON[x.key]}
+           {x.at !== x.def && <i className="tone-moved" aria-hidden />}
+         </span>
+         <span className="tone-pick-name">{x.label}</span>
+         {x.at !== x.def && <span className="sr-only">바뀜</span>}
+       </button>
+     )}
     </div>
 
-    {/* 잣대. 폭을 화면에서 떼어 냈다(350 → 220) — 여기는 '지금 어디쯤인가'를
-        보여주는 자리고, 미는 일은 아래 면이 받는다. */}
+    {/* 공통 조절 영역 */}
     {cur.manner
       ? <div className="z-manner" role="group" aria-label="말투">
           {MANNER[tone.font].labels.map((name, i) =>
@@ -332,41 +399,27 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
               onClick={() => cur.set(i)}>{name}</button>
           )}
         </div>
-      : <div className="tone-track">
-          <div className={'z-steps' + (drag?.key === cur.key ? ' is-dragging' : '')}
-            style={{ '--at': drag?.key === cur.key ? drag.at : cur.at / last } as CSSProperties}>
-            <span className="z-steps-thumb" aria-hidden="true"/>
+      : <div className="tone-dial-row">
+          <button type="button" className="tone-step" aria-label={`${cur.label} 한 칸 줄이기`}
+            disabled={cur.at === 0} onClick={() => cur.set(Math.max(0, cur.at - 1))}>−</button>
+          {/* 눈금자. 가운데 금은 붙박이고 눈금이 좌우로 밀린다 — 손가락이
+              화면 끝까지 갈 일이 없다. 어디를 잡아 끌어도 민 만큼 옮겨간다. */}
+          <div className="tone-ruler" style={{ '--at': drag?.key === cur.key ? drag.at : cur.at } as CSSProperties}
+            onPointerDown={padDown} onPointerMove={padMove} onPointerUp={padUp} onPointerCancel={padUp}>
+            <span className="tone-ruler-line" aria-hidden />
             {cur.names.map((_, i) =>
-              <span key={i} className={'z-step-dot' + (i === cur.at ? ' on' : '')}
-                style={{ width: 6 + i * 3, height: 6 + i * 3 }} aria-hidden="true"/>
+              <span key={i} className={'tone-notch' + (i === cur.at ? ' on' : '') + (i === cur.def ? ' home' : '')}
+                style={{ '--i': i } as CSSProperties} aria-hidden>
+                {i === cur.def && <i className="tone-home" />}
+              </span>
             )}
-            <input type="range" className="z-steps-input" min={0} max={1} step={0.001}
-              value={drag?.key === cur.key ? drag.at : cur.at / last}
-              aria-label={cur.label} aria-valuetext={cur.names[cur.at]}
-              onChange={e => { const v = Number(e.target.value); setDrag({ key: cur.key, at: v }); cur.set(Math.round(v * last)); }}
-              onPointerUp={() => setDrag(null)} onPointerCancel={() => setDrag(null)}
-              onBlur={() => setDrag(null)}
-              onKeyDown={e => {
-                  // 화살표는 0.001씩 움직여 봐야 눈금이 안 바뀐다 — 한 칸씩 옮긴다.
-                  const d = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1
-                      : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1
-                      : e.key === 'Home' ? -last : e.key === 'End' ? last : 0;
-                  if (!d) return;
-                  e.preventDefault();
-                  setDrag(null);
-                  cur.set(Math.min(last, Math.max(0, cur.at + d)));
-              }}/>
+            <input type="range" className="tone-ruler-input" min={0} max={cur.names.length - 1} step={1}
+              value={cur.at} aria-label={cur.label} aria-valuetext={cur.names[cur.at]}
+              onChange={e => cur.set(Number(e.target.value))} />
           </div>
+          <button type="button" className="tone-step" aria-label={`${cur.label} 한 칸 늘리기`}
+            disabled={cur.at === last} onClick={() => cur.set(Math.min(last, cur.at + 1))}>+</button>
         </div>}
-
-    {/* 끄는 면. 잣대까지 손을 가져갈 필요가 없다 — 여기 아무 데나 눌러
-        좌우로 밀면 된다. 값을 절대 위치에서 떼어 내는 것이 한 손 조작의
-        전부다. 잣대와 말투 버튼이 의미를 들고 있으므로 여기는 감춘다. */}
-    <div className="tone-pad" aria-hidden="true"
-      onPointerDown={padDown} onPointerMove={padMove}
-      onPointerUp={padUp} onPointerCancel={padUp}>
-     <span>이 안에서 좌우로 끌어도 됩니다</span>
-    </div>
    </div>
 
    <button className="primary-action" onClick={() => onNext(tone)}>다음</button>

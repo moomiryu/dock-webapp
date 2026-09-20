@@ -139,6 +139,10 @@
   --t-slow: 400ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+  /* 제자리를 한 번 지나쳤다가 돌아온다. 자라는 것이 '커졌다'가 아니라
+     '튀어나왔다'로 읽히게 하는 곡선 — 02에서 고른 칸이 화면이 될 때 쓴다.
+     끝값이 1을 넘는 마디(1.56)가 그 지나침이다. */
+  --ease-boing: cubic-bezier(0.34, 1.56, 0.64, 1);
   --z-content: 1;
   --z-elevated: 2;
 }

@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import BackButton from '../components/BackButton';
-import { fontMap, opticalStroke } from '../lib/palettes';
+import { fontMap, opticalFix, opticalStroke } from '../lib/palettes';
 import { type PartialTone } from '../lib/tone';
 import { foldLines } from '../lib/fit';
 
@@ -145,7 +145,7 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
         fontVariationSettings: '"wght" ' + tone.wght,
         transform: 'scaleX(' + tone.tone + ')',
         fontStyle: tone.slnt ? `oblique ${Math.abs(tone.slnt)}deg` : 'normal',
-        fontSize: `min(${byLine}cqw, ${byHeight}cqh)`,
+        fontSize: `calc(min(${byLine}cqw, ${byHeight}cqh) * ${opticalFix[tone.font]?.scale ?? 1})`,
         '--optical-stroke': opticalStroke(tone.font, tone.wght)
     } as CSSProperties;
 

@@ -55,7 +55,21 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
     const [hint, setHint] = useState(false);
     const input = useRef<HTMLTextAreaElement>(null);
     const empty = !text.trim();
-    const full = text.length === 60;
+    const left = 60 - text.length;
+    const full = left === 0;
+    /**
+     * 붙여넣다 **잘린 글자 수.**
+     *
+     * maxLength는 넘치는 만큼을 조용히 버린다. 한 줄쯤 더 써서 붙여넣은
+     * 사람은 제 문장이 어디서 끊겼는지 모른 채 다음으로 넘어간다 — 벽에
+     * 반쯤 남은 말이 사흘 걸린다. 몇 자가 안 들어갔는지 말해 준다.
+     *
+     * 지우는 것은 **자판을 누를 때**다. change에서 지우면 붙여넣기가 만든
+     * 그 change가 제 메시지를 바로 지워 버리고, 깃발로 그것만 건너뛰게
+     * 하면 붙여넣기가 아무것도 안 넣은 경우에 깃발이 남아 다음 편집을
+     * 먹는다. 자판과 붙여넣기는 서로 다른 사건이라 엇갈릴 일이 없다.
+     */
+    const [cut, setCut] = useState(0);
     useEffect(() => { input.current?.focus({ preventScroll: true }); }, []);
     /* 닫으면 쓰던 자리로 돌려보낸다. 힌트를 보고 나서 다시 입력창을 찾아
        누르게 하면, 힌트를 연 것이 작성을 끊은 것이 된다. */
@@ -83,9 +97,29 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
     <textarea ref={input} className="write-input" aria-label="벽에 올릴 한 줄"
       style={{ '--rows': Math.max(1, foldLines(text || ' ').length) } as React.CSSProperties}
       value={text} maxLength={60} spellCheck={false} placeholder="지금, 이곳에서 하고 싶은 말은?"
+      onPaste={e => {
+        const el = e.currentTarget;
+        /* 고른 만큼은 덮어써지므로 자리가 그만큼 더 있다 */
+        const room = 60 - text.length + Math.abs(el.selectionEnd - el.selectionStart);
+        const over = e.clipboardData.getData('text').length - room;
+        if (over > 0) setCut(over);
+      }}
+      onKeyDown={() => { if (cut) setCut(0); }}
       onChange={e => setText(e.target.value.slice(0, 60))}/>
   </div>
-  <span className={'compose-count' + (full ? ' is-full' : '')}>{text.length}<span>/60</span></span>
+  {/* 다 찼다는 말을 **숫자와 글자 둘로** 한다. 색만 바꾸면 색을 못 보는
+      사람에게는 아무 일도 안 일어난 화면이다. */}
+  <span className={'compose-count' + (full ? ' is-full' : '')}>
+    {text.length}<span>/60</span>
+    {full && <b>다 찼어요</b>}
+  </span>
+  {/* 잘린 것은 그 자리에서 말한다. 다음 글자를 치면 사라진다 */}
+  {cut > 0 && <span className="compose-cut" role="status">{cut}자는 들어가지 않았어요</span>}
+  {/* 낭독기에는 **마지막 열 자**만 알린다. 한 자마다 읽어 주면 쓰는 것을
+      방해하고, 안 알리면 한도가 있다는 것조차 모른다. */}
+  <span className="sr-only" aria-live="polite">
+    {full ? '다 찼어요' : left <= 10 ? `${left}자 남았어요` : ''}
+  </span>
 
   {/* 힌트는 **부르면 온다.** 저절로 뜨거나 돌아가지 않는다 — 보고 있지
       않은 자리에서 글이 바뀌면, 쓰던 사람은 제 글이 바뀐 줄 안다. */}

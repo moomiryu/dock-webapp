@@ -32,6 +32,8 @@ async function settle() {
 }
 
 let total = 0;
+/** 대비를 재지 못한 자리의 합 — 위반이 아니라 사각지대다 */
+let dark = 0;
 
 async function audit(name) {
   // 색·너비 전이가 끝난 뒤에 잰다. 전이 도중에 재면 없는 대비 위반이 잡힌다.
@@ -44,11 +46,22 @@ async function audit(name) {
   );
   const v = res.violations;
   total += v.length;
-  console.log(`  ${v.length ? '✗' : '✓'} ${name}${v.length ? ` — ${v.length}건` : ''}`);
+  /* 대비를 **재지 못한** 자리. 위반이 아니라 사각지대다.
+     axe는 바닥의 더운 기운(::after) 같은 가상 요소가 글자 위에 걸리면
+     "배경을 알 수 없다"며 판정 불가로 넘긴다. 세지 않으니 화면은 통과로
+     찍히는데, 실제로 그 자리에서 흰 종이 위의 흰 글자가 몇 달 살아 있었다
+     (.compose-count.is-full, 2026-09-21에 눈으로 찾았다).
+
+     못 잡는 것은 어쩔 수 없지만 **못 봤다는 사실은 보여야 한다.** 세지는
+     않고 적기만 한다 — 여기 뜬 자리는 사람이 값을 재서 확인한다. */
+  const blind = res.incomplete.filter((x) => x.id === 'color-contrast');
+  console.log(`  ${v.length ? '✗' : '✓'} ${name}${v.length ? ` — ${v.length}건` : ''}`
+    + (blind.length ? `   ⚠ 대비 판정 불가 ${blind.reduce((n, x) => n + x.nodes.length, 0)}곳` : ''));
   for (const item of v) {
     console.log(`      [${item.impact}] ${item.id}: ${item.help}`);
     for (const n of item.nodes.slice(0, 2)) console.log(`         ${n.target.join(' ')}`);
   }
+  dark += blind.reduce((n, x) => n + x.nodes.length, 0);
 }
 
 console.log(`\n접근성 감사 → ${BASE}\n`);
@@ -70,6 +83,15 @@ await audit('01 한 줄 (빈 상태)');
 await page.locator('.write-input').fill('여기서 크게 말해본 적 없다');
 await page.waitForTimeout(300);
 await audit('01 한 줄 (채운 뒤)');
+
+// 60자를 채운 상태도 본다. 그 자리에만 걸리는 규칙이 있어서다
+// (.compose-count.is-full). 2026-09-21까지 이 화면이 목록에 없었고,
+// 그동안 그 규칙은 흰 종이 위에 흰 글자였다 — 검사는 통과하고 있었다.
+await page.locator('.write-input').fill('가'.repeat(60));
+await page.waitForTimeout(300);
+await audit('01 한 줄 (60자)');
+await page.locator('.write-input').fill('여기서 크게 말해본 적 없다');
+await page.waitForTimeout(300);
 
 await page.locator('.write-screen .primary-action').click();
 await page.waitForTimeout(400);
@@ -104,4 +126,8 @@ await audit('08 완료');
 
 await browser.close();
 console.log(total ? `\n총 ${total}건 위반` : '\n위반 없음');
+if (dark) {
+  console.log(`대비를 **재지 못한** 자리 ${dark}곳. 바닥의 더운 기운(::after)이 글자 위에 걸려`);
+  console.log('axe가 배경을 못 읽는다 — 위반이 아니라 검사가 못 본 자리다. 그 자리의 색은 사람이 잰다.');
+}
 process.exit(total ? 1 : 0);

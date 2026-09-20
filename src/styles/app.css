@@ -1828,7 +1828,10 @@
      줄이 다섯을 넘어가면(발화자가 손으로 더 끊으면) 높이가 먼저 닿는다. */
   font-size: min(8cqw, calc(96cqh / (var(--rows, 1) * 1.5)));
   line-height: 1.5; color: var(--ink); text-align: center; padding: 0; }
-.write-input::placeholder{ color: var(--grey-500); }
+/* --grey-500은 흰 종이에서 2.86:1이라 큰 글자 기준(3:1)에도 못 미쳤다.
+   한 단 내린 --grey-600이 4.59:1이다. 아직 본문(--ink)보다 옅어서 쓴
+   글과 안 헷갈린다. */
+.write-input::placeholder{ color: var(--grey-600); }
 /* 흰 바탕에서는 grey-500이 대비 4.5:1에 못 미친다(접근성 검사가 잡았다).
    본문 회색으로 한 단 내린다. */
 .write-screen .compose-count{ position: static; align-self: flex-end; color: var(--body-text); }
@@ -2772,7 +2775,21 @@
 .z-ask.is-brief{ overflow: hidden; animation: askBriefCollapse 760ms var(--ease-emphasized) 3s forwards; }
 /* 검은 자리 위라 --muted(4.49:1)로는 AA에 한 끗 모자란다. 한 칸 밝게. */
 .compose-count{ position: absolute; right: var(--pad-x); bottom: var(--s6); font-family: var(--label-font); font-size: var(--fs-cap); letter-spacing: 0.02em; color: var(--grey-500); font-variant-numeric: tabular-nums; }
-.compose-count.is-full{ color: var(--paper); }
+/* 다 찼을 때. 흰색이었다 — 60자에서 배경이 검정으로 물러서던 옛 편집기의
+   값이고, 그 편집기는 04 색으로 옮겨 가면서 여기 글자 수를 안 달고 갔다.
+   흰 종이 위에 흰 글자만 남아 '60/60'의 앞 숫자가 통째로 사라져 있었다
+   (2026-09-21에 재서 찾았다: 59자까지 #4e5968, 60자에서 #ffffff).
+   검사 목록에 60자를 채운 화면이 없어서 자동 검사도 못 잡았다. */
+.compose-count.is-full{ color: var(--brand-main); }
+/* 색만으로 말하지 않는다 — 다 찼다는 것을 글자로도 적는다 */
+.compose-count b{ font-weight: inherit; margin-left: var(--s2); }
+.compose-count b::before{ content: '· '; }
+/* 붙여넣다 잘렸을 때. 글자 수 바로 위에 선다 */
+.compose-cut{
+  position: absolute; right: var(--pad-x); bottom: calc(var(--s6) + var(--s5) + var(--s2));
+  font-family: var(--label-font); font-size: var(--fs-cap); color: var(--brand-main);
+}
+.write-screen .compose-cut{ position: static; align-self: flex-end; }
 
 /* ─── 60자 — 화면이 물러선다 ───────────────────────────────────
    다 찼다는 말을 숫자가 아니라 크기로 한다. 쓰던 자리가 줄어들어 한 덩이가

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import BackButton from '../components/BackButton';
 import { foldLines } from '../lib/fit';
+import { BODY, EYE_LOOK, EYE_WHITE, HEAD, VIEW, WALK } from '../character/walker';
 
 interface Props {
     initialText: string;
@@ -132,7 +133,22 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
          내려앉았다. 닫으면 다시 초점을 돌려주므로 자판도 같이 돌아온다. */
       input.current?.blur();
       setHint(true);
-    }}>무슨 말을 쓸지 막막하다면</button>
+    }}>
+    {/* 홈의 구경꾼 하나가 물음표를 달고 서 있다. 도형은 walker.ts에서 그대로
+        온다 — 여기서 다시 그리면 두 캐릭터가 된다. 이름은 옆의 글이므로
+        그림 전체가 aria-hidden이다. */}
+    <span className="hint-figure" aria-hidden="true">
+      <svg viewBox={`0 0 ${VIEW.w} ${VIEW.h}`} focusable="false">
+        <path fill="currentColor" d={WALK.farRest} />
+        <path fill="currentColor" d={WALK.nearRest} />
+        <circle fill="currentColor" cx={HEAD.cx} cy={HEAD.cy} r={HEAD.r} />
+        <path fill="currentColor" d={BODY} />
+        <circle style={{ fill: 'var(--paper)' }} cx={EYE_WHITE.cx} cy={EYE_WHITE.cy} r={EYE_WHITE.r} />
+        <circle fill="currentColor" cx={EYE_LOOK.cx} cy={EYE_LOOK.cy} r={EYE_LOOK.r} />
+      </svg>
+      <i className="hint-q">?</i>
+    </span>
+    무슨 말을 쓸지 막막하다면</button>
   {hint && (
     <div className="write-hint" id="write-hint">
       <div className="write-hint-head">

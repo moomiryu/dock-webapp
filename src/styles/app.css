@@ -245,11 +245,21 @@
 
 /* ─── 홈: 인사말, 캐릭터, 시작 선택 ─── */
 
+/* ── 홈은 방이다: 뒷벽과 바닥 ────────────────────────────────────────
+   흰 종이 한 장이었을 때 캐릭터는 허공에 떠 있었다. 벽(--grey-50)과
+   바닥(--grey-200)을 회색 두 단으로 가르면 그림자가 바닥에 붙고 캐릭터가
+   방 안에 선다. 경계는 50→60%에 걸쳐 풀어 준다 — 선을 그으면 지평선이
+   되고, 지평선은 밖(들판)이다. 이건 안이다.
+
+   2026-09-22에 여섯 칸을 한 장에 놓고 골랐다(reference capture/0922/
+   시안_홈배경.png). grey-50 바닥(B)은 폰에서 안 갈리고, 연속 그라데이션(E)은
+   깊이만 있지 바닥이 없었다. D를 골랐다. */
 .home-frame{
   position: relative;
   overflow: hidden;
   padding: 0;
   gap: 0;
+  background: linear-gradient(to bottom, var(--grey-50) 0 50%, var(--grey-200) 60% 100%);
 }
 
 .home-layer{
@@ -1803,15 +1813,26 @@
    아니라 **자식**에게 걸리는 것이라, 글자 크기를 폭에 걸려면 이 자리여야
    한다 — 칸에 걸었더니 엉뚱한 상자를 기준으로 28px이 31.2px이 됐다.
    위아래 auto가 남은 높이를 나눠 먹어 틀이 가운데 선다. */
+/* 테두리(2026-09-22). 상자가 없을 때는 글이 어디서 접히는지로만 칸을
+   알았는데, 처음 온 사람은 어디에 쓰는지부터 찾는다. 선 하나(--line)로
+   칸을 말하고 채우지는 않는다 — 채우면 종이 위에 판이 하나 더 생긴다.
+   안쪽 좌우 여백은 **안 준다**: 글자 폭이 12자 = 96%로 맞춰져 있어서
+   (아래 .write-input) 여백을 주면 열두 자가 열한 자로 접힌다. */
 .write-fit{ flex: 0 0 auto; width: 100%; aspect-ratio: 2.4 / 1.5;
-  max-height: 100%; container-type: size; margin-block: auto; }
+  max-height: 100%; container-type: size; margin-block: auto;
+  border: 1px solid var(--line); border-radius: var(--r-surface); }
 .write-input{ width: 100%; height: 100%; border: 0; background: none;
   resize: none; outline: none; font-family: inherit;
   /* 폭의 12분의 1. 96을 12로 나눈 것은 12자가 폭에 꼭 맞으면 반올림 한 번에
      열한 자로 접히기 때문이다 — 4%를 남겨 접히는 자리를 벽과 맞춘다.
      줄이 다섯을 넘어가면(발화자가 손으로 더 끊으면) 높이가 먼저 닿는다. */
   font-size: min(8cqw, calc(96cqh / (var(--rows, 1) * 1.5)));
-  line-height: 1.5; color: var(--ink); text-align: center; padding: 0; }
+  line-height: 1.5; color: var(--ink); text-align: center; padding: 0;
+  /* 세로 가운데. textarea는 글을 위에서부터 쌓는데 상자에 테두리가 생기자
+     한 줄이 큰 빈 상자 꼭대기에 붙어 있는 것이 드러났다. 줄 수만큼의
+     높이를 빼고 남는 것을 위아래로 반씩 준다 — em은 이 요소의 글자 크기다. */
+  box-sizing: border-box;
+  padding-block: calc((100cqh - var(--rows, 1) * 1.5em) / 2); }
 /* --grey-500은 흰 종이에서 2.86:1이라 큰 글자 기준(3:1)에도 못 미쳤다.
    한 단 내린 --grey-600이 4.59:1이다. 아직 본문(--ink)보다 옅어서 쓴
    글과 안 헷갈린다. */
@@ -1827,15 +1848,31 @@
    펼쳐지는 자리는 입력창과 '다 썼어요' 사이다. 입력창 위에 얹으면 쓰던
    글을 가리고, 버튼 아래로 보내면 스크롤 밖으로 나간다. 빈 자리는 원래
    입력창의 위아래 auto 여백이 먹고 있던 것이라, 펼쳐도 입력창은 제자리다. */
+/* 밑줄 친 글 한 줄이었다. 2026-09-22에 캐릭터를 붙인 알약 버튼이 됐다 —
+   홈의 그 하늘색 구경꾼이 물음표를 달고 서 있다. 처음 온 사람이 막막할 때
+   찾을 것이 **글자 한 줄보다는 눈에 들어와야** 하되, 이 화면의 주인공은
+   입력칸이고 제일 큰 손짓은 '다 썼어요'라 채움 없이 테두리만 두른다. */
 .hint-open{
   align-self: center;
-  border: 0; background: none; padding: var(--s3) var(--s4);
-  font-family: var(--ui-font); font-size: var(--fs-body-s); color: var(--muted);
-  text-decoration: underline; text-underline-offset: 4px;
+  display: inline-flex; align-items: center; gap: var(--s3);
+  border: 1px solid var(--line); border-radius: var(--r-full); background: var(--paper);
+  padding: var(--s2) var(--s5) var(--s2) var(--s3);
+  font-family: var(--ui-font); font-size: var(--fs-body-s); color: var(--body-text);
   cursor: pointer; min-height: var(--btn-l);
 }
-.hint-open:active{ color: var(--ink); }
-.hint-open.on{ color: var(--ink); }
+.hint-open:active{ background: var(--grey-100); }
+.hint-open.on{ background: var(--grey-100); color: var(--ink); }
+/* 구경꾼. 홈의 walker와 같은 도형(walker.ts)을 같은 하늘색으로 */
+.hint-figure{ position: relative; display: inline-block; height: var(--btn-s); aspect-ratio: 366 / 574.1;
+  color: var(--char-cyan); flex: none; }
+.hint-figure svg{ display: block; width: 100%; height: 100%; }
+/* 머리 위 오른쪽의 물음표. 이 버튼의 이름은 옆의 글이라 이건 그림이다 —
+   흰 글자는 --brand-strong 위에서 4.64:1이다(--brand-main은 4.0). */
+.hint-q{ position: absolute; top: calc(var(--s2) * -1); right: calc(var(--s3) * -1);
+  width: var(--s5); height: var(--s5); border-radius: var(--r-full);
+  display: grid; place-items: center;
+  background: var(--brand-strong); color: var(--paper);
+  font-size: var(--fs-cap-s); font-weight: 700; line-height: 1; font-style: normal; }
 
 /* 이 화면만 높이를 못 박는다. .z-frame은 min-height라 내용이 길어지면
    틀이 같이 길어지는데, 그러면 힌트를 펼친 만큼 '다 썼어요'가 화면 밖으로
@@ -2004,7 +2041,8 @@
 /* 03 조율은 이 목록에서 빠졌다(2026-09-21). 아래가 불투명한 편집 패널
    (--grey-50)이라 받칠 붉은 면이 없고, 패널 아래로 삐져나온 125px만
    분홍 띠로 남아 패널과 '다음' 사이에 없는 경계를 그렸다. */
-.home-frame::after,
+/* 홈은 이 목록에 없다(2026-09-22). 바닥이 회색이 되면서 그 위에 더운
+   기운을 또 깔면 띠가 둘이 된다 — 시안에서 그대로 보였다. */
 .tone-choice::after, .compose-screen::after,
 .write-screen::after, .color-choice::after, .preview-screen::after,
 .info-overlay::after{
@@ -2047,7 +2085,6 @@
 .preview-screen > .primary-action{ position: relative; z-index: 2; }
 /* 홈의 두 버튼과 소개의 발치 줄은 그 기운 위에 앉는다 */
 .home-frame .home-gate, .info-overlay > .info-nav{ position: relative; z-index: 2; }
-.home-frame::after{ z-index: 900; }
 .tone-selected{ display: flex; align-items: center; justify-content: space-between; color: var(--body-text); font-size: var(--fs-body-s); }
 .tone-selected button{ border: 0; background: var(--grey-100); border-radius: var(--r-s); padding: var(--s3) var(--s5); min-height: 44px; color: var(--grey-700); font: inherit; cursor: pointer; }
 .tone-selected button:active{ background: var(--grey-200); }

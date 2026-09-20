@@ -882,7 +882,7 @@
   gap: var(--s2);
 }
 /* 제목과 설명 사이는 한 칸 더. 그 둘은 같은 덩어리가 아니다. */
-.info-slide h2{ margin-top: var(--s2); }
+.info-slide h2{ margin-top: var(--s1); }   /* 6→4: 작성 화면의 제목(y 84)과 같은 줄에 선다 */
 .info-said{ margin-top: var(--s2); }
 
 
@@ -904,13 +904,17 @@
   border-radius: var(--r-surface);
 }
 
+/* 머리줄 왼쪽, 뒤로가기 바로 옆. 숫자(.info-count)가 오른쪽 끝을 잡고
+   이름은 남는 자리를 가져간다 — 그래야 이름이 길어져도 숫자가 안 밀린다. */
 .info-step-label{
   font-family: var(--label-font);
-  font-size: var(--fs-cap-s);
-  letter-spacing: 0.06em;
+  font-size: var(--fs-cap);
+  letter-spacing: 0.02em;
   color: var(--muted);
-  flex: none;
+  flex: 1 1 auto;
+  text-transform: none;
 }
+.info-count{ flex: none; color: var(--ink); }
 
 .info-slide h2{
   text-wrap: balance;

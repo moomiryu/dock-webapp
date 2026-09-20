@@ -64,15 +64,20 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
        바닥의 더운 기운이 그 위에 얹힌 한 겹으로 읽힌다(app.css · is-dark) */
     <div className={'info-overlay' + (s.artClass === 'is-bleed' ? ' is-dark' : '')}
       aria-label="메가폰트 소개">
+      {/* 'About / Step 1'과 '1 / 6'은 둘 다 **지금 어디인가**를 말하는
+          정보라 한 줄에 둔다 — 왼쪽이 이름, 오른쪽이 숫자. 단계 이름이
+          제목 위에 제 줄을 차지하던 때는 제목이 작성 화면보다 27px 아래에
+          섰다(84 대 111, 390×844 실측). 그 줄이 올라오면서 제목이 작성
+          화면과 같은 높이에 선다. */}
       <div className="info-head">
         <BackButton label={idx === 0 ? '처음으로' : '이전 설명'} onClick={back} />
-        <span>{idx + 1} / {SLIDES.length}</span>
+        <span className="info-step-label">{s.step}</span>
+        <span className="info-count">{idx + 1} / {SLIDES.length}</span>
       </div>
       <div className="info-track" ref={trackRef} tabIndex={-1} role="region"
         aria-live="polite" aria-label="메가폰트 사용 안내">
         {/* key가 바뀌면 장이 새로 서고, 그때 들어오는 결(infoSlideIn)이 돈다 */}
         <section className="info-slide" key={idx} aria-label={s.title}>
-          <span className="info-step-label">{s.step}</span>
           {/* 줄바꿈이 적힌 제목은 그 자리를 지킨다(data-break). 나머지는
               balance가 알아서 두 줄을 고르게 나눈다 — 둘은 같이 못 쓴다. */}
           <h2 data-break={s.title.includes('\n') ? 'true' : undefined}>{s.title}</h2>

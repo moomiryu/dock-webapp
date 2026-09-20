@@ -71,7 +71,9 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
         {/* key가 바뀌면 장이 새로 서고, 그때 들어오는 결(infoSlideIn)이 돈다 */}
         <section className="info-slide" key={idx} aria-label={s.title}>
           <span className="info-step-label">{s.step}</span>
-          <h2>{s.title}</h2>
+          {/* 줄바꿈이 적힌 제목은 그 자리를 지킨다(data-break). 나머지는
+              balance가 알아서 두 줄을 고르게 나눈다 — 둘은 같이 못 쓴다. */}
+          <h2 data-break={s.title.includes('\n') ? 'true' : undefined}>{s.title}</h2>
           <div className="info-said">{s.body}</div>
           <div className={'info-art ' + (s.artClass ?? '')} aria-hidden>{s.art}</div>
         </section>
@@ -112,11 +114,14 @@ function Built({ name, still, make }: { name: string; still: string; make: (key:
 const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNode; artClass?: string }> = [
   {
     step: 'About',
-    title: '오밤중, 벽에 띄우는 나의 한마디',
+    // 줄바꿈은 뜻이 끊기는 자리다. 화면 폭에 맡기면 '띄우는 / 나의'가
+    // 아니라 엉뚱한 데서 끊긴다.
+    title: '오밤중, 벽에 띄우는\n나의 한마디.',
     body: (
       <p>
-        누구나 공평하게 메시지를 전할 수 있습니다.<br />
-        시끄럽지 않아도, 충분히 눈에 띕니다.
+        소리 대신 빛으로 말해보세요.<br />
+        내가 쓴 한 줄이 벽에 떠올라<br />
+        같은 공간의 사람들에게 닿습니다.
       </p>
     ),
     art: <Built name="about" still={artAboutFull}

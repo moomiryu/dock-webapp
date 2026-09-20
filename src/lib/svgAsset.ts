@@ -7,6 +7,8 @@
 //
 // 그래서 붓기 전에 이름 뒤에 에셋 키를 달아 각자 방을 준다.
 // 원본 파일은 건드리지 않는다 — 그림은 작가 것이고, 여기서는 읽기만 한다.
+import { CLIP_H, WALK } from '../character/walker';
+
 export function scopeSvg(raw: string, key: string): string {
   return raw
     .replace(/\bcls-(\d+)\b/g, `cls-$1-${key}`)
@@ -234,19 +236,21 @@ interface Item { el: Element; tag: string; fill: string; d: string | null; shape
  */
 const INSIDE_DEFS = 'defs,clipPath,mask,pattern,marker,symbol';
 
+function itemOf(el: Element): Item {
+  const d = el.tagName === 'path' ? normalizeD(el.getAttribute('d') ?? '') : null;
+  return {
+    el,
+    tag: el.tagName,
+    fill: (el.getAttribute('fill') ?? '').toLowerCase(),
+    d,
+    shape: d ? shapeOf(d) : SHAPE_ATTRS.map((a) => el.getAttribute(a) ?? '').join(','),
+    text: el.tagName === 'text' ? (el.textContent ?? '').trim() : '',
+    size: SIZE_ATTRS.map((a) => el.getAttribute(a) ?? '').join(',')
+  };
+}
+
 function itemsOf(root: Element): Item[] {
-  return Array.from(root.querySelectorAll(DRAWN)).filter((el) => !el.closest(INSIDE_DEFS)).map((el) => {
-    const d = el.tagName === 'path' ? normalizeD(el.getAttribute('d') ?? '') : null;
-    return {
-      el,
-      tag: el.tagName,
-      fill: (el.getAttribute('fill') ?? '').toLowerCase(),
-      d,
-      shape: d ? shapeOf(d) : SHAPE_ATTRS.map((a) => el.getAttribute(a) ?? '').join(','),
-      text: el.tagName === 'text' ? (el.textContent ?? '').trim() : '',
-      size: SIZE_ATTRS.map((a) => el.getAttribute(a) ?? '').join(',')
-    };
-  });
+  return Array.from(root.querySelectorAll(DRAWN)).filter((el) => !el.closest(INSIDE_DEFS)).map(itemOf);
 }
 
 /**
@@ -312,8 +316,10 @@ function transformOf(el: Element): Record<Slot, number[]> | null {
  * @param holds 컷마다 머무는 몫. 되돌아서는 컷에 더 준다
  * @param move  한 번 옮기는 데 드는 몫
  */
-function timeline(holds: number[], move = 2) {
-  const total = holds.reduce((a, b) => a + b, 0) + move * (holds.length - 1);
+function timeline(holds: number[], move: number | number[] = 2) {
+  const gap = (i: number) => (Array.isArray(move) ? move[i] ?? 2 : move);
+  let total = holds.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < holds.length - 1; i++) total += gap(i);
   const times: number[] = [];
   const splines: string[] = [];
   let t = 0;
@@ -322,10 +328,11 @@ function timeline(holds: number[], move = 2) {
     t += h / total;
     times.push(t);
     splines.push('0 0 1 1');                                  // 머무는 칸
-    if (i < holds.length - 1) { t += move / total; splines.push('0.4 0 0.2 1'); }
+    if (i < holds.length - 1) { t += gap(i) / total; splines.push('0.4 0 0.2 1'); }
   });
   times[times.length - 1] = 1;
-  return { keyTimes: times.map((x) => +x.toFixed(4)).join(';'), keySplines: splines.join(';') };
+  const at = times.map((x) => +x.toFixed(4));
+  return { keyTimes: at.join(';'), keySplines: splines.join(';'), at };
 }
 
 /** 컷마다 두 번씩 늘어놓는다 — timeline이 기대하는 꼴 */
@@ -615,6 +622,189 @@ function cloneInto(B: Element, el: Element, before: Element | null): Element {
 /** 모양 말고도 오가야 하는 숫자들. font-size가 '크기' 축의 답이다 */
 const NUM_ATTRS = [...SHAPE_ATTRS, 'font-size', 'stroke-width'];
 
+
+/* ═══ 걸어 들어오기 ════════════════════════════════════════════════════
+   튜토리얼의 인물은 **홈을 걸어 다니는 그 캐릭터다.** 짐작이 아니라 잰
+   것이다: 머리 지름이 곧 몸 너비라는 비례가 같고, 그 비례로 뽑은 배율
+   (About 0.16285 · Step 3 0.35779)로 홈 캐릭터의 발밑(y 541.81)을 옮기면
+   작가가 그린 그림자의 시작점과 소수점까지 맞는다 — 309.19,413.73 ·
+   238.68,443.32. 같은 그림에서 나온 것이다.
+
+   그래서 걸음을 옮겨 붙일 수 있다. 작가의 인물을 엉덩이(CLIP_H)에서 자르고
+   그 아래에 홈의 다리 둘을 같은 배율로 놓는다. 몸은 걸음의 박자로 오르내리고
+   (WALK.bob) 그 박자에 기운다(WALK.tilt) — 홈에서 쓰는 값 그대로다.
+
+   ── 멈추는 법 ────────────────────────────────────────────────────────
+   다리는 들어오는 동안만 걷고 도착하면 선 자세로 멎는다. SMIL은 한 요소의
+   시계를 중간에 세울 수 없으므로, 장면의 시간표 위에 **걷는 구간만 걸음을
+   깔고 그 뒤로는 선 자세를 이어 붙인다.** 그래서 다리가 멎는 순간이 도착과
+   정확히 같다 — 따로 맞출 위상이 없다.
+
+   65프레임(50fps)을 다 쓰지 않고 셋에 하나만 쓴다. 다리가 화면에서 15px쯤
+   이라 17fps로도 걸음이 읽히고, 프레임 하나가 450자라 다 쓰면 인물 하나에
+   30,000자가 붙는다. */
+
+/** 홈 캐릭터의 골격 치수(Character_walk_v3.svg의 화판에서) */
+const RIG = { left: 17.13, width: 332.21, hipX: 183.23, hipY: 449, footY: 541.81 };
+/** 다리는 몇 프레임마다 한 장씩 쓸지 */
+const LEG_STEP = 3;
+
+interface Rig { tx: number; ty: number; s: number; r: number; cx: number; cy: number }
+
+/**
+ * 이 동그라미가 누군가의 **머리**인가.
+ *
+ * 머리라면 몸 너비가 머리 지름과 같고, 그 비례로 정해지는 발밑 자리에
+ * 그림자가 누워 있어야 한다. 그림자가 증거다 — 없으면 그냥 동그라미다.
+ */
+function rigOf(head: Item, all: Item[]): Rig | null {
+  if (head.tag !== 'circle') return null;
+  const n = (a: string) => Number(head.el.getAttribute(a));
+  const r = n('r'), cx = n('cx'), cy = n('cy');
+  if (!r || !Number.isFinite(cx) || !Number.isFinite(cy)) return null;
+  const s = (2 * r) / RIG.width;
+  const tx = cx - r - RIG.left * s, ty = cy - r;
+  const foot = ty + RIG.footY * s;
+  const shadow = all.some((it) => {
+    if (it === head) return false;
+    const b = boxOf(it);
+    // 발밑에 납작하게 누운 것. 몸보다 넓고 머리보다 얇다.
+    return !!b && Math.abs(b.y + b.h / 2 - foot) < Math.max(1.5, r * 0.08)
+      && b.w > r && b.h < r * 0.8;
+  });
+  return shadow ? { tx, ty, s, r, cx, cy } : null;
+}
+
+/**
+ * 어느 쪽 밖에서 걸어 들어올지.
+ *
+ * 설 자리가 화판 왼쪽이면 왼쪽에서, 오른쪽이면 오른쪽에서 온다 — 제 자리를
+ * 지나쳐 갔다가 되돌아오는 것보다 짧고, 오는 길이 곧 보는 사람의 시선이다.
+ */
+function entryDx(vb: number[], box: { x: number; y: number; w: number; h: number }) {
+  const margin = vb[2] * 0.06;
+  return box.x + box.w / 2 < vb[0] + vb[2] / 2
+    ? r2(-(box.x + box.w - vb[0] + margin))
+    : r2(vb[0] + vb[2] - box.x + margin);
+}
+
+/** 그 인물의 몸이 차지하는 칸 */
+const rigBox = (g: Rig) => ({ x: g.tx, y: g.ty, w: RIG.width * g.s, h: (RIG.footY + 20) * g.s });
+
+const inBox = (it: Item, box: { x: number; y: number; w: number; h: number }) => {
+  const b = boxOf(it);
+  if (!b) return false;
+  const x = b.x + b.w / 2, y = b.y + b.h / 2;
+  return x > box.x - box.w * 0.2 && x < box.x + box.w * 1.2 && y > box.y - box.h * 0.1 && y < box.y + box.h * 1.1;
+};
+
+/**
+ * 인물 하나를 걸어 들어오게 한다.
+ *
+ * @param els   그 인물을 이루는 것 전부(그림자 포함)
+ * @param seg   걷는 구간 — 장면 한 바퀴에 대한 [시작, 끝] 비율
+ * @param dx    출발 자리. 화판 밖이라 걸어 들어오는 것으로 보인다
+ */
+function walkIn(root: Element, els: Item[], g: Rig, key: string, seg: [number, number], dx: number, dur: number): Element | null {
+  const doc = root.ownerDocument;
+  const NS = 'http://www.w3.org/2000/svg';
+  const make = (tag: string) => doc.createElementNS(NS, tag);
+  const [a, b] = seg;
+
+  const shadow = els.find((it) => it.tag !== 'circle' && (boxOf(it)?.h ?? 9e9) < g.r * 0.8
+    && (boxOf(it)?.w ?? 0) > g.r);
+  const body = els.filter((it) => it !== shadow);
+  if (!body.length) return null;
+
+  /* 걸음 한 바퀴를 몇 번 걷는가. 홈과 같은 빠르기(WALK.ms)에 제일 가깝게
+     잡되, 구간에 딱 맞아떨어지게 나눈다 — 도착할 때 발이 땅에 있어야 한다. */
+  const span = (b - a) * dur * 1000;
+  const laps = Math.max(1, Math.round(span / WALK.ms));
+  const frames = WALK.keyTimes.split(';').length;            // 65
+  const each = Math.ceil((frames - 1) / LEG_STEP);            // 한 바퀴에 쓰는 프레임 수
+
+  const far = WALK.far.split(';'), near = WALK.near.split(';');
+  const bob = WALK.bob.split(';').map((v) => v.trim().split(/[ ,]+/).map(Number));
+  const tilt = WALK.tilt.split(';').map((v) => v.trim().split(/[ ,]+/).map(Number));
+  const rest = WALK.bobRest.split(/[ ,]+/).map(Number);
+
+  const times: number[] = [], legFar: string[] = [], legNear: string[] = [],
+    bobs: string[] = [], tilts: string[] = [], xs: string[] = [];
+  const hip = [g.tx + RIG.hipX * g.s, g.ty + RIG.hipY * g.s];
+  const total = laps * each;
+  for (let k = 0; k <= total; k++) {
+    const at = a + ((b - a) * k) / total;
+    const f = ((k % each) * LEG_STEP) % (frames - 1);
+    times.push(at);
+    legFar.push(far[f]); legNear.push(near[f]);
+    const bo = bob[f] ?? rest, ti = tilt[f] ?? [0];
+    // 걸음의 오르내림은 캐릭터 크기만큼 줄여서 얹는다
+    bobs.push(`${r2((bo[0] - rest[0]) * g.s)} ${r2((bo[1] - rest[1]) * g.s)}`);
+    tilts.push(`${r2(ti[0])} ${r2(hip[0])} ${r2(hip[1])}`);
+    xs.push(`${r2(dx * (1 - k / total))} 0`);
+  }
+  /* 앞뒤를 채운다. keyTimes는 **반드시 0에서 시작해 1에서 끝나야** 하고,
+     아니면 브라우저가 그 애니메이션을 통째로 무시한다 — 처음에 걷는 구간
+     [0.41, 0.64]만 적었더니 다리도 몸도 자리도 아무것도 안 움직였다.
+     앞은 걷기 전 자세로 기다리고, 뒤는 도착한 자세 그대로 선다. */
+  const cap = (arr: string[], last: string) => { arr.unshift(arr[0]); arr.push(last); };
+  times.unshift(0); times.push(1);
+  cap(legFar, far[0]);
+  cap(legNear, near[0]);
+  cap(bobs, '0 0');
+  cap(tilts, `0 ${r2(hip[0])} ${r2(hip[1])}`);
+  cap(xs, '0 0');
+
+  const kt = times.map((x) => r2(x)).join(';');
+  const put2 = (el: Element, tag: string, attrs: Record<string, string>) => {
+    const n = make(tag);
+    for (const [k2, v] of Object.entries(attrs)) n.setAttribute(k2, v);
+    n.setAttribute('keyTimes', kt);
+    n.setAttribute('calcMode', 'linear');
+    n.setAttribute('dur', `${dur}s`);
+    n.setAttribute('repeatCount', 'indefinite');
+    el.appendChild(n);
+    return n;
+  };
+
+  // 바깥 무리: 걸어 들어오는 이동
+  const outer = make('g');
+  els[0].el.parentNode?.insertBefore(outer, els[0].el);
+  put2(outer, 'animateTransform', { attributeName: 'transform', type: 'translate', values: xs.join(';') });
+  if (shadow) outer.appendChild(shadow.el);
+
+  // 다리 — 홈의 그 다리다
+  const legs = make('g');
+  legs.setAttribute('transform', `translate(${r2(g.tx)},${r2(g.ty)}) scale(${r2(g.s)})`);
+  const skin = body.find((it) => it.tag === 'path')?.fill ?? '#000';
+  for (const [d, vals] of [[WALK.farRest, legFar], [WALK.nearRest, legNear]] as Array<[string, string[]]>) {
+    const leg = make('path');
+    leg.setAttribute('d', d);
+    leg.setAttribute('fill', skin);
+    put2(leg, 'animate', { attributeName: 'd', values: vals.join(';') });
+    legs.appendChild(leg);
+  }
+  outer.appendChild(legs);
+
+  // 몸 — 엉덩이에서 자르고, 걸음의 박자로 오르내리며 기운다
+  const clip = make('clipPath');
+  clip.setAttribute('id', `mf-hip-${key}-${r2(g.cx)}`);
+  const rect = make('rect');
+  rect.setAttribute('x', r2(g.tx - g.r) + ''); rect.setAttribute('y', r2(g.ty - g.r) + '');
+  rect.setAttribute('width', r2(RIG.width * g.s + g.r * 2) + '');
+  rect.setAttribute('height', r2(CLIP_H * g.s + g.r) + '');
+  clip.appendChild(rect);
+  (root.querySelector('defs') ?? root.insertBefore(make('defs'), root.firstChild)).appendChild(clip);
+
+  const trunk = make('g');
+  trunk.setAttribute('clip-path', `url(#${clip.getAttribute('id')})`);
+  put2(trunk, 'animateTransform', { attributeName: 'transform', type: 'translate', values: bobs.join(';') });
+  put2(trunk, 'animateTransform', { attributeName: 'transform', type: 'rotate', additive: 'sum', values: tilts.join(';') });
+  for (const it of body) trunk.appendChild(it.el);
+  outer.appendChild(trunk);
+  return outer;
+}
+
 /**
  * 컷 여럿을 1 → 2 → … → N → … → 2 → 1 로 오가는 한 장.
  *
@@ -643,7 +833,11 @@ export function chainSvg(raws: string[], key: string, dur = 11): string {
     const order: number[] = [];
     for (let k = 0; k < n; k++) order.push(k);
     for (let k = n - 2; k >= 0; k--) order.push(k);
-    const t = timeline(order.map((k) => (k === 0 || k === n - 1 ? 3 : 1)));
+    /* 첫 구간과 마지막 구간을 길게 준다. 거기서 사람이 걸어 들어오고
+       나가기 때문이다(Step 3). 걸음이 짧으면 미끄러진 것으로 보인다.
+       사람이 없는 장(Step 2)에서는 그저 첫 전환이 조금 느긋해질 뿐이다. */
+    const moves = order.slice(1).map((_, i) => (i === 0 || i === order.length - 2 ? 5 : 2));
+    const t = timeline(order.map((k) => (k === 0 || k === n - 1 ? 3 : 1)), moves);
 
     // 첫 컷의 요소 → 컷마다의 짝
     const of: Array<Map<Element, Item>> = cuts.map(() => new Map());
@@ -700,9 +894,40 @@ export function chainSvg(raws: string[], key: string, dur = 11): string {
       const d = c.querySelector('defs');
       if (d) Array.from(d.children).forEach((x) => { if (x.tagName !== 'style') defs.appendChild(x.cloneNode(true)); });
     }
+    const planted: Array<{ it: Item; at: Set<number> }> = [];
     for (const g of guests.values()) {
       const copy = cloneInto(base, g.item.el, null);
-      animateSeq(copy, 'opacity', order.map((k) => (g.at.has(k) ? '1' : '0')), t, dur);
+      planted.push({ it: itemOf(copy), at: g.at });
+    }
+
+    /* 첫 컷에 없던 것 가운데 **사람**이 있으면 밝기로 나타나지 않고 걸어
+       들어온다. Step 3이 그렇다 — 메가폰트만 서 있다가 누가 걸어와 폰을
+       꽂는다. 걷는 구간은 첫 컷에서 둘째 컷으로 가는 동안이다. */
+    const vbn = (base.getAttribute('viewBox') ?? '').split(/[ ,]+/).map(Number);
+    const rest = [...planted];
+    if (vbn.length === 4) {
+      for (const { it } of planted) {
+        const rg = rigOf(it, planted.map((x) => x.it));
+        if (!rg) continue;
+        const mine = rest.filter((x) => inBox(x.it, rigBox(rg)));
+        if (mine.length < 2) continue;
+        const outer = walkIn(base, mine.map((x) => x.it), rg, key,
+          [t.at[1], t.at[2]], entryDx(vbn, rigBox(rg)), dur);
+        if (!outer) continue;
+        for (const x of mine) { const k = rest.indexOf(x); if (k >= 0) rest.splice(k, 1); }
+        /* 걷는 동안 반투명하면 걸어오는 것이 아니라 스며 나오는 것이 된다.
+           걸음이 시작되는 자리에서 한 번에 켜고, 장면이 처음으로 돌아갈 때
+           끈다 — 돌아가는 길에 뒷걸음질을 시키지 않으려고 걷지 않고 진다. */
+        put(outer, 'animate', {
+          attributeName: 'opacity', values: '0;0;1;1;0',
+          keyTimes: `0;${r2(t.at[1])};${r2(Math.min(t.at[1] + 0.01, t.at[2]))};` +
+            `${r2(t.at[t.at.length - 2])};1`,
+          calcMode: 'linear', dur: `${dur}s`
+        });
+      }
+    }
+    for (const { it, at } of rest) {
+      animateSeq(it.el, 'opacity', order.map((k) => (at.has(k) ? '1' : '0')), t, dur);
     }
 
     focusOn(base, items.flat());
@@ -750,8 +975,10 @@ export function aboutSvg(litRaw: string, fullRaw: string, key: string, dur = 12)
       if (!wall || b.w * b.h > wall.w * wall.h) wall = b;
     }
 
-    // 다섯 걸음: 어둠 · 불빛 · 문구 · 사람 · (도로 어둠)
-    const t = timeline([1, 2, 2, 5, 1]);
+    /* 다섯 걸음: 어둠 · 불빛 · 문구 · 사람 · (도로 어둠)
+       사람이 들어오는 구간(셋째)만 길게 준다 — 걸어 들어오는 데 두 걸음은
+       있어야 걸음으로 읽힌다. 짧으면 미끄러져 들어온 것이 된다. */
+    const t = timeline([1, 2, 2, 5, 1], [2, 2, 5, 2]);
     const say = (el: Element, v: string[]) => animateSeq(el, 'opacity', v, t, dur);
 
     // ① 불빛 — 그라디언트를 쓰는 것이 불빛이다
@@ -794,14 +1021,31 @@ export function aboutSvg(litRaw: string, fullRaw: string, key: string, dur = 12)
         left = Math.min(left, b.x);
       }
       const dx = r2(Math.max(right, vb[2]) - left + vb[2] * 0.06);
-      const g = B.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
-      guests[0].el.parentNode?.insertBefore(g, guests[0].el);
-      for (const it of guests) g.appendChild(it.el);
-      put(g, 'animateTransform', {
-        attributeName: 'transform', type: 'translate',
-        values: doubled([`${dx} 0`, `${dx} 0`, `${dx} 0`, '0 0', `${dx} 0`]).join(';'),
-        keyTimes: t.keyTimes, keySplines: t.keySplines, calcMode: 'spline', dur: `${dur}s`
-      });
+      // 사람은 미끄러져 들어오지 않고 **걸어서** 들어온다. 걷는 구간은
+      // 셋째 걸음 — 시간표에서 셋째 머묾의 끝부터 넷째 머묾의 시작까지다.
+      const seg: [number, number] = [t.at[5], t.at[6]];
+      const left0 = [...guests];
+      for (const head of guests) {
+        const g = rigOf(head, guests);
+        if (!g) continue;
+        const mine = left0.filter((it) => inBox(it, rigBox(g)));
+        if (!mine.length) continue;
+        const outer = walkIn(B, mine, g, key, seg, dx, dur);
+        if (!outer) continue;
+        for (const it of mine) { const k = left0.indexOf(it); if (k >= 0) left0.splice(k, 1); }
+        // 불이 꺼지면 어둠에 묻힌다. 걸어 나가지는 않는다 — 뒷걸음이 된다.
+        animateSeq(outer, 'opacity', ['1', '1', '1', '1', '0'], t, dur);
+      }
+      if (left0.length) {
+        const g = B.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
+        left0[0].el.parentNode?.insertBefore(g, left0[0].el);
+        for (const it of left0) g.appendChild(it.el);
+        put(g, 'animateTransform', {
+          attributeName: 'transform', type: 'translate',
+          values: doubled([`${dx} 0`, `${dx} 0`, `${dx} 0`, '0 0', `${dx} 0`]).join(';'),
+          keyTimes: t.keyTimes, keySplines: t.keySplines, calcMode: 'spline', dur: `${dur}s`
+        });
+      }
     }
     if (!lamps && !w.onlyB.length) return scopeSvg(fullRaw, key);
 

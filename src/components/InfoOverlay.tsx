@@ -156,7 +156,7 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
       </p>
     ),
     art: <Built name="dock" still={artDock3}
-      make={(k) => chainSvg([artDock1, artDock2, artDock3], k, 8)} />,
+      make={(k) => chainSvg([artDock1, artDock2, artDock3], k, 11)} />,
     artClass: 'is-wide'
   },
   {

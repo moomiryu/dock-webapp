@@ -49,20 +49,29 @@ const WELCOME: Array<{ text: string; small?: boolean }> = [
 /** 한 마디가 떠 있는 시간 · 다음 마디까지의 틈 */
 const WELCOME_MS = 1250, WELCOME_GAP = 220;
 /**
- * 처음에 눈을 감고 있는 동안.
+ * 깨어나는 차례.
  *
- * 등을 보이고 있다가 돌아서게 해 봤는데, 돌아오는 그 한 순간의 눈이
- * 어떻게 해도 어색했다 — 투명도로 올리면 허공에서 떠오르고, 눌러 뒀다
- * 켜면 툭 켜지고, 가로로 열면 획이 깨져 보인다. 뒷모습을 빼고 **처음부터
- * 정면, 눈만 감은 채**로 둔다. 뜨는 것은 눈꺼풀이 하는 일이지 회전이
- * 하는 일이 아니다.
+ * 00에서 빨강 막이 캐릭터 자리로 내려앉는다(App.tsx · splashLand). 막이
+ * 걷혔을 때 거기 있는 것은 **눈도 없는 빨강 한 덩어리**다. 그 덩어리가
+ * 세 번 끔뻑이고 눈을 뜬다.
  *
- * 00에서 넘어온 빨강 막이 꺼지는 데 900ms가 걸리므로(App.tsx · splashLand)
- * 그보다 넉넉히 길어야 '감고 있었다'가 보인다 — 막이 몸과 같은 빨강이라
- * 그동안은 얼굴 자리가 통째로 가려져 있다(그걸 모르고 눈 자산을 한참
- * 의심했다).
+ * 2026-09-20까지는 '눈을 감고 있다'였고 감은 눈을 twinkle(◡)로 그렸는데,
+ * 그건 흰자가 그대로 보이는 얼굴이라 덩어리가 아니라 **이미 얼굴**이었다.
+ * 막이 걷히는 순간 흰 동그라미 둘이 먼저 눈에 들어왔다. 눈을 아예 지워야
+ * 빨강에서 얼굴이 나타나는 것이 된다.
+ *
+ * 첫 칸이 1300ms인 것은 막이 꺼지는 데 900ms가 걸리기 때문이다 — 그 뒤로
+ * 400ms는 덩어리인 채로 서 있어야 '눈이 없었다'가 보인다.
+ *
+ * 뜨는 시간이 칸마다 길어진다. 같은 길이로 세 번 깜빡이면 신호등이지
+ * 깨어나는 것이 아니다.
  */
-const SHUT_MS = 1600;
+const WAKE: Array<{ open: boolean; ms: number }> = [
+  { open: false, ms: 1300 },
+  { open: true, ms: 80 }, { open: false, ms: 190 },
+  { open: true, ms: 120 }, { open: false, ms: 160 },
+  { open: true, ms: 170 }, { open: false, ms: 130 }
+];
 /** 눈을 뜨고 터지는 '!' — 놀란 뒤에 웃는다 */
 const BANG_MS = 900;
 
@@ -80,14 +89,14 @@ export default function HomeCharacter() {
 
   // 표정만 React가 들고 있다. 벽에 닿을 때만 바뀌고 최소 2초를 버티므로
   // 리렌더가 드물다. 포즈와 위치는 매 프레임이라 DOM을 직접 만진다.
+  const [eyes, setEyes] = useState<Eyes>('general');
   /**
-   * 처음에는 눈을 감고 있다. 첫 프레임부터 그래야 뜨는 것이 사건이 된다.
+   * 눈이 아예 없는 동안. 첫 프레임부터 그래야 빨강 덩어리로 보인다.
    *
-   * 감은 눈은 'twinkle'(◡)이다. 아홉 표정을 몸 색 위에 한 장으로 놓고
-   * 골랐다 — 'tired'는 이름과 달리 흰자가 반쯤 잘린 접시 모양이라
-   * 감은 눈으로 안 읽힌다.
+   * 감은 눈을 그리지 않고 눈판을 통째로 숨긴다 — 흰자가 한 점이라도
+   * 보이면 그건 덩어리가 아니라 얼굴이다(WAKE).
    */
-  const [eyes, setEyes] = useState<Eyes>('twinkle');
+  const [blind, setBlind] = useState(true);
   // 뱉은 글자. 표정과 같은 이유로 React가 들고 있다 — 몇 초에 한 번뿐이라
   // 리렌더가 드물다. 자리와 크기는 매 프레임이라 여전히 DOM을 직접 만진다.
   const [say, setSay] = useState<{
@@ -137,8 +146,9 @@ export default function HomeCharacter() {
      * 첫인사의 차례. 등 → 돌아섬 → '!' → 웃음 → 인사 넉 마디 → 평소.
      * 이 동안에는 떠다니지도 부풀지도 않는다.
      */
-    let intro: 'shut' | 'bang' | 'welcome' | null = 'shut';
+    let intro: 'wake' | 'bang' | 'welcome' | null = 'wake';
     let introAt = 0;
+    let wakeIdx = 0;
 
     let welcomeIdx = 0, welcomeNext = 0;
     let initialized = false, visible = !document.hidden;
@@ -296,13 +306,21 @@ export default function HomeCharacter() {
       if (intro && !reduced) {
         if (!introAt) introAt = t;
         faceUntil = 0;
-        if (intro === 'shut') {
-          // 감았던 눈을 뜨는 그 순간에 '!'가 터진다. 둘이 같은 사건이다.
-          if (t - introAt > SHUT_MS) {
-            setEyes('general');
-            setSay({ text: '!', side: 'right', tilt: -8, quick: true });
-            sayUntil = t + BANG_MS;
-            intro = 'bang'; introAt = t;
+        if (intro === 'wake') {
+          // 빨강 덩어리에서 세 번 끔뻑이고 눈을 뜬다. '!'는 **마지막으로
+          // 뜨는** 그 순간에 터진다 — 중간의 끔뻑임에 붙이면 아직 깨는
+          // 중인데 놀란 것이 되어 차례가 무너진다.
+          if (t - introAt > WAKE[wakeIdx].ms) {
+            wakeIdx += 1;
+            introAt = t;
+            if (wakeIdx >= WAKE.length) {
+              setBlind(false);
+              setSay({ text: '!', side: 'right', tilt: -8, quick: true });
+              sayUntil = t + BANG_MS;
+              intro = 'bang';
+            } else {
+              setBlind(!WAKE[wakeIdx].open);
+            }
           }
         } else if (intro === 'bang') {
           // 놀란 다음에 웃는다. 순서가 뒤집히면 인사가 먼저 와서 '!'가
@@ -331,8 +349,10 @@ export default function HomeCharacter() {
           }
         }
       } else if (intro && reduced) {
-        // 움직임을 끈 사람에게는 차례가 없다 — 곧바로 정면으로 선다.
+        // 움직임을 끈 사람에게는 차례가 없다 — 곧바로 정면으로, 눈을 뜬 채.
+        // 여기서 눈을 안 돌려주면 그 사람에게는 영영 덩어리로 남는다.
         setPose('front_center', t);
+        setBlind(false);
         intro = null;
       }
 
@@ -402,6 +422,7 @@ export default function HomeCharacter() {
       ref={ref}
       className="home-char"
       data-eyes={eyes}
+      data-blind={blind ? 'true' : undefined}
       role="img"
       aria-label="메가폰트 캐릭터"
     >

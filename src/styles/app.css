@@ -110,7 +110,7 @@
 .guide-hero h1{
   text-wrap: balance;
   font-size: var(--fs-h2);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.02em;
   line-height: var(--lh-head);
 }
@@ -341,7 +341,7 @@
 .z-ask h1{
   text-wrap: balance;
   font-size: var(--fs-h3);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.02em;
   line-height: var(--lh-head);
 }
@@ -1022,7 +1022,7 @@
 .info-slide h2{
   text-wrap: balance;
   font-size: var(--fs-h4);
-  font-weight: 600;
+  font-weight: 700;
   line-height: var(--lh-head);
   letter-spacing: -0.02em;
   text-wrap: balance;
@@ -1120,7 +1120,7 @@
   text-wrap: balance;
   font-size: var(--fs-h2);
   line-height: var(--lh-head);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 
@@ -1991,7 +1991,11 @@
 /* 축 이름이 주인공이다 — 무엇을 만지는 중인지 먼저 읽혀야 한다. */
 .z-axis-label{ font-size: var(--fs-body); font-weight: 600; color: var(--ink); letter-spacing: -0.01em; }
 .z-axis-value{ font-size: var(--fs-body-s); color: var(--muted); }
-.z-ask p, .guide-hero p, .info-said p, .send-copy p{ color: var(--body-text); }
+/* 보조 설명은 제목보다 한 칸 낮다(--muted · 4.64:1). 2026-09-07에 여기서
+   --body-text로 올려 뒀었는데, 그러면 제목과 본문이 같은 세기로 읽힌다.
+   기본 선언(.z-ask p · .guide-hero p)이 원래 --muted였다 — 거기로 돌린다.
+   검은 바탕인 03·04는 뒤에서 흰색으로 덮는다(.tone-adjust …). */
+.z-ask p, .guide-hero p, .info-said p, .send-copy p{ color: var(--muted); }
 .dock-arrow{ color: var(--brand-main); }
 
 /* ─── 버튼은 전부 완전히 둥근 사각형 ─────────────────────────────

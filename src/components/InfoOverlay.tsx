@@ -23,8 +23,9 @@ import { EMPHASIS_SEC, STAY_DAYS } from '../lib/wall';
 // 어디까지 보이고 어디가 잘려야 하는지를 그것이 정한다(app.css · --focus).
 import artAboutLit from '../../by_moomiryu/Renewal_v1/Tutorial/example_about_1.svg?raw';
 import artAboutFull from '../../by_moomiryu/Renewal_v1/Tutorial/example_about_2.svg?raw';
-import artRule1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step_1.svg?raw';
-import artRule2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_2_1.svg?raw';
+import artRule1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_1_1.svg?raw';
+import artRule2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step_1_2.svg?raw';
+import artRule3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_3_1.svg?raw';
 import artGlyphs1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_1.svg?raw';
 import artGlyphs2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_2.svg?raw';
 import artGlyphs3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_3.svg?raw';
@@ -136,12 +137,14 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
         <b>비속어 및 타인을 해치는 표현은 사용할 수 없습니다.</b>
       </p>
     ),
-    /* 두 컷이 오간다: '최대 60자' ↔ 비속어 금지. 같은 판에 같은 자리라
-       바뀌는 것은 **판 위의 말**뿐이고, 구경하는 캐릭터는 눈만 바뀐다 —
-       규칙 둘을 나란히 놓는 대신 한 자리에서 갈아 끼운다. 아래 설명 두
-       줄이 그 둘을 글로도 말하므로 그림은 차례로 하나씩 보여도 된다. */
+    /* 세 컷이 차례로 온다: 쓰는 중('내 생각은|') → 최대 60자 → 비속어
+       금지. 판도 자판도 캐릭터도 같은 자리에 있고 **판 위의 말**만 갈린다 —
+       규칙 둘을 나란히 놓는 대신 한 자리에서 갈아 끼운다.
+
+       even을 켜는 이유: 셋 다 **읽을 말**이라 가운데도 끝과 같이 머물러야
+       한다. 기본 규칙(가운데는 짧게)은 가운데가 건너가는 중일 때의 것이다. */
     art: <Built name="rules" still={artRule1}
-      make={(k) => chainSvg([artRule1, artRule2], k)} />,
+      make={(k) => chainSvg([artRule1, artRule2, artRule3], k, 14, true)} />,
     artClass: 'is-wide'
   },
   {

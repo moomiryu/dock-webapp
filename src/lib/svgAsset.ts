@@ -894,7 +894,7 @@ function dockPhone(root: Element, home: Item, held: Item, hand: Item | null,
  * 되돌아서는 두 컷(처음과 끝)에 머무는 몫을 더 준다 — 거기서 안 쉬면
  * 방향이 바뀌는 것이 아니라 튕겨 나온 것으로 보인다.
  */
-export function chainSvg(raws: string[], key: string, dur = 11): string {
+export function chainSvg(raws: string[], key: string, dur = 11, even = false): string {
   if (typeof DOMParser === 'undefined' || raws.length < 2) return scopeSvg(raws[0], key);
   try {
     const cuts = raws.map((r) => new DOMParser().parseFromString(r, 'image/svg+xml').documentElement);
@@ -916,8 +916,12 @@ export function chainSvg(raws: string[], key: string, dur = 11): string {
        마지막 구간이라 **전부**가 느려진다. 5/2로 주면 머무는 1.7초보다
        건너가는 2.9초가 길어져, 읽어야 할 판이 늘 바뀌는 중이었다. */
     const moves = order.slice(1).map((_, i) =>
-      (n > 2 && (i === 0 || i === order.length - 2) ? 5 : 2));
-    const t = timeline(order.map((k) => (k === 0 || k === n - 1 ? 3 : 1)), moves);
+      (!even && n > 2 && (i === 0 || i === order.length - 2) ? 5 : 2));
+    /* 가운데 컷을 짧게 잡는 것은 그것이 **건너가는 중**일 때의 이야기다
+       (Step 2의 잣대 손잡이가 그렇다). Step 1처럼 컷 하나하나가 읽을
+       말이면 가운데도 끝과 같이 머물러야 한다 — 0.44초짜리 'max 60'은
+       지나가는 깜빡임이지 규칙이 아니다. */
+    const t = timeline(order.map((k) => (even || k === 0 || k === n - 1 ? 3 : 1)), moves);
 
     // 첫 컷의 요소 → 컷마다의 짝
     const of: Array<Map<Element, Item>> = cuts.map(() => new Map());
@@ -931,7 +935,15 @@ export function chainSvg(raws: string[], key: string, dur = 11): string {
         if (it) of[k].set(a.el, it);
       }
       for (const x of w.onlyB) {
-        const id = [x.tag, x.fill, x.shape, x.el.getAttribute('transform') ?? ''].join('|');
+        /* **그린 것 그대로**를 지문으로 쓴다. x.shape는 path에서 명령
+           글자만(MCLZ…), polygon·polyline에서는 아예 빈 문자열이다 —
+           SHAPE_ATTRS에 points가 없어서다. 그 바람에 흰 polygon 둘이
+           같은 것으로 묶여 하나만 심겼다(Step 1의 'max'에서 'x'가 통째로
+           사라졌다). 명령 글자가 같은 두 path도 같은 일을 당할 수 있다.
+           좌표까지 넣으면 "같은 컷들에 같은 물건"만 하나로 묶인다. */
+        const id = [x.tag, x.fill, x.d ?? '', x.el.getAttribute('points') ?? '',
+          SHAPE_ATTRS.map((a) => x.el.getAttribute(a) ?? '').join(','),
+          x.text, x.el.getAttribute('transform') ?? ''].join('|');
         const had = guests.get(id);
         if (had) had.at.add(k); else guests.set(id, { item: x, at: new Set([k]) });
       }
@@ -1007,7 +1019,16 @@ export function chainSvg(raws: string[], key: string, dur = 11): string {
         });
       }
     }
-    if (!moved) { markEyes(base); return scopeSvg(new XMLSerializer().serializeToString(base), key); }
+    /* 아무것도 **모양을 바꾸지 않았고** 컷마다 더 놓을 것도 없으면 그만
+       둔다 — 짝짓기가 어긋난 것이라, 그대로 밀고 나가면 첫 컷이 엉뚱하게
+       일그러진다.
+
+       'moved만' 보면 안 된다(2026-09-21). Step 1은 판도 자판도 캐릭터도
+       셋 다 같은 자리에 있고 **판 위의 말만 갈린다.** 갈리는 것들은 짝이
+       없어 전부 guests로 잡히므로 moved가 0인데, 그건 짝짓기가 실패한
+       것이 아니라 이 장면이 원래 그런 것이다. 실제로 그 바람에 세 컷이
+       첫 컷 한 장으로 주저앉아 있었다. */
+    if (!moved && !guests.size) { markEyes(base); return scopeSvg(new XMLSerializer().serializeToString(base), key); }
 
     // 다른 컷에만 있는 것은 바탕 문서에 없다. 옮겨 심고 있는 구간에만 켠다.
     const defs = base.querySelector('defs') ?? base.insertBefore(

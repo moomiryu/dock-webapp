@@ -95,6 +95,25 @@ const TURN_AT = MEETING.length - 1;
  */
 const CHAR_Z = 500;
 
+/**
+ * 발끝이 내려갈 수 있는 제일 아래.
+ *
+ * 버튼과 캐릭터의 **윤곽이 붙어 보이면** 둘이 한 덩어리로 읽힌다. 다리가
+ * 버튼 위에 걸치거나 그림자가 버튼 어깨에 닿는 그림이 그렇다.
+ *
+ * 재는 기준은 캐릭터의 한가운데가 아니라 **제일 아래로 뻗는 것**이다.
+ * p.y가 마침 그 선이다 — 그림자 타원의 아래 끝(cy+ry = 574.09)이 화판
+ * 바닥(574.1)과 같고, 상자를 p.y에 발맞춰 놓기 때문이다. 그러니 발이든
+ * 그림자든 p.y 아래로는 못 내려간다. 여기서 더 뺄 것이 없다.
+ */
+const GATE_GAP = 24;   /* --s6. 걸음의 오르내림까지 치면 16(--s5)으로는
+                          버튼 모서리와 붙어 보였다(재서 확인) */
+function groundLimit(frame: HTMLElement, h: number) {
+  const gate = frame.querySelector('.home-gate')?.getBoundingClientRect();
+  const top = gate ? gate.top - frame.getBoundingClientRect().top : h * 0.86;
+  return Math.max(h * 0.6, top - GATE_GAP);
+}
+
 const random = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
@@ -123,6 +142,7 @@ export default function HomeCrowd() {
     /** 가장자리 밖에서 새로 들어온다. 파랑으로, 아직 아무것도 모른 채 */
     const spawn = (p: Walker, t: number, first = false) => {
       const w = frame.clientWidth, h = frame.clientHeight;
+      const floor = groundLimit(frame, h);
       p.dir = Math.random() < 0.5 ? 1 : -1;
       p.x = p.dir > 0 ? -half - random(0, 60) : w + half + random(0, 60);
       /* 세로 띠: 위는 워드마크, 아래는 버튼이 쓴다. 그 사이에서만 논다.
@@ -130,8 +150,9 @@ export default function HomeCrowd() {
          모자(하늘색) 높이에 오는데, 구경꾼도 하늘색이라 둘이 한 덩이로
          뭉쳐 보였다. 뒤에 서는 것은 좋지만 겹쳐 보이는 것은 다른 일이다. */
       /* 발끝이 **들판 위**에 놓여야 한다. 지평선이 화면의 55%라 그보다
-         위에 서면 하늘을 밟고 있는 것이 된다(전에는 53%부터였다). */
-      p.y = random(h * 0.57, h * 0.86);
+         위에 서면 하늘을 밟고 있는 것이 된다(전에는 53%부터였다).
+         아래쪽 끝은 버튼이 정한다 — groundLimit이 잰다. */
+      p.y = random(h * 0.57, floor);
       p.speed = random(SPEED.min, SPEED.max);
       p.phase = 'walk';
       p.beat = 0;
@@ -167,6 +188,7 @@ export default function HomeCrowd() {
       const dt = Math.min((t - (last || t)) / 1000, 0.05);
       last = t;
       const w = frame.clientWidth;
+      const floor = groundLimit(frame, frame.clientHeight);
       if (!turned && charPos.greeted) turned = t;
 
       for (const p of crowd) {
@@ -244,6 +266,9 @@ export default function HomeCrowd() {
         p.el.style.zIndex = String(
           charPos.ready ? clamp(Math.round(CHAR_Z + p.y - charPos.ground), 1, 999) : 1
         );
+        /* 화면이 바뀌어 버튼이 올라오면 이미 서 있던 사람도 같이 물러난다.
+           한 번에 옮기지 않고 조금씩 끌어올려 — 갑자기 튕기지 않는다. */
+        if (p.y > floor) p.y = Math.max(floor, p.y - 60 * dt);
         p.el.style.transform =
           `translate(${(p.x - half).toFixed(1)}px, ${(p.y - HEIGHT).toFixed(1)}px) scaleX(${face})`;
       }

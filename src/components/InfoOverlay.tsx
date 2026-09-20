@@ -1,30 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import BackButton from './BackButton';
-import { morphSvg, scopeSvg } from '../lib/svgAsset';
+import { aboutSvg, chainSvg, scopeSvg } from '../lib/svgAsset';
 import { EMPHASIS_SEC, STAY_DAYS } from '../lib/wall';
 
-// 작가가 삽화를 짝으로 준다 — 한 군데만 다른 두 컷이다. 그 사이를 오간다.
+// 작가가 삽화를 컷으로 나눠 준다. 컷 사이를 이어 도는 일은 svgAsset이 한다.
 //
-//   Step 1  크기 손잡이가 아래→위, 그에 따라 '가'가 작게→크게
-//   Step 3  느낌표가 없다→있다
+//   About   두 컷(불 켜진 벽 · 다 모인 밤)으로 **세 걸음**을 짓는다.
+//           ① 불빛이 켜지고 ② '내 생각은…'이 뜨고 ③ 구경꾼이 걸어 들어온다.
+//           가운데 걸음은 그림에 없다 — 둘째 컷을 벽면 안팎으로 쪼개 만든다.
 //
-//   About   벽이 꺼졌다(_3) 켜진다(_1). 켜지면 "내 생각은…"이 뜨고 발광이 돈다.
+//   Step 1  네 컷을 1→2→3→4→3→2→1로 오간다. 되짚어 돌아오는 것이 중요하다:
+//           손잡이가 끝에서 처음으로 순간 이동하면 "손잡이를 움직이면 글자가
+//           따라 바뀐다"는 이 장의 내용이 그 순간 거짓이 된다.
 //
-// About의 짝은 _1과 _3이다. _2는 같은 장면을 다른 화판(416×360)에 다시 그린
-// 것이라 대응할 요소가 없다 — 모프에는 못 쓴다.
+//   Step 3  세 컷을 1→2→3→2→1로 오간다. 메가폰트만 서 있다가, 사람이
+//           걸어와 폰을 꽂고, 느낌표가 터진다. 되짚어 돌아오는 것이 거짓이
+//           아니다 — 실제로도 폰을 도로 빼면 그 큰 목소리가 거기서 끝난다.
 //
-// 어느 컷이 '나중'인지는 작가가 같은 폴더에 넣어 둔 example_full.svg
-// (소개 여섯 장을 통째로 그린 시안)가 정한다. 그 시안 자체는 번들에 넣지
-// 않는다 — 268KB짜리고, 화면이 아니라 지시서다.
-import artAboutFrom from '../../by_moomiryu/Renewal_v1/Tutorial/example_about_3.svg?raw';
-import artAboutTo from '../../by_moomiryu/Renewal_v1/Tutorial/example_about_1.svg?raw';
-// Step 1은 세 컷이다 — 1 → 2 → 3으로 이어 돈다 (작가가 _3을 덧붙였다)
+// 같은 폴더의 `Artboard size_*.pdf`는 번들에 넣지 않는다 — 화면이 아니라
+// 작가가 준 기준이다.
+import artAboutLit from '../../by_moomiryu/Renewal_v1/Tutorial/example_about_1.svg?raw';
+import artAboutFull from '../../by_moomiryu/Renewal_v1/Tutorial/example_about_2.svg?raw';
 import artGlyphs1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_1.svg?raw';
 import artGlyphs2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_2.svg?raw';
 import artGlyphs3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_3.svg?raw';
-import artDockFrom from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_1.svg?raw';
-import artDockTo from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_2.svg?raw';
+import artGlyphs4 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_4.svg?raw';
+import artDock1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_1.svg?raw';
+import artDock2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_2.svg?raw';
+import artDock3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_3.svg?raw';
 
 interface Props { onClose: () => void; onStart: () => void; }
 
@@ -90,13 +94,16 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
 // 짝지어 온 삽화. 한 번 만들어 두고 다시 쓴다 — 매 렌더마다 두 장을 파싱해
 // 뼈대를 맞출 이유가 없다. 모션을 끈 사람에게는 나중 컷만 준다.
 const morphed = new Map<string, string>();
-function Morphing({ from, to, then, name, crop }: { from: string; to: string; then?: string; name: string; crop?: string }) {
-  const still = typeof matchMedia !== 'undefined'
+
+/** 한 번 지어 두고 다시 쓴다. 모션을 끈 사람에게는 멈춘 한 컷만 준다 */
+function Built({ name, still, make }: { name: string; still: string; make: (key: string) => string }) {
+  const off = typeof matchMedia !== 'undefined'
     && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const key = still ? `${name}-still` : name;
-  if (!morphed.has(key)) morphed.set(key, still ? scopeSvg(then ?? to, key) : morphSvg(from, to, key, 4.2, crop, then));
+  const key = off ? `${name}-still` : name;
+  if (!morphed.has(key)) morphed.set(key, off ? scopeSvg(still, key) : make(key));
   return <span dangerouslySetInnerHTML={{ __html: morphed.get(key)! }} />;
 }
+
 
 const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNode; artClass?: string }> = [
   {
@@ -110,7 +117,8 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
     ),
     // 1920×1080 화판에서 장면은 x 318~1603, y 260~820만 쓴다. 나머지는 빈
     // 검정이라, 장면 둘레로 6%만 남기고 당긴다.
-    art: <Morphing from={artAboutFrom} to={artAboutTo} name="about" crop="241 183 1439 714" />,
+    art: <Built name="about" still={artAboutFull}
+      make={(k) => aboutSvg(artAboutLit, artAboutFull, k)} />,
     artClass: 'is-bleed'
   },
   {
@@ -122,11 +130,10 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
         나만의 목소리를 만들어보세요.
       </p>
     ),
-    // 순서는 파일 번호가 아니라 이야기다. 작가가 그린 세 컷을 보면
-    // _2가 얇고 작은 '가'(잣대 셋이 다 아래), _1이 굵고 큰 '가', _3이
-    // 거기서 기울어진 '가'다. 지침도 그 순서다 — 굵고 커지고, 그다음
-    // 빠르기가 올라가며 기운다. 그래서 2 → 1 → 3으로 돈다.
-    art: <Morphing from={artGlyphs2} to={artGlyphs1} then={artGlyphs3} name="glyphs" />,
+    // 파일 번호가 곧 차례다(2026-09-20에 작가가 넷으로 다시 그렸다).
+    // 끝까지 갔다가 되짚어 돌아온다 — 1→2→3→4→3→2→1.
+    art: <Built name="glyphs" still={artGlyphs1}
+      make={(k) => chainSvg([artGlyphs1, artGlyphs2, artGlyphs3, artGlyphs4], k)} />,
     artClass: 'is-wide'
   },
   {
@@ -149,7 +156,8 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
         메가폰트를 작동시키세요.
       </p>
     ),
-    art: <Morphing from={artDockFrom} to={artDockTo} name="dock" />,
+    art: <Built name="dock" still={artDock3}
+      make={(k) => chainSvg([artDock1, artDock2, artDock3], k, 8)} />,
     artClass: 'is-figure'
   },
   {

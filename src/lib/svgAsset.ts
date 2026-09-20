@@ -39,9 +39,18 @@ const r2 = (n: number) => Number(n.toFixed(2));
 function normalizeD(d: string): string | null {
   const t = d.match(/[A-Za-z]|-?\d*\.?\d+(?:e[-+]?\d+)?/g) ?? [];
   let i = 0, cx = 0, cy = 0, sx = 0, sy = 0, cmd = '';
+  /* 직전 곡선의 **두 번째 손잡이**. s(부드러운 곡선)는 그것을 거울처럼
+     뒤집어 제 첫 손잡이로 쓴다. 곡선이 아니었으면 지금 점이 그 자리다. */
+  let bx = 0, by = 0, curved = false;
   const out: string[] = [];
   const num = () => Number(t[i++]);
-  const to = (x: number, y: number, c: 'M' | 'L') => { out.push(`${c}${r2(x)},${r2(y)}`); cx = x; cy = y; };
+  const to = (x: number, y: number, c: 'M' | 'L') => {
+    out.push(`${c}${r2(x)},${r2(y)}`); cx = x; cy = y; curved = false;
+  };
+  const curve = (ax: number, ay: number, dx: number, dy: number, x: number, y: number) => {
+    out.push(`C${r2(ax)},${r2(ay)} ${r2(dx)},${r2(dy)} ${r2(x)},${r2(y)}`);
+    bx = dx; by = dy; cx = x; cy = y; curved = true;
+  };
   while (i < t.length) {
     if (/[A-Za-z]/.test(t[i])) cmd = t[i++];
     switch (cmd) {
@@ -54,16 +63,25 @@ function normalizeD(d: string): string | null {
       case 'h': to(cx + num(), cy, 'L'); break;
       case 'V': to(cx, num(), 'L'); break;
       case 'v': to(cx, cy + num(), 'L'); break;
-      case 'C': {
-        const a = num(), b = num(), c = num(), e = num(), x = num(), y = num();
-        out.push(`C${r2(a)},${r2(b)} ${r2(c)},${r2(e)} ${r2(x)},${r2(y)}`); cx = x; cy = y; break;
-      }
+      case 'C': { const a = num(), b = num(), c = num(), e = num(), x = num(), y = num(); curve(a, b, c, e, x, y); break; }
       case 'c': {
         const x0 = cx, y0 = cy;
-        const a = x0 + num(), b = y0 + num(), c = x0 + num(), e = y0 + num(), x = x0 + num(), y = y0 + num();
-        out.push(`C${r2(a)},${r2(b)} ${r2(c)},${r2(e)} ${r2(x)},${r2(y)}`); cx = x; cy = y; break;
+        curve(x0 + num(), y0 + num(), x0 + num(), y0 + num(), x0 + num(), y0 + num()); break;
       }
-      case 'Z': case 'z': out.push('Z'); cx = sx; cy = sy; break;
+      /* 부드러운 곡선. 2026-09-20까지 여기서 null로 물러났고, 그게 새 삽화의
+         짝짓기를 통째로 무너뜨렸다 — About의 빨간 인물 몸과 구경꾼 몸이
+         전부 s를 쓴다. 짝이 없으니 '둘째 컷에만 있는 것'으로 분류돼,
+         인물의 몸이 구경꾼들과 함께 화면 밖에서 걸어 들어왔다. */
+      case 'S': {
+        const ax = curved ? 2 * cx - bx : cx, ay = curved ? 2 * cy - by : cy;
+        const c = num(), e = num(), x = num(), y = num(); curve(ax, ay, c, e, x, y); break;
+      }
+      case 's': {
+        const x0 = cx, y0 = cy;
+        const ax = curved ? 2 * cx - bx : cx, ay = curved ? 2 * cy - by : cy;
+        curve(ax, ay, x0 + num(), y0 + num(), x0 + num(), y0 + num()); break;
+      }
+      case 'Z': case 'z': out.push('Z'); cx = sx; cy = sy; curved = false; break;
       default: return null;
     }
   }
@@ -73,28 +91,77 @@ function normalizeD(d: string): string | null {
 /** 명령 글자만 남긴 것. 이게 같아야 브라우저가 보간한다 */
 const shapeOf = (d: string) => d.replace(/[^A-Z]/g, '');
 
+/** style 속성에 한 줄 더 붙인다. 덮어쓰면 앞서 붙은 것이 지워진다 */
+function addStyle(el: Element, decl: string) {
+  const had = el.getAttribute('style');
+  el.setAttribute('style', had ? `${had};${decl}` : decl);
+}
+
 /**
- * <style>의 .cls-N 을 각 요소의 fill 속성으로 옮기고 style을 없앤다.
+ * <style> 규칙을 클래스별 선언 묶음으로 편다.
  *
  * 규칙 하나에 선택자가 여럿 묶여 나온다: `.cls-3, .cls-4 { fill: #fff }`.
  * 앞의 하나만 집으면 뒤에 묶인 것들이 색을 못 받아 검정으로 떨어진다 —
  * About의 눈 흰자와 벽에 켜지는 글자가 그렇게 검어졌다. 쉼표로 끊어 전부 준다.
+ *
+ * 한 클래스가 규칙 여럿에 걸리는 것도 흔하다(일러스트레이터는 색과 글꼴을
+ * 따로 낸다). 뒤에 오는 규칙이 앞을 덮는 CSS의 순서를 그대로 지킨다.
  */
-function inlineFills(root: Element) {
-  const css = root.querySelector('style')?.textContent ?? '';
-  const table: Record<string, string> = {};
+function styleTable(css: string): Record<string, Record<string, string>> {
+  const table: Record<string, Record<string, string>> = {};
   for (const rule of css.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
-    const f = rule[2].match(/fill:\s*([^;}]+)/);
-    if (!f) continue;
+    const decls: Array<[string, string]> = [];
+    for (const one of rule[2].split(';')) {
+      const m = one.match(/^\s*([\w-]+)\s*:\s*(.+?)\s*$/);
+      if (m) decls.push([m[1], m[2]]);
+    }
+    if (!decls.length) continue;
     for (const sel of rule[1].split(',')) {
       const c = sel.trim().match(/^\.([\w-]+)$/);
-      if (c) table[c[1]] = f[1].trim();
+      if (!c) continue;
+      const bag = (table[c[1]] ??= {});
+      for (const [k, v] of decls) bag[k] = v;
     }
   }
+  return table;
+}
+
+/**
+ * <style>을 각 요소에 붙여 넣고 <style>을 없앤다.
+ *
+ * 문서가 섞이기 때문이다 — 다른 컷의 요소를 이 문서로 옮겨 심는데,
+ * 옮겨 온 것의 `class="cls-3"`은 여기서 전혀 다른 색을 뜻한다.
+ *
+ * **fill만 옮기다가 2026-09-20에 나머지를 다 잃고 있었다는 걸 알았다.**
+ * 새 Step 1 삽재는 잣대 선이 `fill:none; stroke:#fff; stroke-width:8.25px`
+ * 이고 글자가 `font-family: Pretendard Variable; font-size: 167.49px`인데,
+ * 그 선언들이 <style>과 함께 통째로 버려져 선은 안 보이고 '가'는 16px
+ * 기본 글꼴로 떨어졌다. 이제 선언을 전부 옮긴다.
+ *
+ * fill만은 style이 아니라 **속성**으로 둔다 — 짝을 지을 때 읽는 값이라
+ * (itemsOf · pairs) 한자리에 있어야 한다.
+ */
+const PRESENTATION = new Set([
+  'fill', 'fill-opacity', 'fill-rule', 'opacity',
+  'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin',
+  'stroke-miterlimit', 'stroke-dasharray', 'stroke-opacity',
+  'font-family', 'font-size', 'font-weight', 'font-style', 'letter-spacing', 'text-anchor'
+]);
+
+function inlineFills(root: Element) {
+  const table = styleTable(root.querySelector('style')?.textContent ?? '');
   root.querySelectorAll('[class]').forEach((el) => {
-    const f = table[el.getAttribute('class')!];
-    if (f) el.setAttribute('fill', f);
+    const bag = table[el.getAttribute('class')!];
     el.removeAttribute('class');
+    if (!bag) return;
+    const rest: string[] = [];
+    for (const [k, v] of Object.entries(bag)) {
+      // 표현 속성은 속성 자리에 둔다. style에 두면 SMIL이 바꿔도 style이
+      // 이겨서 아무 일도 안 일어난다 — '가'의 font-size가 그렇다.
+      if (PRESENTATION.has(k)) el.setAttribute(k, v);
+      else rest.push(`${k}:${v}`);
+    }
+    if (rest.length) addStyle(el, rest.join(';'));
   });
   root.querySelectorAll('style').forEach((s) => s.remove());
 }
@@ -137,14 +204,27 @@ function markEyes(root: Element) {
       if (Math.hypot(b.cx - eye.cx, b.cy - eye.cy) > eye.r) continue;
       if (b.r > eye.r) continue;                 // 눈알보다 큰 건 눈이 아니라 그 뒤
       b.el.setAttribute('class', 'mf-eye');
-      b.el.setAttribute('style', `animation-delay:${delay.toFixed(2)}s`);
+      addStyle(b.el, `animation-delay:${delay.toFixed(2)}s`);
     }
   });
 }
 /** 모양이 숫자로 적혀 있는 요소들. 이 속성들만 오간다 */
 const SHAPE_ATTRS = ['cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'width', 'height', 'x1', 'y1', 'x2', 'y2'];
 
-interface Item { el: Element; tag: string; fill: string; d: string | null; shape: string }
+/**
+ * **덩치**만 적은 것. 자리(cx·x·y1…)는 뺐다.
+ *
+ * 컷이 바뀌어도 한 물건의 덩치는 그대로고 자리만 옮긴다 — 잣대 손잡이는
+ * 위아래로 다니지만 늘 18.12×10.67이다. 그래서 덩치가 곧 그 물건의 이름이다.
+ *
+ * 이게 없던 동안 짝짓기가 너무 헐거웠다. 같은 태그·같은 색이면 무엇이든
+ * 짝이 되어서, 잣대의 손잡이(18.12)가 눈금 하나(10.86)와 짝지어졌다.
+ * 그러면 진짜 손잡이가 짝을 잃고 '이 컷에만 있는 것'으로 심어져, 넷째 컷의
+ * 손잡이가 첫째 컷에서도 같이 떠 있었다(재서 확인: 알약이 3개여야 하는데 5개).
+ */
+const SIZE_ATTRS = ['r', 'rx', 'ry', 'width', 'height'];
+
+interface Item { el: Element; tag: string; fill: string; d: string | null; shape: string; text: string; size: string }
 
 /**
  * <defs> 안쪽은 그리는 것이 아니라 **도구**다 — clipPath의 사각형은 오려낼
@@ -162,49 +242,136 @@ function itemsOf(root: Element): Item[] {
       tag: el.tagName,
       fill: (el.getAttribute('fill') ?? '').toLowerCase(),
       d,
-      shape: d ? shapeOf(d) : SHAPE_ATTRS.map((a) => el.getAttribute(a) ?? '').join(',')
+      shape: d ? shapeOf(d) : SHAPE_ATTRS.map((a) => el.getAttribute(a) ?? '').join(','),
+      text: el.tagName === 'text' ? (el.textContent ?? '').trim() : '',
+      size: SIZE_ATTRS.map((a) => el.getAttribute(a) ?? '').join(',')
     };
   });
 }
 
-/** 같은 것으로 볼 수 있는 한 쌍인가 — 태그·색·뼈대가 모두 같아야 한다 */
+/**
+ * 같은 것으로 볼 수 있는 한 쌍인가 — 태그·색·뼈대가 모두 같아야 한다.
+ *
+ * <text>는 **내용까지** 같아야 한다. 안 그러면 '크기'와 '무게'가 서로
+ * 짝이 되어 잣대 이름이 자리를 맞바꾼다.
+ */
 const pairs = (a: Item, b: Item) =>
   a.tag === b.tag && a.fill === b.fill &&
-  (a.d !== null && b.d !== null ? shapeOf(a.d) === shapeOf(b.d) : a.tag !== 'path');
+  (a.tag === 'text' ? a.text === b.text : true) &&
+  (a.d !== null && b.d !== null
+    ? shapeOf(a.d) === shapeOf(b.d)
+    : a.tag !== 'path' && a.size === b.size);
+
+/* ─── transform 을 오가게 하기 ──────────────────────────────────────
+   SMIL은 transform을 <animate>로 못 다룬다. <animateTransform>이 맡는데
+   그것은 한 번에 한 가지(translate·rotate·scale·skewX·skewY)만 안다.
+
+   그래서 컷마다의 transform을 낱개로 뜯어 **정해진 자리 순서**로 세우고,
+   없는 자리는 항등값으로 채운 뒤 겹쳐 쌓는다. 첫 자리만 replace로 바탕
+   값을 지우고 나머지는 sum으로 얹는다 — 전부 sum으로 두면 요소가 원래
+   들고 있던 transform 위에 또 얹혀 두 번 적용된다.
+
+   자리 순서를 하나로 고정할 수 있는 근거: 이 삽화들에서 한 요소가 rotate와
+   scale을 같이 쓰는 일이 없다(잣대 손잡이는 translate+rotate, '가'는
+   translate+scale+skewX). 섞여 나오면 곱하는 차례가 달라져 결과가 틀어지
+   므로, 그럴 때는 손대지 않고 물러난다(null). */
+const SLOTS = ['translate', 'rotate', 'scale', 'skewX', 'skewY'] as const;
+type Slot = (typeof SLOTS)[number];
+/** 자리마다 인자 개수를 고정한다. rotate(a)는 rotate(a,0,0)과 같은 뜻이다 */
+const ARITY: Record<Slot, number> = { translate: 2, rotate: 3, scale: 2, skewX: 1, skewY: 1 };
+const IDENTITY: Record<Slot, number[]> = {
+  translate: [0, 0], rotate: [0, 0, 0], scale: [1, 1], skewX: [0], skewY: [0]
+};
+
+function transformOf(el: Element): Record<Slot, number[]> | null {
+  const out = { translate: [0, 0], rotate: [0, 0, 0], scale: [1, 1], skewX: [0], skewY: [0] };
+  const t = el.getAttribute('transform');
+  if (!t) return out;
+  let last = -1;
+  for (const m of t.matchAll(/([a-zA-Z]+)\s*\(([^)]*)\)/g)) {
+    const at = SLOTS.indexOf(m[1] as Slot);
+    if (at < 0 || at < last) return null;       // matrix이거나 곱하는 차례가 다르다
+    last = at;
+    const slot = SLOTS[at];
+    const n = (m[2].match(/-?\d*\.?\d+(?:e[-+]?\d+)?/g) ?? []).map(Number);
+    const v = IDENTITY[slot].slice();
+    for (let i = 0; i < ARITY[slot]; i++) if (n[i] !== undefined) v[i] = n[i];
+    // scale(0.94)는 가로세로 같은 값이다 — 0으로 채우면 납작해진다
+    if (slot === 'scale' && n[1] === undefined && n[0] !== undefined) v[1] = n[0];
+    out[slot] = v;
+  }
+  return out;
+}
 
 /**
- * 세 컷을 이어 도는 값. 컷마다 머물렀다 다음으로 간다.
+ * 머무는 칸과 옮기는 칸을 번갈아 재어 keyTimes·keySplines를 만든다.
  *
- *   0 ─ 0.08 ── 0.28 ─ 0.42 ── 0.62 ─ 0.76 ──── 1
- *   [ A 머묾 ][ A→B ][ B 머묾 ][ B→C ][ C 머묾 ][ C→A ]
+ * values는 컷마다 **두 번씩** 들어간 목록이다(v1;v1;v2;v2;…) — 앞의 것이
+ * 머묾의 시작, 뒤의 것이 끝이다. 쉬지 않고 오가면 삽화가 아니라 깜빡이가 된다.
  *
- * 마지막 구간이 긴 것은 C에서 A로 돌아가는 길이 두 칸을 건너뛰기 때문이다 —
- * 앞의 두 전환과 같은 시간을 주면 그 한 번만 두 배로 빨라 보인다.
+ * @param holds 컷마다 머무는 몫. 되돌아서는 컷에 더 준다
+ * @param move  한 번 옮기는 데 드는 몫
  */
-function animate3(el: Element, name: string, a: string, b: string, c: string, dur: number) {
-  const n = el.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'animate');
-  n.setAttribute('attributeName', name);
-  n.setAttribute('values', `${a};${a};${b};${b};${c};${c};${a}`);
-  n.setAttribute('keyTimes', '0;0.08;0.28;0.42;0.62;0.76;1');
-  n.setAttribute('calcMode', 'spline');
-  n.setAttribute('keySplines', '0 0 1 1;0.4 0 0.2 1;0 0 1 1;0.4 0 0.2 1;0 0 1 1;0.4 0 0.2 1');
-  n.setAttribute('dur', `${dur}s`);
-  n.setAttribute('repeatCount', 'indefinite');
-  el.appendChild(n);
+function timeline(holds: number[], move = 2) {
+  const total = holds.reduce((a, b) => a + b, 0) + move * (holds.length - 1);
+  const times: number[] = [];
+  const splines: string[] = [];
+  let t = 0;
+  holds.forEach((h, i) => {
+    times.push(t);
+    t += h / total;
+    times.push(t);
+    splines.push('0 0 1 1');                                  // 머무는 칸
+    if (i < holds.length - 1) { t += move / total; splines.push('0.4 0 0.2 1'); }
+  });
+  times[times.length - 1] = 1;
+  return { keyTimes: times.map((x) => +x.toFixed(4)).join(';'), keySplines: splines.join(';') };
 }
 
-function animate(el: Element, name: string, values: string, dur: number) {
-  const a = el.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'animate');
-  a.setAttribute('attributeName', name);
-  a.setAttribute('values', values);
-  a.setAttribute('keyTimes', '0;0.12;0.45;0.78;1');
-  // 양 끝에서 한 번씩 머문다. 쉬지 않고 오가면 삽화가 아니라 깜빡이가 된다.
-  a.setAttribute('calcMode', 'spline');
-  a.setAttribute('keySplines', '0 0 1 1;0.4 0 0.2 1;0 0 1 1;0.4 0 0.2 1');
-  a.setAttribute('dur', `${dur}s`);
-  a.setAttribute('repeatCount', 'indefinite');
-  el.appendChild(a);
+/** 컷마다 두 번씩 늘어놓는다 — timeline이 기대하는 꼴 */
+const doubled = (v: string[]) => v.flatMap((x) => [x, x]);
+
+function put(el: Element, tag: string, attrs: Record<string, string>) {
+  const n = el.ownerDocument.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  n.setAttribute('repeatCount', 'indefinite');
+  el.appendChild(n);
+  return n;
 }
+
+/** 여러 컷을 이어 도는 값 하나 */
+function animateSeq(el: Element, name: string, values: string[], t: ReturnType<typeof timeline>, dur: number) {
+  put(el, 'animate', {
+    attributeName: name, values: doubled(values).join(';'),
+    keyTimes: t.keyTimes, keySplines: t.keySplines, calcMode: 'spline', dur: `${dur}s`
+  });
+}
+
+/**
+ * 여러 컷을 이어 도는 transform. 움직이는 자리만 골라 쌓는다.
+ *
+ * 항등인 자리는 빼도 결과가 같고, 빼야 요소 하나에 <animateTransform>이
+ * 다섯씩 달리는 일을 면한다.
+ */
+function animateTransformSeq(el: Element, cuts: Array<Record<Slot, number[]> | null>, t: ReturnType<typeof timeline>, dur: number) {
+  if (cuts.some((c) => !c)) return false;
+  const live = SLOTS.filter((slot) =>
+    cuts.some((c) => c![slot].join() !== IDENTITY[slot].join()));
+  if (!live.length) return false;
+  if (!live.some((slot) => new Set(cuts.map((c) => c![slot].join())).size > 1)) return false;
+  el.removeAttribute('transform');
+  live.forEach((slot, i) => {
+    put(el, 'animateTransform', {
+      attributeName: 'transform', type: slot,
+      // 첫 자리가 바탕 값을 지우고, 나머지가 그 위에 얹힌다
+      additive: i === 0 ? 'replace' : 'sum',
+      values: doubled(cuts.map((c) => c![slot].map(r2).join(' '))).join(';'),
+      keyTimes: t.keyTimes, keySplines: t.keySplines, calcMode: 'spline', dur: `${dur}s`
+    });
+  });
+  return true;
+}
+
 
 /**
  * 두 목록을 나란히 걸어 짝을 짓는다.
@@ -229,31 +396,154 @@ function animate(el: Element, name: string, values: string, dur: number) {
 const LOOKAHEAD = 12;
 
 /** list의 start 다음 몇 칸째에 target의 짝이 있나. 없으면 -1 */
-function ahead(list: Item[], start: number, target: Item): number {
-  for (let n = 1; n <= LOOKAHEAD && start + n < list.length; n++) {
+function ahead(list: Item[], start: number, target: Item, limit = list.length): number {
+  for (let n = 1; n <= LOOKAHEAD && start + n < limit; n++) {
     if (pairs(list[start + n], target)) return n;
   }
   return -1;
 }
 
+/** 요소가 놓인 자리. 어느 무리에 속하는지 가를 때만 쓰므로 대충이면 된다 */
+function boxOf(it: Item): { x: number; y: number; w: number; h: number } | null {
+  const n = (a: string) => Number(it.el.getAttribute(a) ?? NaN);
+  if (it.d) {
+    const nums = it.d.match(/-?\d*\.?\d+/g)?.map(Number) ?? [];
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let k = 0; k + 1 < nums.length; k += 2) {
+      x0 = Math.min(x0, nums[k]); x1 = Math.max(x1, nums[k]);
+      y0 = Math.min(y0, nums[k + 1]); y1 = Math.max(y1, nums[k + 1]);
+    }
+    return Number.isFinite(x0) ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
+  }
+  if (it.tag === 'circle') return { x: n('cx') - n('r'), y: n('cy') - n('r'), w: n('r') * 2, h: n('r') * 2 };
+  if (it.tag === 'ellipse') return { x: n('cx') - n('rx'), y: n('cy') - n('ry'), w: n('rx') * 2, h: n('ry') * 2 };
+  if (it.tag === 'rect') return { x: n('x') || 0, y: n('y') || 0, w: n('width'), h: n('height') };
+  return null;
+}
+
+/**
+ * 두 목록에서 **틀림없이 같은 것**의 자리를 먼저 못 박는다.
+ *
+ * <text>는 내용이 곧 이름이다 — '가'는 어느 컷에서나 '가' 하나뿐이다.
+ * 차례로 걷는 방식은 두 문서의 순서가 대체로 같다는 데 기대는데,
+ * 일러스트레이터는 컷마다 순서를 바꿔 내보낸다. 새 Step 1에서 '가'가
+ * 첫 컷의 둘째에서 넷째 컷의 뒤에서 둘째로 갔고, 열두 칸을 내다봐도
+ * 못 찾아 짝이 끊겼다 — 끊기면 '가'가 모양을 잇지 못하고 겹쳐 뜬다.
+ *
+ * 양쪽에서 딱 하나씩인 글자만 못이 된다. 둘 이상이면 어느 것이 어느
+ * 것인지 알 수 없고, 엇갈리게 놓인 것(A에서는 앞, B에서는 뒤)도 버린다.
+ */
+function anchorsOf(ia: Item[], ib: Item[]): Array<[number, number]> {
+  const seen = (l: Item[]) => {
+    const m = new Map<string, number[]>();
+    l.forEach((x, i) => {
+      if (x.tag !== 'text' || !x.text) return;
+      const at = m.get(x.text);
+      if (at) at.push(i); else m.set(x.text, [i]);
+    });
+    return m;
+  };
+  const A = seen(ia), B = seen(ib);
+  const found: Array<[number, number]> = [];
+  for (const [k, at] of A) {
+    const bt = B.get(k);
+    if (at.length === 1 && bt && bt.length === 1) found.push([at[0], bt[0]]);
+  }
+  found.sort((x, y) => x[0] - y[0]);
+  /* 두 목록에서 **모두** 앞뒤가 같은 것만 못이 된다. 앞에서부터 욕심내어
+     고르면 안 된다 — 새 Step 1에서 '가'가 첫 컷의 둘째에서 넷째 컷의
+     뒤에서 둘째로 갔는데, 그것을 먼저 박으면 나머지 셋('크기'·'빠르기'·
+     '무게')이 전부 엇갈린 것으로 버려져 못이 하나만 남았다. 그 하나가
+     목록 한쪽 끝이라 그 앞의 열아홉을 한 칸에 우겨넣었고, 잣대 손잡이가
+     통째로 짝을 잃었다. 제일 긴 오름차순을 찾는다. */
+  const best: number[] = [], from: number[] = [];
+  for (let i = 0; i < found.length; i++) {
+    from[i] = -1;
+    let at = 0;
+    for (let k = 0; k < best.length; k++) if (found[best[k]][1] < found[i][1]) at = k + 1;
+    if (at) from[i] = best[at - 1];
+    best[at] = i;
+  }
+  const keep: Array<[number, number]> = [];
+  for (let i = best.length ? best[best.length - 1] : -1; i >= 0; i = from[i]) keep.unshift(found[i]);
+  return keep;
+}
+
 function align(ia: Item[], ib: Item[]) {
-  let i = 0, j = 0;
   const pair = new Map<Element, Item>();          // ib 요소 → 짝이 된 ia 요소
   const onlyB: Item[] = [];                       // ib에만 있는 것
   const onlyA: Array<{ item: Item; before: Element | null }> = [];
-  while (i < ia.length || j < ib.length) {
-    const a = ia[i], b = ib[j];
-    if (a && b && pairs(a, b)) { pair.set(b.el, a); i++; j++; continue; }
-    // 짝이 어긋났다. 어느 쪽에 끼어든 것인지 — 더 가까운 쪽이 끼어든 쪽이다.
-    const da = a ? ahead(ib, j, a) : -1;          // a의 짝이 B에서 몇 칸 뒤
-    const db = b ? ahead(ia, i, b) : -1;          // b의 짝이 A에서 몇 칸 뒤
-    if (da >= 0 && (db < 0 || da <= db)) { onlyB.push(b!); j++; continue; }
-    if (db >= 0) { onlyA.push({ item: a!, before: b ? b.el : null }); i++; continue; }
-    if (b) { onlyB.push(b); j++; }
-    if (a) { onlyA.push({ item: a, before: b ? b.el : null }); i++; }
+
+  /** 못과 못 사이만 차례로 걷는다 */
+  const walk = (i0: number, i1: number, j0: number, j1: number, after: Element | null) => {
+    let i = i0, j = j0;
+    while (i < i1 || j < j1) {
+      const a = i < i1 ? ia[i] : undefined;
+      const b = j < j1 ? ib[j] : undefined;
+      if (a && b && pairs(a, b)) { pair.set(b.el, a); i++; j++; continue; }
+      // 짝이 어긋났다. 어느 쪽에 끼어든 것인지 — 더 가까운 쪽이 끼어든 쪽이다.
+      const da = a ? ahead(ib, j, a, j1) : -1;    // a의 짝이 B에서 몇 칸 뒤
+      const db = b ? ahead(ia, i, b, i1) : -1;    // b의 짝이 A에서 몇 칸 뒤
+      const before = b ? b.el : after;
+      if (da >= 0 && (db < 0 || da <= db)) { onlyB.push(b!); j++; continue; }
+      if (db >= 0) { onlyA.push({ item: a!, before }); i++; continue; }
+      if (b) { onlyB.push(b); j++; }
+      if (a) { onlyA.push({ item: a, before }); i++; }
+    }
+  };
+
+  let i0 = 0, j0 = 0;
+  for (const [ai, bi] of anchorsOf(ia, ib)) {
+    walk(i0, ai, j0, bi, ib[bi].el);
+    pair.set(ib[bi].el, ia[ai]);
+    i0 = ai + 1; j0 = bi + 1;
+  }
+  walk(i0, ia.length, j0, ib.length, null);
+
+  /* 짝을 못 지은 것들을 **자리로 한 번 더 건진다.**
+     차례로 걷는 방식은 두 문서의 순서가 대체로 같다는 데 기댄다. 새 About
+     에서 그 전제가 깨졌다 — 작가가 다시 내보내면서 빨간 인물이 문서 가운데
+     에서 맨 뒤로 갔다. 걸음이 어긋나자 그 인물의 몸이 '둘째 컷에만 있는 것'
+     으로 잘못 분류됐고, 구경꾼들과 함께 화면 밖에서 걸어 들어왔다.
+     같은 태그·같은 색·같은 뼈대인데 **자리까지 겹치면** 같은 것이다. */
+  if (onlyA.length && onlyB.length) {
+    const taken = new Set<Item>();
+    /* 못이 되지 못하고 남은 글자는 **내용으로** 건진다. 자리로 건지는
+       아래 단계는 <text>에는 못 쓴다 — 글자의 겉넓이는 글꼴이 있어야
+       나오는데 여기는 브라우저 밖이다. '가'가 이 길로 돌아온다. */
+    for (let k = onlyA.length - 1; k >= 0; k--) {
+      const a = onlyA[k].item;
+      if (a.tag !== 'text' || !a.text) continue;
+      const hit = onlyB.filter((b) => !taken.has(b) && pairs(a, b));
+      if (hit.length !== 1) continue;
+      taken.add(hit[0]);
+      pair.set(hit[0].el, a);
+      onlyA.splice(k, 1);
+    }
+    for (let k = onlyA.length - 1; k >= 0; k--) {
+      const a = onlyA[k];
+      const ab = boxOf(a.item);
+      if (!ab) continue;
+      let best: Item | null = null, near = Infinity;
+      for (const b of onlyB) {
+        if (taken.has(b) || !pairs(a.item, b)) continue;
+        const bb = boxOf(b);
+        if (!bb) continue;
+        const d = Math.hypot(ab.x - bb.x, ab.y - bb.y) + Math.hypot(ab.w - bb.w, ab.h - bb.h);
+        if (d < near) { near = d; best = b; }
+      }
+      // 화판의 10분의 1 안에 있어야 같은 것으로 본다. 그보다 멀면 남남이다.
+      const span = Math.max(ab.w, ab.h, 1);
+      if (!best || near > Math.max(span, 40)) continue;
+      taken.add(best);
+      pair.set(best.el, a.item);
+      onlyA.splice(k, 1);
+    }
+    for (let k = onlyB.length - 1; k >= 0; k--) if (taken.has(onlyB[k])) onlyB.splice(k, 1);
   }
   return { pair, onlyB, onlyA };
 }
+
 
 /**
  * 다른 컷의 요소를 이 문서로 옮겨 심는다.
@@ -280,171 +570,209 @@ function cloneInto(B: Element, el: Element, before: Element | null): Element {
   return copy;
 }
 
-/** 절대좌표로 편 d에서 대충의 크기. 화판 대비 얼마나 큰가만 보면 된다 */
-function dExtent(d: string | null): { w: number; h: number } {
-  if (!d) return { w: 0, h: 0 };
-  const n = d.match(/-?\d*\.?\d+/g)?.map(Number) ?? [];
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (let k = 0; k + 1 < n.length; k += 2) {
-    x0 = Math.min(x0, n[k]); x1 = Math.max(x1, n[k]);
-    y0 = Math.min(y0, n[k + 1]); y1 = Math.max(y1, n[k + 1]);
-  }
-  return Number.isFinite(x0) ? { w: x1 - x0, h: y1 - y0 } : { w: 0, h: 0 };
-}
+/* 두 컷짜리 morphSvg와 세 컷짜리 chain3이 여기 있었다. 2026-09-20에 걷어냈다.
+   chainSvg가 컷 몇이든 받고 왔던 길로 되짚어 돌아오므로, 둘이 하던 일을
+   전부 한다 — 컷 둘을 주면 A→B→A다. 남겨 두면 엔진이 둘이 되고, 그러면
+   그중 하나는 반드시 낡는다(tokens.css 머리말에 같은 이야기가 있다). */
+
+
+/* ═══ 컷 여럿을 오가는 한 장 ═══════════════════════════════════════ */
+
+/** 모양 말고도 오가야 하는 숫자들. font-size가 '크기' 축의 답이다 */
+const NUM_ATTRS = [...SHAPE_ATTRS, 'font-size', 'stroke-width'];
 
 /**
- * 세 컷을 이어 도는 한 장.
+ * 컷 여럿을 1 → 2 → … → N → … → 2 → 1 로 오가는 한 장.
  *
- * 가운데 컷(B)을 바탕 문서로 삼고, 그 요소마다 앞 컷과 뒤 컷의 짝을 찾아
- * a→b→c→a 값을 건다. 같은 걸음(align)을 두 번 걷되 열쇠가 둘 다 B의
- * 요소라서, 두 결과가 한 요소 위에서 만난다.
+ * 세 컷짜리(chain3)는 첫 컷으로 **되돌아가지 않고 건너뛴다** — A→B→C→A다.
+ * 새 Step 1은 그러면 안 된다. 잣대 손잡이가 끝까지 갔다가 시작으로 순간
+ * 이동하면, 보여주려는 것("손잡이를 움직이면 글자가 따라 바뀐다")이 바로
+ * 그 순간에 거짓이 된다. 왔던 길을 되짚어 돌아온다.
  *
- * 세 컷 중 일부에만 있는 것은 그 구간에서만 켜진다. 처음엔 그런 것을
- * 통째로 버렸는데, Step 1에서 버려진 것이 하필 주인공이었다 — 얇은 '가'와
- * 굵은 '가'와 기운 '가'는 획 수가 달라 서로 짝이 되지 못하니, 버리면
- * 가운데 컷의 '가' 하나만 내내 서 있고 아무 일도 일어나지 않는다.
+ * 첫 컷을 바탕 문서로 삼고 나머지 컷을 거기에 맞춰 세운다. 컷이 넷이라
+ * 가운데를 축으로 삼을 수가 없어서다(chain3은 B가 축이었다).
  *
- * 마지막 컷에만 있는 것 중 제일 큰 한 조각에는 흔들림 표시를 단다.
- * Step 1에서 그건 기울어진 '가'다 — 작가가 기울기까지는 그려 주었고,
- * 흔들리는 것은 그림이 들 수 없는 몫이라 여기서 얹는다.
+ * 되돌아서는 두 컷(처음과 끝)에 머무는 몫을 더 준다 — 거기서 안 쉬면
+ * 방향이 바뀌는 것이 아니라 튕겨 나온 것으로 보인다.
  */
-function chain3(A: Element, B: Element, C: Element, key: string, dur: number, crop?: string): string {
-  inlineFills(A); inlineFills(B); inlineFills(C);
-  const ia = itemsOf(A), ib = itemsOf(B), ic = itemsOf(C);
-  const wAB = align(ia, ib);
-  const wBC = align(ib, ic);
-  const ahead = new Map<Element, Item>();          // B 요소 → C의 짝
-  for (const c of ic) { const b = wBC.pair.get(c.el); if (b) ahead.set(b.el, c); }
+export function chainSvg(raws: string[], key: string, dur = 11): string {
+  if (typeof DOMParser === 'undefined' || raws.length < 2) return scopeSvg(raws[0], key);
+  try {
+    const cuts = raws.map((r) => new DOMParser().parseFromString(r, 'image/svg+xml').documentElement);
+    if (cuts.some((c) => !c.getAttribute('viewBox'))) return scopeSvg(raws[0], key);
+    cuts.forEach(inlineFills);
+    const base = cuts[0];
+    const items = cuts.map(itemsOf);
+    const n = cuts.length;
 
-  let matched = 0;
-  for (const b of ib) {
-    const a = wAB.pair.get(b.el), c = ahead.get(b.el);
-    if (a && c) {
-      matched++;
-      if (a.d && b.d && c.d) {
-        if (a.d !== b.d || b.d !== c.d) animate3(b.el, 'd', a.d, b.d, c.d, dur);
+    /** 오가는 차례: 0,1,…,n-1,n-2,…,0 */
+    const order: number[] = [];
+    for (let k = 0; k < n; k++) order.push(k);
+    for (let k = n - 2; k >= 0; k--) order.push(k);
+    const t = timeline(order.map((k) => (k === 0 || k === n - 1 ? 3 : 1)));
+
+    // 첫 컷의 요소 → 컷마다의 짝
+    const of: Array<Map<Element, Item>> = cuts.map(() => new Map());
+    items[0].forEach((x) => of[0].set(x.el, x));
+    /** 첫 컷에 없던 것. 같은 것이 여러 컷에 나오면 한 번만 심는다 */
+    const guests = new Map<string, { item: Item; at: Set<number> }>();
+    for (let k = 1; k < n; k++) {
+      const w = align(items[0], items[k]);
+      for (const [el, a] of w.pair) {
+        const it = items[k].find((x) => x.el === el);
+        if (it) of[k].set(a.el, it);
+      }
+      for (const x of w.onlyB) {
+        const id = [x.tag, x.fill, x.shape, x.el.getAttribute('transform') ?? ''].join('|');
+        const had = guests.get(id);
+        if (had) had.at.add(k); else guests.set(id, { item: x, at: new Set([k]) });
+      }
+    }
+
+    let moved = 0;
+    for (const a of items[0]) {
+      const per = order.map((k) => of[k].get(a.el));
+      /* 그 컷에 없으면 제일 가까운 컷의 모습을 빌려 온다 — 물러나 있는
+         동안에도 모양이 이어져야 다시 나타날 때 튀지 않는다 */
+      const near = (i: number): Item => {
+        for (let d = 0; d < per.length; d++) {
+          const l = per[(i - d + per.length) % per.length];
+          if (l) return l;
+          const r = per[(i + d) % per.length];
+          if (r) return r;
+        }
+        return a;
+      };
+      if (per.some((x) => !x)) animateSeq(a.el, 'opacity', per.map((x) => (x ? '1' : '0')), t, dur);
+      const ds = per.map((x, i) => (x ?? near(i)).d);
+      if (ds.every((d) => d !== null) && new Set(ds).size > 1) {
+        animateSeq(a.el, 'd', ds as string[], t, dur); moved++;
       } else {
-        for (const at of SHAPE_ATTRS) {
-          const x = a.el.getAttribute(at), y = b.el.getAttribute(at), z = c.el.getAttribute(at);
-          if (x !== null && y !== null && z !== null && !(x === y && y === z)) animate3(b.el, at, x, y, z, dur);
+        for (const at of NUM_ATTRS) {
+          const vs = per.map((x, i) => (x ?? near(i)).el.getAttribute(at));
+          if (vs.every((v) => v !== null) && new Set(vs).size > 1) {
+            animateSeq(a.el, at, vs as string[], t, dur); moved++;
+          }
         }
       }
-      continue;
+      if (animateTransformSeq(a.el, per.map((x, i) => transformOf((x ?? near(i)).el)), t, dur)) moved++;
     }
-    // 세 컷에 다 있지는 않다. 없는 구간에서는 물러나되, **있는 구간끼리는
-    // 모양이 이어져야 한다** — 얇은 '가'와 굵은 '가'는 획 순서가 같아 짝이
-    // 되는데(둘 다 같은 윤곽에서 나왔다) 기운 '가'는 짝이 없다. 물러나는
-    // 것만 시키고 모양을 안 이으면, 첫 컷 자리에 굵은 '가'가 서 있고 그
-    // 뒤로 얇은 '가'가 비쳐 두 장이 겹쳐 보인다.
-    animate3(b.el, 'opacity', a ? '1' : '0', '1', c ? '1' : '0', dur);
-    const near = a ?? c;
-    if (near?.d && b.d && near.d !== b.d) {
-      animate3(b.el, 'd', a?.d ?? b.d, b.d, c?.d ?? b.d, dur);
-    } else if (near) {
-      for (const at of SHAPE_ATTRS) {
-        const y = b.el.getAttribute(at);
-        const x = a?.el.getAttribute(at) ?? y, z = c?.el.getAttribute(at) ?? y;
-        if (y !== null && x !== null && z !== null && !(x === y && y === z)) animate3(b.el, at, x, y, z, dur);
-      }
+    if (!moved) { markEyes(base); return scopeSvg(new XMLSerializer().serializeToString(base), key); }
+
+    // 다른 컷에만 있는 것은 바탕 문서에 없다. 옮겨 심고 있는 구간에만 켠다.
+    const defs = base.querySelector('defs') ?? base.insertBefore(
+      base.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'defs'), base.firstChild);
+    for (const c of cuts.slice(1)) {
+      const d = c.querySelector('defs');
+      if (d) Array.from(d.children).forEach((x) => { if (x.tagName !== 'style') defs.appendChild(x.cloneNode(true)); });
     }
-  }
-  if (!matched) { markEyes(B); return scopeSvg(new XMLSerializer().serializeToString(B), key); }
+    for (const g of guests.values()) {
+      const copy = cloneInto(base, g.item.el, null);
+      animateSeq(copy, 'opacity', order.map((k) => (g.at.has(k) ? '1' : '0')), t, dur);
+    }
 
-  // 바깥 컷에만 있는 것은 B 문서에 없다. 옮겨 심고 그것이 부르는 defs도 같이.
-  const defsB = B.querySelector('defs') ?? B.insertBefore(
-    B.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'defs'), B.firstChild);
-  for (const src of [A, C]) {
-    const d = src.querySelector('defs');
-    if (d) Array.from(d.children).forEach((n) => { if (n.tagName !== 'style') defsB.appendChild(n.cloneNode(true)); });
+    markEyes(base);
+    return scopeSvg(new XMLSerializer().serializeToString(base), key);
+  } catch {
+    return scopeSvg(raws[0], key);
   }
-  const plant = (item: Item, before: Element | null, first: string, last: string) => {
-    const copy = cloneInto(B, item.el, before);
-    animate3(copy, 'opacity', first, '0', last, dur);
-    return copy;
-  };
-  for (const { item, before } of wAB.onlyA) plant(item, before, '1', '0');       // 첫 컷에만
-  const tail = wBC.onlyB.map((item) => ({ item, el: plant(item, null, '0', '1') }));  // 끝 컷에만
-
-  // 끝 컷에만 있는 것 중 제일 큰 조각 = 흔들릴 주인공
-  const vb = (B.getAttribute('viewBox') ?? '').split(/[ ,]+/).map(Number);
-  const canvas = vb.length === 4 ? Math.max(vb[2], vb[3]) : 0;
-  // 큰 조각은 다 흔든다. 글자는 획이 여럿으로 쪼개져 나오는 일이 흔해서
-  // (기운 '가'는 ㄱ과 ㅏ가 따로 그려져 있다) 제일 큰 하나만 흔들면 글자가
-  // 반만 떨린다. 작은 조각(잣대 손잡이 같은 것)은 문턱 아래로 걸러진다.
-  for (const t of tail) {
-    const { h } = dExtent(t.item.d);
-    if (h < canvas * 0.15) continue;
-    t.el.setAttribute('class', 'mf-shake');
-    t.el.setAttribute('style', `animation-duration:${dur}s`);
-  }
-
-  const va = A.getAttribute('viewBox')!, vbs = B.getAttribute('viewBox')!, vc = C.getAttribute('viewBox')!;
-  if (va !== vbs || vbs !== vc) animate3(B, 'viewBox', va, vbs, vc, dur);
-  else if (crop) B.setAttribute('viewBox', crop);
-  markEyes(B);
-  return scopeSvg(new XMLSerializer().serializeToString(B), key);
 }
 
 /**
- * 두 장을 겹쳐 오가는 한 장으로 만든다.
+ * About — 한 장면이 세 걸음으로 지어진다.
  *
- * @param from 처음 컷 · @param to 나중 컷 · @param key 이름 충돌을 막는 열쇠
- * @param dur  한 바퀴 (초). 머무는 시간까지 포함한 값이다
- * @param crop 두 컷의 화판이 같을 때만. 빈 자리를 잘라 낼 viewBox
+ *   ① 불빛이 켜진다   ② '내 생각은…'이 뜬다   ③ 구경꾼들이 들어와 본다
+ *
+ * 작가가 준 것은 두 컷이다: 불만 켜진 것과 다 있는 것. 가운데 걸음(문구만
+ * 있고 사람은 없는 상태)은 그림에 없어서 **둘째 컷을 쪼개** 만든다 —
+ * 벽면 안쪽에 든 것은 문구, 그 아래에 선 것은 사람이다.
+ *
+ * 첫 걸음의 '켜진다'도 그림에 없다. 불빛(방사형 그라디언트)을 꺼 두고
+ * 시작해 밝기로 켠다 — 어두운 벽이 먼저 있고 거기 불이 들어오는 것이
+ * 이 장면의 첫 문장이라서.
+ *
+ * 사람은 밝기로 나타나지 않고 **화면 밖에서 걸어 들어온다.** 둘 다 화판
+ * 오른쪽에 서므로 오른쪽 밖에서 온다. 나갈 때는 같은 길로 물러난다 —
+ * 한 바퀴가 곧 '벽이 켜지고 사람이 모였다 흩어지는' 하룻밤이다.
  */
-export function morphSvg(from: string, to: string, key: string, dur = 4.2, crop?: string, third?: string): string {
-  if (typeof DOMParser === 'undefined') return scopeSvg(third ?? to, key);
+export function aboutSvg(litRaw: string, fullRaw: string, key: string, dur = 12): string {
+  if (typeof DOMParser === 'undefined') return scopeSvg(fullRaw, key);
   try {
-    const parse = (s: string) => new DOMParser().parseFromString(s, 'image/svg+xml').documentElement;
-    const A = parse(from), B = parse(to);
-    if (!A.getAttribute('viewBox') || !B.getAttribute('viewBox')) return scopeSvg(to, key);
-    if (third) {
-      const C = parse(third);
-      if (C.getAttribute('viewBox')) return chain3(A, B, C, key, 6.3, crop);
-    }
+    const parse = (x: string) => new DOMParser().parseFromString(x, 'image/svg+xml').documentElement;
+    const A = parse(litRaw), B = parse(fullRaw);
+    const vb = (B.getAttribute('viewBox') ?? '').split(/[ ,]+/).map(Number);
+    if (!A.getAttribute('viewBox') || vb.length !== 4) return scopeSvg(fullRaw, key);
     inlineFills(A); inlineFills(B);
-
     const ia = itemsOf(A), ib = itemsOf(B);
-    // 짝이 없는 것은 양쪽에 다 생긴다. 뒤 컷에만 있는 것(느낌표)은 나타났다
-    // 사라지고, 앞 컷에만 있는 것(벽에 켜졌던 글자)은 있다가 물러난다.
-    // 한 칸씩 내다보며 어느 쪽에 끼어든 것인지 가른다.
-    const walk = align(ia, ib);
-    const matched = walk.pair.size;
-    const appear: Element[] = walk.onlyB.map((x) => x.el);
-    const vanish: Array<{ el: Element; before: Element | null }> =
-      walk.onlyA.map((x) => ({ el: x.item.el, before: x.before }));
-    for (const [bEl, a] of walk.pair) {
-      const b = ib.find((x) => x.el === bEl)!;
-      if (b.d && a.d && b.d !== a.d) animate(b.el, 'd', `${a.d};${a.d};${b.d};${b.d};${a.d}`, dur);
-      else for (const at of SHAPE_ATTRS) {
+    const w = align(ia, ib);
+
+    /* 벽면 = 화판을 다 덮지 않는 제일 큰 사각형. 문구는 그 안에 들고
+       사람은 그 아래에 선다 — 둘을 가르는 선이 이것이다. */
+    let wall: { x: number; y: number; w: number; h: number } | null = null;
+    for (const it of ib) {
+      const b = it.tag === 'rect' ? boxOf(it) : null;
+      if (!b || b.w >= vb[2] * 0.99) continue;
+      if (!wall || b.w * b.h > wall.w * wall.h) wall = b;
+    }
+
+    // 다섯 걸음: 어둠 · 불빛 · 문구 · 사람 · (도로 어둠)
+    const t = timeline([1, 2, 2, 5, 1]);
+    const say = (el: Element, v: string[]) => animateSeq(el, 'opacity', v, t, dur);
+
+    // ① 불빛 — 그라디언트를 쓰는 것이 불빛이다
+    let lamps = 0;
+    for (const it of ib) {
+      if (!/^url\(/.test(it.fill)) continue;
+      say(it.el, ['0', '1', '1', '1', '0']);
+      lamps++;
+    }
+
+    // 두 컷에 다 있는 것은 그대로 서 있되, 달라진 만큼만 움직인다
+    for (const [bEl, a] of w.pair) {
+      const b = ib.find((x) => x.el === bEl);
+      if (!b) continue;
+      if (a.d && b.d && a.d !== b.d) animateSeq(b.el, 'd', [a.d, a.d, b.d, b.d, a.d], t, dur);
+      else for (const at of NUM_ATTRS) {
         const x = a.el.getAttribute(at), y = b.el.getAttribute(at);
-        if (x !== null && y !== null && x !== y) animate(b.el, at, `${x};${x};${y};${y};${x}`, dur);
-      }
-    }
-    if (matched === 0) return scopeSvg(to, key);
-
-    for (const el of appear) animate(el, 'opacity', '0;0;1;1;0', dur);
-    if (vanish.length) {
-      // 앞 컷에만 있던 것은 B의 문서에 없다. 옮겨 심고, 그것이 참조하는
-      // 그라디언트도 같이 가져온다 — 안 그러면 색이 비어 검게 나온다.
-      const defsA = A.querySelector('defs');
-      if (defsA) {
-        const defsB = B.querySelector('defs') ?? B.insertBefore(
-          B.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'defs'), B.firstChild);
-        Array.from(defsA.children).forEach((c) => { if (c.tagName !== 'style') defsB.appendChild(c.cloneNode(true)); });
-      }
-      for (const { el, before } of vanish) {
-        animate(cloneInto(B, el, before), 'opacity', '1;1;0;0;1', dur);
+        if (x !== null && y !== null && x !== y) animateSeq(b.el, at, [x, x, y, y, x], t, dur);
       }
     }
 
-    const va = A.getAttribute('viewBox')!, vb = B.getAttribute('viewBox')!;
-    if (va !== vb) animate(B, 'viewBox', `${va};${va};${vb};${vb};${va}`, dur);
-    // 화판에 빈 자리가 넓으면 장면이 작아진다. 잘라 낼 자리를 받으면 그만큼 당긴다.
-    else if (crop) B.setAttribute('viewBox', crop);
+    // ②③ 둘째 컷에만 있는 것을 벽 안팎으로 가른다
+    const inWall = (it: Item) => {
+      const b = boxOf(it);
+      if (!b || !wall) return false;
+      const cy = b.y + b.h / 2;
+      return cy > wall.y && cy < wall.y + wall.h;
+    };
+    const guests = w.onlyB.filter((it) => !inWall(it));
+    for (const it of w.onlyB.filter(inWall)) say(it.el, ['0', '0', '1', '1', '0']);
+
+    /* ③ 사람은 제일 오른쪽 끝보다 더 오른쪽에서 들어온다. 화판 밖으로
+       완전히 나가야 가장자리에서 반쯤 잘린 채로 기다리지 않는다. */
+    if (guests.length) {
+      let right = 0, left = vb[2];
+      for (const it of guests) {
+        const b = boxOf(it);
+        if (!b) continue;
+        right = Math.max(right, b.x + b.w);
+        left = Math.min(left, b.x);
+      }
+      const dx = r2(Math.max(right, vb[2]) - left + vb[2] * 0.06);
+      const g = B.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
+      guests[0].el.parentNode?.insertBefore(g, guests[0].el);
+      for (const it of guests) g.appendChild(it.el);
+      put(g, 'animateTransform', {
+        attributeName: 'transform', type: 'translate',
+        values: doubled([`${dx} 0`, `${dx} 0`, `${dx} 0`, '0 0', `${dx} 0`]).join(';'),
+        keyTimes: t.keyTimes, keySplines: t.keySplines, calcMode: 'spline', dur: `${dur}s`
+      });
+    }
+    if (!lamps && !w.onlyB.length) return scopeSvg(fullRaw, key);
+
     markEyes(B);
-  return scopeSvg(new XMLSerializer().serializeToString(B), key);
+    return scopeSvg(new XMLSerializer().serializeToString(B), key);
   } catch {
-    return scopeSvg(to, key);
+    return scopeSvg(fullRaw, key);
   }
 }

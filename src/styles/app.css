@@ -1830,9 +1830,28 @@
 /* 01 한 줄 — 상자가 없다. 자판을 내리면 글이 정사각 상자에 담기던 연출을
    걷어냈다(그 상자가 발화자의 줄바꿈을 다시 접었다). 여기서는 자판의
    줄바꿈이 그대로 남는다. */
-.write-input{ flex: 1; width: 100%; min-height: 0; border: 0; background: none;
-  resize: none; outline: none; font-family: inherit; font-size: var(--fs-h3);
-  line-height: 1.6; color: var(--ink); text-align: center; padding: var(--s5) 0; }
+/* 쓰는 칸이 곧 벽의 틀이다(2.4×1.5 — 643줄의 미리보기 액자와 같은 비율).
+   벽은 한 줄 12자·어절 단위로 접는다(fit.ts · foldLines). 12자 × 5줄 ×
+   행간 1.5가 정확히 그 비율이라, 글자를 폭의 12분의 1로 잡으면 쓰는 동안
+   보는 줄모양이 곧 벽의 줄모양이 된다. 60자를 다 쓰면 다섯 줄로 틀을
+   꽉 채운다.
+
+   틀은 보이지 않는다 — 테두리도 바탕도 없다. 칸이 있다고 말하지 않고,
+   글이 어디서 접히는지로만 드러난다. 손이 닿는 자리는 그대로 넓게
+   두려고 감싼 칸이 남은 높이를 다 먹고, 틀은 그 안에서 가운데 선다. */
+/* 틀은 감싼 칸이 들고, 글은 그 안을 꽉 채운다. container-type은 제 자신이
+   아니라 **자식**에게 걸리는 것이라, 글자 크기를 폭에 걸려면 이 자리여야
+   한다 — 칸에 걸었더니 엉뚱한 상자를 기준으로 28px이 31.2px이 됐다.
+   위아래 auto가 남은 높이를 나눠 먹어 틀이 가운데 선다. */
+.write-fit{ flex: 0 0 auto; width: 100%; aspect-ratio: 2.4 / 1.5;
+  max-height: 100%; container-type: size; margin-block: auto; }
+.write-input{ width: 100%; height: 100%; border: 0; background: none;
+  resize: none; outline: none; font-family: inherit;
+  /* 폭의 12분의 1. 96을 12로 나눈 것은 12자가 폭에 꼭 맞으면 반올림 한 번에
+     열한 자로 접히기 때문이다 — 4%를 남겨 접히는 자리를 벽과 맞춘다.
+     줄이 다섯을 넘어가면(발화자가 손으로 더 끊으면) 높이가 먼저 닿는다. */
+  font-size: min(8cqw, calc(96cqh / (var(--rows, 1) * 1.5)));
+  line-height: 1.5; color: var(--ink); text-align: center; padding: 0; }
 .write-input::placeholder{ color: var(--grey-500); }
 /* 흰 바탕에서는 grey-500이 대비 4.5:1에 못 미친다(접근성 검사가 잡았다).
    본문 회색으로 한 단 내린다. */

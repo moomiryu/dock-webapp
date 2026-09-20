@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import BackButton from '../components/BackButton';
+import { foldLines } from '../lib/fit';
 
 interface Props {
     initialText: string;
@@ -47,10 +48,21 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
    <p>하고 싶은 말을 적어주세요.</p>
   </div>
   {/* 줄바꿈은 발화자가 정한다 — 자판의 줄바꿈이 그대로 남는다.
-      계산도 상자도 끼어들지 않는다. */}
-  <textarea ref={input} className="write-input" aria-label="벽에 올릴 한 줄"
-    value={text} maxLength={60} spellCheck={false} placeholder="여기를 눌러 쓰세요"
-    onChange={e => setText(e.target.value.slice(0, 60))}/>
+      계산도 상자도 끼어들지 않는다.
+
+      쓰는 칸이 곧 **벽의 틀**이다(2.4×1.5). 벽에서 줄을 접는 규칙은
+      한 줄 12자·어절 단위인데(foldLines), 12자 × 5줄 × 행간 1.5가
+      정확히 그 비율이다. 그래서 칸을 그 비율로 두고 글자를 폭의 12분의
+      1로 잡으면, 쓰는 동안 보는 줄모양이 곧 벽의 줄모양이 된다.
+
+      테두리도 바탕도 없다 — 칸이 있다고 말하지 않는다. 글이 어디서
+      접히는지로만 보인다. */}
+  <div className="write-fit">
+    <textarea ref={input} className="write-input" aria-label="벽에 올릴 한 줄"
+      style={{ '--rows': Math.max(1, foldLines(text || ' ').length) } as React.CSSProperties}
+      value={text} maxLength={60} spellCheck={false} placeholder="여기를 눌러 쓰세요"
+      onChange={e => setText(e.target.value.slice(0, 60))}/>
+  </div>
   <span className={'compose-count' + (full ? ' is-full' : '')}>{text.length}<span>/60</span></span>
   <button className="primary-action" disabled={empty} onClick={() => onSubmit(text.trim())}>다 썼어요</button>
  </div>;

@@ -10,7 +10,7 @@ import { EMPHASIS_SEC, STAY_DAYS } from '../lib/wall';
 //           ① 불빛이 켜지고 ② '내 생각은…'이 뜨고 ③ 구경꾼이 걸어 들어온다.
 //           가운데 걸음은 그림에 없다 — 둘째 컷을 벽면 안팎으로 쪼개 만든다.
 //
-//   Step 1  네 컷을 1→2→3→4→3→2→1로 오간다. 되짚어 돌아오는 것이 중요하다:
+//   Step 2  네 컷을 1→2→3→4→3→2→1로 오간다. 되짚어 돌아오는 것이 중요하다:
 //           손잡이가 끝에서 처음으로 순간 이동하면 "손잡이를 움직이면 글자가
 //           따라 바뀐다"는 이 장의 내용이 그 순간 거짓이 된다.
 //
@@ -23,10 +23,10 @@ import { EMPHASIS_SEC, STAY_DAYS } from '../lib/wall';
 // 어디까지 보이고 어디가 잘려야 하는지를 그것이 정한다(app.css · --focus).
 import artAboutLit from '../../by_moomiryu/Renewal_v1/Tutorial/example_about_1.svg?raw';
 import artAboutFull from '../../by_moomiryu/Renewal_v1/Tutorial/example_about_2.svg?raw';
-import artGlyphs1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_1.svg?raw';
-import artGlyphs2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_2.svg?raw';
-import artGlyphs3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_3.svg?raw';
-import artGlyphs4 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_4.svg?raw';
+import artGlyphs1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_1.svg?raw';
+import artGlyphs2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_2.svg?raw';
+import artGlyphs3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_3.svg?raw';
+import artGlyphs4 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_4.svg?raw';
 import artDock1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_1.svg?raw';
 import artDock2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_2.svg?raw';
 import artDock3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_3.svg?raw';
@@ -87,7 +87,7 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
 // 본문은 장당 40자 안쪽. 넘기는 형식은 한 장에 한 생각일 때만 살아 있다.
 //
 // 삽화는 한동안 선 하나로만 그렸다 — "색은 사용자가 만든 말에만 산다"는
-// 이유였다. 2026-09-15에 작가가 About·Step 1·Step 3 셋을 색 있는 그림으로
+// 이유였다. 2026-09-15에 작가가 About·Step 2·Step 3 셋을 색 있는 그림으로
 // 그려 오면서 그 원칙은 이 화면에서 풀렸다. 나머지 셋(Step 2 · On the wall ·
 // Afterwards)은 아직 선 그림이라, 지금 이 화면은 두 결이 섞여 있다.
 
@@ -116,14 +116,23 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
         시끄럽지 않아도, 충분히 눈에 띕니다.
       </p>
     ),
-    // 1920×1080 화판에서 장면은 x 318~1603, y 260~820만 쓴다. 나머지는 빈
-    // 검정이라, 장면 둘레로 6%만 남기고 당긴다.
     art: <Built name="about" still={artAboutFull}
       make={(k) => aboutSvg(artAboutLit, artAboutFull, k)} />,
     artClass: 'is-bleed'
   },
   {
     step: 'Step 1',
+    title: '메시지를 작성합니다.',
+    body: (
+      <p>
+        최대 60자까지 작성할 수 있습니다.<br />
+        <b>비속어 및 타인을 해치는 표현은 사용할 수 없습니다.</b>
+      </p>
+    ),
+    art: <ArtLine />
+  },
+  {
+    step: 'Step 2',
     title: '발화의 성격을 고르고 다듬습니다.',
     body: (
       <p>
@@ -136,17 +145,6 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
     art: <Built name="glyphs" still={artGlyphs1}
       make={(k) => chainSvg([artGlyphs1, artGlyphs2, artGlyphs3, artGlyphs4], k)} />,
     artClass: 'is-wide'
-  },
-  {
-    step: 'Step 2',
-    title: '메시지를 작성합니다.',
-    body: (
-      <p>
-        최대 60자까지 작성할 수 있습니다.<br />
-        <b>비속어 및 타인을 해치는 표현은 사용할 수 없습니다.</b>
-      </p>
-    ),
-    art: <ArtLine />
   },
   {
     step: 'Step 3',

@@ -133,7 +133,7 @@ function styleTable(css: string): Record<string, Record<string, string>> {
  * 옮겨 온 것의 `class="cls-3"`은 여기서 전혀 다른 색을 뜻한다.
  *
  * **fill만 옮기다가 2026-09-20에 나머지를 다 잃고 있었다는 걸 알았다.**
- * 새 Step 1 삽재는 잣대 선이 `fill:none; stroke:#fff; stroke-width:8.25px`
+ * 새 Step 2 삽재는 잣대 선이 `fill:none; stroke:#fff; stroke-width:8.25px`
  * 이고 글자가 `font-family: Pretendard Variable; font-size: 167.49px`인데,
  * 그 선언들이 <style>과 함께 통째로 버려져 선은 안 보이고 '가'는 16px
  * 기본 글꼴로 떨어졌다. 이제 선언을 전부 옮긴다.
@@ -229,7 +229,7 @@ interface Item { el: Element; tag: string; fill: string; d: string | null; shape
 /**
  * <defs> 안쪽은 그리는 것이 아니라 **도구**다 — clipPath의 사각형은 오려낼
  * 틀이지 화면에 나오는 사각형이 아니다. querySelectorAll은 그 둘을 구분하지
- * 못해서, Step 1의 clipPath 안에 든 흰 사각형이 도형으로 잡혀 다른 컷으로
+ * 못해서, Step 2의 clipPath 안에 든 흰 사각형이 도형으로 잡혀 다른 컷으로
  * 옮겨 심어졌고 글자를 통째로 덮었다.
  */
 const INSIDE_DEFS = 'defs,clipPath,mask,pattern,marker,symbol';
@@ -426,7 +426,7 @@ function boxOf(it: Item): { x: number; y: number; w: number; h: number } | null 
  *
  * <text>는 내용이 곧 이름이다 — '가'는 어느 컷에서나 '가' 하나뿐이다.
  * 차례로 걷는 방식은 두 문서의 순서가 대체로 같다는 데 기대는데,
- * 일러스트레이터는 컷마다 순서를 바꿔 내보낸다. 새 Step 1에서 '가'가
+ * 일러스트레이터는 컷마다 순서를 바꿔 내보낸다. 새 Step 2에서 '가'가
  * 첫 컷의 둘째에서 넷째 컷의 뒤에서 둘째로 갔고, 열두 칸을 내다봐도
  * 못 찾아 짝이 끊겼다 — 끊기면 '가'가 모양을 잇지 못하고 겹쳐 뜬다.
  *
@@ -451,7 +451,7 @@ function anchorsOf(ia: Item[], ib: Item[]): Array<[number, number]> {
   }
   found.sort((x, y) => x[0] - y[0]);
   /* 두 목록에서 **모두** 앞뒤가 같은 것만 못이 된다. 앞에서부터 욕심내어
-     고르면 안 된다 — 새 Step 1에서 '가'가 첫 컷의 둘째에서 넷째 컷의
+     고르면 안 된다 — 새 Step 2에서 '가'가 첫 컷의 둘째에서 넷째 컷의
      뒤에서 둘째로 갔는데, 그것을 먼저 박으면 나머지 셋('크기'·'빠르기'·
      '무게')이 전부 엇갈린 것으로 버려져 못이 하나만 남았다. 그 하나가
      목록 한쪽 끝이라 그 앞의 열아홉을 한 칸에 우겨넣었고, 잣대 손잡이가
@@ -550,7 +550,7 @@ function align(ia: Item[], ib: Item[]) {
  * 2026-09-20에 한 번 반대로 했다 — 빈 자리를 잘라 내어 화판을 그림에 맞췄다.
  * 작가가 `Artboard size_*.pdf`를 주면서 그게 틀렸다는 게 드러났다. 그 PDF의
  * 페이지 크기가 정확히 390×603, 곧 **화판 자체가 의도한 화면**이다. 화판
- * 밖으로 나간 것(Step 1 구경꾼의 그림자는 x 468까지 간다)은 잘려야 하는
+ * 밖으로 나간 것(Step 2 구경꾼의 그림자는 x 468까지 간다)은 잘려야 하는
  * 것이지 끌어와 보여줄 것이 아니고, 화판 안의 빈 자리는 지울 여백이 아니라
  * 구도다.
  *
@@ -560,7 +560,7 @@ function align(ia: Item[], ib: Item[]) {
  * 잘릴지는 여기서 알 수 없다 — 잘려도 잃지 말아야 할 자리만 말해 준다.
  *
  * 컷 전부를 재는 이유: 움직이는 동안 자리를 옮기는 것이 있다. About의
- * 구경꾼은 오른쪽 밖에서 들어오고 Step 1의 '가'는 위아래로 다닌다.
+ * 구경꾼은 오른쪽 밖에서 들어오고 Step 2의 '가'는 위아래로 다닌다.
  */
 function focusOn(root: Element, items: Item[]) {
   const vb = (root.getAttribute('viewBox') ?? '').split(/[ ,]+/).map(Number);
@@ -584,7 +584,7 @@ function focusOn(root: Element, items: Item[]) {
  *
  * itemsOf는 querySelectorAll로 도형만 뽑아 오므로 그 위에 있던 <g>의 옷 —
  * clip-path·transform·mask — 이 통째로 벗겨진다. 벗은 채로 심으면 잘려
- * 있어야 할 것이 안 잘린다. Step 1의 마지막 컷에 그런 흰 사각형이 하나
+ * 있어야 할 것이 안 잘린다. Step 2의 마지막 컷에 그런 흰 사각형이 하나
  * 있었고, 옮겨 심자 글자를 통째로 덮어 버렸다. 조상을 껍데기만 복제해
  * 다시 입힌다(형제는 데려오지 않는다).
  */
@@ -619,7 +619,7 @@ const NUM_ATTRS = [...SHAPE_ATTRS, 'font-size', 'stroke-width'];
  * 컷 여럿을 1 → 2 → … → N → … → 2 → 1 로 오가는 한 장.
  *
  * 세 컷짜리(chain3)는 첫 컷으로 **되돌아가지 않고 건너뛴다** — A→B→C→A다.
- * 새 Step 1은 그러면 안 된다. 잣대 손잡이가 끝까지 갔다가 시작으로 순간
+ * 새 Step 2은 그러면 안 된다. 잣대 손잡이가 끝까지 갔다가 시작으로 순간
  * 이동하면, 보여주려는 것("손잡이를 움직이면 글자가 따라 바뀐다")이 바로
  * 그 순간에 거짓이 된다. 왔던 길을 되짚어 돌아온다.
  *

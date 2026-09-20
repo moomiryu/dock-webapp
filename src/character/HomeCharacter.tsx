@@ -75,6 +75,15 @@ const WAKE: Array<{ open: boolean; ms: number }> = [
 /** 눈을 뜨고 터지는 '!' — 놀란 뒤에 웃는다 */
 const BANG_MS = 900;
 
+/**
+ * 이 글자들을 Lineal이 그리는가.
+ *
+ * 한글·가나·한자가 하나라도 있으면 Pretendard로 떨어진다. 두 얼굴은 같은
+ * 굵기 이름에서 줄기 두께가 다르므로(app.css의 .home-char-say) 어느 쪽이
+ * 그리는지에 따라 굵기를 달리 준다.
+ */
+const isLatin = (t: string) => !/[぀-ヿ㐀-鿿가-힯＀-￯]/.test(t);
+
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 const random = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
@@ -429,6 +438,7 @@ export default function HomeCharacter() {
       {say && !matchMedia('(prefers-reduced-motion: reduce)').matches && (
         <span className="home-char-say" data-side={say.side} aria-hidden="true"
           data-small={say.small ? 'true' : undefined} data-quick={say.quick ? 'true' : undefined}
+          data-latin={isLatin(say.text) ? 'true' : undefined}
           style={{ '--say-tilt': `${say.tilt.toFixed(1)}deg` } as React.CSSProperties}>
           {say.text}
         </span>

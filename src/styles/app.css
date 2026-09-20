@@ -909,19 +909,26 @@
   --land-box: min(70vw, 272px);
   /* 상자 한가운데가 아니라 몸통 한가운데(상자 세로 61%)로 모인다 */
   --land-y: calc(var(--land-rest, 52%) + var(--land-box) * 0.11);
-  animation: splashLand 900ms var(--ease-emphasized) forwards;
+  animation: splashLand 900ms var(--ease-standard) forwards;
 }
+/* 2026-09-20: 오그라들던 것을 걷어냈다.
+   빨강이 원으로 좁혀 들어와 캐릭터 자리에 떨어지는 동작이었는데, 화면이
+   열리는 첫 순간에 그만한 몸짓이 들어오면 **무슨 일이 난 것처럼** 읽힌다.
+   그 다음에 오는 것이 눈도 없는 덩어리가 끔뻑이는 조용한 장면이라 결이
+   더 어긋났다. 이제 제자리에서 흐려지기만 한다 — 자리를 옮기지도, 모양이
+   바뀌지도 않는다.
+
+   색은 그대로 갈아탄다. splash의 --brand-strong에서 캐릭터 몸 색인
+   --brand-main으로 건너가야, 걷히는 동안 드러나는 빨강이 캐릭터의 빨강과
+   같은 색이다. 덩어리가 막에서 나오는 것으로 보이는 것이 그 때문이다. */
 @keyframes splashLand{
-  0%   { clip-path: circle(140% at 50% var(--land-y));
-         background: var(--brand-strong); opacity: 1; }
-  72%  { clip-path: circle(calc(var(--land-box) * 0.2) at 50% var(--land-y));
-         background: var(--brand-main); opacity: 1; }
-  100% { clip-path: circle(calc(var(--land-box) * 0.06) at 50% var(--land-y));
-         background: var(--brand-main); opacity: 0; }
+  0%   { background: var(--brand-strong); opacity: 1; }
+  55%  { background: var(--brand-main); opacity: 1; }
+  100% { background: var(--brand-main); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce){
   /* 움직임을 끈 사람에게도 빨강이 한 번 지나가야 화면이 갈리지 않는다.
-     좁혀 들지 않고 제자리에서 걷힌다. */
+     같은 일을 더 짧게 한다. */
   .splash-veil{ animation: splashFade 300ms linear forwards; }
   @keyframes splashFade{ to { opacity: 0; } }
 }
@@ -2205,26 +2212,46 @@
   /* 실루엣 윗변(--say-floor)에서 한 뼘 띄우고 그 위에 앉힌다. translate로
      제 높이만큼 끌어올리므로 글자 상자가 몸에 닿지 않는다.
      0.08이었는데 몸이 두둥실 오르내리는 만큼(±1.7%) 틈이 같이 좁아져
-     제일 올라왔을 때 10px까지 붙었다. 0.11로 넓힌다 — 글자는 같이 안 뜨고
-     제자리에 있으므로, 틈은 몸이 올라온 쪽을 기준으로 잡아야 한다. */
+     제일 올라왔을 때 10px까지 붙었다. 0.11로 넓힌다. */
   top: calc(var(--say-floor, 0px) - var(--char-box, 272px) * 0.11);
+  /* 제 높이만큼 끌어올린다. 두둥실(saySway)이 이 값을 물고 위아래로
+     흔드는데, 그 애니메이션이 꺼진 자리에서는 이 줄이 자리를 지킨다. */
   translate: 0 -100%;
   /* 라틴은 워드마크와 같은 얼굴로, 한글은 Lineal에 없으니 UI 얼굴로 떨어진다.
-     성격 서체 넷 중 하나를 쓰면 고르기도 전에 한 톤을 내민 꼴이 된다. */
-  font-family: 'Lineal VF', 'Pretendard Variable', sans-serif;
-  font-weight: 900;
+     성격 서체 넷 중 하나를 쓰면 고르기도 전에 한 톤을 내민 꼴이 된다.
+
+     **굵기가 얼굴마다 다르다.** 같은 900을 줬더니 '안녕하세요'가 'Hello'보다
+     훨씬 굵었다 — 재 보니 세로 줄기가 Lineal 900은 0.115em인데 Pretendard
+     900은 0.155em으로 1.35배였다. 900이라는 이름이 두 얼굴에서 같은 굵기를
+     뜻하지 않는다. Pretendard를 650으로 내리면 0.115가 되어 줄기가 같아진다
+     (가변 글꼴이라 중간값을 그대로 쓴다). 라틴은 Lineal이 받으므로 900. */
+  font-weight: 650;
   font-size: calc(var(--char-box, 272px) * 0.12);
   line-height: 1;
   color: var(--brand-main);
   white-space: nowrap;
   pointer-events: none;
   transform-origin: center bottom;
-  animation: charSay 1600ms var(--ease-standard) both;
+  transform: rotate(var(--say-tilt, 0deg));
+  /* 뜨고 지는 것과 떠 있는 것은 다른 일이다. 앞은 한 번 일어나고 끝나며
+     (charSay), 뒤는 글자가 서 있는 내내 돈다(saySway). */
+  animation: charSay 1600ms var(--ease-standard) both,
+             saySway 5.2s ease-in-out infinite;
+}
+/* 캐릭터와 같은 박자로 두둥실(5.2s · ±1.7%). 몸이 charFloat으로 오르내리는
+   그 폭을 글자에도 같은 값으로 준다 — 글자만 제자리에 붙박여 있으면 몸은
+   떠 있고 말은 벽에 붙은 것이 된다. 같은 위상이라 둘 사이의 틈이 늘 같다.
+   translate는 transform과 따로 노는 속성이라 기울기(--say-tilt)를 안 덮는다. */
+@keyframes saySway {
+  0%, 100% { translate: 0 calc(-100% - var(--char-box, 272px) * 0.017); }
+  50%      { translate: 0 calc(-100% + var(--char-box, 272px) * 0.017); }
 }
 /* 가운데선에서 한쪽으로 뻗는다. 몸 위에 있으므로 옆으로는 겹칠 일이 없다. */
 /* 몸의 한가운데에서 좌우로 뻗는다. 상자 한가운데(50%)가 아니다 — 옆모습은
    몸이 한쪽으로 쏠려 있어 그러면 글자가 몸에서 떨어진다(--say-x는
    HomeCharacter가 실루엣에서 재어 내려준다). */
+/* 라틴만 900. 이 글자들은 Lineal이 그리므로 위의 환산이 필요 없다. */
+.home-char-say[data-latin='true']{ font-weight: 900; }
 .home-char-say[data-side='right']{ left: var(--say-x, 50%); }
 .home-char-say[data-side='left']{ right: calc(100% - var(--say-x, 50%)); }
 /* 인사가 아니라 할 일. 열한 자를 0.12배(32px)로 찍으면 nowrap이라 한 줄이
@@ -2233,13 +2260,16 @@
 /* '!'는 터지고 끝나는 것이라 뜨고 지는 시간도 짧다. 기본 1600ms를 그대로
    쓰면 900ms에 사라지는 글자가 아직 또렷한 채로 잘린다. */
 .home-char-say[data-quick='true']{ animation-duration: 900ms; }
-/* translate가 이미 세로를 맡고 있어서 transform에 다시 쓰면 덮어쓴다.
-   회전과 크기만 transform에 둔다. */
+/* 2026-09-20: 크기가 튀는 것을 걷어냈다.
+   0.72배에서 터지듯 나타나 1.12배로 커지며 사라졌는데, 한 마디가 1.6초씩
+   넉 번 이어지는 자리라 그 몸짓이 네 번 반복되면 과하다. 이제 흐려졌다
+   또렷해지기만 하고, 떠 있는 동안은 saySway가 캐릭터와 같이 두둥실한다.
+   기울기는 정해진 값이라 이제 요소에 그대로 둔다 — 움직이지 않는다. */
 @keyframes charSay {
-  0%   { opacity: 0; transform: rotate(var(--say-tilt, 0deg)) scale(0.72); }
-  14%  { opacity: 1; transform: rotate(var(--say-tilt, 0deg)) scale(1); }
-  74%  { opacity: 1; transform: rotate(var(--say-tilt, 0deg)) scale(1); }
-  100% { opacity: 0; transform: rotate(var(--say-tilt, 0deg)) scale(1.12); }
+  0%   { opacity: 0; }
+  14%  { opacity: 1; }
+  74%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 .home-char svg circle{ animation: none; }
 

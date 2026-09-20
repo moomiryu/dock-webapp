@@ -107,8 +107,6 @@ export default function HomeCrowd() {
       x: number; y: number; dir: 1 | -1; speed: number;
       phase: Phase; until: number; beat: number;
       born: number; live: boolean; moving: boolean;
-      /** 지금 메가폰트 몸에 그림자를 드리우고 있나 */
-      casts: boolean;
     };
 
     /** 가장자리 밖에서 새로 들어온다. 파랑으로, 아직 아무것도 모른 채 */
@@ -137,7 +135,7 @@ export default function HomeCrowd() {
       const p: Walker = {
         el, art: el.querySelector('svg')!,
         x: 0, y: 0, dir: 1, speed: 0, phase: 'walk',
-        until: 0, beat: 0, born: 0, live: false, moving: false, casts: false
+        until: 0, beat: 0, born: 0, live: false, moving: false
       };
       // 걸음은 그림 안의 움직임(SMIL)이라 CSS로 못 세운다. 나올 때까지 재워 둔다
       p.art.setCurrentTime(0);
@@ -228,17 +226,6 @@ export default function HomeCrowd() {
         p.el.style.zIndex = String(
           charPos.ready ? clamp(Math.round(CHAR_Z + p.y - charPos.ground), 1, 999) : 1
         );
-        /* 메가폰트 앞을 가로지르는 사람은 그 몸에 그림자를 드리운다.
-           층만으로는 앞뒤가 안 읽힌다 — 둘 다 납작한 색면이라 앞에 선 사람이
-           그냥 겹쳐 있는 것으로 보인다. 그림자가 그 사이에 공기를 넣는다.
-           몸을 벗어나면 끈다. 흰 바탕 위에 뜬 그림자는 받아 줄 면이 없어
-           허공에 얼룩으로 남는다. */
-        const casts = charPos.ready && p.y > charPos.ground
-          && Math.abs(p.x - charPos.x) < charPos.size * 0.62;
-        if (casts !== p.casts) {
-          p.casts = casts;
-          p.el.dataset.cast = casts ? 'on' : '';
-        }
         p.el.style.transform =
           `translate(${(p.x - half).toFixed(1)}px, ${(p.y - HEIGHT).toFixed(1)}px) scaleX(${face})`;
       }

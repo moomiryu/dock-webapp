@@ -2110,6 +2110,21 @@
    분홍 띠로 남아 패널과 '다음' 사이에 없는 경계를 그렸다. */
 /* 홈은 이 목록에 없다(2026-09-22). 바닥이 회색이 되면서 그 위에 더운
    기운을 또 깔면 띠가 둘이 된다 — 시안에서 그대로 보였다. */
+/* ── 오르는 길은 버튼 **위에서** 끝난다 (2026-09-21) ───────────────────
+   스케치의 125px을 그대로 쓰면 제일 진해지는 선(60%, 화면 794)이 버튼
+   (764~820) **한가운데**를 지난다. 여섯 화면이 전부 그랬다(재서 확인:
+   버튼 높이 56 · 아래 여백 24 · 버튼 위 764로 다 같다).
+
+   그러면 버튼 위쪽 둘레와 아래쪽 둘레가 서로 다른 바닥을 딛는다. 버튼
+   채움색은 토큰 값 그대로인데(잰 값 rgb(202 73 57)) 같은 빨강이 위아래로
+   다르게 읽히는 것은 그 때문이다 — 층 문제가 아니라 **바닥이 버튼 높이
+   안에서 변하는** 문제다.
+
+   그래서 125px은 **오르는 길이**로만 두고(그중 60%인 75px), 버튼이 앉는
+   만큼을 그 아래에 평평하게 더 깐다. 버튼은 한 톤 위에 앉고, 바닥은
+   화면 끝까지 그 톤으로 간다.
+
+   버튼이 그 위에 또렷이 앉는 것은 그대로다(아래 z-index: 2). */
 .tone-choice::after, .compose-screen::after,
 .write-screen::after, .color-choice::after, .preview-screen::after,
 .info-overlay::after{
@@ -2117,8 +2132,8 @@
   position: absolute;
   inset-inline: 0;
   bottom: 0;
-  height: 125px;
-  background: linear-gradient(to bottom, transparent, var(--brand-scrim) 60%);
+  height: calc(125px * 0.6 + var(--btn-xl) + max(var(--s6), env(safe-area-inset-bottom, 0px)));
+  background: linear-gradient(to bottom, transparent, var(--brand-scrim) calc(125px * 0.6));
   pointer-events: none;
   z-index: 1;
 }

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="300" viewBox="0 0 390 300" role="img" aria-labelledby="title description">
+  <title id="title">이제 당신의 말을 담아주세요</title>
+  <desc id="description">작은 청록색 캐릭터가 빈 빨간 말풍선을 두 손으로 받쳐 내밉니다. 말풍선 안에는 흰 입력 커서 하나가 있고, 캐릭터의 눈은 위를 향합니다.</desc>
+  <ellipse id="contact-shadow" cx="195" cy="274" rx="49" ry="5" fill="#5a5580" opacity=".35"/>
+  <g id="raised-arms" fill="none" stroke="#2ce9f7" stroke-width="16" stroke-linecap="round">
+    <path d="M163 223C140 216 124 185 124 143"/>
+    <path d="M227 223C250 216 266 185 266 143"/>
+  </g>
+  <path id="body" fill="#2ce9f7" d="M158 196A37 37 0 0 1 232 196V269Q232 273 228 273H205Q201 273 201 269V263A6 6 0 0 0 189 263V269Q189 273 185 273H162Q158 273 158 269Z"/>
+  <circle id="eye" cx="195" cy="187" r="16" fill="#fff"/>
+  <circle id="pupil" cx="195" cy="181" r="9.5" fill="#2ce9f7"/>
+  <path id="empty-speech-bubble" fill="#cf5b4c" d="M108 24H282Q296 24 296 38V123Q296 137 282 137H218L198 151Q195 153 195 149V137H108Q94 137 94 123V38Q94 24 108 24Z"/>
+  <rect id="input-cursor" x="192.5" y="60" width="5" height="41" rx="1" fill="#fff"/>
+  <g id="holding-hands" fill="#2ce9f7">
+    <ellipse cx="124" cy="139" rx="12" ry="9"/>
+    <ellipse cx="266" cy="139" rx="12" ry="9"/>
+  </g>
+</svg>

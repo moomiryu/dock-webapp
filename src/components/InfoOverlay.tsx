@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import BackButton from './BackButton';
 import { aboutSvg, chainSvg, scopeSvg } from '../lib/svgAsset';
-import { EMPHASIS_SEC, STAY_DAYS } from '../lib/wall';
+import { STAY_DAYS } from '../lib/wall';
 
 // 작가가 삽화를 컷으로 나눠 준다. 컷 사이를 이어 도는 일은 svgAsset이 한다.
 //
@@ -192,10 +192,14 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
        이어져야 판과 배경 사이에 경계가 안 생긴다. */
     step: 'Step 4',
     title: '소리 대신 빛으로 말해보세요.',
+    /* '최대 30초 동안은'을 뺐다(2026-09-21). 이 장이 하는 말은 **빛으로
+       말한다**는 것이고, 몇 초인지는 그다음 문제다 — 소개에서 먼저 시간을
+       재 주면 읽는 사람이 남은 시간을 세게 된다. 강조 시간 자체는 그대로다
+       (wall.ts의 EMPHASIS_SEC). */
     body: (
       <p>
         텍스트가 화면에 떠올라<br />
-        최대 {EMPHASIS_SEC}초 동안 공간을 지나는 사람들에게 닿습니다.
+        공간을 지나는 사람들에게 닿습니다.
       </p>
     ),
     art: <Built name="about" still={artAboutFull}

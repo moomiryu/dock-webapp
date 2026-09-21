@@ -346,55 +346,67 @@ function typeIn(root: Element, t: ReturnType<typeof timeline>, dur: number) {
 const ONLOOKER = '#2ce9f7';
 
 /**
+ * 놀란 눈의 검은자. 작가의 `eye_surprise.svg`에서 그대로 가져온 비율이다 —
+ * 흰자는 86.21로 그대로고 검은자만 52.48에서 17.32가 된다(0.330).
+ */
+const SURPRISE = 0.33;
+
+/**
  * 벽에 글이 켜질 때 **구경꾼이 놀란다.**
  *
- * 눈이 커졌다 돌아온다. 이 그림의 캐릭터에는 입이 없어서 표정을 지을 수
- * 있는 곳이 눈뿐이다 — 그래서 크기로 말한다.
+ * ── 크기가 아니라 형태다 (2026-09-21) ────────────────────────────────
+ * 그 전까지는 눈 한 벌을 통째로 1.45배로 키웠다 왔다. 눈알이 커지는 것은
+ * 이 캐릭터가 하는 표정이 아니다 — 작가는 놀란 얼굴을 따로 그려 두었고
+ * (`Character/eye/eye_surprise.svg`), 거기서 커지는 것은 **아무것도 없다.**
+ * 흰자는 그대로고 **검은자가 3분의 1로 줄어든다.**
+ *
+ * 그래서 이제 검은자만 줄인다. 흰자는 손대지 않는다.
+ *
+ * 줄이는 자리는 **검은자 제 한가운데**다. 흰자 한가운데로 잡으면 검은자가
+ * 가운데로 끌려와 시선이 풀린다 — 이 그림의 검은자는 흰자에서 (−2.25,
+ * −2.25)만큼 비껴 있고(재서 확인), 그 비낌이 어디를 보고 있는지다.
+ *
+ * 갈아 끼우듯 **툭 바뀐다**(discrete). 작가가 준 것은 중간이 없는 두 장
+ * 이고, 사이를 이어 그리면 그 둘 사이의 없는 얼굴을 지어내는 일이 된다.
  *
  * 놀라는 것은 지나가는 사람들이지 발화자가 아니다. 제 글이 벽에 뜬 것을
  * 보고 놀랄 사람은 없다. 그래서 눈동자가 구경꾼의 몸 색인 눈만 고른다.
  *
  * 깜빡임(.mf-eye)은 CSS가 눈 **자체**에 걸고 있다. 같은 요소의 transform을
- * 여기서 또 건드리면 둘 중 하나가 죽는다(CSS 애니메이션이 이긴다). 눈 한
- * 벌을 <g>로 감싸고 그 <g>를 키운다 — 감는 것과 커지는 것이 다른 요소에
- * 걸려 서로를 안 덮는다.
+ * 여기서 또 건드리면 둘 중 하나가 죽는다(CSS 애니메이션이 이긴다). 검은자를
+ * <g>로 감싸고 그 <g>를 줄인다 — 감는 것과 줄어드는 것이 다른 요소에 걸려
+ * 서로를 안 덮는다.
  */
 function startle(root: Element, from: number, to: number, dur: number) {
   const doc = root.ownerDocument;
   const ns = 'http://www.w3.org/2000/svg';
   const pupils = Array.from(root.querySelectorAll('.mf-eye'))
     .filter((el) => (el.getAttribute('fill') ?? '').toLowerCase() === ONLOOKER);
+  const on = r2(from);
+  /* 놀란 채로 머무는 길이는 전과 같다. 그때는 커지는 데 쓰던 몫이 있었는데
+     이제 툭 바뀌므로 그 몫까지 **머무는 데** 쓴다 — 글은 그 뒤로도 한참
+     켜져 있으므로 그만큼 더 본다(재서 확인: 3.84초에 글이 다 켜진다).
+     0.98을 넘기지 않는 이유: 마디가 1과 겹치면 브라우저가 이 애니메이션을
+     통째로 버린다(typeIn에서 한 번 당했다). */
+  const off = r2(Math.min(0.98, from + (to - from) * 0.18 + 0.1));
   for (const pupil of pupils) {
-    const white = pupil.previousElementSibling;
-    if (!white || !white.classList.contains('mf-eye') || white.parentNode !== pupil.parentNode) continue;
-    const b = boxOf(itemOf(white));
-    if (!b || !b.w) continue;
+    const b = boxOf(itemOf(pupil));
+    if (!b || !b.w || off <= on) continue;
     const cx = r2(b.x + b.w / 2), cy = r2(b.y + b.h / 2);
     const outer = doc.createElementNS(ns, 'g');
     const inner = doc.createElementNS(ns, 'g');
     outer.setAttribute('transform', `translate(${cx} ${cy})`);
     inner.setAttribute('transform', `translate(${-cx} ${-cy})`);
-    pupil.parentNode!.insertBefore(outer, white);
+    pupil.parentNode!.insertBefore(outer, pupil);
     outer.appendChild(inner);
-    inner.appendChild(white);
     inner.appendChild(pupil);
-    /* **빠르게 커지고 천천히 돌아온다.** 반대로 하면 놀란 것이 아니라
-       숨 쉬는 것으로 보인다. */
-    const peak = r2(from + (to - from) * 0.18);
-    /* 커진 채로 한 박자 더 머문다. to(다음 마디의 끝)까지만 쓰면 0.86초
-       만에 왕복해서 놀란 줄도 모르고 지나간다 — 글은 그 뒤로도 한참 켜져
-       있으므로 그만큼 더 본다(재서 확인: 3.84초에 글이 다 켜지고 3.96에
-       눈이 제일 크다). */
-    const back = r2(Math.min(1, from + (to - from) * 0.18 + 0.1));
     put(outer, 'animateTransform', {
       attributeName: 'transform', type: 'scale', additive: 'sum',
-      values: '1;1;1.45;1;1', keyTimes: `0;${r2(from)};${peak};${back};1`,
-      calcMode: 'spline', keySplines: '0 0 1 1;.2 0 .1 1;.4 0 .6 1;0 0 1 1',
-      dur: `${dur}s`, repeatCount: 'indefinite'
+      values: `1;${SURPRISE};1;1`, keyTimes: `0;${on};${off};1`,
+      calcMode: 'discrete', dur: `${dur}s`, repeatCount: 'indefinite'
     });
   }
 }
-
 /**
  * 눈을 찾아 깜빡이게 표시한다.
  *
@@ -904,36 +916,40 @@ const NUM_ATTRS = [...SHAPE_ATTRS, 'font-size', 'stroke-width'];
    되살릴 일이 있으면 34315f3을 본다 — 다리 데이터 샘플링, 도착에서 멎게
    하는 시간표, 배율 반올림이 허리에 흰 선을 만들던 것까지 거기 다 있다.
 
-   골격을 재는 조각(RIG · rigOf)은 남겼다. Step 2에서 잣대를 잡은 손을
-   찾는 데 그대로 쓴다 — 인물의 머리와 그림자로 몸을 알아보는 일이다. */
+   골격을 재는 조각(RIG · rigOf)도 2026-09-21에 걷어냈다. Step 2에서 잣대를
+   잡은 손을 찾는 데 쓰려고 남겨 두었던 것인데, 작가가 그날 다시 그린 인물은
+   화판 아래로 몸이 이어져 **발밑 그림자가 아예 없다** — 증거로 삼던 것이
+   없으니 맞을 수가 없다. 손은 이제 머리로 찾는다(handsOf). */
 
-/** 홈 캐릭터의 골격 치수(Character_walk_v3.svg의 화판에서) */
-const RIG = { left: 17.13, width: 332.21, hipX: 183.23, hipY: 449, footY: 541.81 };
-
-interface Rig { tx: number; ty: number; s: number; r: number; cx: number; cy: number }
 
 /**
- * 이 동그라미가 누군가의 **머리**인가.
+ * 몸통 옆에 붙은 작은 혹 — **손**을 찾는다.
  *
- * 머리라면 몸 너비가 머리 지름과 같고, 그 비례로 정해지는 발밑 자리에
- * 그림자가 누워 있어야 한다. 그림자가 증거다 — 없으면 그냥 동그라미다.
+ * rigOf로 찾던 자리다. 그건 발밑 그림자를 증거로 삼는데, 2026-09-21에 작가가
+ * 다시 그린 Step 2의 인물은 화판(603) 아래로 몸이 이어져 **그림자가 아예
+ * 없다** — 그 뒤로 손이 안 잡혔고, 잣대를 따라가는 동작이 안 돌았다
+ * (재서 확인: 손에 붙은 애니메이션이 작가가 그린 cy 하나뿐이었다).
+ *
+ * 여기서는 그림자 대신 **머리**를 증거로 쓴다. 제일 큰 동그라미가 머리이고,
+ * 손은 그와 같은 색이면서 훨씬 작고(머리 반지름의 4할 미만), 머리 바깥에
+ * 있되 머리 셋 거리 안에 있는 동그라미다. Step 2에서 잰 값: 머리 r 63.05,
+ * 손 r 14.8, 머리 한가운데에서 72.8.
+ *
+ * rigOf는 그대로 둔다 — 걷는 인물을 알아보는 일은 그쪽이 맞다.
  */
-function rigOf(head: Item, all: Item[]): Rig | null {
-  if (head.tag !== 'circle') return null;
-  const n = (a: string) => Number(head.el.getAttribute(a));
-  const r = n('r'), cx = n('cx'), cy = n('cy');
-  if (!r || !Number.isFinite(cx) || !Number.isFinite(cy)) return null;
-  const s = (2 * r) / RIG.width;
-  const tx = cx - r - RIG.left * s, ty = cy - r;
-  const foot = ty + RIG.footY * s;
-  const shadow = all.some((it) => {
-    if (it === head) return false;
-    const b = boxOf(it);
-    // 발밑에 납작하게 누운 것. 몸보다 넓고 머리보다 얇다.
-    return !!b && Math.abs(b.y + b.h / 2 - foot) < Math.max(1.5, r * 0.08)
-      && b.w > r && b.h < r * 0.8;
-  });
-  return shadow ? { tx, ty, s, r, cx, cy } : null;
+function handsOf(all: Item[]): Array<{ el: Element; r: number }> {
+  const balls = all
+    .filter((it) => it.tag === 'circle')
+    .map((it) => ({ it, c: centreOf(it), b: boxOf(it) }))
+    .filter((o) => o.c && o.b && o.b.w > 0);
+  if (balls.length < 2) return [];
+  const head = balls.reduce((m, n) => (n.b!.w > m.b!.w ? n : m));
+  const hr = head.b!.w / 2;
+  const away = (o: typeof head) => Math.hypot(o.c![0] - head.c![0], o.c![1] - head.c![1]);
+  return balls
+    .filter((o) => o !== head && o.it.fill === head.it.fill && o.b!.w / 2 < hr * 0.4
+      && away(o) > hr && away(o) < hr * 3)
+    .map((o) => ({ el: o.it.el, r: o.b!.w / 2 }));
 }
 
 /** 제 변환까지 먹인 한가운데. 잣대 손잡이는 돌려서 놓여 있어 bbox만으로는 모자란다 */
@@ -1200,9 +1216,10 @@ export function chainSvg(raws: string[], key: string, dur = 11, even = false, lo
     }
 
     let moved = 0;
-    /* 잣대 손잡이가 컷마다 얼마나 옮겨 갔는지 모아 둔다 — 그 손잡이를
-       잡고 있는 손이 같은 박자로 따라가야 하기 때문이다(아래 handOn). */
-    const drag: Array<[number, number]> = order.map(() => [0, 0]);
+    /* 손잡이마다 컷별 **가로 이동**(제자리에서 얼마나 옆으로 갔나).
+       그 손잡이를 잡고 있는 손이 같은 박자로 따라가야 하기 때문이다
+       (아래 handsOf). 세로는 안 센다 — 손의 세로는 작가가 그려 두었다. */
+    const tracks: number[][] = [];
     let draggers = 0;
     for (const a of items[0]) {
       const per = order.map((k) => of[k].get(a.el));
@@ -1239,34 +1256,69 @@ export function chainSvg(raws: string[], key: string, dur = 11, even = false, lo
       const cs = per.map((x, i) => centreOf(x ?? near(i)) ?? c0);
       if (!cs.some((c) => Math.hypot(c[0] - c0[0], c[1] - c0[1]) > 0.5)) continue;
       draggers++;
-      cs.forEach((c, i) => { drag[i][0] += c[0] - c0[0]; drag[i][1] += c[1] - c0[1]; });
+      tracks.push(cs.map((c) => c[0] - c0[0]));
+    }
+
+    /* 컷마다 **지금 만지고 있는 손잡이 하나**를 고른다. 앞 컷에서 옆으로
+       제일 많이 옮겨 간 것이 그것이다.
+
+       합하면 안 된다: 한 컷에서 둘이 서로 반대로 가면 합이 서로를 지운다 —
+       넷째 컷에서 크기(위로)와 무게(왼쪽 아래)가 맞부딪혀 8.89px이어야 할
+       것이 0.27px이 됐다(재서 확인).
+
+       '제자리에서 제일 먼 것'도 아니다: 앞 컷에서 옮겨 놓은 손잡이는 그
+       자리에 **그대로 있으므로**, 그걸 고르면 손이 거기 붙박여 다음 조작을
+       안 따라간다(넷째 컷에서 빠르기가 계속 이겼다).
+
+       아무도 옆으로 안 움직인 컷에서는 앞 값을 잇는다 — 그 컷에서 만지는
+       것이 세로 잣대라는 뜻이고, 그때 손이 가로로 튀면 거짓이 된다. */
+    const drag: number[] = order.map(() => 0);
+    for (let i = 1; i < drag.length; i++) {
+      let best = 0, at = -1;
+      tracks.forEach((tr, j) => {
+        const step = Math.abs(tr[i] - tr[i - 1]);
+        if (step > best) { best = step; at = j; }
+      });
+      drag[i] = best > 0.5 && at >= 0 ? tracks[at][i] : drag[i - 1];
     }
 
     /* ── 잣대를 잡은 손 ─────────────────────────────────────────────
        Step 2는 캐릭터가 제 발화를 **직접 다듬는** 장면이다. 손이 가만히
-       있으면 잣대가 저절로 움직이는 것으로 보인다. 손잡이들이 옮겨 간
-       평균만큼, 같은 시간표 위에서 손도 따라간다 — 따로 흔드는 것이 아니라
-       잣대·글자와 한 박자로 움직여야 '내가 만지고 있다'가 된다.
+       있으면 잣대가 저절로 움직이는 것으로 보인다.
 
-       손은 몸통 옆에 붙은 작은 혹이라 멀리 못 간다. 제일 크게 옮겨 간
-       컷에서 머리 반지름의 5분의 1쯤 움직이도록 몫을 맞춘다. */
+       ── 세로는 작가 것, 가로만 여기서 (2026-09-21) ───────────────────
+       작가는 컷마다 손 높이를 다르게 그려 두었다(재서 확인: 왼손
+       523.61→534.95→502, 오른손 523.61→502). 그래서 손은 이미 움직이는데
+       **위아래로만** 움직인다 — 잣대는 옆으로 가는데 손은 까딱이기만 하니
+       조작이 아니라 **의미 없는 흔들림**으로 읽혔다.
+
+       세로는 작가가 잡은 그대로 두고 **가로만 더한다.** 손잡이들이 그 컷에
+       옮겨 간 가로 평균만큼, 같은 시간표 위에서. 같은 keyTimes·keySplines를
+       쓰므로 x와 y가 같은 순간에 같이 서고 같이 떠난다 — 둘이 어긋나면
+       출발·방향 전환·정지에서 경로가 꺾인다.
+
+       몫은 **손 반지름의 6할**이다(r 14.8 → 8.9px). 위아래 두 쪽에서 막힌다:
+       아래로는 작가가 그린 세로 걸음(11.3·21.6px)보다 작아야 더한 것이
+       원래 있던 것을 덮지 않고, 위로는 **안쪽으로 간 손이 몸에 안 먹혀야**
+       한다 — 손은 몸 가장자리에 중심이 놓여 절반(14.8px)만 삐져나와 있다.
+       6할이면 5.9px이 남고, 8.5할이면 2.2px만 남아 혹이 사라진다(재서 확인).
+
+       두 손 다 같은 쪽으로 간다. 하나만 움직이면 팔이 아니라 혹 하나가
+       떨어져 나간 것으로 보인다 — 몸이 그쪽으로 기우는 것이라야 한다.
+       (재서 확인: 0.1초마다 최대 12.8px 가고, 움직이는 동안 경로가 꺾이는
+       각은 최대 0.7도다 — x와 y가 같은 시간표를 써서 생긴 값이다.) */
     if (draggers) {
-      const far = Math.max(...drag.map((d) => Math.hypot(d[0], d[1]) / draggers));
-      for (const head of items[0]) {
-        const rg = rigOf(head, items[0]);
-        if (!rg || far < 0.01) continue;
-        const nub = items[0]
-          .map((x) => ({ x, c: centreOf(x), b: boxOf(x) }))
-          .filter((o) => o.x.tag === 'circle' && o.c && o.b && o.b.w < rg.r
-            && Math.hypot(o.c[0] - rg.cx, o.c[1] - rg.cy) > rg.r)
-          .sort((m, n) => Math.hypot(m.c![0] - rg.cx, m.c![1] - rg.cy) - Math.hypot(n.c![0] - rg.cx, n.c![1] - rg.cy))[0];
-        if (!nub) continue;
-        const k = (rg.r * 0.2) / far / draggers;
-        put(nub.x.el, 'animateTransform', {
-          attributeName: 'transform', type: 'translate', additive: 'sum',
-          values: doubled(drag.map((d) => `${r2(d[0] * k)} ${r2(d[1] * k)}`)).join(';'),
-          keyTimes: t.keyTimes, keySplines: t.keySplines, calcMode: 'spline', dur: `${dur}s`
-        });
+      const far = Math.max(...drag.map(Math.abs));
+      const hands = handsOf(items[0]);
+      if (far > 0.01 && hands.length) {
+        const k = (hands[0].r * 0.6) / far;
+        for (const h of hands) {
+          put(h.el, 'animateTransform', {
+            attributeName: 'transform', type: 'translate', additive: 'sum',
+            values: doubled(drag.map((d) => `${r2(d * k)} 0`)).join(';'),
+            keyTimes: t.keyTimes, keySplines: t.keySplines, calcMode: 'spline', dur: `${dur}s`
+          });
+        }
       }
     }
     /* 아무것도 **모양을 바꾸지 않았고** 컷마다 더 놓을 것도 없으면 그만

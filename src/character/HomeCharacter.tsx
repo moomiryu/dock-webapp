@@ -130,6 +130,28 @@ export default function HomeCharacter() {
   // 리렌더가 드물다. 포즈와 위치는 매 프레임이라 DOM을 직접 만진다.
   const [eyes, setEyes] = useState<Eyes>('general');
   /**
+   * 화면에 **지금 그려진** 표정. eyes를 한 박자 늦게 따라온다.
+   *
+   * 표정이 한 프레임에 툭 바뀌고 있었다 — 뜬 눈이 다음 프레임에 웃는 눈이
+   * 된다(재서 확인: 2.75초에 뜬 눈, 3.2초에 웃는 눈, 그 사이에 중간이 없다).
+   * 얼굴은 그렇게 안 바뀐다. **눈을 감았다 뜨면서** 바꾼다: 감은 동안에
+   * 갈아 끼우면 중간 형태가 아예 필요 없고, 두 표정을 겹쳐 흐리게 만들 때
+   * 생기는 겹침도 없다.
+   *
+   * 깜빡임은 이미 있는 두 겹(.mf-eye-face / .mf-eye-wink)이 그대로 한다.
+   * blink가 바뀌면 그 두 겹이 다시 붙어(key) 한 번짜리 감기가 처음부터 돈다.
+   */
+  const [shownEyes, setShownEyes] = useState<Eyes>('general');
+  const [blink, setBlink] = useState(0);
+  useEffect(() => {
+    if (eyes === shownEyes) return;
+    setBlink((n) => n + 1);
+    /* 감은 한가운데에서 갈아 끼운다. 160ms 중 80ms — 사람 눈이 한 번
+       깜빡이는 데 드는 시간쯤이다. */
+    const id = setTimeout(() => setShownEyes(eyes), 80);
+    return () => clearTimeout(id);
+  }, [eyes, shownEyes]);
+  /**
    * 눈이 아예 없는 동안. 첫 프레임부터 그래야 빨강 덩어리로 보인다.
    *
    * 감은 눈을 그리지 않고 눈판을 통째로 숨긴다 — 흰자가 한 점이라도
@@ -572,12 +594,17 @@ export default function HomeCharacter() {
             preserveAspectRatio="none"
             overflow="visible"
           >
-            <g className="mf-eye-face" dangerouslySetInnerHTML={{ __html: eyeMarkup(eyes) }} />
-            {/* 짓고 있는 얼굴이 이미 twinkle이면 갈아 끼울 것이 없다 —
-                같은 마크업을 두 벌 넣을 이유가 없다. */}
-            {eyes !== 'twinkle' && (
-              <g className="mf-eye-wink" dangerouslySetInnerHTML={{ __html: eyeMarkup('twinkle') }} />
-            )}
+            {/* blink가 바뀌면 이 묶음이 통째로 다시 붙어, 한 번짜리 감기
+                (mfEyeBlinkOnce)가 처음부터 돈다 — CSS 애니메이션을 다시
+                시작시키는 방법은 요소를 새로 다는 것뿐이다. */}
+            <g key={blink} className={blink ? 'mf-eye-swap' : undefined}>
+              <g className="mf-eye-face" dangerouslySetInnerHTML={{ __html: eyeMarkup(shownEyes) }} />
+              {/* 짓고 있는 얼굴이 이미 twinkle이면 갈아 끼울 것이 없다 —
+                  같은 마크업을 두 벌 넣을 이유가 없다. */}
+              {shownEyes !== 'twinkle' && (
+                <g className="mf-eye-wink" dangerouslySetInnerHTML={{ __html: eyeMarkup('twinkle') }} />
+              )}
+            </g>
           </svg>
         </svg>
       </span>

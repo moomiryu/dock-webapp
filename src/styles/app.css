@@ -3317,8 +3317,17 @@
    짓고 있던 얼굴과 twinkle을 갈아 끼운다. 07의 눈과 한 시계를 쓴다. */
 .mf-eye-face{ animation: mfEyeOpenPhase 5.4s linear infinite; }
 .mf-eye-wink{ animation: mfEyeShutPhase 5.4s linear infinite; }
+/* 표정을 갈아 끼우는 160ms 동안만 눈을 감는다. 두 번째 애니메이션이
+   같은 opacity를 나중에 적어서 그동안 이기고, 끝나면(forwards 없이) 위의
+   느린 깜빡임이 하던 자리로 돌아온다. 갈아 끼우기는 감은 한가운데인
+   80ms에 일어난다(HomeCharacter의 shownEyes). */
+.mf-eye-swap .mf-eye-face{ animation: mfEyeOpenPhase 5.4s linear infinite, mfEyeShutOnce 160ms steps(1, end) 1; }
+.mf-eye-swap .mf-eye-wink{ animation: mfEyeShutPhase 5.4s linear infinite, mfEyeOpenOnce 160ms steps(1, end) 1; }
+@keyframes mfEyeShutOnce{ 0%, 99.9% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes mfEyeOpenOnce{ 0%, 99.9% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce){
-  .mf-eye-face, .mf-eye-wink{ animation: none; }
+  .mf-eye-face, .mf-eye-wink,
+  .mf-eye-swap .mf-eye-face, .mf-eye-swap .mf-eye-wink{ animation: none; }
   .mf-eye-wink{ opacity: 0; }
 }
 

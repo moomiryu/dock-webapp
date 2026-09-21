@@ -376,7 +376,10 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
      <h1>전하고 싶은 느낌으로<br />조절해보세요</h1>
      <p>발화의 크기, 빠르기, {hasWeightAxis(tone.font) ? '무게' : '말투'}를 정해봐요.</p>
     </div>
-    {/* 삽화 자리. 아직 그려지지 않았다 — 지금은 '가' 한 글자가 대신 선다. */}
+    {/* 삽화 자리. 아직 그려지지 않았다 — 지금은 '발화' 두 글자가 대신
+        서서 크기와 빠르기 축을 차례로 훑는다(app.css · toneDemo).
+        연출은 전부 CSS에 있다: 여기서 상태를 만들지 않으므로 이 움직임이
+        참여자가 고른 값에 닿을 길이 없다. */}
     <div className="tone-figure" aria-hidden="true" style={{ fontFamily: fontMap[tone.font] }}>발화</div>
     {/* 글자였다. 그러면 이 장에서 **앞으로 가는 길이 손가락뿐**이라
         자판·스위치·낭독기를 쓰는 사람은 03에 들어와 빠져나갈 수가 없었다

@@ -2030,8 +2030,51 @@
 .tone-intro{ background: var(--brand-strong); cursor: pointer; }
 .tone-intro .z-glyph-stage{ flex: 1; }
 /* 삽화 자리. 아직 그려지지 않아 '가' 한 글자가 대신 선다 */
+/* ── 첫 장의 '발화'가 축을 훑는다 ───────────────────────────────────
+   이 장은 "무엇을 하는 자리인가"만 말한다. 글로 '크기, 빠르기'라고 적어
+   두었지만 그 둘이 글자에 무슨 짓을 하는지는 안 보여줬다 — 실제로 만져
+   보기 전까지는 '빠르기'가 시간인지 폭인지 알 길이 없다.
+
+   그래서 한 축씩 차례로, 양 끝까지 갔다가 제자리로 온다. 크기 → 빠르기
+   순서는 아래 도구가 서 있는 순서와 같다.
+
+   **CSS만으로 돈다.** React 상태를 안 거치므로 이 시연이 편집값을 건드릴
+   길이 구조적으로 없다 — 참여자가 고른 값은 둘째 장에만 있고, 여기 있는
+   것은 그 값의 그림이 아니라 축의 그림이다.
+
+   크기는 기본 44를 1로 놓은 28~60의 비율(0.64~1.18), 폭은 0.7~1.3(장평
+   사다리의 양 끝). 한 축이 3.5초씩, 한 바퀴 7초.
+
+   ── 셋째 축은 없다 ─────────────────────────────────────────────────
+   셋째 도구는 얼굴에 따라 **무게이거나 말투**다(위 설명 문구가 그렇게
+   갈린다). 둘 다 여기서는 못 보여준다:
+
+   · 무게 — 획을 덧대는 방식(--optical-stroke)은 '당당한'에서 못 쓴다.
+     이미 굵은 얼굴이라 161px에서 0.018em만 덧대도 '화'의 ㅇ이 메워진다
+     (다섯 칸을 두 얼굴에 나란히 놓고 확인). 진짜 축인 font-weight는
+     아무것도 안 바꾼다 — 이 가변 글꼴들은 font-variation-settings로만
+     축이 열린다(재서 확인: 400과 700의 잉크 폭이 312px로 같다).
+   · 말투 — 값이 둘뿐인 고르기라 훑을 범위가 없다.
+
+   두 축만 보여주고 셋째는 둘째 장에서 만나게 둔다. 못 보여주는 것을
+   보여주는 척하는 것보다 낫다. */
 .tone-figure{ flex: 1; display: grid; place-items: center; line-height: 1;
-  font-size: min(46cqw, 28vh); color: rgb(255 255 255 / 92%); }
+  --fig: min(46cqw, 28vh);
+  font-size: var(--fig); color: rgb(255 255 255 / 92%);
+  animation: toneDemo 7s var(--ease-standard) infinite;
+}
+/* 마디마다 둘을 모두 적는다. 한 마디에서 빠뜨린 속성은 그 마디를 건너뛰고
+   보간되어, 크기를 되돌리는 도중에 폭이 먼저 움직인다. */
+@keyframes toneDemo{
+  0%,   9%  { font-size: var(--fig);             scale: 1 1; }
+  21%       { font-size: calc(var(--fig) * 0.64); scale: 1 1; }
+  39%       { font-size: calc(var(--fig) * 1.18); scale: 1 1; }
+  50%,  59% { font-size: var(--fig);             scale: 1 1; }
+  71%       { font-size: var(--fig);             scale: 0.7 1; }
+  89%       { font-size: var(--fig);             scale: 1.3 1; }
+  100%      { font-size: var(--fig);             scale: 1 1; }
+}
+@media (prefers-reduced-motion: reduce){ .tone-figure{ animation: none; } }
 /* 다음 걸음으로 가는 유일한 손짓이라 위계를 본문 자리에 둔다 —
    라벨(14px·76%)로 두었더니 잔글씨로 읽혀 눌러야 하는 줄 몰랐다. */
 /* span이었다가 버튼이 됐다(2026-09-21) — 이 장에서 앞으로 가는 길이

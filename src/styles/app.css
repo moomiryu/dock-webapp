@@ -1675,7 +1675,20 @@
    차지해서, 390 화면에서 왼쪽 14px·오른쪽 10px이 비쳤다. 그림을 잘라 내는
    대신(그러면 가장자리로 흘러나간 두 그림자가 잘린다) 자리에 같은 검정을
    깔아 이음매를 없앤다 — 판의 검정도 순검정이라 경계가 안 보인다. */
-.info-art.is-bleed{ background: var(--night); }
+/* 그림이 잘려 나간 자리를 같은 검정으로 메운다. 윗변은 여기서도 풀어야
+   한다 — 마스크로 그림만 지워 봐야 그 밑의 이 검정이 하드에지로 메운다
+   (재서 확인: 윗변 위 y38이 순백, 4px 아래 y42가 이미 #120306이었다). */
+.info-art.is-bleed{
+  background: linear-gradient(to bottom, transparent 0, var(--night) 32px);
+}
+/* 검정 판이 흰 종이에서 **칼로 자른 듯** 시작했다(390×844에서 y 211).
+   그림째 윗변을 32px에 걸쳐 투명으로 보낸다 — 그림이 사라지는 것이
+   아니라 종이가 어두워지는 것으로 읽힌다. 아래·좌우는 화면 끝까지
+   이어지므로 위만 잡는다. */
+.info-art.is-bleed > span{
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 32px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 32px);
+}
 
 /* ── About의 밤은 화면 맨 아래까지 간다 ──────────────────────────────
    검정이 삽화 칸에서 끝나면(y 724) 그 아래 120px이 흰 종이로 남고, 거기에

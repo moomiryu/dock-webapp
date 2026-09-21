@@ -65,7 +65,22 @@ function markGround(root: Element) {
 export function withGround(html: string, at: { cx: number; cy: number; rx: number; ry: number }): string {
   const tag = `<ellipse class="mf-ground" cx="${r2(at.cx)}" cy="${r2(at.cy)}"`
     + ` rx="${r2(at.rx)}" ry="${r2(at.ry)}"/>`;
-  return html.replace(/(<svg[^>]*>)/, `$1${tag}`);
+  /* 그림자도 **그린 것**이다. focusOn은 이 타원을 모르므로(나중에 붙는다)
+     그때 적어 둔 뻗은 몫(--reach)을 여기서 넓혀 준다 — 안 넓히면 낮은
+     화면에서 삽화를 줄일 때 그림자가 셈에서 빠져 칸 밖으로 밀린다.
+
+     **--focus는 손대지 않는다.** 한 번 같이 고쳤더니 삽화가 15px 올라가
+     글 아래 여백이 44에서 28로 줄었다(눈으로 골라 둔 값이다). 자리표는
+     '어디를 가운데에 둘까'이고 --reach는 '거기서 얼마나 멀리 뻗었나'다. */
+  const vb = html.match(/viewBox="([^"]+)"/)?.[1].split(/[ ,]+/).map(Number);
+  const f = Number(html.match(/--focus:\s*([\d.]+)%/)?.[1]) / 100;
+  const r = Number(html.match(/--reach:\s*([\d.]+)/)?.[1]);
+  let out = html.replace(/(<svg[^>]*>)/, `$1${tag}`);
+  if (vb?.length === 4 && vb[3] && Number.isFinite(f) && Number.isFinite(r)) {
+    const low = ((at.cy + at.ry) - vb[1]) / vb[3];          // 타원의 아래끝
+    out = out.replace(/--reach:\s*[\d.]+/, `--reach:${r2(2 * Math.max(low - f, r / 2))}`);
+  }
+  return out;
 }
 
 /**
@@ -935,7 +950,20 @@ function focusOn(root: Element, items: Item[]) {
   // 화판 밖까지 뻗은 것은 화판 끝까지만 친다 — 어차피 잘리는 자리다
   y0 = Math.max(y0, vb[1]); y1 = Math.min(y1, vb[1] + vb[3]);
   const mid = ((y0 + y1) / 2 - vb[1]) / vb[3];
-  addStyle(root, `--focus:${r2(mid * 100)}%`);
+  /* --reach: 그린 것이 **자리표에서** 위아래로 제일 멀리 뻗은 몫의 두 배.
+     낮은 화면에서 삽화를 줄일 때 기준이 된다 — 화판이 아니라 **그린 것**이
+     칸에 들어가면 되기 때문이다. 화판만 기준으로 삼으면 844에서도 줄어서,
+     빈 화판까지 칸에 넣느라 그림이 작아진다(app.css · '낮은 화면').
+
+     높이가 아니라 '뻗은 몫'인 이유: 칸 한가운데에 서는 것은 자리표이지
+     그린 것의 한가운데가 아니다. 둘이 어긋나 있으면(withGround가 그림자를
+     더한 뒤가 그렇다) 높이로 재면 먼 쪽이 칸 밖으로 밀린다 — 재서 확인:
+     낮은 화면에서 그림자가 9~12px 잘렸다. 자리표가 곧 한가운데일 때는
+     이 값이 그냥 높이와 같다.
+
+     --art: 화판의 가로세로 비. 같은 셈에 쓴다. */
+  const reach = 2 * Math.max((y1 - vb[1]) / vb[3] - mid, mid - (y0 - vb[1]) / vb[3]);
+  addStyle(root, `--focus:${r2(mid * 100)}%;--reach:${r2(reach)};--art:${r2(vb[2] / vb[3])}`);
 }
 
 /**

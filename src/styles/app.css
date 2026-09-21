@@ -1725,9 +1725,36 @@
    그 자리가 칸 한가운데에 선다. */
 .info-art > span{ display: block; position: relative; width: 100%; height: 100%; overflow: hidden; }
 .info-art > span > svg{
-  display: block; position: absolute; left: 0; top: 50%;
+  display: block; position: absolute; top: 50%;
+  /* 가로 한가운데. left:0이던 자리다 — 칸보다 좁아질 수 있게 되면서
+     (아래 '낮은 화면') 한쪽으로 붙으면 안 된다. */
+  inset-inline: 0; margin-inline: auto;
   width: 100%; height: auto;
   translate: 0 calc(var(--focus, 50%) * -1);
+}
+/* ── 낮은 화면에서는 **자르지 말고 줄인다** (2026-09-21) ────────────────
+   삽화는 칸 폭을 다 쓰고 넘치는 높이를 칸이 잘랐다. 844에서는 97%가 보여
+   괜찮았는데, 낮은 화면에서 잘리는 몫이 커진다 — 재서 확인: 750에서 79%,
+   667에서 66%, 640에서 61%, **568에서 48%**. Step 2에서는 조율 카드 셋이
+   반쯤 잘려, 그 장이 설명하려는 바로 그것이 안 보였다.
+
+   그래서 폭을 칸 높이로도 묶는다. 기준은 화판이 아니라 **그린 것**이다 —
+   빈 화판까지 칸에 넣으려 들면 844에서도 삽화가 390에서 332로 줄고, 그러면
+   화판 가장자리가 화면 한가운데에서 잘린 자국이 된다(지금은 화면 끝과 겹쳐
+   '밖으로 이어진다'로 읽힌다). 그린 것의 몫은 svgAsset이 재어 적어 보낸다
+   (--ink · --art).
+
+   그래서 이 셈이다: 그린 것이 칸 높이를 넘지 않는 폭 = 100cqh × --art ÷
+   --reach. 그것과 100% 중 작은 쪽을 쓴다. 넉넉한 화면에서는 100%가 이겨
+   **지금과 한 픽셀도 다르지 않고**(라이브와 대조: Step 1·3 픽셀 0개 차이),
+   낮은 화면에서만 줄어든다.
+
+   span에 container-type: size를 주는 이유: cqh는 그래야 생긴다. 이 칸은
+   제 내용이 아니라 바깥(.info-art의 flex)이 높이를 정하므로 안전하다 —
+   내용으로 높이를 정하는 자리에 걸면 글자 크기가 0으로 풀린다. */
+.info-art.is-wide > span, .info-art.is-bleed > span{ container-type: size; }
+.info-art.is-wide > span > svg, .info-art.is-bleed > span > svg{
+  width: min(100%, calc(100cqh * var(--art, 0.647) / var(--reach, 1)));
 }
 /* ── Step 2는 **줄여서** 칸에 맞춘다 (2026-09-21) ─────────────────────
    삽화가 글 바로 밑에서 시작해 혼자 크게 올라와 보였다(재서 확인: 그림이
@@ -1745,8 +1772,7 @@
 
    좌우로 나가는 그림이 없어서(x 74.3~315.7) 줄여도 잘리는 것이 없다. */
 .info-art.is-fitted > span > svg{
-  width: 88%;
-  left: 6%;
+  width: min(88%, calc(100cqh * var(--art, 0.647) / var(--reach, 1)));
   overflow: visible;   /* 화판 밖의 발과 그림자까지 낸다. 칸이 대신 자른다 */
 }
 /* ── 발밑 그림자는 **옅게 깐다** ──────────────────────────────────────

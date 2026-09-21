@@ -1,8 +1,8 @@
 import { useState, type CSSProperties } from 'react';
 import BackButton from '../components/BackButton';
 import VoiceBubble from '../components/VoiceBubble';
-import SpeechBubble from '../components/SpeechBubble';
-import { bubbleFor } from '../lib/bubbles';
+import CloudBubble from '../components/CloudBubble';
+import { cloudFor, cloudShape } from '../lib/cloud';
 import { bubbleAt, fillFromLegacySize, foldLines } from '../lib/fit';
 import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
@@ -55,8 +55,9 @@ const AREA = 'min(96cqw, 96cqh)';
 export default function PhaseColor({ text, tone, onBack, onNext }: Props) {
     const initial = messageColors(tone);
     const lines = foldLines(text);
-    const shape = bubbleFor(tone.font);
-    const box = bubbleAt(lines, shape, fillFromLegacySize(tone.size));
+    // 벽과 같은 구름이어야 미리보기가 거짓말이 아니다 — 씨앗은 글 자체(cloud.ts)
+    const cloud = cloudFor(lines, tone.font, { scaleX: tone.tone, slant: tone.slnt });
+    const box = bubbleAt(lines, cloudShape(cloud), fillFromLegacySize(tone.size));
     const [bg, setBg] = useState(initial.bg);
     const [fg, setFg] = useState(initial.text);
     const current = { ...tone, backgroundColor: bg, textColor: fg };
@@ -74,11 +75,11 @@ export default function PhaseColor({ text, tone, onBack, onNext }: Props) {
     <h1>발화의 색을 정해주세요</h1>
    </div>
    <div className="color-stage" style={{ '--color-area': AREA } as CSSProperties}>
-    <SpeechBubble shape={shape} box={box} side="var(--color-area)" color={bg}>
+    <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={bg}>
      <VoiceBubble text={lines.join('\n')} bg={bg} color={fg} fontFamily={fontMap[tone.font]} font={tone.font}
        weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size} manner={tone.manner}
        fontSize={`calc(var(--color-area) * ${box.unit.toFixed(4)})`} />
-    </SpeechBubble>
+    </CloudBubble>
    </div>
   </div>
  </div></div>

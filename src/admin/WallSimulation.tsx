@@ -9,8 +9,8 @@
 // 상자가 먼저 있고 글자가 줄어드는 것이 아니라 그 반대다(lib/fit).
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import SpeechBubble from '../components/SpeechBubble';
-import { bubbleFor } from '../lib/bubbles';
+import CloudBubble from '../components/CloudBubble';
+import { cloudFor, cloudShape, type Cloud } from '../lib/cloud';
 import { bubbleAt, fillFromLegacySize, foldLines, type Boxed } from '../lib/fit';
 import { fontMap } from '../lib/palettes';
 import { palettes as legacyPalettes } from '../lib/palettes';
@@ -88,12 +88,10 @@ const BIG_SIDE_VH = 72;
 const BIG_SIDE_MAX_VW = 88;
 /** 잔상의 한 변 */
 const ECHO_SIDE_VH = 22;
-/** 잔상이 숨 쉬는 세기. 발화의 30초는 1에서 여기까지 내려온다 */
-const ECHO_STRENGTH = 0.3;
+/** 잔상도 숨 쉰다. 파이의 크로미움이 열 개의 번짐을 못 따라오면 여기서 끈다 — 강조만 숨 쉰다 */
+const ECHO_MOTION = true;
 /** 큰 목소리가 잔상으로 내려앉는 시간 */
 const LAND_MS = 1200;
-/** 세기를 새로 내려주는 간격. 그 사이는 CSS transition이 잇는다 */
-const CALM_TICK_MS = 250;
 
 /** CSS가 같은 치수를 보게 내려준다. 벽의 루트에 한 번 */
 const WALL_VARS = {
@@ -120,10 +118,11 @@ type Body = { x: number; y: number; vx: number; vy: number; r: number; held: boo
  * 잔상과 강조가 같은 값을 쓴다. 둘의 차이는 곱하는 한 변뿐이라
  * (--echo-side · --big-side) 내려앉을 때 배율 하나로 포개진다.
  */
-function bubbleOf(msg: StoredMessage): { lines: string[]; shape: ReturnType<typeof bubbleFor>; box: Boxed } {
+function cloudOf(msg: StoredMessage): { lines: string[]; cloud: Cloud; box: Boxed } {
   const lines = foldLines(msg.text);
-  const shape = bubbleFor(msg.tone?.font);
-  return { lines, shape, box: bubbleAt(lines, shape, fillFromLegacySize(msg.tone?.size)) };
+  // 씨앗은 글 자체 — 04 미리보기와 같은 구름이 뜬다(cloud.ts)
+  const cloud = cloudFor(lines, msg.tone?.font, { scaleX: msg.tone?.tone, slant: msg.tone?.slnt });
+  return { lines, cloud, box: bubbleAt(lines, cloudShape(cloud), fillFromLegacySize(msg.tone?.size)) };
 }
 
 function boxSide(): number {
@@ -433,7 +432,7 @@ export default function WallSimulation() {
   useEffect(() => {
     const m = new Map<string, { w: number; h: number }>();
     for (const msg of shown) {
-      const { box } = bubbleOf(msg);
+      const { box } = cloudOf(msg);
       m.set(msg.id, { w: box.w, h: box.h + box.tail });
     }
     sizesRef.current = m;
@@ -575,11 +574,9 @@ export default function WallSimulation() {
 
 // ─── 잔상 (풍경의 한 칸, 흘러가는 작은 상자) ─────────────────────────
 
-const WallBlock = memo(function WallBlock({ msg, index, ghost, onEl }: { msg: StoredMessage; index: number; ghost: boolean; onEl: (id: string, el: HTMLElement | null) => void }) {
+const WallBlock = memo(function WallBlock({ msg, ghost, onEl }: { msg: StoredMessage; index: number; ghost: boolean; onEl: (id: string, el: HTMLElement | null) => void }) {
   const { bg, text, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
-  const { lines, shape, box } = useMemo(() => bubbleOf(msg), [msg]);
-  // 숨도 어긋낸다. 137은 600과 서로소라 열 개가 같은 위상에 모이지 않는다.
-  const breath = -((index * 137) % 600);
+  const { lines, cloud, box } = useMemo(() => cloudOf(msg), [msg]);
 
   // 자리는 CSS가 아니라 프레임 루프가 transform으로 적는다(위 useEffect).
   // 여기서 style에 자리를 주면 매 프레임 React를 거치게 된다.
@@ -589,58 +586,38 @@ const WallBlock = memo(function WallBlock({ msg, index, ghost, onEl }: { msg: St
       data-id={msg.id}
       ref={(el) => onEl(msg.id, el)}
     >
-      <SpeechBubble shape={shape} box={box} side="var(--echo-side)" color={bg}
-        strength={ECHO_STRENGTH} phase={`${breath}ms`}>
+      {/* 숨은 구름마다 시작점이 다르다(cloud.ts의 phase0) — 열 개가 같은 박자로 안 뛴다.
+          파이가 열 개의 번짐을 못 따라오면 ECHO_MOTION을 끈다. */}
+      <CloudBubble cloud={cloud} box={box} side="var(--echo-side)" color={bg} still={!ECHO_MOTION}>
         <VoiceBubble text={lines.join('\n')} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght}
           width={scaleX} slant={skew} align={msg.tone?.align} size={msg.tone?.size} manner={msg.tone?.manner}
           fontSize={`calc(var(--echo-side) * ${box.unit.toFixed(4)})`} />
-      </SpeechBubble>
+      </CloudBubble>
     </div>
   );
 });
 
 // ─── 발화 (검정 위의 큰 상자. 잦아들다 내려앉는다) ────────────────────
 
-/**
- * 꽂힌 순간부터 흐른 만큼 잦아든 세기.
- *
- * 전에는 이 상자가 **제가 태어난 시각**부터 셌다. 벽이 신호를 늦게 알아채면
- * 잦아듦도 그만큼 늦게 시작해, 폰의 숫자가 0이 되는데 벽은 아직 세게 숨 쉬고
- * 있었다. 이제 둘 다 꽂힌 순간 위에 있다.
- */
-function calmAt(startedAt: number): number {
-  const t = Math.min(1, Math.max(0, (Date.now() - startedAt) / EMPHASIS_MS));
-  return 1 - (1 - ECHO_STRENGTH) * t;
-}
-
-const WallShowMessage = memo(function WallShowMessage({ msg, land, startedAt }: { msg: StoredMessage; land: Land | null; startedAt: number }) {
+/* 말풍선 때는 물결이 30초에 걸쳐 잦아들어 잔상의 세기에 닿았다(calmAt).
+   구름은 강조와 잔상이 같은 숨(중)을 쉰다 — 크기만 내려앉는다. */
+const WallShowMessage = memo(function WallShowMessage({ msg, land }: { msg: StoredMessage; land: Land | null; startedAt: number }) {
   const { bg, text, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
-  const { lines, shape, box } = useMemo(() => bubbleOf(msg), [msg]);
-
-  // 30초에 걸쳐 잦아든다. 상한까지 가면 잔상의 세기에 닿는다 — 그래서
-  // 내려앉을 때 세기는 이미 거기 있고, 일찍 빼면 남은 만큼을 마저 내린다.
-  const [strength, setStrength] = useState(() => calmAt(startedAt));
-  useEffect(() => {
-    const id = window.setInterval(() => setStrength(calmAt(startedAt)), CALM_TICK_MS);
-    return () => clearInterval(id);
-  }, [startedAt]);
+  const { lines, cloud, box } = useMemo(() => cloudOf(msg), [msg]);
 
   const landing = land !== null;
   const boxStyle = land
     ? { transform: `translate(${land.dx.toFixed(1)}px, ${land.dy.toFixed(1)}px) scale(${land.scale.toFixed(4)})` }
     : undefined;
-  // 내려앉는 동안은 세기도 그 시간에 맞춰 잇는다
-  const calm = landing ? ({ '--wave-calm': `${LAND_MS}ms` } as CSSProperties) : undefined;
 
   return (
     <div className={`wall-show${landing ? ' is-landing' : ''}`}>
       <div className="wall-show-box" style={boxStyle}>
-        <SpeechBubble shape={shape} box={box} side="var(--big-side)" color={bg}
-          strength={landing ? ECHO_STRENGTH : strength} style={calm}>
+        <CloudBubble cloud={cloud} box={box} side="var(--big-side)" color={bg}>
           <VoiceBubble text={lines.join('\n')} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght}
             width={scaleX} slant={skew} align={msg.tone?.align} size={msg.tone?.size} manner={msg.tone?.manner}
             fontSize={`calc(var(--big-side) * ${box.unit.toFixed(4)})`} />
-        </SpeechBubble>
+        </CloudBubble>
       </div>
     </div>
   );

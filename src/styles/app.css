@@ -3456,25 +3456,23 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   transition: --wave-reach var(--wave-calm, 300ms) linear, --wave-ink var(--wave-calm, 300ms) linear; }
 .wave-box .message-line-fill{ background: none; padding-inline: 0; }
 
-/* ── 말풍선(벽) ────────────────────────────────────────────────────────
-   WaveBox와 같은 숨을 쉬지만 몸이 정사각이 아니다. 크기는 SpeechBubble이
-   calc()로 적는다 — 창이 바뀌어도 JS를 안 거친다. */
-.speech-bubble{ position: relative;
-  transition: --wave-reach var(--wave-calm, 300ms) linear, --wave-ink var(--wave-calm, 300ms) linear; }
-.bubble-art{ position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-/* 둘레를 100으로 정규화해(pathLength) 어느 도형에서도 같은 리듬으로 끊는다.
-   정사각 상자에서 쓰던 151.4/34 · 오프셋 102.4를 그 둘레 741.6으로 나눈 값이다. */
-.bubble-ring{ stroke-dasharray: 20.4 4.6; stroke-dashoffset: 13.8; stroke-linecap: round;
-  transform-box: fill-box; transform-origin: center; animation: waveRing 600ms linear infinite; }
-.bubble-core{ transform-box: fill-box; transform-origin: center; animation: waveCore 600ms linear infinite; }
-.bubble-ring, .bubble-core{ animation-delay: var(--wave-phase, 0s); }
-/* 글은 **몸통** 한가운데 앉는다 — 꼬리는 그 아래라 셈에서 뺀다 */
-.bubble-text{ position: absolute; left: 0; top: 0; width: 100%; display: grid; place-items: center; }
-.speech-bubble .message-line-fill{ background: none; padding-inline: 0; }
-@media (prefers-reduced-motion: reduce) {
-  .bubble-ring, .bubble-core { animation: none; }
-  .bubble-ring { stroke-width: 3.8px; }
-}
+/* ── 구름(벽 · 04) ─────────────────────────────────────────────────────
+   글을 감싸는 배경. 자리는 cloud.ts, 그리기와 숨은 CloudBubble이 한다.
+   크기는 calc()로 적는다 — 창이 바뀌어도 JS를 안 거친다. 화판이 넘치는
+   갈래·번짐은 상자 밖으로 보이게 둔다(overflow visible). 2026-09-22에
+   네 모양 말풍선(.speech-bubble)을 이것으로 바꿨다 — 그쪽의 600ms 물결은
+   구름에 없다. 구름은 제 숨(6s·9.7s)을 쉰다. */
+.cloud-bubble{ position: relative; }
+.cloud-art{ position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+/* 글은 제 자리(cloud.text)에 앉는다 — 구름이 비대칭이라 한가운데가 아니다 */
+.cloud-text{ position: absolute; display: grid; place-items: center; }
+.cloud-bubble .message-line-fill{ background: none; padding-inline: 0; }
+/* 줄은 이미 접혀서 들어온다(foldLines). 여기서 다시 접히면 안 된다 — .line-bubble의
+   88%와 좌우 0.5em이 글 자리(cloud.text, 줄 폭의 어림)보다 좁아서 한 줄이 둘로
+   갈렸고, 벽의 '등록금 어디 쓰는지 / 알려줘'가 네 줄이 됐다. 폭은 내용대로,
+   여백은 0 — 위아래 0.34em도 여백 0.7u를 먹는다. */
+.cloud-bubble .line-bubble{ width: max-content; max-width: none; padding: 0; }
+.cloud-bubble .line-bubble-text, .cloud-bubble .message-line{ white-space: pre; }
 
 .compose-count{ transition: opacity 240ms; }
 @media (prefers-reduced-motion: reduce) {

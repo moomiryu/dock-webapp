@@ -670,7 +670,7 @@ body.wall-mode {
    하나로 간다 — 상자 안의 숨(scale)은 .wave-box에 있어 서로 안 겹친다. */
 .wall-show-box {
   position: relative;
-  /* 크기는 SpeechBubble이 제 비례로 적는다 — 정사각이던 시절의 한 변 하나는
+  /* 크기는 CloudBubble이 제 비례로 적는다 — 정사각이던 시절의 한 변 하나는
      더 이상 안 맞는다. --big-side는 그 계산의 기준으로만 남는다. */
   display: inline-block;
   animation: wallBoxIn var(--t-slow) var(--ease-emphasized) both;
@@ -793,7 +793,7 @@ body.wall-mode {
   height: 0;
   overflow: hidden;
 }
-/* 잔상 — 풍경의 한 칸. 크기는 SpeechBubble이 --echo-side에 제 비례를 곱해
+/* 잔상 — 풍경의 한 칸. 크기는 CloudBubble이 --echo-side에 제 비례를 곱해
    적는다. 물리 계산이 왼쪽 위 모서리를 주므로 여기서 자리를 더 옮기지 않는다. */
 /* 발화 중인 글의 풍경 쪽 쌍둥이. 큰 상자가 내려앉아 겹치는 순간까지
    자리는 지키되 보이지 않는다 — 자리를 지켜야 도착점을 잴 수 있다.

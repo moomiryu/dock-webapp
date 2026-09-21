@@ -1145,6 +1145,120 @@ function dockPhone(root: Element, home: Item, held: Item, hand: Item | null,
  * 방향이 바뀌는 것이 아니라 튕겨 나온 것으로 보인다.
  */
 /**
+ * 한 판 **안에서** 컷을 잇는다 — 움직인 것만 움직인다.
+ *
+ * 옆으로 넘길 일이 아닌 대목이 있다. 폰이 홈으로 들어가는 자리가 그렇다:
+ * 두 컷이 거의 같은 그림이라(재서 확인: 픽셀의 1.21%만 다르다) 화면을
+ * 통째로 밀면 넘어간 것이 아니라 멈칫한 것으로 읽힌다.
+ *
+ * ── 왜 chainSvg를 안 쓰는가 ──────────────────────────────────────────
+ * 그쪽은 같은 물건끼리 **모양**을 이어 준다. 그러려면 두 컷의 요소가 짝을
+ * 지어야 하는데, 작가가 이 둘을 서로 다르게 내보냈다 — 한쪽의 rect·circle이
+ * 다른 쪽에서는 path다(재서 확인: path 6개 대 11개, d가 그대로 같은 것은
+ * 하나뿐). 짝이 없으면 나가는 것은 사라지고 들어오는 것은 나타나는데, 그
+ * 둘이 겹치지 않게 비켜 가므로 **전환 한가운데가 텅 빈다.** 실제로 그렇게
+ * 나왔다.
+ *
+ * ── 그래서 모양이 아니라 자리를 잇는다 ───────────────────────────────
+ * 바탕은 첫 컷 그대로다. **아무것도 사라지지 않는다.** 다음 컷에서는 상자만
+ * 읽어, 자리가 바뀐 것만 그 자리로 옮긴다(필요하면 늘이거나 줄인다).
+ *
+ * 짝은 **색과 상자**로 잡는다. 같은 색끼리 개수가 맞을 때만, 상자가 제일
+ * 가까운 것끼리. 개수가 안 맞는 색은 통째로 건너뛴다 — 작가가 그 색 도형을
+ * 다시 쪼개 그렸다는 뜻이라 짝을 믿을 수 없다(하늘색 띠 하나가 셋으로
+ * 갈려 있었고, 그래도 폭은 184로 같다. 건너뛰면 그대로 서 있는다).
+ *
+ * 이 규칙으로 잡히는 것은 넷이다: 폰 두 조각, 그 아랫단, 손.
+ */
+function easeCut(base: Element, rest: Element[], t: ReturnType<typeof timeline>, dur: number) {
+  type Box = [number, number, number, number];
+  const A = itemsOf(base);
+  const trail = new Map<Item, Box[]>();
+  for (const it of A) {
+    const b = boxOf(it);
+    if (b && b.w > 0.5 && b.h > 0.5) trail.set(it, [[r2(b.x), r2(b.y), r2(b.w), r2(b.h)]]);
+  }
+  const shelf = (list: Item[]) => {
+    const m = new Map<string, Item[]>();
+    for (const x of list) {
+      const got = m.get(x.fill);
+      if (got) got.push(x); else m.set(x.fill, [x]);
+    }
+    return m;
+  };
+  const mine = shelf([...trail.keys()]);
+  for (const cut of rest) {
+    const theirs = shelf(itemsOf(cut).filter((x) => { const b = boxOf(x); return !!b && b.w > 0.5 && b.h > 0.5; }));
+    for (const [fill, la] of mine) {
+      const lb = theirs.get(fill);
+      const pair = lb && lb.length === la.length;
+      const left = pair ? new Set(lb) : new Set<Item>();
+      for (const x of la) {
+        const seq = trail.get(x)!;
+        const here = seq[seq.length - 1];
+        let next = here;
+        if (pair) {
+          const near = [...left]
+            .map((y) => ({ y, b: boxOf(y)! }))
+            .map((o) => ({ ...o, d: Math.abs(o.b.x - here[0]) + Math.abs(o.b.y - here[1])
+              + Math.abs(o.b.w - here[2]) + Math.abs(o.b.h - here[3]) }))
+            .sort((m2, n2) => m2.d - n2.d)[0];
+          if (near) { left.delete(near.y); next = [r2(near.b.x), r2(near.b.y), r2(near.b.w), r2(near.b.h)]; }
+        }
+        seq.push(next);
+      }
+    }
+  }
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const doc = base.ownerDocument;
+  let moved = 0;
+  for (const [it, seq] of trail) {
+    const a = seq[0];
+    const off = seq.map((b) => [r2(b[0] - a[0]), r2(b[1] - a[1])] as [number, number]);
+    const k = seq.map((b) => [a[2] ? r2(b[2] / a[2]) : 1, a[3] ? r2(b[3] / a[3]) : 1] as [number, number]);
+    const slid = off.some(([x, y]) => Math.abs(x) > 0.5 || Math.abs(y) > 0.5);
+    const grew = k.some(([x, y]) => Math.abs(x - 1) > 0.01 || Math.abs(y - 1) > 0.01);
+    if (!slid && !grew) continue;
+    /* 절반보다 작아지거나 두 배보다 커지는 것은 **같은 물건이 아니다.**
+       색이 같다는 이유로 짝이 되었을 뿐이다 — 실제로 홈의 하늘색 띠가
+       가로(77.1×8.5)에서 세로(8.5×77.1)로 누워, 폭 0.11배·높이 9.07배라는
+       값이 나왔다. 그런 짝은 통째로 버리고 첫 컷 자리에 그냥 둔다. */
+    if (k.some(([x, y]) => x < 0.5 || x > 2 || y < 0.5 || y > 2)) continue;
+    moved++;
+    const mk = (tf?: string) => {
+      const g = doc.createElementNS(NS, 'g');
+      if (tf) g.setAttribute('transform', tf);
+      return g;
+    };
+    const outer = mk();
+    it.el.parentNode!.insertBefore(outer, it.el);
+    let host: Element = outer;
+    if (grew) {
+      /* 늘이는 곳은 상자의 **왼쪽 위 모서리**다. 한가운데를 잡으면 위아래가
+         같이 줄어드는데, 폰은 위가 제자리에 있고 아랫단만 홈으로 들어간다. */
+      const mid = mk(`translate(${a[0]} ${a[1]})`);
+      const sc = mk();
+      const back = mk(`translate(${r2(-a[0])} ${r2(-a[1])})`);
+      outer.appendChild(mid); mid.appendChild(sc); sc.appendChild(back);
+      host = back;
+      put(sc, 'animateTransform', {
+        attributeName: 'transform', type: 'scale',
+        values: doubled([...k, k[0]].map((p) => p.join(' '))).join(';'),
+        keyTimes: t.keyTimes, keySplines: t.keySplines, calcMode: 'spline', dur: `${dur}s`
+      });
+    }
+    host.appendChild(it.el);
+    if (slid) put(outer, 'animateTransform', {
+      attributeName: 'transform', type: 'translate',
+      values: doubled([...off, off[0]].map((p) => p.join(' '))).join(';'),
+      keyTimes: t.keyTimes, keySplines: t.keySplines, calcMode: 'spline', dur: `${dur}s`
+    });
+  }
+  return moved;
+}
+
+/**
  * 컷을 **나란히 놓고 옆으로 민다.**
  *
  * chainSvg는 컷들을 한 자리에 포개 놓고 같은 물건끼리 모양을 이어 준다.
@@ -1169,36 +1283,86 @@ function dockPhone(root: Element, home: Item, held: Item, hand: Item | null,
  */
 const SLIDE = { hold: 10, move: 1 };
 
-export function slideSvg(raws: string[], key: string, dur = 14): string {
-  if (typeof DOMParser === 'undefined' || raws.length < 2) return scopeSvg(raws[0], key);
+export function slideSvg(scenes: Array<string | string[]>, key: string, dur = 14): string {
+  const heads = scenes.map((sc) => (Array.isArray(sc) ? sc[0] : sc));
+  if (typeof DOMParser === 'undefined' || scenes.length < 2) return scopeSvg(heads[0], key);
   try {
-    const cuts = raws.map((r) => new DOMParser().parseFromString(r, 'image/svg+xml').documentElement);
-    const box = cuts[0].getAttribute('viewBox');
+    const parse = (r: string) => new DOMParser().parseFromString(r, 'image/svg+xml').documentElement;
+    const every = scenes.flatMap((sc) => (Array.isArray(sc) ? sc : [sc]));
+    const all = every.map(parse);
+    const box = all[0].getAttribute('viewBox');
     /* 화판이 서로 다르면 옆으로 잇는 셈이 어긋난다 — 그럴 땐 첫 컷만 준다.
        움직이는 것이 아쉬운 것보다 어긋난 것이 나쁘다(chainSvg와 같은 규칙). */
-    if (!box || cuts.some((c) => c.getAttribute('viewBox') !== box)) return scopeSvg(raws[0], key);
+    if (!box || all.some((c) => c.getAttribute('viewBox') !== box)) return scopeSvg(heads[0], key);
     const vb = box.split(/[ ,]+/).map(Number);
-    if (vb.length !== 4 || !vb[2]) return scopeSvg(raws[0], key);
+    if (vb.length !== 4 || !vb[2]) return scopeSvg(heads[0], key);
     const w = vb[2];
-    cuts.forEach(inlineFills);
 
-    const n = cuts.length;
+    const n = scenes.length;
     /* 첫 판은 처음과 끝에 한 번씩 선다. 그 둘은 고리를 건너 **이어 붙는 한
        구간**이라 반씩 나눠 가져야 다른 판과 같아진다. */
     const t = timeline(
       Array.from({ length: n + 1 }, (_, i) => (i === 0 || i === n ? SLIDE.hold / 2 : SLIDE.hold)),
       SLIDE.move);
 
-    const base = cuts[0];
+    const base = all[0];
     const doc = base.ownerDocument;
     const NS = 'http://www.w3.org/2000/svg';
-    const frames = cuts.flatMap(itemsOf);
+    const frames = all.flatMap(itemsOf);
+
+    /**
+     * 판 하나 **안에서** 컷이 갈릴 때 쓸 시간표.
+     *
+     * 폰이 홈으로 내려가는 것 같은 대목은 옆으로 넘길 일이 아니다 — 두 컷이
+     * 거의 같은 그림이라(재서 확인: 픽셀의 1.21%만 다르다) 화면을 통째로
+     * 밀면 넘어간 것이 아니라 멈칫한 것으로 읽힌다. 그런 대목은 제자리에서
+     * 포개어 잇는다.
+     *
+     * 갈리는 때는 그 판이 **서 있는 동안**이어야 한다. 머무는 칸을 2, 잇는
+     * 칸을 1로 쪼갠다 — 4.24초 서는 자리면 앞 1.7초 · 잇는 0.85초 · 뒤
+     * 1.7초다.
+     *
+     * 되돌아오는 구간은 판이 **다 나간 뒤**에 둔다(out). 나가는 중에
+     * 되돌리면 반쯤 보이는 판에서 폰이 도로 빠지는 것이 보인다. 고리가
+     * 끝날 때 값이 처음 값으로 돌아와 있어야 다음 바퀴가 이어진다.
+     */
+    const r4 = (x: number) => Number(x.toFixed(4));
+    const sub = (i: number, m: number) => {
+      const h0 = t.at[2 * i], h1 = t.at[2 * i + 1], out = t.at[2 * i + 2] ?? 1;
+      const u = (h1 - h0) / (3 * m - 1);
+      const at = [0, r4(h0 + 2 * u)];
+      for (let k = 1; k < m; k++) {
+        at.push(r4(h0 + 3 * k * u));
+        at.push(k === m - 1 ? r4(out) : r4(h0 + (3 * k + 2) * u));
+      }
+      at.push(r4(out + (1 - out) * 0.5), 1);
+      return {
+        at, keyTimes: at.join(';'),
+        keySplines: at.slice(1).map((_, j) => (j % 2 ? '0.4 0 0.2 1' : '0 0 1 1')).join(';')
+      };
+    };
+
+    /* 판마다의 알맹이. 컷이 여럿인 장면은 chainSvg가 포개어 이어 준다 —
+       짝짓기는 그쪽이 다 들고 있고, 여기서는 **언제** 갈릴지만 준다. */
+    let seen = 0;
+    const bodies = scenes.map((sc, i) => {
+      const m = Array.isArray(sc) ? sc.length : 1;
+      const head = all[seen];
+      seen += m;
+      inlineFills(head);
+      markEyes(head);
+      if (m > 1) {
+        const rest = (sc as string[]).slice(1).map(parse);
+        rest.forEach(inlineFills);
+        easeCut(head, rest, sub(i, m), dur);
+      }
+      return head;
+    });
 
     /* 타이핑은 **옮기기 전에** 건다. typeIn이 작가가 붙인 이름으로 찾는데
-       (#typed-message · #keyboard), 판 셋이 다 같은 이름을 들고 있어서
-       한자리에 모은 뒤에는 어느 판의 것인지 가릴 수 없다. */
-    typeIn(base, t, dur);
-    cuts.forEach(markEyes);
+       (#typed-message · #keyboard), 판마다 같은 이름을 들고 있어서 한자리에
+       모은 뒤에는 어느 판의 것인지 가릴 수 없다. */
+    if (!Array.isArray(scenes[0])) typeIn(bodies[0], t, dur);
 
     const track = doc.createElementNS(NS, 'g');
     /**
@@ -1242,13 +1406,15 @@ export function slideSvg(raws: string[], key: string, dur = 14): string {
       return g;
     };
     const first = shelf(0);
-    while (base.firstChild) first.appendChild(base.firstChild);
-    track.appendChild(first);
-    for (let i = 1; i < n; i++) {
-      const g = shelf(i);
-      Array.from(cuts[i].childNodes).forEach((c) => g.appendChild(doc.importNode(c, true)));
-      track.appendChild(anon(g));
-    }
+    bodies.forEach((b, i) => {
+      const g = i ? anon(shelf(i)) : first;
+      /* 첫 장면의 알맹이가 곧 바탕 문서면 **옮긴다**(그러면서 바탕이
+         비워진다). 아니면 가져다 심는다. */
+      Array.from(b.childNodes).forEach((c) => g.appendChild(b === base ? c : doc.importNode(c, true)));
+      if (i) anon(g);
+      track.appendChild(g);
+    });
+    while (base.firstChild) base.removeChild(base.firstChild);
     const again = anon(first.cloneNode(true) as Element);
     again.setAttribute('transform', `translate(${r2(n * w)} 0)`);
     track.appendChild(again);
@@ -1265,7 +1431,7 @@ export function slideSvg(raws: string[], key: string, dur = 14): string {
     focusOn(base, frames);
     return scopeSvg(new XMLSerializer().serializeToString(base), key);
   } catch {
-    return scopeSvg(raws[0], key);
+    return scopeSvg(heads[0], key);
   }
 }
 

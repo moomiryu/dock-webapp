@@ -62,6 +62,40 @@ function markGround(root: Element) {
     found.push(el);
   }
   if (!found.length) return;
+  /* 화판 밖으로 나간 그림자는 **화판 안으로 들인다** (2026-09-22).
+     작가는 그림자를 화판 밖까지 그려 두기도 한다. 상자는 화판 끝에서 자르는데,
+     타원의 둥근 끝이 잘리면 칼로 자른 듯 평평한 세로 선이 남는다 — Step 3에서
+     기계 받침 그림자가 상자 왼쪽 변(844에서 화면 x≈29)에서 그렇게 끊겼다.
+     그 왼쪽에 흰 여백이 남아 있어 '밖으로 이어진다'가 아니라 '잘렸다'로
+     읽힌다(재서 확인: 타원은 화판 밖 44.8px까지 뻗어 있고, 멈춰 선 내내
+     그 상태다 — 전환 중에만 나는 것이 아니었다).
+
+     줄이면 끝이 둥글게 살아나고 삽화의 크기·자리는 한 픽셀도 안 바뀐다.
+     그림자는 인물이 서 있다는 표시일 뿐이라 45px 짧아져도 하는 말이 같다.
+
+     **흐리게는 안 된다.** 끝을 그라데이션으로 푸는 쪽을 나란히 놓고 봤는데,
+     그림자가 옅어지는 게 아니라 거의 사라져 기계가 떠 보였다 — Step 2에서
+     마스크로 잘린 자국을 감추려다 캐릭터가 지워졌던 것과 같은 일이다
+     (app.css의 is-fitted). 그림 전체를 78%로 줄이는 쪽도 봤다: 끝은 살지만
+     채움이 40.2 → 33.8%로 다른 셋(34.6~39.4) 아래로 내려간다.
+
+     코드가 까는 그림자는 이미 화판 끝에서 자른다(아래 withGround의 클램프).
+     작가가 그린 타원만 그 규칙 밖에 있었다 — 이제 둘이 같은 규칙이다.
+     세로는 손대지 않는다: 밑변이 넘치는 것은 화판이 아니라 낮은 화면에서
+     칸이 자르는 것이라 여기서 줄일 일이 아니다. */
+  const board = (root.closest?.('svg') ?? root) as Element;
+  const vb = (board.getAttribute('viewBox') ?? '').split(/[ ,]+/).map(Number);
+  if (vb.length === 4 && vb.every(Number.isFinite)) {
+    const [x0, , w] = vb, x1 = x0 + w;
+    for (const el of found) {
+      const cx = Number(el.getAttribute('cx')), rx = Number(el.getAttribute('rx'));
+      const l = Math.max(cx - rx, x0), r = Math.min(cx + rx, x1);
+      if (r - l > 0 && r - l < rx * 2) {
+        el.setAttribute('cx', String(r2((l + r) / 2)));
+        el.setAttribute('rx', String(r2((r - l) / 2)));
+      }
+    }
+  }
   /* 그림자가 둘 이상이면 **한 묶음**으로 옅게 한다. 타원마다 따로 옅게 하면
      겹치는 자리가 두 번 깔려 더 진해진다 — Step 3 넷째 컷에서 두 그림자가
      17px 겹치고, 컷 사이를 움직이는 동안에도 그렇다. 묶음에 opacity를 주면

@@ -15,9 +15,16 @@ PROFILE="$HOME/.config/chromium/Default/Preferences"
 # 와이파이가 붙기 전에 열면 빈 화면이 된다
 sleep 8
 
+# 브라우저 이름이 판마다 다르다. 옛 라즈베리파이 OS는 chromium-browser,
+# 요즘(Bookworm부터)은 chromium이다. 2026-09-22 첫 실기에서 이 줄이
+# chromium-browser만 부르는 바람에 부팅 뒤 화면이 그냥 검었다 — 없는 이름을
+# 부르면 스크립트가 조용히 끝나고, 데스크톱은 뜨는데 벽만 안 뜬다.
+BROWSER="$(command -v chromium-browser || command -v chromium)"
+[ -n "$BROWSER" ] || { echo "chromium이 없다. sudo apt install chromium"; exit 1; }
+
 # --password-store=basic 이 그 '키링이 잠겼습니다' 창을 막는다.
 # 크로미움이 비밀번호 금고를 아예 안 건드리게 하는 스위치다.
-exec chromium-browser \
+exec "$BROWSER" \
   --kiosk \
   --app="$URL" \
   --password-store=basic \

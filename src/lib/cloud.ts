@@ -157,6 +157,8 @@ function lineWidth(line: string, font: string | undefined, optic: number, scaleX
 interface Options {
   /** 씨앗. 안 주면 글 자체 — 미리보기와 벽이 같은 구름을 봐야 한다 */
   seed?: string;
+  /** 짧은 글의 최소 지름을 덮어쓴다 (u). 조율 격자가 쓴다 */
+  minDiameter?: number;
   /** 장평 (03의 '빠르기') */
   scaleX?: number;
   /** 기울기 (도) */
@@ -210,7 +212,7 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
   // ② 짧은 글의 최소 자리. 긴 글에 쓰면 귀만 두 개 남고 아래가 좁아져 자루가 된다
   const cx = TW / 2, cy = TH / 2;
   if (rule === 'B') {
-    const want = B_MIN_DIAMETER / 2;
+    const want = (o.minDiameter ?? B_MIN_DIAMETER) / 2;
     const ext = () => Math.max(...circles.map((c) => Math.hypot(c.x - cx, c.y - cy) + c.r));
     let guard = 0;
     while (ext() < want && guard++ < 12) {

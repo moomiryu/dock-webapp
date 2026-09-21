@@ -23,6 +23,19 @@ export function trackViewport(): () => void {
     raf = requestAnimationFrame(() => {
       const h = Math.round(vv.height);
       root.style.setProperty('--vvh', `${h}px`);
+      /* 보이는 창이 **얼마나 밀려 올라갔는가.**
+         높이만으로는 모자란 때가 있다. 자판이 올라올 때 사파리는 창의
+         높이를 줄이는 대신 창 자체를 위로 밀기도 하는데, 그러면 높이는
+         맞는데 화면 위쪽이 잘려 보인다. 0이 아닌 값이 나오면 그만큼
+         어긋나 있다는 뜻이다.
+
+         값을 흘려보내기만 하고 이것으로 화면을 되밀지는 않는다 — 자판이
+         열리는 동안 이 값이 몇 프레임에 걸쳐 오르내려서, 그대로 따라가면
+         화면이 떨린다. 대신 **밀릴 일 자체를 없앤다**: 쓰는 동안에는
+         본문이 보이는 창보다 길지 않게 해서(app.css의 is-typing) 브라우저가
+         밀어 올릴 것을 갖지 못하게 한다. 이 값은 그것이 실제로 지켜지는지
+         재 보는 자리다. */
+      root.style.setProperty('--vv-top', `${Math.round(vv.offsetTop)}px`);
       // 자판이 올라온 동안에는 안내 문구처럼 없어도 되는 것을 접는다
       root.dataset.keyboard = window.innerHeight - h > KEYBOARD_THRESHOLD ? 'up' : 'down';
     });

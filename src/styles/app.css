@@ -1995,7 +1995,15 @@
 .write-input::placeholder{ color: var(--grey-600); }
 /* 흰 바탕에서는 grey-500이 대비 4.5:1에 못 미친다(접근성 검사가 잡았다).
    본문 회색으로 한 단 내린다. */
-.write-screen .compose-count{ position: static; align-self: flex-end; color: var(--body-text); }
+/* **자리 값을 지운다.** 이 둘은 다른 화면에서 화면 구석에 절대 위치로
+   붙는 물건이라 right·bottom을 들고 있는데(아래 .compose-count 기본형),
+   여기서는 흐름 안에 세우려고 position만 static으로 돌려놓았었다. 그런데
+   더 뒤의 규칙이 z-index를 주려고 position을 relative로 되돌려서, 지워진
+   줄 알았던 right·bottom이 **상대 오프셋으로 되살아났다** — 글자 수가 제
+   자리에서 위로 24px·왼쪽으로 20px 밀려 입력창 아래 테두리에 8px 겹쳐
+   있었다(재서 확인: 칸이 251에서 끝나는데 글자 수가 243에서 시작했다).
+   inset을 auto로 지우면 position이 무엇이든 흐름이 정한 자리에 선다. */
+.write-screen .compose-count{ position: static; inset: auto; align-self: flex-end; color: var(--body-text); }
 
 /* ── 막막할 때 여는 힌트 ─────────────────────────────────────────────
    입력창이 이 화면의 가운데다. 힌트는 **부를 때만 오는 보조**이므로
@@ -2044,6 +2052,58 @@
    있었는데, 그 클래스를 쓰는 것은 **04 색 화면**이다. 이름이 갈리면서
    규칙이 엉뚱한 화면에 가 있었다. */
 .write-screen{ height: var(--vvh, 100dvh); overflow: auto; }
+
+/* ── 쓰는 동안의 배치 ──────────────────────────────────────────────
+   자판이 올라오면 남는 높이가 380쯤이다. 그 안에 머리·제목·부제·입력창·
+   글자 수·힌트·버튼이 다 들어가지 않는다 — 넘친 만큼이 아래로 밀려서
+   **쓰고 있는 줄과 글자 수가 자판 뒤로 들어갔다**(아이폰 사파리에서
+   확인: 입력창 아래 테두리와 '0/60'이 자판 위 도구막대에 가렸다).
+
+   높이를 더 준다고 풀릴 문제가 아니다. 줄여야 할 것은 **함께 서 있는
+   것의 수**다. 쓰는 동안 제목과 부제는 이미 읽은 것이고, 힌트는 부르면
+   오는 것이며, 바닥의 그라데이션은 장식이다. 셋을 접으면 입력창이 남은
+   자리를 다 가진다. */
+.write-screen.is-typing > .z-ask,
+.write-screen.is-typing > .hint-open{ display: none; }
+.write-screen.is-typing::after{ content: none; }
+/* 쓰는 동안 머리에 서는 것: 어디쯤인가와 '입력 마침'.
+   '입력 마침'은 자판만 내린다 — 다음 단계로 데려가지 않는다. 쓴 것을
+   통째로 보고 나서 넘어갈지 정하는 것은 그다음 일이다. */
+.write-done{ display: none; border: 0; background: none;
+  padding: var(--s2) var(--s3); margin-inline-end: calc(var(--s3) * -1);
+  font-family: var(--ui-font); font-size: var(--fs-cap); color: var(--body-text);
+  cursor: pointer; min-height: 44px; }
+.write-done:active{ color: var(--ink); }
+.write-screen.is-typing .write-done{ display: block; }
+.write-screen.is-typing .z-back{ display: none; }
+.write-screen.is-typing .z-step-of{ margin-left: 0; margin-right: auto; }
+/* 입력창이 남은 자리를 받는다. 벽과 같은 비율(2.4/1.5)은 여기서만 놓는다 —
+   자판 위에서 그 비율을 지키려면 글자를 통째로 줄여야 하는데, 쓰는 사람이
+   제 글을 못 읽게 된다. **폭 기준 글자 크기(8cqw)는 그대로 두므로 한 줄에
+   들어가는 글자 수는 변하지 않는다** — 줄이 접히는 자리는 벽과 계속 같다.
+   자판을 내리면 비율이 돌아온다. */
+.write-screen.is-typing > .write-fit{ flex: 1 1 0; aspect-ratio: auto;
+  min-height: 0; max-height: none; }
+/* 위에서부터 쓴다. 가운데 정렬은 한 줄짜리 글을 위해 있던 것인데, 칸이
+   길어지면 쓰던 줄이 칸 한가운데에서 위아래로 오르내린다. */
+.write-screen.is-typing .write-input{ font-size: 8cqw; padding-block: var(--s4);
+  overflow-y: auto; }
+/* **본문이 보이는 창보다 길지 않게 한다.**
+   body가 늘 100dvh 이상이라(global.css), 자판이 올라와 창이 380이 되어도
+   문서는 844로 남아 있었다. 그러면 브라우저가 초점을 보이려고 페이지를
+   밀어 올릴 수 있고, 밀린 만큼 머리가 잘린다(viewport.ts의 --vv-top이
+   그 양이다). 밀 것이 없으면 밀리지 않는다. */
+body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); overflow: hidden; }
+/* **다 찼을 때의 색.** 흰 종이에서 --brand-main은 4.00:1이고 '/60'을 맡은
+   --grey-400은 2.01:1이라 둘 다 4.5:1에 못 미친다. 그동안 검사가 이것을
+   못 잡은 것은 글자 수가 제자리에서 밀려나 입력창 테두리에 걸쳐 있었기
+   때문이다 — axe가 배경을 못 읽어 '판정 불가'로 넘어갔다. 위의 inset을
+   지우면서 흰 바탕 위로 나오자 비로소 재어졌고, 미달이 드러났다.
+   사다리에서 한 단씩 내린다: --brand-strong 4.64:1, --grey-600 4.62:1.
+   새 값을 만들지 않았고, --grey-600은 이 화면의 안내 글이 이미 쓰는 색이다.
+   이 화면에만 건다 — 다른 화면의 글자 수는 바탕이 달라 따로 볼 일이다. */
+.write-screen .compose-count.is-full{ color: var(--brand-strong); }
+.write-screen .compose-count.is-full > span{ color: var(--grey-600); }
 /* 입력창은 **줄어들지 않는다.** 2.4/1.5는 벽의 비율이고, 쓰는 동안 보는
    줄모양이 곧 벽의 줄모양이라는 이 화면의 약속이 거기 걸려 있다.
 
@@ -3131,7 +3191,7 @@
   position: absolute; right: var(--pad-x); bottom: calc(var(--s6) + var(--s5) + var(--s2));
   font-family: var(--label-font); font-size: var(--fs-cap); color: var(--brand-main);
 }
-.write-screen .compose-cut{ position: static; align-self: flex-end; }
+.write-screen .compose-cut{ position: static; inset: auto; align-self: flex-end; }
 
 /* ─── 60자 — 화면이 물러선다 ───────────────────────────────────
    다 찼다는 말을 숫자가 아니라 크기로 한다. 쓰던 자리가 줄어들어 한 덩이가

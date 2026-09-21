@@ -78,14 +78,43 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
     const [cut, setCut] = useState(0);
     /** 줄이 넘쳤다고 말해 주는 한 줄. 다음 자판에서 지워진다 */
     const [over, setOver] = useState('');
+    /**
+     * 지금 쓰고 있는가 — 곧 **자판이 올라와 있는가.**
+     *
+     * 자판 높이(--vvh)가 아니라 입력창의 초점으로 판단한다. 높이로 보면
+     * 주소창이 접히는 것과 갈라야 하는데, 이 화면에서 자판을 올리는 것은
+     * 이 입력창 하나뿐이라 초점이 더 정확하다. 처음에는 false로 둔다 —
+     * 아래 마운트 focus가 실제로 먹으면 그때 onFocus가 켠다. 사파리가
+     * 손짓 없는 focus를 거절하는 기기에서는 켜지지 않고, 그건 맞는 결과다
+     * (자판이 없는데 쓰는 배치로 서 있으면 안 된다).
+     */
+    const [typing, setTyping] = useState(false);
+    /**
+     * 한글을 **조합하는 중인가.**
+     *
+     * 'ㅁ → 마 → 말'은 세 번의 입력이 아니라 한 글자를 만드는 중이다.
+     * 그 사이에 값을 되돌리면(아래 다섯 줄 검사) 조합이 깨져서 글자가
+     * 끊기거나 겹쳐 들어간다. 조합 중에는 막지 않고 끝난 뒤에 한 번 본다.
+     */
+    const composing = useRef(false);
+    /** 마지막으로 규칙을 지킨 글. 조합이 끝나고 줄이 넘쳤으면 여기로 돌아간다 */
+    const lastGood = useRef(text);
     useEffect(() => { input.current?.focus({ preventScroll: true }); }, []);
     /* 닫으면 쓰던 자리로 돌려보낸다. 힌트를 보고 나서 다시 입력창을 찾아
        누르게 하면, 힌트를 연 것이 작성을 끊은 것이 된다. */
     const close = () => { setHint(false); input.current?.focus({ preventScroll: true }); };
-    return <div className="z-frame z1 write-screen">
+    return <div className={'z-frame z1 write-screen' + (typing ? ' is-typing' : '')}>
+  {/* 머리는 **늘 같은 셋**이고 쓰는 동안 무엇을 보일지는 CSS가 정한다.
+      React로 붙였다 뗐으면, 자판을 내리는 그 순간에 '입력 마침'이 사라져
+      누른 것이 허공에 떨어진다(초점이 빠지면 typing이 꺼지므로 그 둘은
+      같은 순간이다). 두고 감추면 누르는 동안 자리에 있다.
+
+      뒤로는 쓰는 동안 감춘다. 자판이 올라온 채로 뒤로 가면 쓰던 글이
+      날아가는데, 그 순간 손가락이 있는 자리가 하필 거기다. */}
   <div className="z-header">
    <BackButton label="처음으로" onClick={() => onBack(text)}/>
    <span className="z-step-of">1 / 5 · 한 줄</span>
+   <button type="button" className="write-done" onClick={() => input.current?.blur()}>입력 마침</button>
   </div>
   <div className="z-ask">
    <h1>어떤 발화를<br />시작해볼까요?</h1>
@@ -113,8 +142,21 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
         if (over > 0) setCut(over);
       }}
       onKeyDown={() => { if (cut) setCut(0); if (over) setOver(''); }}
+      onFocus={() => setTyping(true)}
+      onBlur={() => setTyping(false)}
+      onCompositionStart={() => { composing.current = true; }}
+      onCompositionEnd={e => {
+        composing.current = false;
+        /* 조합이 끝나고 나서야 센다. 넘쳤으면 조합이 시작되기 전의 글로
+           되돌린다 — 조합 중에 되돌리면 그 글자가 깨진다. */
+        const done = e.currentTarget.value.slice(0, 60);
+        if (foldLines(done).length > 5) { setOver('다섯 줄까지 쓸 수 있어요'); setText(lastGood.current); }
+        else { lastGood.current = done; setText(done); }
+      }}
       onChange={e => {
         const next = e.target.value.slice(0, 60);
+        /* 조합 중에는 받아만 둔다. 검사는 조합이 끝나는 자리에서 한다 */
+        if (composing.current) { setOver(''); setText(next); return; }
         /* **다섯 줄까지.** 60자와 다른 규칙이 아니라 같은 규칙의 다른
            얼굴이다 — 벽의 한 줄이 열두 자이고 다섯 줄이 들어가므로
            12 x 5 = 60이다. 자동으로 접힐 때는 60자가 곧 다섯 줄이라 이
@@ -122,7 +164,7 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
            (한 글자짜리 줄 여섯이면 여섯 자로도 여섯 줄이 된다).
            넘치면 **받지 않는다** — 이미 쓴 글을 잘라 내는 것보다 낫다. */
         if (foldLines(next).length > 5) { setOver('다섯 줄까지 쓸 수 있어요'); return; }
-        setOver(''); setText(next);
+        setOver(''); setText(next); lastGood.current = next;
       }}/>
   </div>
   {/* 다 찼다는 말을 **숫자와 글자 둘로** 한다. 색만 바꾸면 색을 못 보는

@@ -2053,7 +2053,17 @@
      넘길 때 만지는 것이 67px 튀어 올랐다. 아래로 남는 자리는 비워 두는
      것이 아니라 **자판이 올라올 자리**다. */
   margin-top: 0;
-  border: 1px solid var(--line); border-radius: var(--r-surface); }
+  /* 테두리를 걷었다 (2026-09-22). 하루 전에 "처음 온 사람은 어디에 쓰는지
+     부터 찾는다"며 선 하나를 둘렀는데, 그 일을 이제 **안내가 한다** —
+     제목과 설명이 이 칸 안으로 들어왔으므로 칸이 어디인지는 글이 말한다.
+     선까지 있으면 종이 위에 판이 하나 더 생긴다.
+
+     안내와 입력칸은 **같은 칸에 겹쳐 선다.** 안내는 글이 비어 있을 때만
+     있으므로 둘이 동시에 보일 일이 없고, 겹쳐 두면 첫 글자가 제목이 있던
+     바로 그 자리에서 시작한다 — 세로로 쌓으면 안내가 사라지는 순간 글이
+     그 높이만큼 튀어 오른다. */
+  display: grid; }
+.write-fit > *{ grid-area: 1 / 1; min-width: 0; }
 .write-input{ width: 100%; height: 100%; border: 0; background: none;
   resize: none; outline: none; font-family: inherit;
   /* 폭의 12분의 1. 96을 12로 나눈 것은 12자가 폭에 꼭 맞으면 반올림 한 번에
@@ -2061,17 +2071,38 @@
      줄이 다섯을 넘어가면(발화자가 손으로 더 끊으면) 높이가 먼저 닿는다. */
   font-size: min(8cqw, calc(96cqh / (var(--rows, 1) * 1.5)));
   line-height: 1.5; color: var(--ink); text-align: center; padding: 0;
-  /* 세로 가운데. textarea는 글을 위에서부터 쌓는데 상자에 테두리가 생기자
-     한 줄이 큰 빈 상자 꼭대기에 붙어 있는 것이 드러났다. 줄 수만큼의
-     높이를 빼고 남는 것을 위아래로 반씩 준다 — em은 이 요소의 글자 크기다. */
+  /* **위에서부터 쓴다.** 세로 가운데였다 — 빈 상자 꼭대기에 한 줄이
+     붙어 있는 것이 어색해서 그랬는데, 이제 그 자리에 안내가 선다.
+     안내도 글도 위에서 시작해야 첫 글자가 제목이 있던 자리를 이어받는다.
+     (제목 30px x 1.3 = 39px, 글 약 28px x 1.5 = 42px — 첫 줄이 거의 같은
+     높이에서 시작한다.) */
   box-sizing: border-box;
-  padding-block: calc((100cqh - var(--rows, 1) * 1.5em) / 2); }
-/* --grey-500은 흰 종이에서 2.86:1이라 큰 글자 기준(3:1)에도 못 미쳤다.
-   한 단 내린 --grey-600이 4.59:1이다. 아직 본문(--ink)보다 옅어서 쓴
-   글과 안 헷갈린다. */
-.write-input::placeholder{ color: var(--grey-600); }
+  padding-block: 0; }
+/* .write-input::placeholder 규칙은 2026-09-22에 빠졌다 — placeholder 자체가
+   없어졌다(PhaseCompose 주석). 빈 칸이 하는 말은 이제 .write-lead다. */
 /* 흰 바탕에서는 grey-500이 대비 4.5:1에 못 미친다(접근성 검사가 잡았다).
    본문 회색으로 한 단 내린다. */
+/* ── 빈 칸이 하는 말 ────────────────────────────────────────────────
+   제목과 설명이 화면 위쪽에 따로 서 있다가 쓰는 칸 안으로 들어왔다.
+   위계는 그대로다(--fs-h2 / --fs-body) — 이 화면이 무엇을 하는 자리인지
+   말하는 문장이고, 작아지면 그 일을 못 한다.
+
+   가로는 **가운데**다. 다른 화면의 제목은 왼쪽인데 여기만 다르다 —
+   같은 칸에서 내 글(가운데 정렬)과 자리를 주고받는 문장이라, 정렬이
+   어긋나면 글이 들어오는 순간 왼쪽에서 가운데로 미끄러진다.
+
+   손가락은 통과시킨다. 이 자리를 눌렀을 때 받아야 하는 것은 입력칸이다. */
+.write-lead{
+  display: flex; flex-direction: column; gap: var(--s4);
+  align-self: start; text-align: center; pointer-events: none;
+}
+.write-lead h1{
+  font-size: var(--fs-h2); font-weight: 700;
+  line-height: var(--lh-head); letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.write-lead p{ font-size: var(--fs-body); line-height: 1.5; color: var(--muted); }
+
 /* **자리 값을 지운다.** 이 둘은 다른 화면에서 화면 구석에 절대 위치로
    붙는 물건이라 right·bottom을 들고 있는데(아래 .compose-count 기본형),
    여기서는 흐름 안에 세우려고 position만 static으로 돌려놓았었다. 그런데
@@ -2149,17 +2180,26 @@
    (바닥의 붉은 기운도 여기서 껐었다. 2026-09-22에 이 화면에서 통째로
    없어져서 끌 것이 없다.) */
 /* 글자 수는 쓰는 동안에도 남는다 — 한도가 있다는 것을 그때 알아야 한다.
-   같은 행에 선 힌트만 접는다. */
-.write-screen.is-typing > .z-ask,
-.write-screen.is-typing .hint-open{ display: none; }
+   같은 행에 선 힌트만 접는다.
+
+   여기서 .z-ask도 같이 접었었다. 이제 접을 것이 없다 — 제목과 설명은
+   쓰는 칸 안으로 들어갔고(.write-lead), 사라지는 계기는 자판이 아니라
+   **첫 글자**다. 자판이 올라와도 빈 칸이면 그대로 서 있는다.
+
+   힌트도 같은 계기로 접는다. 이 화면은 이제 들어오자마자 초점이 가므로,
+   초점만 보고 접으면 **빈 화면에서 힌트가 없어진다** — 무엇을 쓸지
+   막막한 사람이 부를 물건이 바로 그것인데. 접는 이유였던 '자판 위에
+   자리가 없다'는 글이 자랄 때 걸리는 문제다. */
+.write-screen.is-typing.has-text .hint-open{ display: none; }
 /* 쓰는 동안 머리에 남는 것은 **어디쯤인가 하나뿐**이다.
    '입력 마침' 버튼이 그 옆에 있었다(.write-done). 자판만 내리는 물건인데
    머리에 앉아 있으니 "여기서 끝내라"로 읽혔다 — 내리는 길은 이제 입력칸
    바깥의 빈 자리가 맡는다(PhaseCompose의 outside).
 
    뒤로는 감춘다. 자판이 올라온 채로 뒤로 가면 쓰던 글이 날아가는데,
-   그 순간 손가락이 있는 자리가 하필 거기다. */
-.write-screen.is-typing .z-back{ display: none; }
+   그 순간 손가락이 있는 자리가 하필 거기다. **날아갈 글이 있을 때만**이다 —
+   빈 화면에서까지 감추면 들어온 사람이 되돌아갈 길을 잃는다. */
+.write-screen.is-typing.has-text .z-back{ display: none; }
 .write-screen.is-typing .z-step-of{ margin-left: 0; margin-right: auto; }
 /* 입력창이 남은 자리를 받는다. 벽과 같은 비율(2.4/1.5)은 여기서만 놓는다 —
    자판 위에서 그 비율을 지키려면 글자를 통째로 줄여야 하는데, 쓰는 사람이
@@ -2180,8 +2220,9 @@
 .write-screen.is-typing{ overflow: hidden; }
 /* 위에서부터 쓴다. 가운데 정렬은 한 줄짜리 글을 위해 있던 것인데, 칸이
    길어지면 쓰던 줄이 칸 한가운데에서 위아래로 오르내린다. */
-.write-screen.is-typing .write-input{ font-size: 8cqw; padding-block: var(--s4);
-  overflow-y: auto; }
+/* 위에서부터 쓰는 것은 이제 늘 그렇다(위 .write-input). 여기서는 자판 위의
+   좁은 칸에서 글자가 세로로 먼저 걸리지 않게 폭 기준만 남긴다. */
+.write-screen.is-typing .write-input{ font-size: 8cqw; overflow-y: auto; }
 /* **본문이 보이는 창보다 길지 않게 한다.**
    body가 늘 100dvh 이상이라(global.css), 자판이 올라와 창이 380이 되어도
    문서는 844로 남아 있었다. 그러면 브라우저가 초점을 보이려고 페이지를

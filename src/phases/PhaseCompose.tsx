@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import BackButton from '../components/BackButton';
 import { foldLines } from '../lib/fit';
 
@@ -50,16 +50,16 @@ const HINTS: Array<{ topic: string; line: string }> = [
 ];
 
 /**
- * 빈 칸이 하는 말.
+ * placeholder는 없다 (2026-09-22).
  *
- * "지금, 이곳에서 하고 싶은 말은?"이었다. 묻는 꼴이라 빈 칸 앞에서 한 번
- * 더 생각하게 만들었고, 열일곱 자가 이 폭에서 두 줄로 어중간하게 접혀
- * 테두리에 붙었다. 물음이 아니라 **할 일**로 적는다.
+ * 빈 칸에 '하고 싶은 말을 적어주세요'를 넣고, 그 위에 따로 제목과 설명을
+ * 세우고 있었다. 빈 화면에서 **같은 말을 두 번** 한 셈이다. 게다가 자판이
+ * 올라오면 제목과 설명이 통째로 접혀서, 무엇을 하는 화면인지 말해 주는
+ * 문장이 정작 쓰기 시작하는 순간 사라졌다.
  *
- * 줄바꿈은 여기서 미리 넣는다 — 브라우저가 알아서 접게 두면 접히는 자리가
- * 폭마다 다르고, 두 덩이로 끊어 읽히는 편이 짧다.
+ * 제목과 설명이 쓰는 자리 **안으로** 들어왔다. 빈 칸이 하는 말이 곧
+ * 그 둘이고, placeholder는 할 일이 없어졌다.
  */
-const PLACEHOLDER = '하고 싶은 말을\n적어주세요';
 
 export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
     const [text, setText] = useState(initialText);
@@ -103,10 +103,11 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
      * 주소창이 접히는 것과 갈라야 하는데, 이 화면에서 자판을 올리는 것은
      * 이 입력창 하나뿐이라 초점이 더 정확하다.
      *
-     * **들어오자마자 켜지지 않는다.** 마운트할 때 입력창에 초점을 주던
-     * 줄이 있었다 — 화면이 열리는 순간 자판이 올라오면서 제목과 설명이
-     * 같은 순간에 접혔다. 무엇을 하는 화면인지 말해 주는 두 줄을 읽을
-     * 틈이 없었다는 뜻이다. 접는 것은 **발화자가 입력창을 누를 때**다.
+     * **들어오자마자 켜진다** (2026-09-22). 한때 그랬다가 껐던 것을 다시
+     * 켠 것인데, 껐던 이유가 없어졌다 — 그때는 자판이 올라오면 제목과
+     * 설명이 통째로 접혀서 무엇을 하는 화면인지 읽을 틈이 없었다. 이제
+     * 그 둘은 쓰는 자리 **안에** 있어서 자판이 올라와도 그대로 서 있다.
+     * 접히는 계기도 초점이 아니라 **첫 글자**다.
      */
     const [typing, setTyping] = useState(false);
     /**
@@ -119,6 +120,17 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
     const composing = useRef(false);
     /** 마지막으로 규칙을 지킨 글. 조합이 끝나고 줄이 넘쳤으면 여기로 돌아간다 */
     const lastGood = useRef(text);
+    /**
+     * 들어오면 바로 쓸 수 있게 한다.
+     *
+     * **자판이 올라온다는 보장은 없다.** iOS는 사람이 만진 적 없는 focus로는
+     * 자판을 안 올린다. 그래서 이것만 믿지 않고 쓰는 자리 전체가 눌리면
+     * 초점을 받도록 해 둔다(아래 .write-fit의 onPointerDown) — 자판이
+     * 저절로 안 올라온 기기에서는 한 번 누르면 된다.
+     *
+     * preventScroll: 초점을 주면서 브라우저가 페이지를 미는 것을 막는다.
+     */
+    useEffect(() => { input.current?.focus({ preventScroll: true }); }, []);
     /* 닫으면 쓰던 자리로 돌려보낸다. 힌트를 보고 나서 다시 입력창을 찾아
        누르게 하면, 힌트를 연 것이 작성을 끊은 것이 된다. */
     const close = () => { setHint(false); input.current?.focus({ preventScroll: true }); };
@@ -137,17 +149,18 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
         if ((e.target as HTMLElement).closest('.write-fit')) return;
         input.current?.blur();
     };
-    return <div ref={screen} className={'z-frame z1 write-screen' + (typing ? ' is-typing' : '')}
+    /* 글이 한 자라도 있는가. 쓰는 동안 접는 것들이 이걸 본다 — 아래 CSS의
+       has-text. 초점만으로 접으면, 들어오자마자 초점이 가는 지금은 빈
+       화면에서 뒤로가기와 힌트가 통째로 없어진다. 둘 다 접는 이유가
+       '쓰던 글'에 걸려 있으므로 글이 없으면 접을 이유가 없다. */
+    return <div ref={screen}
+      className={'z-frame z1 write-screen' + (typing ? ' is-typing' : '') + (text ? ' has-text' : '')}
       onPointerDown={outside}>
   {/* 뒤로는 쓰는 동안 감춘다. 자판이 올라온 채로 뒤로 가면 쓰던 글이
       날아가는데, 그 순간 손가락이 있는 자리가 하필 거기다. */}
   <div className="z-header">
    <BackButton label="처음으로" onClick={() => onBack(text)}/>
    <span className="z-step-of">1 / 5 · 한 줄</span>
-  </div>
-  <div className="z-ask">
-   <h1>어떤 발화를<br />시작해볼까요?</h1>
-   <p>혼잣말도, 함께 나누고 싶은 생각도 좋아요.</p>
   </div>
   {/* 줄바꿈은 발화자가 정한다 — 자판의 줄바꿈이 그대로 남는다.
       계산도 상자도 끼어들지 않는다.
@@ -158,11 +171,36 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
       1로 잡으면, 쓰는 동안 보는 줄모양이 곧 벽의 줄모양이 된다.
 
       테두리도 바탕도 없다 — 칸이 있다고 말하지 않는다. 글이 어디서
-      접히는지로만 보인다. */}
-  <div className="write-fit">
+      접히는지로만 보인다. 2026-09-22에 선 하나를 둘렀다가 다시 걷었다:
+      **안내가 이 안으로 들어오면서** 어디에 쓰는지를 글이 말하게 됐다.
+
+      누르면 초점을 받는다. 자판이 저절로 안 올라온 기기에서 이 자리를
+      누르면 바로 쓸 수 있어야 한다. 입력칸을 직접 누른 것은 건드리지
+      않는다 — 브라우저가 누른 자리에 커서를 놓는 일을 가로채면 긴 글
+      가운데를 못 고친다. */}
+  <div className="write-fit"
+    onPointerDown={e => {
+      if (e.target === input.current) return;
+      input.current?.focus({ preventScroll: true });
+    }}>
+    {/* 안내는 **글이 비어 있을 때만** 선다.
+        초점이 아니라 글자로 가른다. 초점으로 가르면 조합 중(ㅁ → 마 → 말)에
+        초점이 흔들릴 때 안내가 되돌아와 쓰던 글자와 겹친다. 글자로 가르면
+        첫 자모가 들어오는 순간 사라지고 다시 올 길이 없다.
+
+        입력칸과 **같은 칸에 겹쳐** 둔다(CSS grid 1/1). 둘 다 위에서부터
+        시작하므로, 첫 글자를 치면 제목이 있던 바로 그 자리에서 내 글이
+        이어진다 — 안내가 사라지면서 글이 튀어 오르지 않는다.
+
+        손가락은 통과시킨다(pointer-events: none). 이 자리를 눌렀을 때
+        받아야 하는 것은 입력칸이다. */}
+    {!text && <div className="write-lead">
+     <h1>어떤 발화를<br />시작해볼까요?</h1>
+     <p>혼잣말도, 함께 나누고 싶은 생각도 좋아요.</p>
+    </div>}
     <textarea ref={input} className="write-input" aria-label="벽에 올릴 한 줄"
       style={{ '--rows': Math.max(1, foldLines(text || ' ').length) } as React.CSSProperties}
-      value={text} maxLength={60} spellCheck={false} placeholder={PLACEHOLDER}
+      value={text} maxLength={60} spellCheck={false}
       onPaste={e => {
         const el = e.currentTarget;
         /* 고른 만큼은 덮어써지므로 자리가 그만큼 더 있다 */

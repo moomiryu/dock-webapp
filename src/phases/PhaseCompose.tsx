@@ -1,12 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import BackButton from '../components/BackButton';
 import { foldLines } from '../lib/fit';
-import { flatSvg } from '../lib/svgAsset';
-/* 작가가 준 도움말 아이콘. 물음표 둘을 눈으로 쓴 얼굴이다. 여기서 다시
-   그리지 않고 그 파일을 그대로 들여온다 — 작가가 고치면 같이 바뀐다.
-   flatSvg가 안의 <style>을 걷어내 색을 요소에 직접 붙인다 — 안 걷으면 그
-   CSS 글이 **버튼의 글자로** 섞여 들어간다(소개 화면 삽화와 같은 방법). */
-import helpIcon from '../../by_moomiryu/Renewal_v1/Asset/HELP Icon.svg?raw';
 
 interface Props {
     initialText: string;
@@ -55,11 +49,35 @@ const HINTS: Array<{ topic: string; line: string }> = [
     { topic: '그냥 외쳐보고 싶은 말', line: '과제도 광합성으로 끝낼 수 있으면 좋겠다.' }
 ];
 
+/**
+ * 빈 칸이 하는 말.
+ *
+ * "지금, 이곳에서 하고 싶은 말은?"이었다. 묻는 꼴이라 빈 칸 앞에서 한 번
+ * 더 생각하게 만들었고, 열일곱 자가 이 폭에서 두 줄로 어중간하게 접혀
+ * 테두리에 붙었다. 물음이 아니라 **할 일**로 적는다.
+ *
+ * 줄바꿈은 여기서 미리 넣는다 — 브라우저가 알아서 접게 두면 접히는 자리가
+ * 폭마다 다르고, 두 덩이로 끊어 읽히는 편이 짧다.
+ */
+const PLACEHOLDER = '하고 싶은 말을\n적어주세요';
+
 export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
     const [text, setText] = useState(initialText);
     /** 힌트가 펼쳐져 있는가. 글과 따로 사는 값이라 열고 닫아도 글은 그대로다 */
     const [hint, setHint] = useState(false);
     const input = useRef<HTMLTextAreaElement>(null);
+    /**
+     * 화면 전체를 감싼 칸. **스크롤을 0으로 돌려놓기 위해** 들고 있다.
+     *
+     * 이 칸은 넘치면 스크롤된다(app.css의 .write-screen). 짧은 화면에서
+     * 힌트를 열었다 닫거나 글이 길어지면 몇십 px 내려간 채로 남는데, 그
+     * 상태에서 입력창을 다시 누르면 브라우저가 커서를 보이려고 한 번 더
+     * 민다 — 들어갈 때마다 입력창 윗변이 다른 자리에 선다.
+     *
+     * **페이지가 선 자리와 입력창 안의 커서 자리는 다른 것이다.** 페이지는
+     * 늘 맨 위, 커서는 브라우저가 알아서 보이게 한다(입력창 안쪽만 스크롤).
+     */
+    const screen = useRef<HTMLDivElement>(null);
     const empty = !text.trim();
     const left = 60 - text.length;
     const full = left === 0;
@@ -83,10 +101,12 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
      *
      * 자판 높이(--vvh)가 아니라 입력창의 초점으로 판단한다. 높이로 보면
      * 주소창이 접히는 것과 갈라야 하는데, 이 화면에서 자판을 올리는 것은
-     * 이 입력창 하나뿐이라 초점이 더 정확하다. 처음에는 false로 둔다 —
-     * 아래 마운트 focus가 실제로 먹으면 그때 onFocus가 켠다. 사파리가
-     * 손짓 없는 focus를 거절하는 기기에서는 켜지지 않고, 그건 맞는 결과다
-     * (자판이 없는데 쓰는 배치로 서 있으면 안 된다).
+     * 이 입력창 하나뿐이라 초점이 더 정확하다.
+     *
+     * **들어오자마자 켜지지 않는다.** 마운트할 때 입력창에 초점을 주던
+     * 줄이 있었다 — 화면이 열리는 순간 자판이 올라오면서 제목과 설명이
+     * 같은 순간에 접혔다. 무엇을 하는 화면인지 말해 주는 두 줄을 읽을
+     * 틈이 없었다는 뜻이다. 접는 것은 **발화자가 입력창을 누를 때**다.
      */
     const [typing, setTyping] = useState(false);
     /**
@@ -99,22 +119,31 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
     const composing = useRef(false);
     /** 마지막으로 규칙을 지킨 글. 조합이 끝나고 줄이 넘쳤으면 여기로 돌아간다 */
     const lastGood = useRef(text);
-    useEffect(() => { input.current?.focus({ preventScroll: true }); }, []);
     /* 닫으면 쓰던 자리로 돌려보낸다. 힌트를 보고 나서 다시 입력창을 찾아
        누르게 하면, 힌트를 연 것이 작성을 끊은 것이 된다. */
     const close = () => { setHint(false); input.current?.focus({ preventScroll: true }); };
-    return <div className={'z-frame z1 write-screen' + (typing ? ' is-typing' : '')}>
-  {/* 머리는 **늘 같은 셋**이고 쓰는 동안 무엇을 보일지는 CSS가 정한다.
-      React로 붙였다 뗐으면, 자판을 내리는 그 순간에 '입력 마침'이 사라져
-      누른 것이 허공에 떨어진다(초점이 빠지면 typing이 꺼지므로 그 둘은
-      같은 순간이다). 두고 감추면 누르는 동안 자리에 있다.
+    /* **입력창 바깥을 누르면 자판이 내려간다.**
+       '입력 마침' 버튼이 머리에 있었다. 아이폰은 자판 위에 제 체크 버튼을
+       두지만 다른 기기에는 그것이 없어서, 내리는 길을 화면이 따로 들고
+       있어야 했다. 그런데 그 버튼은 쓰는 동안 머리를 한 칸 더 차지하면서
+       "여기서 끝내라"는 손짓으로 읽혔다 — 실제로는 자판만 내리는 것인데.
 
-      뒤로는 쓰는 동안 감춘다. 자판이 올라온 채로 뒤로 가면 쓰던 글이
+       버튼 대신 **빈 자리**가 그 일을 한다. 누르는 자리가 입력칸 안이면
+       손대지 않는다: 글자를 고르거나 긴 글을 훑는 중일 수 있고, 그때
+       자판이 내려가면 하던 일이 끊긴다. pointerdown에서 막지 않으므로
+       아래의 버튼들은 제 몫대로 눌린다. */
+    const outside = (e: React.PointerEvent) => {
+        if (!typing) return;
+        if ((e.target as HTMLElement).closest('.write-fit')) return;
+        input.current?.blur();
+    };
+    return <div ref={screen} className={'z-frame z1 write-screen' + (typing ? ' is-typing' : '')}
+      onPointerDown={outside}>
+  {/* 뒤로는 쓰는 동안 감춘다. 자판이 올라온 채로 뒤로 가면 쓰던 글이
       날아가는데, 그 순간 손가락이 있는 자리가 하필 거기다. */}
   <div className="z-header">
    <BackButton label="처음으로" onClick={() => onBack(text)}/>
    <span className="z-step-of">1 / 5 · 한 줄</span>
-   <button type="button" className="write-done" onClick={() => input.current?.blur()}>입력 마침</button>
   </div>
   <div className="z-ask">
    <h1>어떤 발화를<br />시작해볼까요?</h1>
@@ -133,7 +162,7 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
   <div className="write-fit">
     <textarea ref={input} className="write-input" aria-label="벽에 올릴 한 줄"
       style={{ '--rows': Math.max(1, foldLines(text || ' ').length) } as React.CSSProperties}
-      value={text} maxLength={60} spellCheck={false} placeholder="지금, 이곳에서 하고 싶은 말은?"
+      value={text} maxLength={60} spellCheck={false} placeholder={PLACEHOLDER}
       onPaste={e => {
         const el = e.currentTarget;
         /* 고른 만큼은 덮어써지므로 자리가 그만큼 더 있다 */
@@ -142,7 +171,16 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
         if (over > 0) setCut(over);
       }}
       onKeyDown={() => { if (cut) setCut(0); if (over) setOver(''); }}
-      onFocus={() => setTyping(true)}
+      onFocus={() => {
+        setTyping(true);
+        /* 두 번 돌려놓는다. 첫 번째는 제목이 접히면서 높이가 바뀐 **뒤**,
+           두 번째는 자판이 올라와 창이 줄어든 뒤다(--vvh가 그때 바뀐다).
+           한 번만 하면 자판이 올라오는 순간 다시 밀린다. */
+        requestAnimationFrame(() => {
+          if (screen.current) screen.current.scrollTop = 0;
+          requestAnimationFrame(() => { if (screen.current) screen.current.scrollTop = 0; });
+        });
+      }}
       onBlur={() => setTyping(false)}
       onCompositionStart={() => { composing.current = true; }}
       onCompositionEnd={e => {
@@ -167,12 +205,33 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
         setOver(''); setText(next); lastGood.current = next;
       }}/>
   </div>
-  {/* 다 찼다는 말을 **숫자와 글자 둘로** 한다. 색만 바꾸면 색을 못 보는
-      사람에게는 아무 일도 안 일어난 화면이다. */}
-  <span className={'compose-count' + (full ? ' is-full' : '')}>
-    {text.length}<span>/60</span>
-    {full && <b>다 찼어요</b>}
-  </span>
+  {/* 입력칸 아래 한 행에 **둘이 나란히 선다** — 왼쪽에 힌트, 오른쪽에 글자 수.
+      힌트가 알약 버튼으로 혼자 가운데 서 있었고, 그 옆에 구경꾼 삽화까지
+      달려 있었다. 이 화면의 주인공은 입력칸인데 보조가 더 크게 서 있었다는
+      뜻이다. 글자 수와 같은 줄·같은 크기·같은 색으로 내린다: 둘 다 쓰는
+      일을 거드는 물건이지 손짓이 아니다.
+
+      다만 힌트는 **누를 수 있고** 글자 수는 아니다. 그 차이만 밑줄이 든다. */}
+  <div className="write-foot">
+    {/* 힌트는 **부르면 온다.** 저절로 뜨거나 돌아가지 않는다 — 보고 있지
+        않은 자리에서 글이 바뀌면, 쓰던 사람은 제 글이 바뀐 줄 안다. */}
+    <button type="button" className={'hint-open' + (hint ? ' on' : '')}
+      aria-expanded={hint} aria-controls="write-hint"
+      onClick={() => {
+        if (hint) { close(); return; }
+        /* 펼치면서 자판을 내린다. 자판이 올라와 있으면 남는 높이가 절반이라
+           힌트도 쓰던 글도 둘 다 눌린다 — 640 화면에서 입력창이 71px까지
+           내려앉았다. 닫으면 다시 초점을 돌려주므로 자판도 같이 돌아온다. */
+        input.current?.blur();
+        setHint(true);
+      }}>무슨 말을 쓸까요?</button>
+    {/* 다 찼다는 말을 **숫자와 글자 둘로** 한다. 색만 바꾸면 색을 못 보는
+        사람에게는 아무 일도 안 일어난 화면이다. */}
+    <span className={'compose-count' + (full ? ' is-full' : '')}>
+      {text.length}<span>/60</span>
+      {full && <b>다 찼어요</b>}
+    </span>
+  </div>
   {/* 잘린 것은 그 자리에서 말한다. 다음 글자를 치면 사라진다 */}
   {(cut > 0 || over) && <span className="compose-cut" role="status">{over || `${cut}자는 들어가지 않았어요`}</span>}
   {/* 낭독기에는 **마지막 열 자**만 알린다. 한 자마다 읽어 주면 쓰는 것을
@@ -181,25 +240,6 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
     {full ? '다 찼어요' : left <= 10 ? `${left}자 남았어요` : ''}
   </span>
 
-  {/* 힌트는 **부르면 온다.** 저절로 뜨거나 돌아가지 않는다 — 보고 있지
-      않은 자리에서 글이 바뀌면, 쓰던 사람은 제 글이 바뀐 줄 안다. */}
-  <button type="button" className={'hint-open' + (hint ? ' on' : '')}
-    aria-expanded={hint} aria-controls="write-hint"
-    onClick={() => {
-      if (hint) { close(); return; }
-      /* 펼치면서 자판을 내린다. 자판이 올라와 있으면 남는 높이가 절반이라
-         힌트도 쓰던 글도 둘 다 눌린다 — 640 화면에서 입력창이 71px까지
-         내려앉았다. 닫으면 다시 초점을 돌려주므로 자판도 같이 돌아온다. */
-      input.current?.blur();
-      setHint(true);
-    }}>
-    {/* 구경꾼 하나에 빨간 물음표 뱃지를 달아 두었던 자리다(2026-09-21에
-        작가의 도움말 아이콘으로 갈았다). 뱃지는 같이 걷어냈다 — 새 아이콘이
-        물음표를 이미 눈으로 들고 있어서 물음표가 셋이 됐다.
-        이름은 옆의 글이므로 그림 전체가 aria-hidden이다. */}
-    <span className="hint-figure" aria-hidden="true"
-      dangerouslySetInnerHTML={{ __html: flatSvg(helpIcon, 'help') }} />
-    무슨 말을 쓸지 막막하다면</button>
   {hint && (
     <div className="write-hint" id="write-hint">
       <div className="write-hint-head">

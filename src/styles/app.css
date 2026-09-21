@@ -2030,10 +2030,20 @@
 /* 테두리(2026-09-22). 상자가 없을 때는 글이 어디서 접히는지로만 칸을
    알았는데, 처음 온 사람은 어디에 쓰는지부터 찾는다. 선 하나(--line)로
    칸을 말하고 채우지는 않는다 — 채우면 종이 위에 판이 하나 더 생긴다.
-   안쪽 좌우 여백은 **안 준다**: 글자 폭이 12자 = 96%로 맞춰져 있어서
-   (아래 .write-input) 여백을 주면 열두 자가 열한 자로 접힌다. */
+   안쪽 여백은 **벽의 비율대로** 준다(2026-09-22). 한동안 안 줬다 — 글자
+   크기가 폭에 걸려 있어서(아래 .write-input의 8cqw) 여백을 주면 열두 자가
+   열한 자로 접힌다고 봤기 때문이다. 절반만 맞는 말이었다.
+
+   글자 크기는 폭 기준과 높이 기준 중 **작은 쪽**을 쓴다. 이 칸이 벽과 같은
+   2.4/1.5라서 그 둘이 다섯 줄에서 정확히 같은 값으로 만나도록 맞춰져 있다
+   (재서 확인: 27.84 대 27.74). 여백을 위아래와 좌우에 **같은 비율로** 덜어
+   내면 그 만남이 그대로 유지된다 — 칸이 작아진 만큼 글자도 같이 작아지고,
+   한 줄에 들어가는 글자 수는 열둘 그대로다. 그래서 위아래 여백을 좌우의
+   1.5/2.4배로 적는다(16 → 10). 좌우만 주면 높이 기준이 먼저 걸려 글자가
+   폭보다 작아지고, 그러면 열세 자가 한 줄에 들어간다. */
 .write-fit{ flex: 0 0 auto; width: 100%; aspect-ratio: 2.4 / 1.5;
   max-height: 100%; container-type: size;
+  padding: calc(var(--s5) * 1.5 / 2.4) var(--s5);
   /* 설명 바로 아래에 붙는다 — 옆 화면(2/5 성격)의 카드가 서는 그 자리다
      (실측 230). 띄우는 값을 따로 주지 않는다: 위의 .z-ask가 제 아래
      여백을 이미 들고 있고, 두 화면이 그 값을 같이 쓰기 때문에 그래야
@@ -2070,7 +2080,12 @@
    자리에서 위로 24px·왼쪽으로 20px 밀려 입력창 아래 테두리에 8px 겹쳐
    있었다(재서 확인: 칸이 251에서 끝나는데 글자 수가 243에서 시작했다).
    inset을 auto로 지우면 position이 무엇이든 흐름이 정한 자리에 선다. */
-.write-screen .compose-count{ position: static; inset: auto; align-self: flex-end; color: var(--body-text); }
+.write-screen .compose-count{ position: static; inset: auto; color: var(--body-text); }
+/* 입력칸 아래 **한 행.** 왼쪽 힌트 · 오른쪽 글자 수.
+   글자 수는 제 힘으로 오른쪽 끝에 붙는다 — 쓰는 동안 힌트가 접히면
+   space-between 혼자로는 남은 하나가 왼쪽으로 가 버린다. */
+.write-foot{ display: flex; align-items: center; gap: var(--s4); }
+.write-foot .compose-count{ margin-left: auto; }
 
 /* ── 막막할 때 여는 힌트 ─────────────────────────────────────────────
    입력창이 이 화면의 가운데다. 힌트는 **부를 때만 오는 보조**이므로
@@ -2079,32 +2094,34 @@
    펼쳐지는 자리는 입력창과 '다 썼어요' 사이다. 입력창 위에 얹으면 쓰던
    글을 가리고, 버튼 아래로 보내면 스크롤 밖으로 나간다. 빈 자리는 원래
    입력창의 위아래 auto 여백이 먹고 있던 것이라, 펼쳐도 입력창은 제자리다. */
-/* 밑줄 친 글 한 줄이었다. 2026-09-22에 캐릭터를 붙인 알약 버튼이 됐다 —
-   홈의 그 하늘색 구경꾼이 물음표를 달고 서 있다. 처음 온 사람이 막막할 때
-   찾을 것이 **글자 한 줄보다는 눈에 들어와야** 하되, 이 화면의 주인공은
-   입력칸이고 제일 큰 손짓은 '다 썼어요'라 채움 없이 테두리만 두른다. */
+/* 두 번 컸다가 두 번 다 되돌렸다. 밑줄 친 글 한 줄 → 캐릭터를 붙인 알약
+   버튼(2026-09-22 오전) → 다시 글 한 줄(같은 날). 알약은 혼자 가운데 서고
+   삽화까지 달려서, 이 화면의 주인공인 입력칸보다 보조가 크게 보였다.
+
+   **글자 수와 같은 위계로 내린다.** 같은 행·같은 얼굴·같은 크기·같은 색이다
+   (위 .compose-count와 대조해 보면 font-family·font-size·color가 같다).
+   둘 다 쓰는 일을 거드는 물건이지 손짓이 아니다.
+
+   갈라지는 것은 하나뿐 — 힌트는 **누를 수 있다.** 그 차이만 밑줄이 든다.
+   밑줄은 글자에서 3px 떨어뜨려 글을 밟지 않게 한다.
+
+   손이 닿는 자리는 44로 벌리되 **행은 안 벌린다**: 위아래 여백을 준 만큼
+   음수 여백으로 도로 빼면, 보이는 높이는 글자 한 줄이고 눌리는 높이는 44다.
+
+   여백만으로는 모자랐다. 12 + 글줄 + 12이 44가 되려면 글줄이 20이어야 하는데
+   14px 글자의 실제 줄 높이는 18이라 **42에서 멈췄다**(재서 확인). 44를 바닥으로
+   못 박는다 — 이 파일의 다른 작은 버튼들이 쓰는 그 값이다(.hint-close 등). */
 .hint-open{
-  align-self: center;
-  display: inline-flex; align-items: center; gap: var(--s3);
-  border: 1px solid var(--line); border-radius: var(--r-full); background: var(--paper);
-  padding: var(--s2) var(--s5) var(--s2) var(--s3);
-  font-family: var(--ui-font); font-size: var(--fs-body-s); color: var(--body-text);
-  cursor: pointer; min-height: var(--btn-l);
+  border: 0; background: none; min-height: 44px;
+  padding-block: var(--s4); margin-block: calc(var(--s4) * -1);
+  padding-inline: 0;
+  font-family: var(--label-font); font-size: var(--fs-cap); letter-spacing: 0.02em;
+  color: var(--body-text); cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: var(--grey-400);
 }
-.hint-open:active{ background: var(--grey-100); }
-.hint-open.on{ background: var(--grey-100); color: var(--ink); }
-/* 도움말 아이콘. 작가의 것을 제 색 그대로 쓴다(Asset/HELP Icon.svg) —
-   빨간 동그라미는 --brand-main과 같은 값이고, 흰 바탕 위에서 4.0:1이라
-   그림에 필요한 3:1을 넘는다.
-
-   한 뼘 작게 세운다(--btn-s에서 --s1을 뺀 28). 알약이 48이고 위아래 여백이
-   --s2씩이라 32를 그대로 쓰면 남는 자리가 2px뿐이라 꽉 찬 것으로 보였다 —
-   넷을 나란히 놓고 골랐다.
-
-   구경꾼(walker.ts)과 그 머리 위 물음표 뱃지(.hint-q)가 여기 있었다.
-   새 아이콘이 물음표를 눈으로 들고 있어서 둘 다 걷어냈다. */
-.hint-figure{ display: inline-block; height: calc(var(--btn-s) - var(--s1)); aspect-ratio: 1; flex: none; }
-.hint-figure svg{ display: block; width: 100%; height: 100%; }
+.hint-open:active{ color: var(--ink); }
+.hint-open.on{ color: var(--ink); text-decoration-color: currentColor; }
 
 /* 이 화면만 높이를 못 박는다. .z-frame은 min-height라 내용이 길어지면
    틀이 같이 길어지는데, 그러면 힌트를 펼친 만큼 '다 썼어요'가 화면 밖으로
@@ -2128,20 +2145,20 @@
 
    높이를 더 준다고 풀릴 문제가 아니다. 줄여야 할 것은 **함께 서 있는
    것의 수**다. 쓰는 동안 제목과 부제는 이미 읽은 것이고, 힌트는 부르면
-   오는 것이며, 바닥의 그라데이션은 장식이다. 셋을 접으면 입력창이 남은
-   자리를 다 가진다. */
+   오는 것이다. 둘을 접으면 입력창이 남은 자리를 다 가진다.
+   (바닥의 붉은 기운도 여기서 껐었다. 2026-09-22에 이 화면에서 통째로
+   없어져서 끌 것이 없다.) */
+/* 글자 수는 쓰는 동안에도 남는다 — 한도가 있다는 것을 그때 알아야 한다.
+   같은 행에 선 힌트만 접는다. */
 .write-screen.is-typing > .z-ask,
-.write-screen.is-typing > .hint-open{ display: none; }
-.write-screen.is-typing::after{ content: none; }
-/* 쓰는 동안 머리에 서는 것: 어디쯤인가와 '입력 마침'.
-   '입력 마침'은 자판만 내린다 — 다음 단계로 데려가지 않는다. 쓴 것을
-   통째로 보고 나서 넘어갈지 정하는 것은 그다음 일이다. */
-.write-done{ display: none; border: 0; background: none;
-  padding: var(--s2) var(--s3); margin-inline-end: calc(var(--s3) * -1);
-  font-family: var(--ui-font); font-size: var(--fs-cap); color: var(--body-text);
-  cursor: pointer; min-height: 44px; }
-.write-done:active{ color: var(--ink); }
-.write-screen.is-typing .write-done{ display: block; }
+.write-screen.is-typing .hint-open{ display: none; }
+/* 쓰는 동안 머리에 남는 것은 **어디쯤인가 하나뿐**이다.
+   '입력 마침' 버튼이 그 옆에 있었다(.write-done). 자판만 내리는 물건인데
+   머리에 앉아 있으니 "여기서 끝내라"로 읽혔다 — 내리는 길은 이제 입력칸
+   바깥의 빈 자리가 맡는다(PhaseCompose의 outside).
+
+   뒤로는 감춘다. 자판이 올라온 채로 뒤로 가면 쓰던 글이 날아가는데,
+   그 순간 손가락이 있는 자리가 하필 거기다. */
 .write-screen.is-typing .z-back{ display: none; }
 .write-screen.is-typing .z-step-of{ margin-left: 0; margin-right: auto; }
 /* 입력창이 남은 자리를 받는다. 벽과 같은 비율(2.4/1.5)은 여기서만 놓는다 —
@@ -2151,6 +2168,16 @@
    자판을 내리면 비율이 돌아온다. */
 .write-screen.is-typing > .write-fit{ flex: 1 1 0; aspect-ratio: auto;
   min-height: 0; max-height: none; }
+/* **쓰는 동안 페이지는 움직이지 않는다.**
+   이 칸은 평소 넘치면 스크롤된다(위 .write-screen의 overflow: auto). 짧은
+   화면에서 몇십 px 내려간 채로 입력창을 다시 누르면, 그 자리에서 브라우저가
+   커서를 보이려고 한 번 더 민다 — 들어갈 때마다 입력창 윗변이 다른 높이에
+   섰다. 제목이 접히고 입력칸이 남은 자리를 다 가지므로 쓰는 동안 이 칸이
+   넘칠 일은 없다. 스크롤할 것을 없애면 밀 것도 없다.
+
+   커서를 따라가는 것은 **입력칸 안쪽**이 맡는다(아래 .write-input의
+   overflow-y: auto). 페이지가 선 자리와 커서가 있는 자리는 다른 것이다. */
+.write-screen.is-typing{ overflow: hidden; }
 /* 위에서부터 쓴다. 가운데 정렬은 한 줄짜리 글을 위해 있던 것인데, 칸이
    길어지면 쓰던 줄이 칸 한가운데에서 위아래로 오르내린다. */
 .write-screen.is-typing .write-input{ font-size: 8cqw; padding-block: var(--s4);
@@ -2396,8 +2423,22 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    화면 끝까지 그 톤으로 간다.
 
    버튼이 그 위에 또렷이 앉는 것은 그대로다(아래 z-index: 2). */
-.tone-choice::after, .compose-screen::after,
-.write-screen::after, .color-choice::after, .preview-screen::after,
+/* ── 이제 **소개 화면에만 남는다** (2026-09-22) ────────────────────────
+   여섯 화면이 같이 쓰던 규칙이었다. 실제로 쓰는 다섯(1/5 한 줄 · 2/5 성격 ·
+   3/5 조율 · 4/5 색 · 5/5 미리보기)에서 걷어냈다.
+
+   장식이었기 때문이다. 소개에서는 이 기운이 할 일이 있다 — 삽화가 화면
+   아래로 흘러나가는 자리를 받아 주고, 넘기는 동안 바닥이 한 톤으로 이어진다.
+   쓰는 화면에는 흘러나갈 삽화가 없다. 거기서는 발화자가 만든 것(제 글 ·
+   제가 고른 얼굴 · 제가 고른 색)이 화면의 전부여야 하는데, 시스템이 깔아 둔
+   붉은 기운이 그 아래에 한 겹 더 있었다.
+
+   갈라 두는 것에 값이 하나 더 있다: **설명하는 과정과 실제로 쓰는 과정이
+   눈으로 구분된다.** 소개는 바닥이 더워지고, 쓰는 화면은 제 바탕색 그대로
+   버튼까지 이어진다.
+
+   자리는 그대로다. 이 띠는 pointer-events가 없는 덮개라 흐름에서 자리를
+   먹지 않았다 — 걷어내도 글과 버튼 사이 간격은 한 px도 안 움직인다. */
 .info-overlay::after{
   content: '';
   position: absolute;
@@ -2446,12 +2487,10 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    예외가 남아 있는 동안 바닥은 **띠**로 보였다. 60%에서 제일 진해졌다가
    화면 맨 아래에서 도로 흰색이 되니, 땅이 아니라 허공에 뜬 자국이었다.
    이제 아래로 갈수록 짙어져 그대로 끝난다. */
-/* 버튼은 그 기운 위에 또렷이 앉는다. 올려 두지 않으면 ::after가 나중에
-   칠해져 버튼까지 덮는다 — 회색 비활성 버튼이 분홍으로 흐려졌다. */
-.tone-choice > .primary-action,
-.compose-screen > .primary-action, .color-choice > .primary-action,
-.write-screen > .primary-action, .write-screen > .compose-count,
-.preview-screen > .primary-action{ position: relative; z-index: 2; }
+/* 쓰는 다섯 화면의 버튼·글자 수를 여기서 z-index 2로 올려 두었다. 띠가
+   나중에 칠해져 버튼을 덮으면 회색 비활성 버튼이 분홍으로 흐려졌기 때문인데,
+   그 띠가 없어졌으므로(위) 올릴 까닭도 없어졌다. 걷어냈다.
+   소개 화면 것만 남는다 — 거기는 띠가 그대로다. */
 /* 홈의 두 버튼과 소개의 발치 줄은 그 기운 위에 앉는다 */
 .home-frame .home-gate, .info-overlay > .info-nav{ position: relative; z-index: 2; }
 /* 소개의 **삽화도** 그 위에 앉는다(2026-09-21). 기운이 캐릭터를 덮으면 몸

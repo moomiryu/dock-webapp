@@ -205,7 +205,7 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
        이 장만 화면이 통째로 검정이다(dark) — 삽화의 밤이 화면 끝까지
        이어져야 판과 배경 사이에 경계가 안 생긴다. */
     step: 'Step 4',
-    title: '소리 대신 빛으로 말해보세요.',
+    title: '메가폰트가 작동됩니다.',
     /* '최대 30초 동안은'을 뺐다(2026-09-21). 이 장이 하는 말은 **빛으로
        말한다**는 것이고, 몇 초인지는 그다음 문제다 — 소개에서 먼저 시간을
        재 주면 읽는 사람이 남은 시간을 세게 된다. 강조 시간 자체는 그대로다
@@ -223,13 +223,16 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
   },
   {
     step: 'Step 5',
-    title: '발화는 메아리처럼 남았다가 사라집니다.',
+    title: '발화는 서서히 사라집니다.',
     body: (
       <>
         {/* 3일·30초 같은 수치는 여기 적지 않고 wall.ts에서 받아 온다.
             체류 기간을 바꾸면 이 문장이 같이 따라와야 하기 때문이다. */}
+        {/* 둘째 줄은 아래 목록을 여는 말이라 같은 문단에 둔다 —
+            다른 장도 두 줄짜리 보조 설명은 <br />로 잇는다. */}
         <p>
-          발화는 <b>{STAY_DAYS}일간 남아 있다가 사라집니다.</b>
+          메아리처럼 화면을 맴돌며, <b>{STAY_DAYS}일 후에 사라집니다.</b><br />
+          특징은 다음과 같습니다.
         </p>
         <dl className="info-rules">
           <div>

@@ -70,7 +70,7 @@ sudo reboot
 
 | 증상 | 볼 곳 |
 |:--|:--|
-| 스위치를 눌러도 아무 일 없음 | `journalctl --user -u megafont-switch -f` |
+| 스위치를 눌러도 아무 일 없음 | `sudo journalctl -f _SYSTEMD_USER_UNIT=megafont-switch.service` |
 | 폰에 "설치물과 연결이 안 돼요" | switch.py가 죽었거나 와이파이가 끊겼다. 위 로그 |
 | 폰에 "앞의 폰이 아직 꽂혀 있어요" | 홈에 폰이 남아 있거나 스위치가 눌린 채 걸렸다. 홈을 비우면 풀린다 |
 | 폰에 "다른 분이 먼저 기다리고 있어요" | 앞 차례가 아직 안 끝났다. 그 폰이 떠나면 15초 안에 풀린다 |

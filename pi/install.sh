@@ -54,5 +54,5 @@ sudo loginctl enable-linger "$USER" || true
 echo
 echo "심었다."
 echo "  스위치 상태 :  systemctl --user status megafont-switch"
-echo "  스위치 로그 :  journalctl --user -u megafont-switch -f"
+echo "  스위치 로그 :  sudo journalctl -f _SYSTEMD_USER_UNIT=megafont-switch.service"
 echo "  벽          :  재부팅하면 뜬다 —  sudo reboot"

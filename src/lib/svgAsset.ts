@@ -203,6 +203,115 @@ function inlineFills(root: Element) {
 // 내내 켜진 채로 남는다 (실제로 그랬다).
 const DRAWN = 'path,ellipse,circle,rect,polygon,line,text';
 
+/**
+ * 글이 **쳐진다** — 판 위의 문구, 커서, 자판, 손이 한 박자로 움직인다.
+ *
+ * 작가가 첫 컷에 이름을 달아 두었다(`typed-message` · `insertion-cursor` ·
+ * `keyboard`). 그 이름이 있는 그림에서만 돈다.
+ *
+ * 문구는 **낱자로 나뉘어 있지 않다** — 한 덩이 path다. 그래서 글자를
+ * 하나씩 켜는 대신 **왼쪽에서 자라는 창**으로 가린다(clipPath). 창의 오른쪽
+ * 끝이 곧 커서 자리라, 커서를 그 끝에 세우면 둘이 저절로 맞는다.
+ * calcMode=discrete라 창이 한 칸씩 **뚝뚝** 넓어진다 — 그게 타이핑이다.
+ *
+ * 한 칸에 한 번씩 자판의 키가 하늘색으로 눌리고 손이 내려앉는다. 어느 키를
+ * 누를지는 알 수 없으므로(문구가 한 덩이다) 자판 위를 고르게 훑는다 —
+ * 마지막 한 칸은 작가가 `pressed-key`라고 이름 붙인 넓은 키가 받는다.
+ */
+function typeIn(root: Element, t: ReturnType<typeof timeline>, dur: number) {
+  const msg = root.querySelector('#typed-message');
+  const caret = root.querySelector('#insertion-cursor');
+  if (!msg || !caret) return;
+  const path = msg.querySelector('path');
+  const box = path && boxOf(itemOf(path));
+  if (!box || !box.w) return;
+
+  const doc = root.ownerDocument;
+  const NS = 'http://www.w3.org/2000/svg';
+  /** 몇 번에 나눠 치는가. 문구가 '내 생각은'(다섯 칸)이라 다섯이다 */
+  const STEPS = 5;
+  /* 치는 구간은 첫 마디 안이다 — 다 치고 나서 읽을 짬이 남아야 한다 */
+  const from = t.at[1] * 0.12, to = t.at[1] * 0.8;
+  /* 마디가 촘촘해서 소수 둘로는 이웃끼리 같은 값이 된다 — 실제로 키가
+     켜지고 꺼지는 두 마디가 0.08;0.08로 겹쳐 브라우저가 그 애니메이션을
+     통째로 버렸다. 여기서만 셋으로 쓴다. */
+  const r3 = (n: number) => Number(n.toFixed(3));
+  const step = (i: number) => r3(from + ((to - from) * i) / STEPS);
+
+  /* 창. 위아래로 넉넉히 잡는다 — 글자의 삐침이 상자 밖으로 나간다 */
+  const clip = doc.createElementNS(NS, 'clipPath');
+  clip.setAttribute('id', 'mf-type');
+  clip.setAttribute('clipPathUnits', 'userSpaceOnUse');
+  const win = doc.createElementNS(NS, 'rect');
+  win.setAttribute('x', r2(box.x - 2) + '');
+  win.setAttribute('y', r2(box.y - 20) + '');
+  win.setAttribute('height', r2(box.h + 40) + '');
+  win.setAttribute('width', '0');
+  clip.appendChild(win);
+  (root.querySelector('defs') ?? root.insertBefore(doc.createElementNS(NS, 'defs'), root.firstChild)).appendChild(clip);
+  msg.setAttribute('clip-path', 'url(#mf-type)');
+
+  const widths = Array.from({ length: STEPS + 1 }, (_, i) => r2((box.w + 4) * (i / STEPS)));
+  const times = Array.from({ length: STEPS + 1 }, (_, i) => step(i));
+  const keyTimes = ['0', ...times.map(String), '1'].join(';');
+  put(win, 'animate', {
+    attributeName: 'width', calcMode: 'discrete',
+    values: ['0', ...widths.map(String), String(box.w + 4)].join(';'),
+    keyTimes, dur: `${dur}s`, repeatCount: 'indefinite'
+  });
+  /* 커서는 창 끝에 선다. 글 뒤로 반 칸 띄운 자리가 작가가 그린 x이므로,
+     그 차이를 그대로 지니고 따라간다. */
+  const gap = Number(caret.getAttribute('x') ?? 0) - (box.x + box.w);
+  put(caret, 'animate', {
+    attributeName: 'x', calcMode: 'discrete',
+    values: [r2(box.x + gap), ...widths.map((w) => r2(box.x + w + gap)), r2(box.x + box.w + gap)].join(';'),
+    keyTimes, dur: `${dur}s`, repeatCount: 'indefinite'
+  });
+
+  /* 자판. 키를 왼쪽 위부터 읽어 고르게 훑고, 마지막은 넓은 키가 받는다. */
+  const keys = Array.from(root.querySelectorAll('#keyboard rect'));
+  const wide = root.querySelector('#pressed-key');
+  const hits = Array.from({ length: STEPS }, (_, i) =>
+    (i === STEPS - 1 && wide) ? wide : keys[Math.floor((i * keys.length) / STEPS) % Math.max(1, keys.length)]);
+  const lit = (el: Element, i: number) => {
+    const rest = el.getAttribute('fill') ?? '#fff';
+    const a = step(i), b = r3(Math.min(1, a + ((to - from) / STEPS) * 0.55));
+    /* discrete는 다음 마디까지 그 값을 물고 있는다 — 켜고, 끄고, 끝.
+       마디 넷이면 되고 그래야 겹칠 자리가 없다. */
+    put(el, 'animate', {
+      attributeName: 'fill', calcMode: 'discrete',
+      values: [rest, ONLOOKER, rest, rest].join(';'),
+      keyTimes: `0;${a};${b};1`,
+      dur: `${dur}s`, repeatCount: 'indefinite'
+    });
+  };
+  hits.forEach((el, i) => { if (el) lit(el, i); });
+
+  /* 손. 키를 누를 때마다 살짝 내려앉는다 — 자판 쪽으로 3px, 그리고 돌아온다.
+     손은 몸에서 떨어진 작은 동그라미다(walker와 같은 얼개). 자판에 제일
+     가까운 것을 고른다. */
+  const kb = keys.length ? boxOf(itemOf(keys[0])) : null;
+  const hand = Array.from(root.querySelectorAll('circle'))
+    .map((el) => ({ el, b: boxOf(itemOf(el)) }))
+    .filter((o) => o.b && o.b.w > 8 && o.b.w < 40 && (o.el.getAttribute('fill') ?? '').toLowerCase() === ONLOOKER)
+    .sort((m, n) => (kb ? Math.abs(m.b!.x - kb.x) - Math.abs(n.b!.x - kb.x) : 0))[0];
+  if (hand) {
+    const cy = Number(hand.el.getAttribute('cy') ?? 0);
+    const beat: string[] = ['0'], vals: string[] = [r2(cy) + ''];
+    for (let i = 0; i < STEPS; i++) {
+      const a = step(i), b = r3(Math.min(1, a + ((to - from) / STEPS) * 0.5));
+      beat.push(String(a), String(b));
+      vals.push(r2(cy + 3) + '', r2(cy) + '');
+    }
+    beat.push('1'); vals.push(r2(cy) + '');
+    put(hand.el, 'animate', {
+      attributeName: 'cy', values: vals.join(';'), keyTimes: beat.join(';'),
+      calcMode: 'spline', keySplines: beat.slice(1).map(() => '.3 0 .2 1').join(';'),
+      dur: `${dur}s`, repeatCount: 'indefinite'
+    });
+  }
+}
+
 /** 구경꾼의 몸 색. morph.ts의 HAT_FILL과 같은 종류의 지문이다 — 칠하는
     색이 아니라 작가의 파일에서 **누가 구경꾼인지** 알아내는 열쇠라 토큰
     (--char-cyan)으로 못 바꾼다. 같은 값이어야 하고, 작가가 바꾸면 둘 다 바꾼다. */
@@ -445,6 +554,33 @@ function put(el: Element, tag: string, attrs: Record<string, string>) {
   n.setAttribute('repeatCount', 'indefinite');
   el.appendChild(n);
   return n;
+}
+
+/**
+ * 켜지고 꺼지는 것만 따로 — **겹치지 않게** 오간다.
+ *
+ * 그냥 animateSeq로 보내면 나가는 것과 들어오는 것이 같은 구간에서 동시에
+ * 반투명으로 뜬다. 판 위의 글처럼 둘이 같은 자리에 있으면 그 겹침이
+ * 그대로 보인다 — Step 1에서 '#☆!'의 느낌표가 'max 60'의 0 위에 얹혀
+ * 깜빡이는 것으로 읽혔다.
+ *
+ * 옮기는 구간 한가운데를 한 마디 더 찍고, 거기서 **둘 중 작은 값**을
+ * 지나가게 한다. 그러면 1→0은 한가운데에 이미 0이고 0→1은 한가운데까지
+ * 0이라, 아무것도 없는 순간을 거쳐 갈아 끼워진다.
+ */
+function fadeSeq(el: Element, values: string[], t: ReturnType<typeof timeline>, dur: number) {
+  const times = [t.at[0], t.at[1]];
+  const vals = [values[0], values[0]];
+  for (let i = 1; i < values.length; i++) {
+    const mid = r2((t.at[2 * i - 1] + t.at[2 * i]) / 2);
+    times.push(mid, t.at[2 * i], t.at[2 * i + 1]);
+    vals.push(String(Math.min(Number(values[i - 1]), Number(values[i]))), values[i], values[i]);
+  }
+  times[times.length - 1] = 1;
+  put(el, 'animate', {
+    attributeName: 'opacity', values: vals.join(';'),
+    keyTimes: times.join(';'), calcMode: 'linear', dur: `${dur}s`
+  });
 }
 
 /** 여러 컷을 이어 도는 값 하나 */
@@ -1037,7 +1173,7 @@ export function chainSvg(raws: string[], key: string, dur = 11, even = false): s
         }
         return a;
       };
-      if (per.some((x) => !x)) animateSeq(a.el, 'opacity', per.map((x) => (x ? '1' : '0')), t, dur);
+      if (per.some((x) => !x)) fadeSeq(a.el, per.map((x) => (x ? '1' : '0')), t, dur);
       const ds = per.map((x, i) => (x ?? near(i)).d);
       if (ds.every((d) => d !== null) && new Set(ds).size > 1) {
         animateSeq(a.el, 'd', ds as string[], t, dur); moved++;
@@ -1141,11 +1277,12 @@ export function chainSvg(raws: string[], key: string, dur = 11, even = false): s
     }
 
     for (const { it, at } of rest) {
-      animateSeq(it.el, 'opacity', order.map((k) => (at.has(k) ? '1' : '0')), t, dur);
+      fadeSeq(it.el, order.map((k) => (at.has(k) ? '1' : '0')), t, dur);
     }
 
     focusOn(base, items.flat());
     markEyes(base);
+    typeIn(base, t, dur);
     return scopeSvg(new XMLSerializer().serializeToString(base), key);
   } catch {
     return scopeSvg(raws[0], key);

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import BackButton from './BackButton';
-import { aboutSvg, chainSvg, scopeSvg, slideSvg } from '../lib/svgAsset';
+import { aboutSvg, chainSvg, scopeSvg, slideSvg, withGround } from '../lib/svgAsset';
 import { STAY_DAYS } from '../lib/wall';
 
 // 작가가 삽화를 컷으로 나눠 준다. 컷 사이를 이어 도는 일은 svgAsset이 한다.
@@ -160,8 +160,14 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
     ),
     // 파일 번호가 곧 차례다(2026-09-20에 작가가 넷으로 다시 그렸다).
     // 끝까지 갔다가 되짚어 돌아온다 — 1→2→3→4→3→2→1.
+    /* 그림자는 컷에 없다. 작가가 그것까지 그린 한 장을 따로 줬고
+       (example_step2_shadow.svg) 거기서 잰 자리를 그대로 옮긴다 —
+       그 화판(242.82×525.39)은 잘라 낸 것이라 (74.3, 113.0)을 더하면
+       이 컷의 좌표가 된다. 몸통 한가운데(202.2)에 놓이고, 발 아래끝
+       (629.8)이 그 안에 든다. */
     art: <Built name="glyphs" still={artGlyphs1}
-      make={(k) => chainSvg([artGlyphs1, artGlyphs2, artGlyphs3, artGlyphs4], k)} />,
+      make={(k) => withGround(chainSvg([artGlyphs1, artGlyphs2, artGlyphs3, artGlyphs4], k),
+        { cx: 202.2, cy: 626.45, rx: 68.5, ry: 12.05 })} />,
     /* is-fitted: 이 장만 삽화가 글 바로 밑에서 시작해 혼자 크게 올라와
        보였다(재서 확인: 칸 위에서 15px. Step 1은 92, Step 3은 38). 조금
        줄여 칸에 맞춘다 — 그래야 캐릭터의 발까지 서고 버튼과도 벌어진다.

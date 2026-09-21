@@ -17,6 +17,28 @@ export function scopeSvg(raw: string, key: string): string {
 }
 
 /**
+ * 발밑에 **그림자를 깔아** 준다.
+ *
+ * Step 2의 컷 넷에는 그림자가 없다. 발이 잘려 있던 동안에는 몰랐는데, 화판
+ * 밖까지 내보이기 시작하니 혼자 허공에 뜬 것으로 보였다 — 다른 장의 인물은
+ * 다 발밑에 하나씩 깔고 섰다.
+ *
+ * 작가가 그림자까지 그린 한 장을 따로 줬다(example_step2_shadow.svg). 그
+ * 화판은 242.82×525.39로 잘라 낸 것이고, 도형 크기가 컷들과 소수점까지
+ * 같아서 **원점 차이(74.3, 113.0)만 더하면** 그대로 옮겨 온다.
+ *
+ * 그 파일로 컷을 갈지 않는 이유: 그건 한 장뿐인데 이 장은 넷이 오간다.
+ * 그려진 자리만 가져오고 작가의 파일은 건드리지 않는다.
+ *
+ * 맨 앞에 넣는다 — 그래야 발이 그림자 **위에** 선다.
+ */
+export function withGround(html: string, at: { cx: number; cy: number; rx: number; ry: number }): string {
+  const tag = `<ellipse class="mf-ground" cx="${r2(at.cx)}" cy="${r2(at.cy)}"`
+    + ` rx="${r2(at.rx)}" ry="${r2(at.ry)}"/>`;
+  return html.replace(/(<svg[^>]*>)/, `$1${tag}`);
+}
+
+/**
  * 그림 하나를 그대로 쓰되 **<style>을 걷어낸다.**
  *
  * SVG 안의 <style>은 그 그림 안에만 도는 것이 아니라 **문서 전체**에 돈다.

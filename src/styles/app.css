@@ -1745,10 +1745,15 @@
 
    좌우로 나가는 그림이 없어서(x 74.3~315.7) 줄여도 잘리는 것이 없다. */
 .info-art.is-fitted > span > svg{
-  width: 91%;
-  left: 4.5%;
-  overflow: visible;   /* 화판 밖의 발까지 낸다. 칸이 대신 자른다 */
+  width: 88%;
+  left: 6%;
+  overflow: visible;   /* 화판 밖의 발과 그림자까지 낸다. 칸이 대신 자른다 */
 }
+/* 발밑 그림자(svgAsset · withGround). 작가가 다른 장에 쓴 색 그대로이되,
+   **바닥의 더운 기운보다 세면 안 된다** — 그림자는 인물이 서 있다는 표시일
+   뿐이고, 화면 아래를 맡은 것은 그 기운이다. 제 색(#5a5580)을 그대로 깔면
+   기운의 제일 진한 자리(rgb 215 191 188)보다 한참 어둡다. 옅게 깐다. */
+.mf-ground{ fill: var(--char-shade); opacity: 0.2; }
 /* 선으로 그린 장 셋은 제 비율대로 선다 — 잘릴 것이 없다 */
 .info-art > svg{ display: block; width: 100%; height: auto; }
 /* 창이 짧으면 그림이 먼저 양보한다.

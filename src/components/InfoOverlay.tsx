@@ -146,7 +146,11 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
        순간이 아예 없다. */
     art: <Built name="rules" still={artRule1}
       make={(k) => slideSvg([artRule1, artRule2, artRule3], k, 10, [1, 0.7, 0.7])} />,
-    artClass: 'is-wide'
+    /* is-lowered: 이 장만 **눈이 가야 할 것**(작성판)이 다른 넷보다
+       71~115px 위에 떠 있었다(재서 확인: 1번 371 · 2번 446 · 3번 486 ·
+       4번 442). 큰 화면에서 한 단 내려 앉힌다 — 값과 고른 이유는 app.css가
+       들고 있다. */
+    artClass: 'is-wide is-lowered'
   },
   {
     step: 'Step 2',
@@ -197,7 +201,10 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
        기다리는 컷 없이 동작만 남는다. */
     art: <Built name="dock" still={artDock4}
       make={(k) => slideSvg([[artDock2, artDock3], artDock4], k, 10)} />,
-    artClass: 'is-wide'
+    /* is-eased: 이 장만 칸을 55.6% 채워 다른 셋(34.6~39.4)보다 불쑥
+       컸다. 기계 클로즈업이라 큰 색면 하나가 존재감을 다 먹는다 —
+       큰 화면에서 85%로 눌러 앉힌다. 값과 고른 이유는 app.css가 든다. */
+    artClass: 'is-wide is-eased'
   },
   {
     /* About에 있던 장면이 여기로 왔다(2026-09-22). 벽에 글이 떠오르는

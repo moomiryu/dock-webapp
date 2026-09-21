@@ -1,18 +1,141 @@
 rules_version = '2';
 
-// 2026-05-19: 광범위 개방 (개발/디버깅용). 출시 전에 좁힐 것.
-// 전 단계의 strict 룰이 read/write를 막는지 검증 중 — 일단 모든 접근 허용해서
-// 연결 자체 문제인지 룰 문제인지 분리한다.
+// 벽에 닿을 수 있는 것과 없는 것.
 //
-// TODO: 출시 전 다음으로 복귀:
-//   - 60자 한도 검증
-//   - 톤 스키마 검증 (font in ['mono','gothic','myeongjo','song'] 등)
-//   - 클라이언트 update/delete 금지
-//   - 가능하면 App Check + Cloud Functions로 rate limit
+// 2026-05-19부터 이 파일은 `allow read, write: if true` 한 줄이었다. 그때는
+// 연결 자체가 문제인지 규칙이 문제인지 가르려고 일부러 전부 열었고, 좁히는
+// 일이 출시 전으로 밀려 있었다. 이제 좁힌다.
+//
+// ── 이 규칙이 막는 것 ────────────────────────────────────────────────
+//   · 남의 글 고치기·지우기 (messages는 만들기만 된다)
+//   · 60자·다섯 줄을 건너뛴 글
+//   · 숫자 칸에 글자를 넣은 글 — 그런 문서가 **하나만 있어도** /wall의
+//     말풍선 좌표가 통째로 무효가 되어 열 개가 구석에 겹쳐 쌓였다(재현함)
+//   · 영원히 안 사라지는 글 (createdAt을 먼 미래로 적어 3일 필터를 피하기)
+//   · 문서에 모르는 칸을 새로 다는 것
+//
+// ── 이 규칙이 못 막는 것 ─────────────────────────────────────────────
+//   · 보내는 **횟수**. 한 사람이 초당 몇 번을 쓰든 규칙은 세지 못한다.
+//     rate limit은 App Check나 Cloud Functions의 몫이다.
+//   · 송출을 가로채는 것. 폰 앱이 공개 키 하나로 control/dock을 쓸 수
+//     있어야 도킹이 도는 구조라, 같은 키를 든 사람도 같은 일을 할 수 있다.
+//     규칙이 할 수 있는 것은 **값이 멀쩡한지**까지다.
+//
+// 값의 범위는 화면이 실제로 내놓는 값에서 왔다 — 크기 28~60(PhaseTone AXES),
+// 빠르기 0.7~1.3, 무게 300~700, 기울기 0·-24·-32(slantFor), 색 열 조합
+// (palettes-v2). 양끝에 여유를 조금 뒀다. 눈금을 손볼 때마다 학생 화면에
+// "벽에 닿지 못했어요"가 뜨면 안 된다.
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ── 한 줄 ────────────────────────────────────────────────────────
+
+    function isHex(c) {
+      return c is string && c.matches('#[0-9a-fA-F]{6}');
+    }
+
+    function validTone(t) {
+      return t is map
+        && t.keys().hasAll(['font', 'tone', 'wght', 'slnt', 'size', 'paletteIdx', 'graphicIdx'])
+        && t.keys().hasOnly([
+             'font', 'tone', 'wght', 'slnt', 'size', 'paletteIdx', 'graphicIdx',
+             'align', 'backgroundColor', 'textColor', 'manner'
+           ])
+        // 옛 글이 서체를 잃지 않게 키는 그대로 둔다(palettes.ts fontMap)
+        && t.font in ['ttoryeot', 'chabun', 'doran', 'deulseok', 'botong']
+        // 아래 넷은 int로도 float로도 온다 — 0.85는 double, 44는 integer다
+        && t.tone is number && t.tone >= 0.5 && t.tone <= 1.5
+        && t.wght is number && t.wght >= 100 && t.wght <= 900
+        && t.slnt is number && t.slnt >= -40 && t.slnt <= 40
+        && t.size is number && t.size >= 10 && t.size <= 100
+        && t.paletteIdx is int && t.paletteIdx >= 0 && t.paletteIdx <= 9
+        && t.graphicIdx is int && t.graphicIdx >= -1 && t.graphicIdx <= 20
+        && (!('align' in t) || t.align in ['left', 'center', 'right'])
+        && (!('manner' in t) || (t.manner is number && t.manner >= 0 && t.manner <= 1))
+        && (!('backgroundColor' in t) || isHex(t.backgroundColor))
+        && (!('textColor' in t) || isHex(t.textColor));
+    }
+
+    function validMessage(d) {
+      return d.keys().hasOnly(['text', 'tone', 'startedAt', 'createdAt'])
+        && d.keys().hasAll(['text', 'tone', 'startedAt', 'createdAt'])
+        && d.text is string
+        && d.text.size() >= 1
+        // 60자와 다섯 줄은 같은 규칙의 두 얼굴이다 — 벽의 한 줄이 열두 자다
+        && d.text.size() <= 60
+        && d.text.split('\n').size() <= 5
+        && d.startedAt is int && d.startedAt >= 0 && d.startedAt <= 4102444800000
+        // 시각을 폰이 적는다. 먼 미래를 적으면 3일 필터를 영영 통과하므로
+        // 서버가 받은 시각 근처인지 본다. 하루를 두는 건 폰 시계가 어긋나
+        // 있어도 글이 막히지 않게 하기 위해서다 — 70년은 못 적는다.
+        && d.createdAt is timestamp
+        && d.createdAt <= request.time + duration.value(24, 'h')
+        && d.createdAt >= request.time - duration.value(24, 'h')
+        && validTone(d.tone);
+    }
+
+    match /messages/{id} {
+      // 벽과 /admin이 로그인 없이 읽는다. 글 자체가 공개물이고 누가 썼는지는
+      // 애초에 저장하지 않는다(익명성).
+      allow read: if true;
+      allow create: if validMessage(request.resource.data);
+      // **보낸 뒤에는 수정할 수 없습니다** — 소개 화면이 학생에게 한 약속이
+      // 이제 문서에도 적혀 있다. 관리자 삭제는 아직 경로가 없다(README).
+      allow update, delete: if false;
+    }
+
+    // ── 도킹 신호 ────────────────────────────────────────────────────
+    //
+    // 문서 하나에 두 종류가 흐른다. 파이가 쓰는 칸(plugged·switchId·
+    // switchAt·piAt)과 폰이 쓰는 칸(대기 자리·송출 사건)이다. 둘 다 같은
+    // 공개 키를 쓰므로 **누가 썼는지로는 가를 수 없다.** 칸 이름과 값의
+    // 꼴만 본다.
+
+    // 폰과 벽이 이 값에서 30초를 센다. 엉뚱하게 크면 남은 시간이 거짓이 된다
+    function okMs(v) {
+      return v is int && v >= 0 && v <= 4102444800000;
+    }
+
+    function validDock(d) {
+      return (!('plugged' in d) || d.plugged is bool)
+        && (!('switchId' in d) || (d.switchId is string && d.switchId.size() <= 64))
+        && (!('waitSession' in d) || (d.waitSession is string && d.waitSession.size() <= 64))
+        && (!('waitMessage' in d) || (d.waitMessage is string && d.waitMessage.size() <= 64))
+        && (!('startId' in d) || (d.startId is string && d.startId.size() <= 160))
+        && (!('startSession' in d) || (d.startSession is string && d.startSession.size() <= 64))
+        && (!('startMessage' in d) || (d.startMessage is string && d.startMessage.size() <= 64))
+        && (!('switchAt' in d) || okMs(d.switchAt))
+        && (!('piAt' in d) || okMs(d.piAt))
+        && (!('waitAt' in d) || okMs(d.waitAt))
+        && (!('startedAt' in d) || okMs(d.startedAt))
+        && (!('endedAt' in d) || okMs(d.endedAt));
+    }
+
+    function dockKeys() {
+      return [
+        'plugged', 'switchId', 'switchAt', 'piAt',
+        'waitSession', 'waitMessage', 'waitAt',
+        'startId', 'startSession', 'startMessage', 'startedAt', 'endedAt'
+      ];
+    }
+
+    match /control/dock {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(dockKeys())
+                    && validDock(request.resource.data);
+      // 고치는 칸만 본다(hasOnly가 아니라 affectedKeys). 지금 문서에 옛 칸이
+      // 하나라도 남아 있으면 문서 전체를 재는 방식은 **모든 쓰기를 막는다** —
+      // 그러면 설치물이 조용히 멎는다. 새 칸을 다는 것은 여전히 막힌다.
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(dockKeys())
+                    && validDock(request.resource.data);
+      allow delete: if false;
+    }
+
+    // ── 나머지 ───────────────────────────────────────────────────────
+    // 위에 적히지 않은 것은 전부 닫힌다. 옛 `control/display`도 여기 걸린다.
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

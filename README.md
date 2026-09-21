@@ -157,6 +157,7 @@ Adobe Fonts 설정에서 그 목록을 먼저 확인한다 — 빠져 있으면 
 | [design/reference-adoption.md](design/reference-adoption.md) | 참조 디자인 채택 기록 + 검사 스크립트 돌리는 법 |
 | [design/references.md](design/references.md) | 레퍼런스 |
 | [design/type-inventory.md](design/type-inventory.md) | 지금 쓰는 서체·크기·굵기·행간 (실측) |
+| [design/bubble-brief.md](design/bubble-brief.md) | 말풍선 네 모양을 작가 손으로 바꾸기 위해 부탁하는 것 — 규칙·견본·파일 규격 |
 
 **디자인 토큰은 문서가 아니라 [src/styles/tokens.css](src/styles/tokens.css)에 있다.**
 `design/tokens.md`는 2026-05 시점의 옛 체계를 적어 둔 기록이다.

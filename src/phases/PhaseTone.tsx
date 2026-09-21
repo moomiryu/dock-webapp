@@ -41,20 +41,34 @@ interface Props {
  * 묶고, 축은 탭으로 고르고, 한 번에 한 축만 세운다. 탭 바로 아래에 값과
  * 잣대가 붙으니 고르는 자리와 만지는 자리 사이가 194 → 80px이 된다.
  *
- * 한 손 문제는 트랙을 짧게(350 → 220px) 하는 것만으로는 안 끝난다. 값이
- * **절대 위치**에 묶여 있는 한 손가락은 그 자리로 가야 한다. 그래서 잣대
- * 아래에 **끄는 면**을 따로 둔다 — 엄지가 닿는 아무 데나 눌러 좌우로 밀면
- * 민 만큼 값이 옮겨간다. 트랙은 지금 어디인지를 보여주는 눈금자가 되고,
- * 조작은 넓은 면이 받는다.
+ * ── 다섯 칸으로 돌아왔다 (2026-09-22) ────────────────────────────────
+ * 그 사이 잔눈금을 끼운 **눈금자**를 세우고 넓은 면으로 밀게 했었다. 값은
+ * 다섯뿐인데 화면은 연속인 물건처럼 보였다 — 잔눈금 넷은 갈 수 없는 자리를
+ * 그려 놓은 것이고, 밀어도 결국 다섯 중 하나에 붙는다. 보이는 것과 되는
+ * 일이 달랐다.
  *
- * ── 원본 비교 ─────────────────────────────────────────────────────────
- * '원본' 버튼을 **누르고 있는 동안만** 다듬기 전이 보인다. 토글이 아닌
- * 이유는 되돌아올 일이 없어서다 — 토글이면 원본을 보는 채로 잣대를 만지는
- * 사고가 난다. 손을 떼면 제자리라 편집값이 구조적으로 지켜진다.
+ * **짧은 트랙 하나에 점 다섯.** 누르면 그 칸이고, 끌면 제일 가까운 칸에
+ * 선다. 트랙이 화면을 가로지르지 않고 가운데 240px에 모여 있어 엄지 호
+ * 안에 다 들어온다 — 한 손 문제를 트랙 길이로 푼다. 칸마다 48px이라
+ * 터치 영역은 겹치지도 좁지도 않다.
  *
- * 견본을 길게 누르는 방식(사진 앱 여럿이 그렇다)은 안 썼다. 한 번 쓰고 마는
- * 물건이라 숨은 손짓은 아무도 못 찾는다. 버튼을 눈에 보이게 두고, 누르는
- * 동안 견본 위에 '원본' 표식이 떠서 지금 보는 것이 무엇인지 말한다.
+ * ± 버튼은 걷어냈다. 트랙이 그만큼 짧아져야 가운데로 모이고, 한 칸씩
+ * 옮기는 길은 자판 화살표에 그대로 남아 있다(숨은 range 입력).
+ *
+ * ── 기본과 비교 ───────────────────────────────────────────────────────
+ * **견본을 누르면** 다듬기 전이 선다. 다시 누르면 돌아온다.
+ *
+ * 버튼이었다(누르고 있는 동안만). 버튼은 조절 영역 위에 한 줄을 더 차지
+ * 했고, 보는 자리와 누르는 자리가 떨어져 있었다 — 눈은 견본에 가 있는데
+ * 손은 그 아래를 눌렀다. 보는 것 자체를 누르게 하면 그 거리가 0이 된다.
+ *
+ * 토글이면 '기본을 보는 채로 잣대를 만지는 사고'가 난다고 적어 두었었다.
+ * 그 사고는 **조절하면 편집값으로 돌아오게** 해서 막는다 — 값을 만진 순간
+ * 비교는 끝나고 바뀐 결과가 바로 보인다. 손을 떼는 대신 만지는 것이
+ * 돌아오는 계기다.
+ *
+ * 숨은 손짓이 되지 않게 견본 안에 낮은 목소리로 '눌러서 기본과 비교'를
+ * 적어 둔다. 비교 중에는 그 자리에 '기본' 표가 대신 선다.
  *
  * 원본의 기준은 **고른 성격의 기본값**이다(DEFAULT_TONE + font). 화면에
  * 들어온 시점이 아니다 — 조율에서 색으로 갔다가 뒤로 오면 그 시점 값이
@@ -63,21 +77,13 @@ interface Props {
  */
 
 /**
- * 끄는 면에서 한 칸을 옮기는 데 미는 거리 (px).
+ * 누른 것으로 칠 손가락의 흔들림 한도 (px).
  *
- * 잣대와 손끝 감각을 맞춘다 — 트랙이 220px에 칸 사이가 넷이라 한 칸이
- * 55px이다. 면에서도 같은 거리라야 두 곳을 오갈 때 손이 다시 배우지 않는다.
+ * 견본을 누르면 기본과 비교다. 그런데 화면을 쓸어 넘기거나 글자를 끌어
+ * 고르려던 손짓도 pointerup으로 끝나므로, 움직인 거리가 이보다 크면
+ * 누른 것으로 치지 않는다.
  */
-const DRAG_STEP = 56;
-
-/**
- * 큰 눈금 하나를 몇으로 쪼개는가.
- *
- * 눈금의 일은 셋이고 서로 달라야 한다: **가운데 금**(붉은 선)이 지금 값,
- * **표**(.tone-home)가 기본값, 나머지 눈금이 자리다. 그 나머지를 큰 것과
- * 잔 것으로 다시 갈라서, 칸이 바뀌는 자리와 그 사이를 구별한다.
- */
-const MINOR = 4;
+const TAP_SLOP = 10;
 
 
 /* ─── 도구 아이콘 ────────────────────────────────────────────────────
@@ -118,6 +124,20 @@ const ICON: Record<string, ReactNode> = {
     </svg>
   )
 };
+
+/* 되돌리기 — 글자였다가 아이콘이 됐다(2026-09-22). 같은 화면에서 '크기'가
+   여러 번 읽히던 문제와, 되무르는 일이 만드는 일만큼 커 보이던 문제를
+   한꺼번에 던다. 왼쪽으로 돌아가는 화살표 하나 — 무슨 항목을 되돌리는지는
+   낭독되는 이름이 말한다('크기 되돌리기'). 아이콘은 20px이지만 누르는
+   자리는 48px이다(.tone-revert). */
+const REVERT = (
+  <svg viewBox="0 0 24 24" aria-hidden focusable="false">
+    <path d="M4.5 9.5h9.8a5.2 5.2 0 1 1 0 10.4H7.6" fill="none" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M8.6 4.8 3.8 9.5l4.8 4.7" fill="none" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 /** 견본 행간. 낱자 두 개('발화')일 때 쓰던 1은 문장에서 줄끼리 붙는다 */
 const STAGE_LH = 1.4;
@@ -191,7 +211,7 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
     const [step, setStep] = useState<'intro' | 'work'>('intro');
     /** 패널에서 지금 세워 둔 항목 */
     const [axis, setAxis] = useState('size');
-    /** '원본'을 누르고 있는 중인가 */
+    /** 견본을 눌러 기본 상태를 보고 있는가. 값을 만지면 편집값으로 돌아온다 */
     const [compare, setCompare] = useState(false);
     const lines = foldLines(text);
     const longest = Math.max(1, ...lines.map((l) => Array.from(l).length));
@@ -212,7 +232,7 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
      * 그 두 칸에는 기울기가 함께 붙어서, 좁아진 만큼을 기운 획이 도로
      * 가져간다.
      */
-    /** 지금 견본에 보이는 것. '원본'을 누르고 있는 동안만 다듬기 전이 선다 */
+    /** 지금 견본에 보이는 것. 비교 중일 때만 다듬기 전이 선다 */
     const shown = compare ? { ...DEFAULT_TONE, font: tone.font } : tone;
     const fill = shown.size / 60;
     /**
@@ -235,17 +255,6 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
     useLayoutEffect(() => {
         const el = glyph.current;
         if (!el) return;
-        /* 미는 동안에는 재지 않는다. 이 함수는 의존성 배열이 없어 렌더마다
-           도는데(그래야 마지막 크기에서 잰 값으로 수렴한다), 잣대를 미는
-           동안에는 pointermove마다 렌더가 나므로 초당 60~120번 강제 리플로우가
-           된다 — getComputedStyle·offsetWidth·offsetHeight 셋 다 "지금 당장
-           배치를 다시 계산해"라는 읽기다. 손이 제일 오래 머무는 동작이
-           제일 무거워진다.
-
-           건너뛰어도 값이 안 틀린다: 미는 동안 바뀌는 것은 크기와 장평뿐이고
-           둘 다 글자 **골격**을 안 바꾼다(아래 계산이 base로 나눠 정규화한다).
-           손을 떼면 다시 재서 맞춘다. */
-        if (drag) return;
         /* **바탕 크기**로 나눈다. 최종 크기에는 서체별 잉크 보정(optic)이
            이미 곱해져 있는데, 아래 계산은 그 보정을 곱하기 **전**의 값을
            내놓기 때문이다. 같은 자리에서 재야 셈이 딱 맞는다. */
@@ -264,16 +273,7 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
     const shape = run ?? { w: longest, h: lines.length * STAGE_LH };
     const byLine = ((USE.w / (shape.w * Math.max(1, shown.tone))) * fill).toFixed(2);
     const byHeight = ((USE.h / shape.h) * fill).toFixed(2);
-    /**
-     * 끌고 있는 축과 손가락이 지금 가 있는 자리(0~1).
-     *
-     * 손잡이는 손가락을 그대로 따라가고 값은 제일 가까운 눈금으로 붙는다.
-     * 손을 떼면 이 상태가 사라지면서 손잡이가 그 눈금 자리로 미끄러진다 —
-     * 자석이 당기는 것처럼 보이는 건 그 미끄러짐이다(CSS transition).
-     * 끄는 동안에는 그 transition을 꺼야 손가락이 늦게 따라온다.
-     */
-    const [drag, setDrag] = useState<{ key: string; at: number } | null>(null);
-    /** 한 축을 i번 눈금으로. '빠르기'는 기울기도 같이 가져간다 */
+    /** 한 축을 i번 칸으로. '빠르기'는 기울기도 같이 가져간다 */
     const pick = (a: Axis, i: number) => {
         const v = a.stops[i];
         setTone(t => ({ ...t, [a.key]: v, ...(a.key === 'tone' ? { slnt: slantFor(v) } : null) }));
@@ -294,7 +294,9 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
             at: nearest(a.stops, tone[a.key]),
             /** 고른 성격의 기본 자리. 여기서 얼마나 옮겼는지를 이걸로 잰다 */
             def: nearest(a.stops, DEFAULT_TONE[a.key]),
-            set: (i: number) => pick(a, i),
+            /* 비교 중에 값을 만지면 편집값으로 돌아온다 — 기본을 보는 채로
+               잣대를 만지는 사고를 여기서 막는다(머리 주석 참조) */
+            set: (i: number) => { setCompare(false); pick(a, i); },
             manner: false
         })),
         ...(MANNER[tone.font] ? [{
@@ -303,7 +305,7 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
             names: MANNER[tone.font].labels as readonly string[],
             at: tone.manner ? 1 : 0,
             def: DEFAULT_TONE.manner,
-            set: (i: number) => setTone(t => ({ ...t, manner: i })),
+            set: (i: number) => { setCompare(false); setTone(t => ({ ...t, manner: i })); },
             manner: true
         }] : [])
     ];
@@ -312,37 +314,49 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
     const last = cur.names.length - 1;
 
     /**
-     * 끄는 면. 누른 자리를 0으로 삼고 **민 거리만큼** 값을 옮긴다.
+     * 트랙 위의 손가락 — 누른 자리에서 **제일 가까운 칸**에 선다.
      *
-     * 절대 위치가 아니라 상대 이동이라, 엄지가 닿는 아무 데서나 시작해도
-     * 된다 — 한 손 조작을 푸는 것이 이 한 가지다.
+     * 끌면 지나가는 칸마다 값이 따라오고, 손을 떼면 그 칸이다. 트랙이
+     * 240px로 짧아 절대 위치라도 엄지 호 안에 다 들어온다(머리 주석).
      */
-    const grab = useRef<{ x: number; at: number } | null>(null);
-    const padDown = (e: React.PointerEvent) => {
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-        grab.current = { x: e.clientX, at: cur.at };
-        setDrag({ key: cur.key, at: cur.at });
-    };
-    const padMove = (e: React.PointerEvent) => {
-        const g = grab.current;
-        if (!g) return;
-        /* 눈금은 **손가락을 그대로** 따라간다(소수점 자리). 값은 그중
-           제일 가까운 눈금으로 붙는다. 둘을 갈라 놓아야 미는 동안 화면이
-           손과 같이 가고, 손을 뗄 때 자석처럼 붙는 것이 보인다. */
-        const raw = Math.min(last, Math.max(0, g.at + (e.clientX - g.x) / DRAG_STEP));
-        setDrag({ key: cur.key, at: raw });
-        const i = Math.round(raw);
+    const track = useRef<HTMLDivElement>(null);
+    const slide = (e: React.PointerEvent) => {
+        const el = track.current;
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        /* 칸은 트랙을 last등분한 자리에 있다. 양 끝 칸은 반 칸 몫만 있으면
+           집히므로 반올림으로 충분하다. */
+        const i = Math.min(last, Math.max(0, Math.round(((e.clientX - r.left) / r.width) * last)));
         if (i !== cur.at) cur.set(i);
     };
-    const padUp = () => { grab.current = null; setDrag(null); };
+    const trackDown = (e: React.PointerEvent) => {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        slide(e);
+    };
+    const trackMove = (e: React.PointerEvent) => {
+        if (!(e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) return;
+        slide(e);
+    };
 
-    /* 누르고 있는 동안만 원본. 손을 떼거나 손가락이 버튼 밖으로 나가면
-       바로 편집값으로 돌아온다 — 원본을 본 채로 잣대를 만질 길이 없다.
-       자판으로도 같다: 스페이스/엔터를 누르고 있는 동안만이다. */
-    const holdKey = (down: boolean) => (e: React.KeyboardEvent) => {
+    /**
+     * 견본을 눌러 기본과 비교. 토글이다 — 한 번 누르면 기본, 다시 누르면
+     * 편집값. 쓸어 넘기거나 글자를 끌어 고르려던 손짓은 누른 것으로 치지
+     * 않는다(TAP_SLOP).
+     */
+    const tap = useRef<{ x: number; y: number } | null>(null);
+    const faceDown = (e: React.PointerEvent) => { tap.current = { x: e.clientX, y: e.clientY }; };
+    const faceUp = (e: React.PointerEvent) => {
+        const t = tap.current;
+        tap.current = null;
+        if (!t) return;
+        if (Math.hypot(e.clientX - t.x, e.clientY - t.y) > TAP_SLOP) return;
+        setCompare(c => !c);
+    };
+    /* 자판·스위치·낭독기도 같은 토글을 쓴다 */
+    const faceKey = (e: React.KeyboardEvent) => {
         if (e.key !== ' ' && e.key !== 'Enter') return;
         e.preventDefault();
-        setCompare(down);
+        setCompare(c => !c);
     };
 
     /* --optical-stroke: 무게 축이 없는 서체(당당한·다정한)에 획으로 대신
@@ -356,7 +370,7 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
         '--optical-stroke': opticalStroke(shown.font, shown.wght)
     } as CSSProperties;
 
-    return <div className={'z-frame z1 tone-adjust' + (drag ? ' is-dragging' : '')}>
+    return <div className="z-frame z1 tone-adjust">
  <div className="tone-deck" data-step={step}>
 
   {/* ── 첫 장: 무엇을 하는 자리인지만 ───────────────────────────── */}
@@ -398,41 +412,36 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
      <BackButton label="설명 다시 보기" onClick={() => setStep('intro')}/>
      <span className="z-step-of">3 / 5 · 조율</span>
     </div>
-    {/* 보조 도구 행 — 되돌리기와 비교.
-        편집 패널 안에 있었다. 만지는 자리(도구·눈금)와 되무르는 자리가
-        한 덩어리로 보여서, 값을 고르다 말고 '되돌리기'를 잘못 누를 수
-        있는 배치였다. **손대는 일과 되무르는 일을 위아래로 가른다.**
-
-        되돌리기는 기본값일 때 사라지지 않고 **꺼진 채로 남는다.** 나타났다
-        사라지면 그 자리에 있던 비교 버튼이 매번 옮겨 간다 — 자리가 움직이는
-        버튼은 손이 외울 수 없다. */}
-    <div className="tone-aux">
-     <button type="button" className="tone-aux-btn" disabled={cur.at === cur.def}
-       onClick={() => cur.set(cur.def)}>되돌리기</button>
-     {/* 비교는 되돌리기와 **다른 일**이다. 누르고 있는 동안만 기본을 보여
-         주고 손을 떼면 그대로 돌아온다 — 바꾼 것을 잃지 않는다.
-         길게 누르기 어려운 사람을 위해 같은 버튼이 자판에서는 토글이다. */}
-     <button type="button" className={'tone-aux-btn' + (compare ? ' on' : '')}
-       aria-pressed={compare} aria-label="기본과 비교. 누르고 있는 동안 고른 성격의 기본 상태가 보입니다"
-       onPointerDown={() => setCompare(true)} onPointerUp={() => setCompare(false)}
-       onPointerLeave={() => setCompare(false)} onPointerCancel={() => setCompare(false)}
-       onKeyDown={holdKey(true)} onKeyUp={holdKey(false)}>기본과 비교</button>
-    </div>
     {/* 견본은 글자뿐이다. 도형은 색을 고르는 화면에서 처음 나온다.
         한 겹을 더 두른 것은 **자리를 재기 위해서다** — 머리줄을 뺀 나머지가
-        견본의 몫인데, 칸 전체를 기준으로 삼으면 머리줄 높이만큼 넘친다. */}
-    <div className="z-glyph-fit">
-     <div ref={glyph} className={'z-glyph is-line' + (shown.slnt ? ' is-gust' : '')} style={face}>
-      <span>{lines.map((l, i) => <b key={i} className="z-glyph-char">{l}</b>)}</span>
-     </div>
-     {/* 지금 보는 것이 무엇인지는 견본 위에서 말한다 — 버튼 쪽에서만 말하면
-         눈은 견본에 가 있는데 답은 손 밑에 있다.
+        견본의 몫인데, 칸 전체를 기준으로 삼으면 머리줄 높이만큼 넘친다.
 
-         견본칸 **안에** 둔다. 바깥(견본면)에 두고 위에서부터 픽셀로 세어
-         내리던 때는, 머리줄 위에 보조 도구 행이 하나 더 생기자 그 셈이
-         틀려 표가 버튼과 겹쳤다. 칸 안에 두면 무엇이 위에 몇 줄 있든
-         언제나 견본 바로 위다. */}
-     {compare && <span className="tone-orig-chip">기본 상태</span>}
+        **이 칸 자체가 누르는 자리다**(기본과 비교). 위에 있던 보조 도구 행
+        둘은 없어졌다 — 비교는 보는 것에 얹혔고, 되돌리기는 아래 패널에서
+        지금 항목 옆에 선다. */}
+    <div className="tone-face" role="button" tabIndex={0} aria-pressed={compare}
+      aria-label={compare ? '기본 상태를 보는 중. 눌러서 편집한 상태로 돌아가기' : '눌러서 기본과 비교'}
+      onPointerDown={faceDown} onPointerUp={faceUp}
+      onPointerCancel={() => { tap.current = null; }} onKeyDown={faceKey}>
+     <div className="z-glyph-fit">
+      <div ref={glyph} className={'z-glyph is-line' + (shown.slnt ? ' is-gust' : '')} style={face}>
+       <span>{lines.map((l, i) => <b key={i} className="z-glyph-char">{l}</b>)}</span>
+      </div>
+     </div>
+     {/* 견본 아래 **제 줄**이다. 겹쳐 띄우던 때는 320 화면에서 글자와 12px
+         까지 붙었고, 표의 아랫선이 색 경계에 0px으로 닿았다 — 겹치지 않은
+         것이지 자리가 있는 것이 아니었다. 줄로 두면 견본칸이 그만큼 줄고
+         (cqh로 재므로 글자 크기가 저절로 따라온다) 어느 화면에서도 위아래가
+         같은 여백을 갖는다.
+
+         한 자리에서 둘이 번갈아 선다: 편집 중이면 **안내**(낮은 목소리),
+         비교 중이면 **'기본'**(또렷한 표). 자리가 안 옮겨 다니므로 눈이
+         한 곳만 본다. */}
+     <div className="tone-face-foot">
+      {compare
+        ? <span className="tone-orig-chip">기본</span>
+        : <span className="tone-compare-hint" aria-hidden>눌러서 기본과 비교</span>}
+     </div>
     </div>
    </div>
 
@@ -445,23 +454,34 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
        영역. 조절 영역은 도구에 따라 눈금자이거나 말투 버튼 둘이고, 자리와
        높이가 같아서 도구를 옮겨도 화면이 흔들리지 않는다. */}
    <div className="tone-panel">
-    {/* 여기에 '크기 / 보통' 두 줄이 있었다(2026-09-22 삭제). 같은 화면에
-        '크기'가 셋이었다 — 되돌리기 버튼, 이 라벨, 도구 이름. 고른 도구의
-        고리가 이미 이름을 말하므로 라벨은 중복이고, 값은 눈금자 밑으로
-        내려가 조절하는 자리 옆에 선다(아래 .tone-ruler-value). */}
+    {/* 지금 만지는 것과 그 상태. 위계의 둘째 칸이다(미리보기 → **여기** →
+        도구 → 다섯 칸 → 다음). 눈금자 밑에 있던 값을 여기로 올렸다 —
+        항목 이름과 값이 떨어져 있으면 '무엇이 보통인지'를 눈이 이어야 한다.
 
-    {/* 도구 셋. 고른 것은 테두리와 채움으로, 기본에서 바꾼 것은 점으로
-        따로 표시한다 — 색 하나에 두 가지 뜻을 얹지 않는다. */}
+        되돌리기가 이 줄 오른쪽 끝에 붙는다. 되무르는 대상이 바로 왼쪽에
+        적혀 있어 무엇이 되돌아가는지가 자리로도 읽힌다. */}
+    <div className="tone-now">
+     <span className="tone-now-text">
+      <span className="tone-now-name">{cur.label}</span>
+      <span className="tone-now-value" aria-live="polite">{cur.names[cur.at]}</span>
+     </span>
+     {/* 기본값이면 되돌릴 것이 없다. **자리는 그대로 두고** 끈다 —
+         나타났다 사라지는 버튼은 옆 것을 밀어 손이 자리를 못 외운다. */}
+     <button type="button" className="tone-revert" disabled={cur.at === cur.def}
+       aria-label={`${cur.label} 되돌리기`} onClick={() => cur.set(cur.def)}>{REVERT}</button>
+    </div>
+
+    {/* 도구 셋. 테두리도 고리도 없다(2026-09-22) — 원 테두리 위에 고리를
+        한 겹 더 두르니 같은 것을 두 번 그리는 꼴이었고, 아래 다섯 칸까지
+        더해 이 화면에만 둥근 테두리가 세 켜였다.
+
+        고른 도구는 **아이콘 자리가 채워진다**(브랜드 면 + 흰 아이콘).
+        안 고른 것은 면 없이 아이콘만. 바꾼 도구는 그것과 겹치지 않게
+        작은 점으로 따로 말한다 — 채움 하나에 두 가지 뜻을 얹지 않는다. */}
     <div className="tone-picks" role="tablist" aria-label="조절할 것">
-     {/* 고리는 **하나**다. 도구를 바꾸면 그 원으로 미끄러져 간다 — 원마다
-         고리를 켜고 끄면 선택이 사라졌다 다른 데서 생기는 것으로 읽힌다.
-         한 고리가 옮겨가면 같은 선택이 이동한 것이다(transitions.dev의
-         tabs-sliding과 같은 결). */}
-     <i className="tone-ring" aria-hidden
-       style={{ '--i': tools.findIndex(x => x.key === cur.key) } as CSSProperties} />
      {tools.map(x =>
        <button key={x.key} type="button" role="tab" aria-selected={x.key === cur.key}
-         className={'tone-pick' + (x.key === cur.key ? ' on' : '') + (x.at !== x.def ? ' moved' : '')}
+         className={'tone-pick' + (x.key === cur.key ? ' on' : '')}
          onClick={() => setAxis(x.key)}>
          <span className="tone-dial">
            {ICON[x.key]}
@@ -473,8 +493,9 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
      )}
     </div>
 
-    {/* 공통 조절 영역. 눈금자일 때는 값이 그 밑에 붙고, 말투일 때는
-        버튼 둘 자체가 값이다. 어느 쪽이든 높이가 같아서 '다음'이 안 움직인다. */}
+    {/* 공통 조절 영역. 다섯 칸 트랙이거나 말투 버튼 둘이고, 자리와 높이가
+        같아서 도구를 옮겨도 '다음'이 안 움직인다. 값 글자는 위의 .tone-now로
+        올라갔다 — 조절하는 자리 아래위로 글자가 겹치지 않는다. */}
     <div className="tone-area">
     {cur.manner
       ? <div className="z-manner" role="group" aria-label="말투">
@@ -487,42 +508,36 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
               onClick={() => cur.set(i)}>{name}</button>
           )}
         </div>
-      : <div className="tone-dial-row">
-          <button type="button" className="tone-step" aria-label={`${cur.label} 한 칸 줄이기`}
-            disabled={cur.at === 0} onClick={() => cur.set(Math.max(0, cur.at - 1))}>−</button>
-          {/* 눈금자. 가운데 금은 붙박이고 눈금이 좌우로 밀린다 — 손가락이
-              화면 끝까지 갈 일이 없다. 어디를 잡아 끌어도 민 만큼 옮겨간다. */}
-          <div className="tone-ruler" style={{ '--at': drag?.key === cur.key ? drag.at : cur.at } as CSSProperties}
-            onPointerDown={padDown} onPointerMove={padMove} onPointerUp={padUp} onPointerCancel={padUp}>
-            <span className="tone-ruler-line" aria-hidden />
-            {cur.names.flatMap((_, i) => {
-              const out = [
-                <span key={`n${i}`} className="tone-notch" style={{ '--i': String(i) } as CSSProperties} aria-hidden>
-                  {i === cur.def && <i className="tone-home" />}
-                </span>
-              ];
-              /* 칸 사이를 넷으로 쪼갠 잔눈금. 값은 다섯 칸뿐이라 큰 눈금만
-                 두면 화면이 56px씩 뚝뚝 건너뛰고, 미는 손과 눈금이 따로
-                 논다. 잔눈금이 있으면 얼마나 왔는지가 이어져 보인다. */
-              if (i < last) for (let j = 1; j < MINOR; j++)
-                out.push(<span key={`t${i}-${j}`} className="tone-tick"
-                  style={{ '--i': String(i + j / MINOR) } as CSSProperties} aria-hidden />);
-              return out;
-            })}
-            <input type="range" className="tone-ruler-input" min={0} max={cur.names.length - 1} step={1}
-              value={cur.at} aria-label={cur.label} aria-valuetext={cur.names[cur.at]}
-              onChange={e => cur.set(Number(e.target.value))} />
-          </div>
-          <button type="button" className="tone-step" aria-label={`${cur.label} 한 칸 늘리기`}
-            disabled={cur.at === last} onClick={() => cur.set(Math.min(last, cur.at + 1))}>+</button>
+      : /* 다섯 칸. 짧은 트랙 하나에 점 다섯이고, 칸마다 48px짜리 버튼이
+           그 점을 덮는다 — 보이는 것은 작아도 손이 닿는 자리는 넉넉하다.
+           트랙을 잡고 끌면 지나가는 칸마다 값이 따라오고 손을 떼면 제일
+           가까운 칸에 선다(slide). */
+        <div className="tone-track" ref={track} style={{ '--at': cur.at, '--last': last } as CSSProperties}
+          onPointerDown={trackDown} onPointerMove={trackMove}>
+          <span className="tone-track-line" aria-hidden />
+          {/* 점은 버튼이 아니라 표식이다. 누르는 일은 트랙 하나가 받아
+              제일 가까운 칸을 고른다 — 점마다 버튼을 두면 버튼 다섯이
+              낭독기에서 트랙과 겹쳐 같은 것을 두 번 읽는다. */}
+          {cur.names.map((_, i) =>
+            <span key={i} className={'tone-stop' + (i === cur.at ? ' on' : '')}
+              style={{ '--i': i } as CSSProperties} aria-hidden />
+          )}
+          {/* 진짜 입력은 트랙을 통째로 덮는다. 자판의 화살표키와 낭독기가
+              이걸 잡는다 — ± 버튼을 걷어낸 자리를 여기가 받는다.
+              손가락은 안 받는다(pointer-events: none): 네이티브 range는
+              누른 자리로 값을 순간이동시키는데, 그 규칙과 위 버튼 다섯의
+              규칙이 한 자리에서 부딪친다. */}
+          <input type="range" className="tone-track-input" min={0} max={last} step={1}
+            value={cur.at} aria-label={cur.label} aria-valuetext={cur.names[cur.at]}
+            onChange={e => cur.set(Number(e.target.value))} />
         </div>}
-    {/* 값은 가운데 금 바로 아래 — 조절하는 자리와 읽는 자리가 붙는다.
-        말투는 버튼 글자가 곧 값이라 여기 안 적는다. */}
-    {!cur.manner && <span className="tone-ruler-value" aria-live="polite">{cur.names[cur.at]}</span>}
     </div>
-   </div>
 
-   <button className="primary-action" onClick={() => onNext(tone)}>다음</button>
+    {/* '다음'이 패널 안에 있다. 밖에 두면 패널과 버튼 사이에 흰 띠가 한 겹
+        더 생겨, 이 화면에 색이 바뀌는 경계가 둘이 된다. 하나면 된다 —
+        붉은 미리보기 / 회색 조작 영역. */}
+    <button className="primary-action" onClick={() => onNext(tone)}>다음</button>
+   </div>
   </section>
 
  </div></div>;

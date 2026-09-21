@@ -109,8 +109,10 @@ export default function PhaseGlyph({ text, initialTone, onBack, onNext }: Props)
       <div className="style-cards" role="group" aria-label="성격 고르기" style={grid}>
         {/* '다른 성격 보기'는 제목 밑에 혼자 서 있었다 — 무엇을 되무르는지와
             떨어져 있어 독립된 버튼처럼 읽혔다. 되무를 대상(붉은 카드) 위에
-            올린다. 옷은 03의 '되돌리기'와 같다(반투명 알약, .tone-aux-btn) —
-            두 화면이 같은 자리에서 같은 손짓을 갖는다. 머리줄의 뒤로가기는
+            올린다. 옷은 색이 바뀌는 면 위에 앉는 보조 버튼의 그것이다
+            (반투명 알약 --face-scrim에 흰 글자). 03에도 같은 옷이 있었는데
+            2026-09-22에 그쪽 버튼 둘이 없어졌다(비교는 견본을 누르고,
+            되돌리기는 아이콘이 됐다) — 여기 것은 남는다. 머리줄의 뒤로가기는
             **단계**를 되돌리고, 이건 이 안의 걸음을 되돌린다. */}
         {at >= 0 && <button type="button" className="glyph-reset" onClick={() => setFont(null)}>다른 성격 보기</button>}
         {STYLE_OPTIONS.map((s, i) => (

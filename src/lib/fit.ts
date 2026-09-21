@@ -84,25 +84,44 @@ export interface BoxShape {
 }
 
 /**
- * 이 글이 이 모양으로 **최대 영역을 꽉 채울 때**의 치수.
+ * 크기 축 **맨 위 칸**의 글자 크기 — 최대 영역 한 변에 대한 비율.
+ *
+ * 2026-09-22까지 크기 축은 '영역 중 얼마를 쓸 것인가'였다. 틀을 언제나
+ * 영역 한 변에 꽉 채우고 그 비율만 칸이 정했으니, 어떤 글이든 같은 칸이면
+ * **폭이 소수점까지 같았다** — 재서 확인: 6자·13자·43자가 세 칸 모두
+ * 정확히 1.000. 더 나쁜 것은 짧은 말이 오히려 컸다는 것이다(액자 면적
+ * 30.6% 대 17.1%). 한 줄짜리는 세로로 여유가 남아 폭 쪽이 먼저 닿는데,
+ * 거기에 짧은 글의 최소 지름까지 얹혀 두 줄짜리를 넘어섰다.
+ *
+ * 이제 칸이 **글자 크기 자체**를 정하고 틀은 그 결과로 나온다. 길게 쓰면
+ * 구름이 커지고 짧게 쓰면 작아진다 — 말의 길이가 크기로 읽힌다.
+ *
+ * 0.074는 43자(다섯 줄)가 맨 위 칸에서 영역을 꽉 채우는 값이다. 재서
+ * 골랐다 — 글마다 '영역에 꼭 맞는 글자 크기'는 2자 0.138에서 60자
+ * 0.058까지 걸쳐 있고, 그 가운데를 잡아야 짧은 글이 작아질 자리와 긴 글이
+ * 쓸 자리가 둘 다 남는다. 더 키우면(0.09) 6자가 영역의 96%를 먹어 다시
+ * 길이가 안 읽히고, 더 줄이면 긴 글이 제 자리를 못 쓴다.
+ */
+export const UNIT_TOP = 0.074;
+
+/**
+ * 그 크기 칸에서 이 글이 쓰는 치수.
  *
  * 도형 함수는 전부 글자 한 칸(u)에 정비례한다 — 늘어나는 건 가운데뿐이고
- * 꼬리·갈래도 u의 배수다. 그래서 u=1로 한 번 재면 계수가 나오고, 나누기
- * 한 번으로 끝난다. 폭과 높이 중 **먼저 닿는 쪽**이 크기를 정한다.
+ * 꼬리·갈래도 u의 배수다. 그래서 u=1로 한 번 재면 계수가 나온다.
+ *
+ * 칸이 정한 크기를 그대로 쓰되 **영역을 넘지는 않는다**(cap). 긴 글은
+ * 위쪽 칸 몇 개가 거기서 뭉치는데, 그건 계산이 아니라 벽이 정한 사실이다 —
+ * 60자를 쓰면 더 크게 쓸 자리가 없다.
  */
-export function maxBubble(lines: readonly string[], shape: BoxShape): Boxed {
+export function bubbleAt(lines: readonly string[], shape: BoxShape, fill: number): Boxed {
   const longest = Math.max(1, ...lines.map((l) => Array.from(l).length));
   const rows = Math.max(1, lines.length);
   const at1 = shape.body(longest, rows * LINE_HEIGHT, 1);
   const tail1 = shape.tail(1);
-  const unit = Math.min(1 / at1.w, 1 / (at1.h + tail1));
+  const cap = Math.min(1 / at1.w, 1 / (at1.h + tail1));
+  const unit = Math.min(UNIT_TOP * fill, cap);
   return { unit, w: at1.w * unit, h: at1.h * unit, tail: tail1 * unit };
-}
-
-/** 그중 한 칸(SIZE_FILLS)을 골랐을 때의 치수 */
-export function bubbleAt(lines: readonly string[], shape: BoxShape, fill: number): Boxed {
-  const m = maxBubble(lines, shape);
-  return { unit: m.unit * fill, w: m.w * fill, h: m.h * fill, tail: m.tail * fill };
 }
 
 /** 저장된 옛 크기(28~60)를 새 다섯 칸 중 가까운 자리로 읽는다 */

@@ -227,7 +227,7 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
       </p>
     ),
     art: <Built name="about" still={artAboutFull}
-      make={(k) => aboutSvg(artAboutLit, artAboutFull, k)} />,
+      make={(k) => aboutSvg(artAboutLit, artAboutFull, k, 8.4)} />,
     artClass: 'is-bleed',
     dark: true
   },
@@ -254,6 +254,11 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
             <dd>보낸 뒤에는 수정할 수 없습니다.</dd>
           </div>
           <div>
+    /* 한 바퀴를 12초에서 **8.4초(70%)로** 줄인다(2026-09-22). 보고 있으면
+       길었다 — 다섯 걸음(어둠·불빛·문구·사람·도로 어둠) 중 사람이 걸어
+       들어오는 구간이 혼자 5몫이라 그동안 화면이 멈춘 듯 보인다. 걸음의
+       비율은 그대로 두고 전체만 줄이므로 사람은 여전히 두 걸음으로 들어온다
+       (그 이유는 aboutSvg의 timeline 주석). 1번도 같은 값으로 줄였다. */
             <dt>운영 원칙</dt>
             <dd>타인에게 피해를 주거나 문제가 되는 글은 관리자가 삭제할 수 있습니다.</dd>
           </div>

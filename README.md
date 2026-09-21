@@ -30,9 +30,12 @@
 09 완료          “발화 종료” + 3일 메아리 안내
 ```
 
-메시지는 실제 줄마다 둥근 사각형 배경으로 표시한다. 정렬·기울기·크기와
-독립 색상은 전송 후 벽 화면에도 유지된다. 조정 범위 및 검증 결과는
-[피드백 반영 기록](design/feedback-2026-09-14.md)을 참조한다.
+메시지의 배경은 **글을 바탕으로 만들어지는 구름**이다 — 글줄을 따라 놓인
+크기 다른 원의 합집합이고, 성격이 가장자리(뾰족·매끈·뭉게·픽셀)를 정한다.
+규칙과 고른 이유는 [design/cloud-rules.md](design/cloud-rules.md)에 있다
+(2026-09-22 확정. 그전까지는 `bubbles.ts`의 네 모양 말풍선이었다).
+정렬·장평·크기와 독립 색상은 전송 후 벽 화면에도 유지된다. 조정 범위 및
+검증 결과는 [피드백 반영 기록](design/feedback-2026-09-14.md)을 참조한다.
 
 **단계 표시는 오른쪽 위에 글자로만 있다** (`1 / 5 · 성격`). 진행 막대는
 걷어냈다. 숫자는 워드마크와 같은 얼굴로 찍지 않는다 — 본문 얼굴로 물러난다.
@@ -157,7 +160,8 @@ Adobe Fonts 설정에서 그 목록을 먼저 확인한다 — 빠져 있으면 
 | [design/reference-adoption.md](design/reference-adoption.md) | 참조 디자인 채택 기록 + 검사 스크립트 돌리는 법 |
 | [design/references.md](design/references.md) | 레퍼런스 |
 | [design/type-inventory.md](design/type-inventory.md) | 지금 쓰는 서체·크기·굵기·행간 (실측) |
-| [design/bubble-brief.md](design/bubble-brief.md) | 말풍선 네 모양을 작가 손으로 바꾸기 위해 부탁하는 것 — 규칙·견본·파일 규격 |
+| [design/cloud-rules.md](design/cloud-rules.md) | 발화 배경(구름)의 확정 규칙 — 구성·B/C·성격별 어휘·움직임. 시안 `cloud-*.png` |
+| [design/bubble-brief.md](design/bubble-brief.md) | 말풍선 네 모양을 작가 손으로 바꾸기 위해 부탁했던 것. 구름 규칙으로 낡았다 — 거둘지 다시 쓸지 미정 |
 
 **디자인 토큰은 문서가 아니라 [src/styles/tokens.css](src/styles/tokens.css)에 있다.**
 `design/tokens.md`는 2026-05 시점의 옛 체계를 적어 둔 기록이다.
@@ -177,3 +181,5 @@ Adobe Fonts 설정에서 그 목록을 먼저 확인한다 — 빠져 있으면 
 - 물리 트랙 전반 (본체·프로젝터·Pi). `/wall`이 그 미리보기
 - 출시 전 보안: Firestore 규칙 좁히기, App Check, rate limit
 - 관리자 삭제 경로
+- 구름 배경을 파이 실기에서 본다 — 잔상 10개 + 강조 1개의 번짐 필터가 파이의
+  크로미움에서 매끄러운가. 안 되면 잔상의 움직임을 끈다(design/cloud-rules.md)

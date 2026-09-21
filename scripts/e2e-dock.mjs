@@ -4,7 +4,7 @@
 //   2. 폰에서 '폰을 뺐어요'를 누른다    → 벽의 강조가 거기서 끝나는가
 //   3. 그 뒤 풍경에 합류하는가
 //
-// 이 왕복은 두 화면과 Firestore 문서 하나(control/display)를 동시에 건드려서
+// 이 왕복은 두 화면과 Firestore 문서 하나(control/dock)를 동시에 건드려서
 // 한쪽만 봐서는 깨진 걸 알 수 없다. 실제로 두 페이지를 띄워 확인한다.
 //
 //   npm run dev                       (다른 터미널에서 먼저)
@@ -55,7 +55,10 @@ await wall.goto(`${BASE}/wall`, { waitUntil: 'load' });
 await wall.waitForTimeout(3000);
 
 const phone = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
-await phone.goto(`${BASE}/`, { waitUntil: 'load' });
+// `?dev=1` — 07의 '꽂았어요'·08의 '폰을 뺐어요'는 이 표시가 있을 때만 있다.
+// 학생이 쓰는 화면에 그게 있으면 꽂지 않고도 벽에 띄울 수 있다. 두 버튼은
+// 파이가 쓰는 칸을 그대로 쓰므로, 여기서 도는 길은 실제와 같다.
+await phone.goto(`${BASE}/?dev=1`, { waitUntil: 'load' });
 await settle(phone);
 
 console.log(`\n한 줄: ${STAMP}\n`);
@@ -72,6 +75,10 @@ await phone.locator('.color-choice .primary-action').click();
 await phone.waitForTimeout(700);
 await phone.locator('.primary-action').click(); // 발화하기
 await phone.waitForSelector('.dock-guide', { timeout: 20000 });
+// 07은 도착하자마자 대기 자리에 이름을 올린다 — 꽂힘이 **누구의 것인지**
+// 그걸로 정해진다. 등록되기 전에 꽂으면 그 꽂음은 아무의 것도 아니다.
+// 사람은 화면을 읽고 폰을 드느라 몇 초가 걸리지만 검사는 즉시 누른다.
+await phone.waitForTimeout(1500);
 await phone.getByRole('button', { name: '꽂았어요' }).click();
 
 // ── 1. 벽이 그 글을 띄우는가 ──────────────────────────────

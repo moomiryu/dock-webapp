@@ -7,7 +7,8 @@ import { submitMessage } from '../lib/firebase';
 import type { Draft } from '../types';
 interface Props {
     draft: Draft | null;
-    onDocked: () => void;
+    /** 07이 송출 확정을 알린다 — 파이가 잰 꽂힌 순간과 이 참여의 이름표 */
+    onDocked: (startedAt: number, session: string) => void;
     onEdit: () => void;
     onRestart: () => void;
 }

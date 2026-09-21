@@ -279,140 +279,274 @@ export function isFirebaseConfigured(): boolean {
   return hasFirebaseEnv();
 }
 
-// ─── Wall display control (control/display doc) ──────────────────────
-// The wall caches messages but only reveals one when an external operator sets
-// control/display.showTrigger = true. We poll that single doc (REST) and reset
-// the flag after showing.
-const CONTROL_DOC = 'control/display';
+// ─── 도킹 신호 (control/dock 문서 하나) ───────────────────────────────
+//
+// 여기 흐르는 것은 두 종류다. **섞으면 안 된다.**
+//
+//   상태 — 지금 홈에 폰이 꽂혀 있나(`plugged`). 파이가 쓴다.
+//   사건 — 이 참여의 송출이 시작됐다(`startId`·`startedAt`). 폰이 쓴다.
+//
+// 전에는 상태 하나(showTrigger)가 둘을 겸했다. 그래서 셋이 깨졌다.
+// 벽을 새로고침하면 켜져 있던 깃발이 새 사건으로 읽혀 같은 글이 또 떴고,
+// 두 화면이 **각자 신호를 알아챈 시각**부터 30초를 세어 최대 3초 어긋났고,
+// 07에 선 폰이 둘이면 둘 다 제 글을 쏘았다.
+//
+// 이제 사건에 고유번호와 시작 시각이 붙는다. 번호가 전과 같으면 아무 일도
+// 하지 않는다 — 새로고침이 사건을 만들지 못한다. 30초는 양쪽 다
+// `startedAt`에서 센다. 사건을 쓸 수 있는 폰은 대기 자리의 주인 하나뿐이다.
+//
+// 문서를 `control/display`가 아니라 새로 판 이유: 그 문서에는 옛 필드가
+// 남아 있고, 이름이 겹치는 칸(`docked`)을 새 뜻으로 다시 쓰면 배포가 반쯤
+// 된 동안 옛 값이 새 판정을 오염시킨다.
+const DOCK_DOC = 'control/dock';
 
-export function subscribeShowTrigger(
-  cb: (showTrigger: boolean, showId: string | null, docked: boolean) => void,
-  onError: (e: Error) => void
+/** 대기 자리의 유효기간. 폰이 이 시간 넘게 갱신을 멈추면 빈자리로 본다.
+ *  07 화면의 폰은 5초마다 갱신하므로 살아 있는 폰은 밀려나지 않는다. */
+export const WAIT_STALE_MS = 15_000;
+
+/** 파이가 이 시간 넘게 조용하면 설치물이 끊긴 것으로 본다.
+ *  파이는 30초마다 살아 있음을 적는다. */
+export const PI_STALE_MS = 90_000;
+
+export interface DockState {
+  /** 지금 홈에 폰이 꽂혀 있나 — 파이가 쓰는 물리 상태 */
+  plugged: boolean;
+  /** 눌릴 때마다 새로 생기는 번호. 같은 번호면 같은 꽂음이다 */
+  switchId: string;
+  /** 파이가 잰 그 순간(ms). 벽은 파이가 띄운 브라우저라 시계가 같다 */
+  switchAt: number;
+  /** 파이가 마지막으로 살아 있던 시각 */
+  piAt: number;
+  /** 지금 꽂을 차례인 폰 */
+  waitSession: string;
+  waitMessage: string;
+  waitAt: number;
+  /** 확정된 송출 사건 — 폰과 벽이 같이 보는 하나 */
+  startId: string;
+  startSession: string;
+  startMessage: string;
+  startedAt: number;
+  endedAt: number;
+}
+
+const EMPTY_DOCK: DockState = {
+  plugged: false,
+  switchId: '',
+  switchAt: 0,
+  piAt: 0,
+  waitSession: '',
+  waitMessage: '',
+  waitAt: 0,
+  startId: '',
+  startSession: '',
+  startMessage: '',
+  startedAt: 0,
+  endedAt: 0
+};
+
+function fsStr(f: Record<string, FsValue> | undefined, k: string): string {
+  return (f?.[k] as { stringValue?: string } | undefined)?.stringValue ?? '';
+}
+
+function fsNum(f: Record<string, FsValue> | undefined, k: string): number {
+  const v = f?.[k] as { integerValue?: string; doubleValue?: number } | undefined;
+  if (!v) return 0;
+  if (typeof v.doubleValue === 'number') return v.doubleValue;
+  return v.integerValue ? parseInt(v.integerValue, 10) : 0;
+}
+
+function toDockState(fields: Record<string, FsValue> | undefined): DockState {
+  return {
+    plugged: (fields?.plugged as { booleanValue?: boolean } | undefined)?.booleanValue === true,
+    switchId: fsStr(fields, 'switchId'),
+    switchAt: fsNum(fields, 'switchAt'),
+    piAt: fsNum(fields, 'piAt'),
+    waitSession: fsStr(fields, 'waitSession'),
+    waitMessage: fsStr(fields, 'waitMessage'),
+    waitAt: fsNum(fields, 'waitAt'),
+    startId: fsStr(fields, 'startId'),
+    startSession: fsStr(fields, 'startSession'),
+    startMessage: fsStr(fields, 'startMessage'),
+    startedAt: fsNum(fields, 'startedAt'),
+    endedAt: fsNum(fields, 'endedAt')
+  };
+}
+
+/** 문서 한 번 읽기. 못 읽으면 던진다 — 빈 상태와 구별해야 한다.
+ *  끊긴 것을 '아무도 안 꽂았다'로 읽으면 화면이 조용히 거짓말을 한다. */
+export async function readDock(): Promise<DockState | null> {
+  if (!hasFirebaseEnv()) return null;
+  const res = await withTimeout(fetch(`${FS_BASE}/${DOCK_DOC}?key=${FS_KEY}`), 8000);
+  if (res.status === 404) return { ...EMPTY_DOCK }; // 아직 아무도 안 쓴 문서
+  if (!res.ok) throw new Error(`dock read ${res.status}`);
+  const json = (await res.json()) as { fields?: Record<string, FsValue> };
+  return toDockState(json.fields);
+}
+
+/** 지정한 칸만 고친다. 다른 칸은 남의 것이라 건드리면 안 된다 —
+ *  문서를 통째로 쓰면 파이가 방금 올린 꽂힘이 지워진다. */
+async function patchDock(fields: Record<string, FsValue>): Promise<boolean> {
+  if (!hasFirebaseEnv()) return false;
+  const mask = Object.keys(fields)
+    .map((k) => `updateMask.fieldPaths=${k}`)
+    .join('&');
+  try {
+    const res = await withTimeout(
+      fetch(`${FS_BASE}/${DOCK_DOC}?key=${FS_KEY}&${mask}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields })
+      }),
+      8000
+    );
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+const fsInt = (n: number): FsValue => ({ integerValue: String(Math.round(n)) });
+
+/**
+ * 문서를 되풀이해 읽는다. 간격을 **함수로** 받는 이유가 있다.
+ *
+ * 벽은 24시간 도는데 Firestore 무료 할당은 하루 5만 번 읽기다. 쉬는 동안
+ * 2.5초면 3만 5천 번이라 여유가 있지만, 그 간격으로는 꽂은 뒤 벽이 반응할
+ * 때까지 사람이 기다리는 게 보인다. 그래서 **누가 07에 서 있는 동안만**
+ * 0.5초로 당긴다 — 대기가 길지 않아 늘어나는 읽기는 얼마 안 된다.
+ */
+export function subscribeDock(
+  cb: (state: DockState) => void,
+  onError: (e: Error) => void,
+  intervalMs: (state: DockState | null) => number
 ): () => void {
   if (!hasFirebaseEnv()) return () => {};
   let cancelled = false;
+  let timer = 0;
+  let last: DockState | null = null;
   const tick = async () => {
     if (cancelled) return;
     try {
-      const res = await withTimeout(fetch(`${FS_BASE}/${CONTROL_DOC}?key=${FS_KEY}`), 10000);
-      if (res.status === 404) {
-        if (!cancelled) cb(false, null, false);
-        return;
-      }
-      if (!res.ok) throw new Error(`control read ${res.status}`);
-      const json = (await res.json()) as {
-        fields?: {
-          showTrigger?: { booleanValue?: boolean };
-          showId?: { stringValue?: string };
-          docked?: { booleanValue?: boolean };
-        };
-      };
-      if (!cancelled) {
-        cb(
-          json.fields?.showTrigger?.booleanValue === true,
-          json.fields?.showId?.stringValue || null,
-          json.fields?.docked?.booleanValue === true
-        );
+      const s = await readDock();
+      if (cancelled) return;
+      if (s) {
+        last = s;
+        cb(s);
       }
     } catch (e) {
       if (!cancelled) onError(e as Error);
     }
+    if (!cancelled) timer = window.setTimeout(tick, intervalMs(last));
   };
-  tick();
-  // 3s: responsive enough for a switch while staying within the free-tier quota.
-  const id = window.setInterval(tick, 3000);
+  void tick();
   return () => {
     cancelled = true;
-    clearInterval(id);
+    clearTimeout(timer);
   };
 }
 
-/**
- * 홈의 물리 스위치. 폰이 꽂히면 true, 빠지면 false.
- *
- * 쓰는 쪽은 파이다(`pi/switch.py`) — GPIO 17이 닫히면 이 값을 올린다.
- * 읽는 쪽은 **폰**이다. 벽이 아니라 폰이 읽는 이유는 '어느 글이냐'를
- * 스위치가 모르기 때문이다. 스위치는 "꽂혔다"만 말하고, 그 말을 들은 폰이
- * 제 글의 id를 실어 raiseShowTrigger를 부른다 — 버튼을 누르던 그 길 그대로다.
- *
- * 3초 간격은 subscribeShowTrigger와 같다. 사람이 폰을 꽂고 벽을 올려다보는
- * 동안이라 이 정도면 늦지 않고, 무료 할당량 안에 있다.
- */
-export function subscribeSwitch(
-  cb: (on: boolean) => void,
-  onError?: (e: Error) => void
-): () => void {
-  if (!hasFirebaseEnv()) return () => {};
-  let cancelled = false;
-  const tick = async () => {
-    if (cancelled) return;
-    try {
-      const res = await withTimeout(fetch(`${FS_BASE}/${CONTROL_DOC}?key=${FS_KEY}`), 10000);
-      if (res.status === 404) {
-        if (!cancelled) cb(false);
-        return;
-      }
-      if (!res.ok) throw new Error(`control read ${res.status}`);
-      const json = (await res.json()) as { fields?: { switch?: { booleanValue?: boolean } } };
-      if (!cancelled) cb(json.fields?.switch?.booleanValue === true);
-    } catch (e) {
-      if (!cancelled) onError?.(e as Error);
-    }
-  };
-  tick();
-  const id = window.setInterval(tick, 3000);
-  return () => {
-    cancelled = true;
-    clearInterval(id);
-  };
+/** 대기 자리가 비었나 — 주인이 없거나, 갱신이 끊긴 지 오래됐거나. */
+export function waitIsFree(s: DockState, now = Date.now()): boolean {
+  return !s.waitSession || now - s.waitAt > WAIT_STALE_MS;
 }
 
 /**
- * 벽에 "지금 이 글을 크게 띄워라"를 알린다.
+ * 대기 자리에 이름을 올린다. **먼저 온 폰이 지킨다** —
+ * 살아 있는 주인이 이미 있으면 빼앗지 않고 false를 돌려준다.
  *
- * 물리 설치에서는 홈의 NFC·센서가 이 값을 올린다. 그 장치가 아직 없으므로
- * 지금은 앱이 도킹 순간에 대신 올린다 — 이게 없으면 07 화면이 "지금 벽에
- * 떠 있어요"라고 말하는 동안 벽에서는 아무 일도 일어나지 않는다.
+ * 07에 서 있는 동안 같은 함수를 되풀이해 부른다. 자기가 주인일 때는 시각만
+ * 새로 적는 갱신이 되고, 그게 멈추면 15초 뒤 자리가 풀린다.
  */
-export async function raiseShowTrigger(messageId?: string): Promise<void> {
-  if (!hasFirebaseEnv()) return;
-  // 어느 글을 띄울지도 같이 보낸다. 신호가 목록 폴링보다 빨라서, id가 없으면
-  // 벽이 '아직 아는 것 중 최신' — 즉 앞사람 글 — 을 띄울 수 있다.
-  const mask =
-    'updateMask.fieldPaths=showTrigger&updateMask.fieldPaths=showId&updateMask.fieldPaths=docked';
-  await fetch(`${FS_BASE}/${CONTROL_DOC}?key=${FS_KEY}&${mask}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      fields: {
-        showTrigger: { booleanValue: true },
-        showId: { stringValue: messageId ?? '' },
-        docked: { booleanValue: true }
-      }
-    })
-  }).catch(() => {});
+export async function claimWait(
+  session: string,
+  messageId: string,
+  known?: DockState
+): Promise<boolean> {
+  // 방금 읽은 상태가 있으면 그걸 쓴다 — 07에 선 폰은 0.5초마다 읽고 있어서,
+  // 여기서 또 읽으면 같은 문서를 두 배로 읽는다.
+  const s = known ?? (await readDock().catch(() => null));
+  if (!s) return false;
+  const mine = s.waitSession === session;
+  if (!mine && !waitIsFree(s)) return false;
+  return patchDock({
+    waitSession: { stringValue: session },
+    waitMessage: { stringValue: messageId },
+    waitAt: fsInt(Date.now())
+  });
+}
+
+/** 자리를 내놓는다. 내 자리일 때만 — 남이 이미 가져갔으면 그대로 둔다. */
+export async function clearWait(session: string): Promise<void> {
+  const s = await readDock().catch(() => null);
+  if (!s || s.waitSession !== session) return;
+  await patchDock({
+    waitSession: { stringValue: '' },
+    waitMessage: { stringValue: '' },
+    waitAt: fsInt(0)
+  });
 }
 
 /**
- * 폰이 홈에서 빠졌다.
+ * 송출 시작을 확정한다. 대기 자리의 주인만 부를 수 있다.
  *
- * 강조가 끝나는 것은 시간이 아니라 이 순간이다 — 벽은 이걸 보고 큰 목소리를
- * 접고 그 한 줄을 풍경으로 돌려보낸다. showTrigger는 벽이 신호를 받자마자
- * 스스로 내리기 때문에, 뺀 것을 알리려면 따로 든 깃발이 필요하다.
+ * `startedAt`은 폰의 시계가 아니라 **파이가 잰 꽂힌 순간**이다. 벽은 파이가
+ * 띄운 브라우저라 둘의 시계가 같고, 폰은 이 값과 제 시계의 차이를 알아서
+ * 보정한다. 그래서 두 화면의 30초가 같은 곳에서 출발한다.
+ *
+ * `startId`를 꽂음 번호와 세션으로 짜 두면 같은 꽂음에 두 번 불러도 같은
+ * 번호가 나온다 — 재시도가 두 번째 등장을 만들지 못한다.
+ *
+ * 돌아오는 값이 null이면 **아직 시작하지 않은 것이다.** 부른 쪽은 화면을
+ * 넘기지 말고 다시 시도해야 한다 — 벽이 모르는데 폰만 '발화 중'이라고
+ * 말하는 것이 이 함수가 막으려는 상황이다.
  */
-export async function releaseDock(): Promise<void> {
-  if (!hasFirebaseEnv()) return;
-  await fetch(`${FS_BASE}/${CONTROL_DOC}?key=${FS_KEY}&updateMask.fieldPaths=docked`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fields: { docked: { booleanValue: false } } })
-  }).catch(() => {});
+export async function startBroadcast(p: {
+  session: string;
+  messageId: string;
+  startedAt: number;
+  switchId: string;
+}): Promise<{ startId: string; startedAt: number } | null> {
+  const startId = `${p.switchId}:${p.session}`;
+  // 대기 자리를 같은 쓰기로 비운다. 송출이 시작된 뒤에도 자리를 쥐고 있으면
+  // 뒷사람이 08 화면(최대 30초) 내내 07에서 기다리게 된다.
+  const ok = await patchDock({
+    startId: { stringValue: startId },
+    startSession: { stringValue: p.session },
+    startMessage: { stringValue: p.messageId },
+    startedAt: fsInt(p.startedAt),
+    endedAt: fsInt(0),
+    waitSession: { stringValue: '' },
+    waitMessage: { stringValue: '' },
+    waitAt: fsInt(0)
+  });
+  return ok ? { startId, startedAt: p.startedAt } : null;
+}
+
+/** 강조가 끝났다. 폰을 뺀 시각을 적는다 — 벽은 이걸 보고 큰 목소리를 접는다. */
+export async function endBroadcast(at: number): Promise<boolean> {
+  return patchDock({ endedAt: fsInt(at) });
+}
+
+/**
+ * 파이 없이 꽂음을 흉내 낸다. **개발과 왕복 검사 전용.**
+ *
+ * 실제 설치에서는 `pi/switch.py`가 같은 칸을 쓴다. 이 함수 덕에 파이가 없는
+ * 책상에서도 폰과 벽의 왕복을 그대로 볼 수 있다.
+ */
+export async function fakeSwitch(on: boolean): Promise<boolean> {
+  const now = Date.now();
+  return patchDock({
+    plugged: { booleanValue: on },
+    ...(on ? { switchId: { stringValue: `fake-${now}` } } : null),
+    switchAt: fsInt(now),
+    piAt: fsInt(now)
+  });
 }
 
 /**
  * 목록에 아직 안 들어온 글을 id로 직접 집어 온다.
- * 풍경 목록은 60초마다 갱신되는데 도킹 신호는 몇 초면 닿는다 — 그 사이를
- * 메우지 않으면 방금 쓴 사람이 남의 글을 자기 글로 보게 된다.
+ * 풍경 목록은 60초마다 갱신되는데 도킹 신호는 곧바로 닿는다 — 그 사이를
+ * 메우지 않으면 방금 쓴 사람이 제 글을 못 본다.
  */
 export async function getMessage(id: string): Promise<StoredMessage | null> {
   if (!hasFirebaseEnv() || !id) return null;
@@ -423,13 +557,4 @@ export async function getMessage(id: string): Promise<StoredMessage | null> {
   } catch {
     return null;
   }
-}
-
-export async function resetShowTrigger(): Promise<void> {
-  if (!hasFirebaseEnv()) return;
-  await fetch(`${FS_BASE}/${CONTROL_DOC}?key=${FS_KEY}&updateMask.fieldPaths=showTrigger`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fields: { showTrigger: { booleanValue: false } } })
-  }).catch(() => {});
 }

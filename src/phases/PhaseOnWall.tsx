@@ -1,7 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import { releaseDock, subscribeSwitch } from '../lib/firebase';
-import { EMPHASIS_SEC } from '../lib/wall';
+import { endBroadcast, fakeSwitch, isFirebaseConfigured, subscribeDock } from '../lib/firebase';
+import { EMPHASIS_MS, EMPHASIS_SEC } from '../lib/wall';
+import { isDevMode } from '../lib/stage';
+
 interface Props {
+    /**
+     * 파이가 잰 꽂힌 순간. **벽도 같은 값에서 센다.**
+     *
+     * 전에는 이 화면이 제가 떠오른 시각부터 30초를 셌다. 벽은 벽대로 제가
+     * 신호를 알아챈 시각부터 셌고, 둘 다 3초에 한 번 확인하던 터라 같은
+     * 발화의 남은 시간이 두 화면에서 최대 3초 어긋났다.
+     */
+    startedAt: number;
+    /** 이 참여의 이름표. 벽에 떠 있는 것이 아직 내 글인지 가른다 */
+    session: string;
     onDone: (pulled: boolean) => void;
 }
 /**
@@ -12,29 +24,81 @@ interface Props {
  * 쳐다본다. 남은 시간을 읽지 않아도 '이제 곧'이 전해진다.
  */
 const KEEN_SEC = 10;
-export default function PhaseOnWall({ onDone }: Props) {
-    // 폰을 빼면 스위치가 열린다(true→false). 큰 목소리를 끝내는 것은 시간이
-    // 아니라 이 순간이다 — 아래 '폰을 뺐어요' 버튼과 같은 길로 간다.
-    const pulledRef = useRef(false);
-    useEffect(() => {
-        let prev: boolean | null = null;
-        return subscribeSwitch((on) => {
-            if (prev === true && !on && !pulledRef.current) {
-                pulledRef.current = true;
-                void releaseDock();
-                onDone(true);
-            }
-            prev = on;
-        });
-    }, [onDone]);
 
-    const [left, setLeft] = useState(EMPHASIS_SEC);
-    useEffect(() => { const start = Date.now(); const id = window.setInterval(() => { const remaining = Math.max(0, EMPHASIS_SEC - (Date.now() - start) / 1000); setLeft(remaining); if (remaining <= 0) {
-        clearInterval(id);
-        onDone(false);
-    } }, 100); return () => clearInterval(id); }, [onDone]);
+/** 뺐는지만 보면 되면 느슨해도 되지만, 폰을 빼고 화면을 보는 자리라
+ *  늦으면 그대로 보인다. 길어야 30초 도는 화면이라 부담도 작다 */
+const POLL_MS = 500;
+
+/**
+ * 남은 시간. 위아래로 자른다.
+ *
+ * 아래는 0이고 위는 30초다 — 폰의 시계가 파이보다 조금 뒤처져 있으면
+ * 뺄셈이 30을 넘겨 '31초 남음'이 찍힌다. 상한이 첫 숫자로 보이는 화면이라
+ * 그 한 자리가 곧 거짓말이 된다.
+ */
+function remain(startedAt: number): number {
+    return Math.max(0, Math.min(EMPHASIS_SEC, EMPHASIS_SEC - (Date.now() - startedAt) / 1000));
+}
+
+export default function PhaseOnWall({ startedAt, session, onDone }: Props) {
+    const doneRef = useRef(false);
+
+    /** 끝나는 길은 하나다 — 누가 끝냈든 여기로 모인다.
+     *  `at`이 0이면 벽에 알리지 않는다(이미 끝났거나, 내 송출이 아니다) */
+    function finish(pulled: boolean, at: number) {
+        if (doneRef.current) return;
+        doneRef.current = true;
+        if (at > 0) void endBroadcast(at);
+        onDone(pulled);
+    }
+
+    useEffect(() => {
+        if (!isFirebaseConfigured()) return;
+        const unsub = subscribeDock(
+            (s) => {
+                if (doneRef.current) return;
+                // 벽에 떠 있는 것이 더 이상 내 글이 아니다. 내 차례는 끝났고,
+                // 끝냈다고 벽에 알릴 자격도 없다 — 남의 송출을 접게 된다.
+                if (s.startSession && s.startSession !== session) return finish(true, 0);
+                if (s.endedAt > 0) return finish(true, 0);
+                // 뺐다. 꽂힘이 풀렸고 그 시각이 내 꽂음보다 뒤다 —
+                // 앞사람이 남긴 옛 기록이 아니라는 뜻이다.
+                if (!s.plugged && s.switchAt > startedAt) finish(true, s.switchAt);
+            },
+            () => {
+                /* 잠깐 못 읽는 것으로 발화를 끊지 않는다. 아래 상한이 받쳐 준다 */
+            },
+            () => POLL_MS
+        );
+        return unsub;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    /** 파이가 없는 자리에서 뺌을 흉내 낸다. 07의 '꽂았어요'와 대칭이라
+     *  가는 길도 같다 — 꽂힘을 내려 두지 않으면 다음 사람의 07에
+     *  "앞의 폰이 아직 꽂혀 있어요"가 뜬 채로 남는다 */
+    function handleTestRelease() {
+        if (!isFirebaseConfigured()) return finish(true, Date.now());
+        void fakeSwitch(false);
+    }
+
+    const [left, setLeft] = useState(() => remain(startedAt));
+    useEffect(() => {
+        const id = window.setInterval(() => {
+            const r = remain(startedAt);
+            setLeft(r);
+            // 상한. 사람이 뺀 신호가 늦거나 아예 오지 않아도 여기서 끝난다.
+            if (r <= 0) {
+                clearInterval(id);
+                finish(false, startedAt + EMPHASIS_MS);
+            }
+        }, 100);
+        return () => clearInterval(id);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [startedAt]);
+
     return <div className="onwall-screen">
- <div className="onwall"><button className="onwall-release" onClick={() => { void releaseDock(); onDone(true); }}>폰을 뺐어요</button></div>
+ {isDevMode() && <div className="onwall"><button className="onwall-release" onClick={handleTestRelease}>폰을 뺐어요</button></div>}
  {/* 바닥 한 줄 — 왼쪽에 눈, 오른쪽에 남은 초.
      '최대 30초'는 걷어냈다. 숫자가 이만큼 커지면 그게 무엇인지는 줄어드는
      것만 봐도 알고, 상한은 이미 첫 숫자가 말하고 있다. */}

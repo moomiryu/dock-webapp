@@ -68,6 +68,11 @@ export default function App() {
   });
   // 벽에서 폰을 직접 뺐는지 — 완료 화면이 화면 전체를 쓸지 아래 절반만 쓸지 가른다
   const [pulled, setPulled] = useState(false);
+  /**
+   * 확정된 송출. 07이 넘겨주는 **파이가 잰 꽂힌 순간**과 이 참여의 이름표다.
+   * 08이 세는 30초가 벽의 30초와 같은 곳에서 출발하려면 이 값이 있어야 한다.
+   */
+  const [broadcast, setBroadcast] = useState<{ startedAt: number; session: string } | null>(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -129,7 +134,14 @@ export default function App() {
     clearDraft();
     setDraft(null);
     setGlyphTone(null);
+    setBroadcast(null);
     setScreen('home');
+  }
+
+  /** 07이 송출 확정을 알린다. 여기서만 08로 넘어간다 */
+  function handleDocked(startedAt: number, session: string) {
+    setBroadcast({ startedAt, session });
+    setScreen('onwall');
   }
 
   const text = draft?.text ?? '';
@@ -200,22 +212,27 @@ export default function App() {
           onNext={(tone) => { saveFull(draft.text, tone); setScreen('preview'); }} />;
       }
       return (
-        <PhaseSubmit draft={draft} onDocked={() => setScreen('onwall')} onEdit={() => setScreen('color')} onRestart={handleRestart} />
+        <PhaseSubmit draft={draft} onDocked={handleDocked} onEdit={() => setScreen('color')} onRestart={handleRestart} />
       );
 
     case 'submit':
       return (
         <PhaseSubmit
           draft={draft}
-          onDocked={() => setScreen('onwall')}
+          onDocked={handleDocked}
           onEdit={() => setScreen('color')}
           onRestart={handleRestart}
         />
       );
 
     case 'onwall':
+      // 송출이 확정되지 않았는데 이 화면에 있을 수는 없다. 새로고침 같은
+      // 사고로 그렇게 됐다면 발화 중인 척하지 말고 완료로 내보낸다.
+      if (!broadcast) return <PhaseDone stillDocked onRestart={handleRestart} />;
       return (
         <PhaseOnWall
+          startedAt={broadcast.startedAt}
+          session={broadcast.session}
           onDone={(didPull) => {
             setPulled(didPull);
             setScreen('done');

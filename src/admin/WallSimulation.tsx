@@ -1,7 +1,7 @@
 // Wall projection — MEGAFONT's output side.
 //
 // 벽은 숨 쉬는 상자들의 풍경이다. 사흘치 글이 저마다 작은 파동 상자가 되어
-// 떠다니다 서로·벽면에 닿으면 튕긴다(잔상). 스위치가 올라가면(control/display.showTrigger) 지목된
+// 떠다니다 서로·벽면에 닿으면 튕긴다(잔상). 송출 사건이 오면(control/dock의 startId) 지목된
 // 글이 검정 위에 큰 상자로 서서 세게 숨 쉬고, 30초에 걸쳐 잦아들다가, 제
 // 크기로 내려앉아 다른 잔상들 사이에 섞인다. 끝은 사건이 아니라 가라앉음이다.
 //
@@ -22,8 +22,8 @@ import {
   isFirebaseConfigured,
   submitMessage,
   subscribeMessages,
-  subscribeShowTrigger,
-  resetShowTrigger,
+  subscribeDock,
+  waitIsFree,
   getMessage
 } from '../lib/firebase';
 import type { StoredMessage } from '../lib/firebase';
@@ -32,6 +32,39 @@ import type { StoredMessage } from '../lib/firebase';
 const RECENT_N = 15;                            // fewer reads per poll (quota)
 // 체류 기간은 lib/wall.ts 한 곳에서 정한다 (아카이브가 따로 없으니 이게 수명 전부)
 const LOAD_TIMEOUT_MS = 20000;
+
+/**
+ * 도킹 신호를 보는 간격. 쉴 때와 누가 서 있을 때가 다르다.
+ *
+ * 이 화면은 24시간 돌고 Firestore 무료 할당은 하루 5만 번 읽기다. 2.5초면
+ * 3만 5천 번이라 여유가 있지만, 그 간격으로는 꽂은 뒤 벽이 반응할 때까지
+ * 사람이 기다리는 게 보인다. 그래서 **07에 누가 서 있는 동안만** 0.5초로
+ * 당긴다 — 대기가 길지 않아 늘어나는 읽기는 얼마 안 된다.
+ */
+const DOCK_POLL_IDLE_MS = 2500;
+const DOCK_POLL_WAIT_MS = 500;
+
+/**
+ * 마지막으로 처리한 송출 사건의 번호.
+ *
+ * 화면이 다시 뜰 때(파이 재부팅·새로고침) 이게 없으면 아직 남아 있는 사건을
+ * 처음 보는 것으로 읽어 같은 글이 한 번 더 등장한다. 브라우저에 적어 둔다.
+ */
+const SEEN_KEY = 'megafont.wall.seenStart';
+function readSeen(): string {
+  try {
+    return localStorage.getItem(SEEN_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+function writeSeen(id: string): void {
+  try {
+    localStorage.setItem(SEEN_KEY, id);
+  } catch {
+    /* 저장이 막힌 브라우저 — 이번 세션 동안은 ref가 대신 기억한다 */
+  }
+}
 
 // ─── 떠다니는 풍경 ────────────────────────────────────────────────────
 // 가로 세 줄을 흘러가던 것을 걷어냈다. 줄을 타면 말들이 행렬처럼 보이고,
@@ -166,6 +199,8 @@ export default function WallSimulation() {
   const [emphMsg, setEmphMsg] = useState<StoredMessage | null>(null);
   const [emphLand, setEmphLand] = useState<Land | null>(null);
   const [emphKey, setEmphKey] = useState(0);
+  /** 그 발화가 시작된 순간(파이가 잰 값). 잦아듦과 상한이 여기서 센다 */
+  const [emphStart, setEmphStart] = useState(0);
 
   // 떠다니는 몸들과 그것을 그리는 요소. 둘 다 React 바깥에 둔다 —
   // 프레임마다 상태를 갱신하면 열 개 × 60프레임을 다시 그리게 된다.
@@ -258,16 +293,18 @@ export default function WallSimulation() {
     return list.slice(0, RECENT_N);
   }, [messages, now, emphMsg]);
 
-  const latestRef = useRef<StoredMessage | null>(null);
+  // '최신 글'을 따로 들고 있지 않는다. 지목된 글을 못 가져왔을 때 그걸로
+  // 대신 띄우던 길이 있었고, 그 길이 남의 글을 남의 발화로 만들었다.
   const listRef = useRef<StoredMessage[]>([]);
   useEffect(() => {
-    latestRef.current = visible[0] ?? null;
     listRef.current = visible;
   }, [visible]);
 
-  // Switch trigger → 지목된 글을 크게. 상승 엣지(false→true)에서만.
-  const prevTriggerRef = useRef(false);
-  const dockedRef = useRef(false);
+  // 송출 사건 → 지목된 글을 크게. **번호가 전과 다를 때만.**
+  // 전에는 깃발 하나가 올라간 것을 보고 띄웠다 — 그래서 벽이 다시 뜨면
+  // 아직 올라가 있던 깃발이 새 사건으로 읽혔다.
+  const seenIdRef = useRef<string>(readSeen());
+  const landingRef = useRef(false);
   const emphIdRef = useRef<string | null>(null);
   const closeTimerRef = useRef(0);
   const hideTimerRef = useRef(0);
@@ -275,6 +312,7 @@ export default function WallSimulation() {
     // 큰 목소리가 끝나는 방식은 하나다 — 잔상 자리로 내려앉는다.
     // 타이머가 끝내든 사람이 폰을 빼든 같은 길로 간다.
     const land = () => {
+      landingRef.current = true;
       clearTimeout(closeTimerRef.current);
       clearTimeout(hideTimerRef.current);
       const id = emphIdRef.current;
@@ -302,51 +340,69 @@ export default function WallSimulation() {
       }, LAND_MS);
     };
 
-    const show = (msg: StoredMessage) => {
+    const show = (msg: StoredMessage, startedAt: number) => {
       clearTimeout(closeTimerRef.current);
       clearTimeout(hideTimerRef.current);
       emphIdRef.current = msg.id;
+      landingRef.current = false;
+      setEmphStart(startedAt);
       setEmphLand(null);
       setEmphMsg(msg);
       setEmphKey((k) => k + 1);
-      // EMPHASIS_MS는 상한이다. 대개는 아래 '폰이 빠졌다'가 먼저 내려앉힌다.
-      closeTimerRef.current = window.setTimeout(land, EMPHASIS_MS);
+      // EMPHASIS_MS는 상한이고, 세는 곳은 **꽂힌 순간**이다. 벽이 신호를 몇
+      // 초 늦게 알아채도 폰과 같은 시각에 끝난다. 대개는 아래 '폰이 빠졌다'가
+      // 그보다 먼저 내려앉힌다.
+      const left = Math.max(0, EMPHASIS_MS - (Date.now() - startedAt));
+      closeTimerRef.current = window.setTimeout(land, left);
     };
 
-    const unsub = subscribeShowTrigger(
-      (showTrigger, showId, docked) => {
-        // 폰이 빠지는 순간 큰 목소리가 끝나고 메아리로 남는다.
-        // 강조를 끝내는 건 타이머가 아니라 사람이다 — 타이머는 아무도 빼지
-        // 않았을 때를 위한 상한일 뿐이다.
-        const wasDocked = dockedRef.current;
-        dockedRef.current = docked;
-        if (wasDocked && !docked) land();
+    const unsub = subscribeDock(
+      (s) => {
+        // ── 끝났나 ─────────────────────────────────────────────
+        // 폰이 빠지는 순간 큰 목소리가 끝나고 메아리로 남는다. 끝내는 건
+        // 타이머가 아니라 사람이다 — 위의 상한은 아무도 빼지 않았을 때를
+        // 위한 것이다.
+        //
+        // 끝났다는 것을 **두 곳에서** 읽는다. 폰이 적은 끝난 시각이 하나이고,
+        // 홈에서 꽂힘이 풀린 것이 다른 하나다. 뒤엣것이 있어서 폰이 꺼지거나
+        // 그 사이 인터넷이 끊겨도 벽은 30초를 멍하니 기다리지 않는다.
+        const ended = s.endedAt > 0 || (!s.plugged && s.switchAt > s.startedAt);
+        if (ended && s.startId === seenIdRef.current && !landingRef.current) {
+          land();
+        }
 
-        const rising = showTrigger && !prevTriggerRef.current;
-        prevTriggerRef.current = showTrigger;
-        if (!rising) return;
-        void resetShowTrigger();
+        // ── 새 사건인가 ────────────────────────────────────────
+        if (!s.startId || s.startId === seenIdRef.current) return;
+        // 번호를 먼저 적는다. 글을 가져오는 동안 다음 바퀴가 같은 사건을 또
+        // 집으면 한 발화가 두 번 등장한다.
+        seenIdRef.current = s.startId;
+        writeSeen(s.startId);
 
-        // 방금 꽂은 사람의 글이 무엇인지 신호가 지목해준다.
+        if (s.endedAt > 0) return;                            // 이미 끝난 사건
+        if (Date.now() - s.startedAt >= EMPHASIS_MS) return;  // 지나간 사건
+        // **어느 글인지 모르면 아무 일도 일어나지 않는다.** 여기서 '최신'으로
+        // 대충 넘기면 방금 쓴 사람이 앞사람 글을 제 발화로 보게 된다.
+        if (!s.startMessage) return;
+
         // 목록은 60초마다 갱신되므로 그 안에 없을 수 있다 — 그러면 직접 가져온다.
-        // 여기서 '최신'으로 대충 넘기면 방금 쓴 사람이 앞사람 글을 보게 된다.
-        const known = showId ? listRef.current.find((m) => m.id === showId) : null;
+        const known = listRef.current.find((m) => m.id === s.startMessage);
         if (known) {
-          show(known);
+          show(known, s.startedAt);
           return;
         }
-        if (showId) {
-          void getMessage(showId).then((fetched) => {
-            const msg = fetched ?? latestRef.current;
-            if (msg) show(msg);
-          });
-          return;
-        }
-        const latest = latestRef.current;
-        if (latest) show(latest);
+        void getMessage(s.startMessage).then((fetched) => {
+          if (fetched) show(fetched, s.startedAt);
+        });
       },
       () => {
-        /* control read errors are non-fatal */
+        /* 잠깐 못 읽는 것으로 풍경을 건드리지 않는다 */
+      },
+      // 자주 봐야 하는 자리는 둘이다. 07에 누가 서 있는 동안은 **등장**이
+      // 늦지 않기 위해서고, 큰 목소리가 나가는 동안은 **폰을 뺐을 때 거기서
+      // 곧바로 접히기** 위해서다. 둘 다 몇십 초라 읽기는 얼마 안 늘어난다.
+      (s) => {
+        if (emphIdRef.current && !landingRef.current) return DOCK_POLL_WAIT_MS;
+        return s && !waitIsFree(s) ? DOCK_POLL_WAIT_MS : DOCK_POLL_IDLE_MS;
       }
     );
     return () => {
@@ -499,7 +555,7 @@ export default function WallSimulation() {
       ))}
 
       {/* 발화 — 검정 위에 큰 상자 하나 */}
-      {emphMsg && <WallShowMessage key={emphKey} msg={emphMsg} land={emphLand} />}
+      {emphMsg && <WallShowMessage key={emphKey} msg={emphMsg} land={emphLand} startedAt={emphStart} />}
 
       {showOverlay && (
         <div className="wall-overlay">
@@ -545,21 +601,29 @@ const WallBlock = memo(function WallBlock({ msg, index, ghost, onEl }: { msg: St
 
 // ─── 발화 (검정 위의 큰 상자. 잦아들다 내려앉는다) ────────────────────
 
-const WallShowMessage = memo(function WallShowMessage({ msg, land }: { msg: StoredMessage; land: Land | null }) {
+/**
+ * 꽂힌 순간부터 흐른 만큼 잦아든 세기.
+ *
+ * 전에는 이 상자가 **제가 태어난 시각**부터 셌다. 벽이 신호를 늦게 알아채면
+ * 잦아듦도 그만큼 늦게 시작해, 폰의 숫자가 0이 되는데 벽은 아직 세게 숨 쉬고
+ * 있었다. 이제 둘 다 꽂힌 순간 위에 있다.
+ */
+function calmAt(startedAt: number): number {
+  const t = Math.min(1, Math.max(0, (Date.now() - startedAt) / EMPHASIS_MS));
+  return 1 - (1 - ECHO_STRENGTH) * t;
+}
+
+const WallShowMessage = memo(function WallShowMessage({ msg, land, startedAt }: { msg: StoredMessage; land: Land | null; startedAt: number }) {
   const { bg, text, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
   const { lines, shape, box } = useMemo(() => bubbleOf(msg), [msg]);
 
   // 30초에 걸쳐 잦아든다. 상한까지 가면 잔상의 세기에 닿는다 — 그래서
   // 내려앉을 때 세기는 이미 거기 있고, 일찍 빼면 남은 만큼을 마저 내린다.
-  const [strength, setStrength] = useState(1);
+  const [strength, setStrength] = useState(() => calmAt(startedAt));
   useEffect(() => {
-    const born = performance.now();
-    const id = window.setInterval(() => {
-      const t = Math.min(1, (performance.now() - born) / EMPHASIS_MS);
-      setStrength(1 - (1 - ECHO_STRENGTH) * t);
-    }, CALM_TICK_MS);
+    const id = window.setInterval(() => setStrength(calmAt(startedAt)), CALM_TICK_MS);
     return () => clearInterval(id);
-  }, []);
+  }, [startedAt]);
 
   const landing = land !== null;
   const boxStyle = land

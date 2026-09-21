@@ -3280,6 +3280,9 @@
    둔다 — 세로가 짧은 기기에서 제목과 부제를 밀어내면 안 된다. */
 .docking-simple .dock-guide{ flex-direction: column; }
 .docking-simple .dock-guide > svg{ flex: 1 1 auto; min-height: 0; max-height: 260px; width: auto; }
+/* 07 아래 한 줄 — 왜 아직 안 넘어가는지. 지시(p)보다 물러난 얼굴이라
+   설명이 지시를 밀어내지 않는다. 뜨고 지는 자리라 그림의 높이는 안 건드린다 */
+.dock-note { align-self:center; max-width:30ch; margin:var(--s5) 0 0; text-align:center; color:var(--muted); font-size:var(--fs-cap); }
 .dock-test-link { align-self:center; min-height:var(--btn-l); border:0; background:none; color:var(--muted); font:inherit; font-size:var(--fs-cap-s); }
 .onwall-screen { min-height:100dvh; width:100%; max-width:480px; background:var(--brand-strong); color:var(--paper); padding:var(--s6) var(--pad-x); display:flex; flex-direction:column; }
 .onwall-screen .onwall { justify-content:center; align-items:center; }

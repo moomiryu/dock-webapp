@@ -2313,7 +2313,24 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 
    간격은 **패널 안쪽 여백**이 준다. 두 영역은 색이 바뀌는 경계 하나로만
    갈린다 — 붉은 미리보기 / 회색 조작 영역, 그 회색이 바닥까지 간다. */
-.tone-work{ gap: 0; padding-bottom: 0; }
+.tone-work{ gap: 0; padding-bottom: 0;
+  /* 위쪽도 같은 띠였다 (2026-09-22, 실기에서 보고 알았다).
+     두 장의 **판 배경색이 다르다**: 설명 장은 판 자체가 빨강이라 위 여백
+     16px도 빨갛게 차서 붉은 면이 화면 맨 위까지 간다. 조작 장은 판이 흰
+     종이라 같은 16px이 흰 띠로 드러났다 — 한 화면 안에서 두 장의 위쪽이
+     서로 달랐고, 아이폰에서는 브라우저 상태바 밑에 흰 줄이 한 겹 더 있는
+     것으로 보였다.
+
+     위 여백을 판에서 걷고 **붉은 면이 직접 든다**(아래 .tone-work
+     .z-glyph-stage). 머리줄은 그대로 32px 자리에 있는다 — 16+16이던 것이
+     32 하나가 될 뿐이라, 두 장이 미끄러질 때 머리줄이 안 뛴다. */
+  padding-top: 0; }
+/* 판이 들고 있던 위 여백을 이 면이 대신 든다. 16(판) + 16(면) = 32였다.
+   **.tone-adjust를 앞에 붙여야 한다** — 파일 뒤쪽에 `.tone-adjust
+   .z-glyph-stage{ padding-top: var(--s5) }`가 있고 특정도가 같아서,
+   빼면 그쪽이 이겨 머리줄이 32에서 16으로 뛴다(재서 확인). 오늘만 같은
+   함정을 두 번째 밟는다(아래 max-height:700px 블록도 그랬다). */
+.tone-adjust .tone-work .z-glyph-stage{ padding-top: var(--s7); }
 /* 첫 장은 붉은 면이 화면 전체다 — 아래에 조작할 것이 없으니 나눌 이유도 없다 */
 .tone-intro{ background: var(--brand-strong); cursor: pointer; }
 .tone-intro .z-glyph-stage{ flex: 1; }

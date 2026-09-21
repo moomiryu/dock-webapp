@@ -1144,6 +1144,131 @@ function dockPhone(root: Element, home: Item, held: Item, hand: Item | null,
  * 되돌아서는 두 컷(처음과 끝)에 머무는 몫을 더 준다 — 거기서 안 쉬면
  * 방향이 바뀌는 것이 아니라 튕겨 나온 것으로 보인다.
  */
+/**
+ * 컷을 **나란히 놓고 옆으로 민다.**
+ *
+ * chainSvg는 컷들을 한 자리에 포개 놓고 같은 물건끼리 모양을 이어 준다.
+ * 한 동작의 앞뒤일 때는 그게 맞다(Step 3의 꽂기). 그런데 Step 1의 셋은
+ * 한 동작이 아니라 **서로 다른 세 장면**이다 — 쓰는 중 · 최대 60자 ·
+ * 비속어 금지. 포개 놓으니 건너가는 동안 두 장면이 같은 자리에서 반투명
+ * 으로 겹쳐, 무엇을 읽어야 하는지가 그 1.9초 동안 없었다.
+ *
+ * 그래서 포개지 않는다. 화판 하나에 판을 옆으로 이어 붙이고(0 · w · 2w …)
+ * 그 띠를 통째로 왼쪽으로 민다. 화판이 곧 창이라 한 판만 보인다 — 겹치는
+ * 순간이 아예 생기지 않는다.
+ *
+ * 마지막에 **첫 판을 한 번 더** 둔다. 끝에서 처음으로 돌아가는 순간이
+ * 같은 그림 위에서 일어나야 건너뛴 것이 안 보인다(한 바퀴가 끝나면 SMIL이
+ * 값의 맨 앞으로 돌아간다 — 그때 -3w와 0이 같은 그림이면 아무 일도 안
+ * 일어난 것처럼 이어진다). 타이핑도 그 자리에서 이어져야 하므로, 판을
+ * 베끼기 **전에** 건다 — 베낀 판은 같은 시계를 타므로 둘의 상태가 늘 같다.
+ *
+ * 머무는 10, 건너가는 1. 14초에서 한 판이 4.24초 서고 미는 데 0.42초 쓴다.
+ * 포개던 때는 2.8초 서고 1.87초를 건너가는 데 썼다 — 읽을 판이 늘 바뀌는
+ * 중이었다.
+ */
+const SLIDE = { hold: 10, move: 1 };
+
+export function slideSvg(raws: string[], key: string, dur = 14): string {
+  if (typeof DOMParser === 'undefined' || raws.length < 2) return scopeSvg(raws[0], key);
+  try {
+    const cuts = raws.map((r) => new DOMParser().parseFromString(r, 'image/svg+xml').documentElement);
+    const box = cuts[0].getAttribute('viewBox');
+    /* 화판이 서로 다르면 옆으로 잇는 셈이 어긋난다 — 그럴 땐 첫 컷만 준다.
+       움직이는 것이 아쉬운 것보다 어긋난 것이 나쁘다(chainSvg와 같은 규칙). */
+    if (!box || cuts.some((c) => c.getAttribute('viewBox') !== box)) return scopeSvg(raws[0], key);
+    const vb = box.split(/[ ,]+/).map(Number);
+    if (vb.length !== 4 || !vb[2]) return scopeSvg(raws[0], key);
+    const w = vb[2];
+    cuts.forEach(inlineFills);
+
+    const n = cuts.length;
+    /* 첫 판은 처음과 끝에 한 번씩 선다. 그 둘은 고리를 건너 **이어 붙는 한
+       구간**이라 반씩 나눠 가져야 다른 판과 같아진다. */
+    const t = timeline(
+      Array.from({ length: n + 1 }, (_, i) => (i === 0 || i === n ? SLIDE.hold / 2 : SLIDE.hold)),
+      SLIDE.move);
+
+    const base = cuts[0];
+    const doc = base.ownerDocument;
+    const NS = 'http://www.w3.org/2000/svg';
+    const frames = cuts.flatMap(itemsOf);
+
+    /* 타이핑은 **옮기기 전에** 건다. typeIn이 작가가 붙인 이름으로 찾는데
+       (#typed-message · #keyboard), 판 셋이 다 같은 이름을 들고 있어서
+       한자리에 모은 뒤에는 어느 판의 것인지 가릴 수 없다. */
+    typeIn(base, t, dur);
+    cuts.forEach(markEyes);
+
+    const track = doc.createElementNS(NS, 'g');
+    /**
+     * 판마다 **제 화판 크기로 자른다.**
+     *
+     * 작가는 화판 밖까지 그린다 — 여기 셋째 판의 그림자는 x 468까지 가고,
+     * 390 간격으로 세우면 그 78px이 옆 판 위로 비어져 나온다(재서 확인:
+     * 첫 판이 서 있는 동안 왼쪽 아래에 보라색 얼룩이 떠 있었다).
+     *
+     * 오려 내는 틀은 **하나**면 된다. 요소의 transform은 제 clip-path에도
+     * 걸리므로, 같은 틀이 판마다 제자리로 옮겨 가 붙는다.
+     *
+     * 판마다 <svg>를 끼우는 방법도 된다. 안 쓴 이유: **<svg>는 저마다
+     * 시계를 따로 갖는다.** 재 보니 크롬에서는 안쪽 넷이 바깥과 0.000초로
+     * 맞았지만(0.35 · 3.37 · 12.38초에서 확인), 그건 다섯 시계가 우연히
+     * 같이 출발한 것이지 같은 시계인 것이 아니다. 어긋나면 타이핑이 판이
+     * 나간 뒤에 돌아 아무도 못 보게 된다 — 학생들 폰에서 확인할 수 없는
+     * 것을 우연에 맡기지 않는다. */
+    const clip = doc.createElementNS(NS, 'clipPath');
+    clip.setAttribute('id', 'shelf');
+    clip.setAttribute('clipPathUnits', 'userSpaceOnUse');
+    const pane = doc.createElementNS(NS, 'rect');
+    pane.setAttribute('x', vb[0] + '');
+    pane.setAttribute('y', vb[1] + '');
+    pane.setAttribute('width', vb[2] + '');
+    pane.setAttribute('height', vb[3] + '');
+    clip.appendChild(pane);
+    const shelf = (i: number) => {
+      const g = doc.createElementNS(NS, 'g');
+      if (i) g.setAttribute('transform', `translate(${r2(i * w)} 0)`);
+      g.setAttribute('clip-path', 'url(#shelf)');
+      return g;
+    };
+    /* 첫 판 말고는 이름을 뗀다. 작가가 판마다 같은 이름을 쓰므로(세 컷
+       모두 #keyboard·#pressed-key를 들고 있다) 한자리에 모으면 한 문서에
+       같은 이름이 넷이 된다. 가리키는 쪽(url(#…))은 그대로 두어도 앞의
+       것을 찾아가고, 판들의 그림이 같으므로 그게 맞는 답이다. */
+    const anon = (g: Element) => {
+      g.querySelectorAll('[id]').forEach((el) => el.removeAttribute('id'));
+      g.removeAttribute('id');
+      return g;
+    };
+    const first = shelf(0);
+    while (base.firstChild) first.appendChild(base.firstChild);
+    track.appendChild(first);
+    for (let i = 1; i < n; i++) {
+      const g = shelf(i);
+      Array.from(cuts[i].childNodes).forEach((c) => g.appendChild(doc.importNode(c, true)));
+      track.appendChild(anon(g));
+    }
+    const again = anon(first.cloneNode(true) as Element);
+    again.setAttribute('transform', `translate(${r2(n * w)} 0)`);
+    track.appendChild(again);
+
+    put(track, 'animateTransform', {
+      attributeName: 'transform', type: 'translate',
+      values: doubled(Array.from({ length: n + 1 }, (_, i) => `${r2(-i * w)} 0`)).join(';'),
+      keyTimes: t.keyTimes, keySplines: t.keySplines, calcMode: 'spline', dur: `${dur}s`
+    });
+    const defs = doc.createElementNS(NS, 'defs');
+    defs.appendChild(clip);
+    base.appendChild(defs);
+    base.appendChild(track);
+    focusOn(base, frames);
+    return scopeSvg(new XMLSerializer().serializeToString(base), key);
+  } catch {
+    return scopeSvg(raws[0], key);
+  }
+}
+
 export function chainSvg(raws: string[], key: string, dur = 11, even = false, loop = false): string {
   if (typeof DOMParser === 'undefined' || raws.length < 2) return scopeSvg(raws[0], key);
   try {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import BackButton from './BackButton';
-import { aboutSvg, chainSvg, scopeSvg } from '../lib/svgAsset';
+import { aboutSvg, chainSvg, scopeSvg, slideSvg } from '../lib/svgAsset';
 import { STAY_DAYS } from '../lib/wall';
 
 // 작가가 삽화를 컷으로 나눠 준다. 컷 사이를 이어 도는 일은 svgAsset이 한다.
@@ -137,17 +137,14 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
       </p>
     ),
     /* 세 컷이 차례로 온다: 쓰는 중('내 생각은|') → 최대 60자 → 비속어
-       금지. 판도 자판도 캐릭터도 같은 자리에 있고 **판 위의 말**만 갈린다 —
-       규칙 둘을 나란히 놓는 대신 한 자리에서 갈아 끼운다.
+       금지. 셋은 한 동작의 앞뒤가 아니라 **차례로 읽을 목록**이다.
 
-       even을 켜는 이유: 셋 다 **읽을 말**이라 가운데도 끝과 같이 머물러야
-       한다. 기본 규칙(가운데는 짧게)은 가운데가 건너가는 중일 때의 것이다.
-
-       loop을 켜는 이유: 셋은 한 동작의 앞뒤가 아니라 **차례로 읽을 목록**
-       이라 되짚을 순서가 없다. 쓰는 중 → 최대 60자 → 비속어 금지, 그리고
-       다시 처음. */
+       그래서 포개지 않고 **옆으로 넘긴다**(slideSvg). 한 자리에서 갈아
+       끼우던 때는 건너가는 1.9초 동안 두 판의 글이 반투명으로 겹쳐, 그
+       동안 읽을 것이 없었다. 판을 나란히 놓고 화판으로 자르면 겹치는
+       순간이 아예 없다. */
     art: <Built name="rules" still={artRule1}
-      make={(k) => chainSvg([artRule1, artRule2, artRule3], k, 14, true, true)} />,
+      make={(k) => slideSvg([artRule1, artRule2, artRule3], k, 14)} />,
     artClass: 'is-wide'
   },
   {

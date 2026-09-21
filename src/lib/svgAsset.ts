@@ -32,6 +32,36 @@ export function scopeSvg(raw: string, key: string): string {
  *
  * 맨 앞에 넣는다 — 그래야 발이 그림자 **위에** 선다.
  */
+/** 발밑 그림자의 색. tokens.css의 --char-shade와 같은 값이다 */
+const SHADE = '#5a5580';
+
+/**
+ * 작가가 그려 둔 **발밑 그림자**를 찾아 표시한다.
+ *
+ * 그림자는 인물이 서 있다는 표시일 뿐인데, 제 색(#5a5580)을 그대로 깔면
+ * 화면에서 제일 어두운 것이 되어 인물보다 먼저 눈에 든다. 표시해 두면
+ * app.css가 한 자리에서 옅게 깐다(.mf-ground).
+ *
+ * **타원만** 고른다. 같은 색이 그림자 말고도 쓰인다 — Step 3의 폰은 윗단과
+ * 아랫단이 이 색이고(재서 확인: rect 77.1×12.3, path 76.2×9.3), 납작한
+ * 정도로만 거르면 6.3:1과 8.2:1이라 그림자(8.2~11.9:1)와 안 갈린다.
+ * 바닥 그림자는 넷 다 ellipse였다.
+ *
+ * 작가가 다음에 타원을 path로 내보내면 이 표시가 안 붙는다. 그때는 그림자가
+ * 제 색으로 진하게 설 뿐, 그림이 망가지지는 않는다.
+ *
+ * 검은 바탕인 장(About)은 부르지 않는다 — 거기서는 이 색이 바닥이 아니라
+ * 밤에 잠긴 면이라, 옅게 하면 장면이 흐려진다.
+ */
+function markGround(root: Element) {
+  for (const el of Array.from(root.querySelectorAll('ellipse'))) {
+    if ((el.getAttribute('fill') ?? '').toLowerCase() !== SHADE) continue;
+    const rx = Number(el.getAttribute('rx') ?? 0), ry = Number(el.getAttribute('ry') ?? 0);
+    if (!rx || !ry || rx < ry * 4) continue;
+    el.setAttribute('class', `${el.getAttribute('class') ?? ''} mf-ground`.trim());
+  }
+}
+
 export function withGround(html: string, at: { cx: number; cy: number; rx: number; ry: number }): string {
   const tag = `<ellipse class="mf-ground" cx="${r2(at.cx)}" cy="${r2(at.cy)}"`
     + ` rx="${r2(at.rx)}" ry="${r2(at.ry)}"/>`;
@@ -1397,6 +1427,7 @@ export function slideSvg(scenes: Array<string | string[]>, key: string, dur = 14
       seen += m;
       inlineFills(head);
       markEyes(head);
+      markGround(head);
       if (m > 1) {
         const rest = (sc as string[]).slice(1).map(parse);
         rest.forEach(inlineFills);

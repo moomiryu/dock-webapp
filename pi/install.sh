@@ -13,6 +13,16 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 1
 fi
 
+# 값이 자리표시자 그대로면 여기서 멈춘다. 2026-09-22 첫 실기에서 이걸 안
+# 막아서, 서비스가 '여기에-firebase-api-key'를 그대로 들고 뜬 채 403만 찍었다.
+# switch.py는 값이 비었는지만 보지 그 값이 말이 되는지는 안 본다.
+if grep -q '여기에-' "$ENV_FILE"; then
+  echo "megafont.env 에 아직 안 채운 값이 있다:"
+  grep -n '여기에-' "$ENV_FILE" | sed 's/^/  /'
+  echo "채운 뒤 다시 돌려라:  nano $ENV_FILE && bash install.sh"
+  exit 1
+fi
+
 chmod +x "$HERE/kiosk.sh" "$HERE/switch.py"
 
 # ── 1. 부팅하면 벽 ────────────────────────────────────────────
@@ -47,7 +57,10 @@ WantedBy=default.target
 UNIT
 
 systemctl --user daemon-reload
-systemctl --user enable --now megafont-switch.service
+# enable --now 는 이미 도는 서비스를 건드리지 않는다 — 값을 고치고 이 파일을
+# 다시 돌려도 옛 값으로 계속 돌았다. 늘 다시 띄워서 지금 값을 읽게 한다.
+systemctl --user enable megafont-switch.service
+systemctl --user restart megafont-switch.service
 # 로그인 안 해도 서비스가 돌게 (설치물은 사람이 로그인하지 않는다)
 sudo loginctl enable-linger "$USER" || true
 

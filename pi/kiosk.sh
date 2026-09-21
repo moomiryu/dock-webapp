@@ -12,8 +12,16 @@ wlopm --on '*' 2>/dev/null || true
 PROFILE="$HOME/.config/chromium/Default/Preferences"
 [ -f "$PROFILE" ] && sed -i 's/"exit_type":"Crashed"/"exit_type":"Normal"/' "$PROFILE" 2>/dev/null || true
 
-# 와이파이가 붙기 전에 열면 빈 화면이 된다
-sleep 8
+# 인터넷이 잡히기 전에 열면 크로미움이 오류 페이지를 띄우고 **거기서 영영
+# 안 움직인다** — 다시 시도하는 법이 없다. 8초를 기다리던 것을 2026-09-22에
+# 걷어냈다: 처음 보는 와이파이는 붙는 데 8초보다 오래 걸릴 수 있고, 그러면
+# 벽 대신 오류 페이지가 설치물이 된다. 이제 벽 주소가 실제로 응답할 때까지
+# 기다린다. 2분을 넘기면 그냥 연다 — 그때는 망 자체가 없는 것이라 어차피
+# 사람이 봐야 한다.
+for _ in $(seq 1 60); do
+  curl -s -o /dev/null --max-time 2 "$URL" && break
+  sleep 2
+done
 
 # 브라우저 이름이 판마다 다르다. 옛 라즈베리파이 OS는 chromium-browser,
 # 요즘(Bookworm부터)은 chromium이다. 2026-09-22 첫 실기에서 이 줄이

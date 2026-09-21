@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import BackButton from '../components/BackButton';
 import { foldLines } from '../lib/fit';
-import { BODY, EYE_LOOK, EYE_WHITE, HEAD, VIEW, WALK } from '../character/walker';
+import { flatSvg } from '../lib/svgAsset';
+/* 작가가 준 도움말 아이콘. 물음표 둘을 눈으로 쓴 얼굴이다. 여기서 다시
+   그리지 않고 그 파일을 그대로 들여온다 — 작가가 고치면 같이 바뀐다.
+   flatSvg가 안의 <style>을 걷어내 색을 요소에 직접 붙인다 — 안 걷으면 그
+   CSS 글이 **버튼의 글자로** 섞여 들어간다(소개 화면 삽화와 같은 방법). */
+import helpIcon from '../../by_moomiryu/Renewal_v1/Asset/HELP Icon.svg?raw';
 
 interface Props {
     initialText: string;
@@ -146,20 +151,12 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
       input.current?.blur();
       setHint(true);
     }}>
-    {/* 홈의 구경꾼 하나가 물음표를 달고 서 있다. 도형은 walker.ts에서 그대로
-        온다 — 여기서 다시 그리면 두 캐릭터가 된다. 이름은 옆의 글이므로
-        그림 전체가 aria-hidden이다. */}
-    <span className="hint-figure" aria-hidden="true">
-      <svg viewBox={`0 0 ${VIEW.w} ${VIEW.h}`} focusable="false">
-        <path fill="currentColor" d={WALK.farRest} />
-        <path fill="currentColor" d={WALK.nearRest} />
-        <circle fill="currentColor" cx={HEAD.cx} cy={HEAD.cy} r={HEAD.r} />
-        <path fill="currentColor" d={BODY} />
-        <circle style={{ fill: 'var(--paper)' }} cx={EYE_WHITE.cx} cy={EYE_WHITE.cy} r={EYE_WHITE.r} />
-        <circle fill="currentColor" cx={EYE_LOOK.cx} cy={EYE_LOOK.cy} r={EYE_LOOK.r} />
-      </svg>
-      <i className="hint-q">?</i>
-    </span>
+    {/* 구경꾼 하나에 빨간 물음표 뱃지를 달아 두었던 자리다(2026-09-21에
+        작가의 도움말 아이콘으로 갈았다). 뱃지는 같이 걷어냈다 — 새 아이콘이
+        물음표를 이미 눈으로 들고 있어서 물음표가 셋이 됐다.
+        이름은 옆의 글이므로 그림 전체가 aria-hidden이다. */}
+    <span className="hint-figure" aria-hidden="true"
+      dangerouslySetInnerHTML={{ __html: flatSvg(helpIcon, 'help') }} />
     무슨 말을 쓸지 막막하다면</button>
   {hint && (
     <div className="write-hint" id="write-hint">

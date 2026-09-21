@@ -16,6 +16,29 @@ export function scopeSvg(raw: string, key: string): string {
     .replace(/(\s(?:xlink:)?href=")#([^"]+)"/g, `$1#$2-${key}"`);
 }
 
+/**
+ * 그림 하나를 그대로 쓰되 **<style>을 걷어낸다.**
+ *
+ * SVG 안의 <style>은 그 그림 안에만 도는 것이 아니라 **문서 전체**에 돈다.
+ * 이름표를 달아 두면(scopeSvg) 다른 그림과 부딪히지는 않지만, 그 글이
+ * 요소의 텍스트로 남는 것은 또 다른 문제다 — 버튼 안에 그림을 넣었더니
+ * 버튼의 글자에 `.cls-1-help { fill: #fff }`가 통째로 섞여 들어왔다.
+ *
+ * 그래서 컷을 이을 때 하던 것을 여기서도 한다: 반 규칙을 요소의 속성으로
+ * 옮기고 <style>을 지운다. 색은 작가가 적은 그대로다.
+ */
+export function flatSvg(raw: string, key: string): string {
+  if (typeof DOMParser === 'undefined') return scopeSvg(raw, key);
+  try {
+    const root = new DOMParser().parseFromString(raw, 'image/svg+xml').documentElement;
+    if (!root || root.querySelector('parsererror')) return scopeSvg(raw, key);
+    inlineFills(root);
+    return scopeSvg(new XMLSerializer().serializeToString(root), key);
+  } catch {
+    return scopeSvg(raw, key);
+  }
+}
+
 // ─── 두 컷을 오가는 모프 ──────────────────────────────────────────
 //
 // 작가가 삽화를 짝으로 준다. 한 군데만 다른 두 컷이다 — 크기 손잡이가

@@ -54,12 +54,28 @@ const SHADE = '#5a5580';
  * 밤에 잠긴 면이라, 옅게 하면 장면이 흐려진다.
  */
 function markGround(root: Element) {
+  const found: Element[] = [];
   for (const el of Array.from(root.querySelectorAll('ellipse'))) {
     if ((el.getAttribute('fill') ?? '').toLowerCase() !== SHADE) continue;
     const rx = Number(el.getAttribute('rx') ?? 0), ry = Number(el.getAttribute('ry') ?? 0);
     if (!rx || !ry || rx < ry * 4) continue;
-    el.setAttribute('class', `${el.getAttribute('class') ?? ''} mf-ground`.trim());
+    found.push(el);
   }
+  if (!found.length) return;
+  /* 그림자가 둘 이상이면 **한 묶음**으로 옅게 한다. 타원마다 따로 옅게 하면
+     겹치는 자리가 두 번 깔려 더 진해진다 — Step 3 넷째 컷에서 두 그림자가
+     17px 겹치고, 컷 사이를 움직이는 동안에도 그렇다. 묶음에 opacity를 주면
+     겹친 자리도 한 장의 그림자와 같은 색·농도다.
+
+     묶음은 **맨 앞 그림자 자리**에 둔다. 그림자는 바닥이라 무엇보다 아래에
+     있어야 하고, 뒤에 그려진 그림자를 앞으로 당기는 것은 그래서 안전하다
+     (반대로 앞 그림자를 뒤로 미루면 몸통 위에 얹힌다). 타원의 fill은 떼어
+     묶음에서 물려받게 한다 — 제 fill이 있으면 묶음의 색이 안 닿는다. */
+  const doc = root.ownerDocument;
+  const g = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', 'mf-ground');
+  found[0].parentNode!.insertBefore(g, found[0]);
+  for (const el of found) { el.removeAttribute('fill'); g.appendChild(el); }
 }
 
 export function withGround(html: string, at: { cx: number; cy: number; rx: number; ry: number }): string {
@@ -68,6 +84,9 @@ export function withGround(html: string, at: { cx: number; cy: number; rx: numbe
   /* 그림자도 **그린 것**이다. focusOn은 이 타원을 모르므로(나중에 붙는다)
      그때 적어 둔 뻗은 몫(--reach)을 여기서 넓혀 준다 — 안 넓히면 낮은
      화면에서 삽화를 줄일 때 그림자가 셈에서 빠져 칸 밖으로 밀린다.
+     **단 화판 끝까지만 따라간다**(아래 클램프). 화판 밖까지 따라가면 그
+     장만 혼자 작아진다 — 그렇게 두었을 때와 치른 대가는 app.css의
+     is-fitted 쪽에 적어 두었다.
 
      **--focus는 손대지 않는다.** 한 번 같이 고쳤더니 삽화가 15px 올라가
      글 아래 여백이 44에서 28로 줄었다(눈으로 골라 둔 값이다). 자리표는
@@ -77,7 +96,13 @@ export function withGround(html: string, at: { cx: number; cy: number; rx: numbe
   const r = Number(html.match(/--reach:\s*([\d.]+)/)?.[1]);
   let out = html.replace(/(<svg[^>]*>)/, `$1${tag}`);
   if (vb?.length === 4 && vb[3] && Number.isFinite(f) && Number.isFinite(r)) {
-    const low = ((at.cy + at.ry) - vb[1]) / vb[3];          // 타원의 아래끝
+    /* 화판 밖까지 나간 그림자는 **화판 끝까지만** 친다 — focusOn이 그린 것을
+       잴 때 쓰는 규칙과 같다(거기 y1 클램프). 안 맞추면 이 타원만 예외가
+       된다: Step 2의 그림자는 아래끝이 화판(603) 밖 35.5px까지 나가 있어서
+       그 몫이 그대로 --reach에 실려 0.94로 부풀었다(다른 장은 0.55~0.69).
+       --reach는 낮은 화면에서 삽화 폭을 정하는 값이라, 부푼 만큼 이 장만
+       혼자 작아졌다 — 재서 확인: 390×568에서 폭 175px, 칸의 45%였다. */
+    const low = Math.min(((at.cy + at.ry) - vb[1]) / vb[3], 1);
     out = out.replace(/--reach:\s*[\d.]+/, `--reach:${r2(2 * Math.max(low - f, r / 2))}`);
   }
   return out;
@@ -351,11 +376,14 @@ function typeIn(root: Element, t: ReturnType<typeof timeline>, dur: number) {
      통째로 버렸다. 여기서만 셋으로 쓴다. */
   const r3 = (n: number) => Number(n.toFixed(3));
   const step = (i: number) => r3(from + ((to - from) * i) / STEPS);
-  /* 마지막 머묾이 시작하고 한참 뒤에 판을 비운다. 그 머묾은 고리를 건너
-     맨 앞의 머묾과 **이어 붙으므로**, 거기서 비워 두어야 한 바퀴가 돌 때
-     글이 사라졌다 다시 쳐지는 것으로 이어진다. */
-  const last = t.at[t.at.length - 2];
-  const clear = r3(last + (1 - last) * 0.7);
+  /* 마지막 판(비속어)이 **나가기 시작하는 순간** 글을 비운다. 그때 첫 판은
+     아직 화판 밖이라 지워지는 것이 보이지 않고, 들어올 때는 이미 커서만 있는
+     빈 칸이다. 그 빈 칸이 고리를 건너 맨 앞의 머묾과 이어 붙어, 한 바퀴가
+     '빈 칸 → 타이핑 → 60자 → 비속어 → 빈 칸'으로 돈다.
+
+     전에는 마지막 머묾의 7할이 지나서 비웠다 — 다 쳐진 글을 보여 주다가
+     지우고 다시 치는 흐름이었고, 그게 한 번 더 읽어야 할 것처럼 보였다. */
+  const clear = r3(t.at[t.at.length - 3]);
 
   /* 앞부분마다 한 줄씩. i = 0은 커서만 있는 빈 줄이다. */
   for (let i = 0; i <= STEPS; i++) {
@@ -377,14 +405,22 @@ function typeIn(root: Element, t: ReturnType<typeof timeline>, dur: number) {
     bar.appendChild(doc.createTextNode('|'));
     line.appendChild(bar);
     msg.appendChild(line);
-    /* 제 차례에만 켜진다. 마지막 줄은 판을 비울 때까지 남는다. */
+    /* 제 차례에만 켜진다. 마지막 줄은 판을 비울 때까지 남고, 커서만 있는
+       빈 줄(i = 0)은 비운 뒤부터 첫 글자가 쳐질 때까지 — 고리를 건너 — 켜져
+       있다. */
     const on = i === 0 ? '0' : step(i - 1);
     const off = i === STEPS ? clear : step(i);
-    put(line, 'animate', {
-      attributeName: 'opacity', calcMode: 'discrete',
-      values: '0;1;0;0', keyTimes: `0;${on};${off};1`,
-      dur: `${dur}s`, repeatCount: 'indefinite'
-    });
+    put(line, 'animate', i === 0
+      ? {
+        attributeName: 'opacity', calcMode: 'discrete',
+        values: '1;0;1;1', keyTimes: `0;${off};${clear};1`,
+        dur: `${dur}s`, repeatCount: 'indefinite'
+      }
+      : {
+        attributeName: 'opacity', calcMode: 'discrete',
+        values: '0;1;0;0', keyTimes: `0;${on};${off};1`,
+        dur: `${dur}s`, repeatCount: 'indefinite'
+      });
   }
 
   /* 자판. 글자 하나에 키 하나가 하늘색으로 눌린다. 어느 키인지는 알 수
@@ -1387,7 +1423,14 @@ function easeCut(base: Element, rest: Element[], t: ReturnType<typeof timeline>,
  */
 const SLIDE = { hold: 10, move: 1 };
 
-export function slideSvg(scenes: Array<string | string[]>, key: string, dur = 14): string {
+/**
+ * @param pace 판마다 머무는 길이의 배율. 생략하면 전부 1. `[1, 0.7, 0.7]`이면
+ *   둘째·셋째 판만 7할로 짧아지고 **나머지 판과 넘어가는 시간은 그대로**다 —
+ *   고리 전체(dur)를 줄어든 만큼 함께 줄이기 때문이다. 배율만 바꾸고 dur을
+ *   그대로 두면 짧아진 판의 시간이 다른 판에 도로 얹혀서, 줄인 것이 아니라
+ *   옮긴 것이 된다.
+ */
+export function slideSvg(scenes: Array<string | string[]>, key: string, dur = 14, pace?: number[]): string {
   const heads = scenes.map((sc) => (Array.isArray(sc) ? sc[0] : sc));
   if (typeof DOMParser === 'undefined' || scenes.length < 2) return scopeSvg(heads[0], key);
   try {
@@ -1405,9 +1448,13 @@ export function slideSvg(scenes: Array<string | string[]>, key: string, dur = 14
     const n = scenes.length;
     /* 첫 판은 처음과 끝에 한 번씩 선다. 그 둘은 고리를 건너 **이어 붙는 한
        구간**이라 반씩 나눠 가져야 다른 판과 같아진다. */
-    const t = timeline(
-      Array.from({ length: n + 1 }, (_, i) => (i === 0 || i === n ? SLIDE.hold / 2 : SLIDE.hold)),
-      SLIDE.move);
+    const holdOf = (i: number) => SLIDE.hold * (pace?.[i % n] ?? 1);
+    const holds = Array.from({ length: n + 1 }, (_, i) => (i === 0 || i === n ? holdOf(0) / 2 : holdOf(i)));
+    const t = timeline(holds, SLIDE.move);
+    /* 배율로 줄어든 만큼 고리도 줄인다(위 pace 설명). */
+    const plain = n * SLIDE.hold + n * SLIDE.move;
+    const total = holds.reduce((a, b) => a + b, 0) + n * SLIDE.move;
+    dur = r2(dur * total / plain);
 
     const base = all[0];
     const doc = base.ownerDocument;
@@ -1458,7 +1505,16 @@ export function slideSvg(scenes: Array<string | string[]>, key: string, dur = 14
       markGround(head);
       if (m > 1) {
         const rest = (sc as string[]).slice(1).map(parse);
-        rest.forEach(inlineFills);
+        /* 뒷 컷도 **앞 컷과 똑같이 손질한 뒤에** 짝을 짓는다.
+           easeCut은 색깔별로 개수가 같을 때만 짝을 맺는데(아래 pair),
+           markGround가 앞 컷의 바닥 그림자에서만 fill을 떼어 가면 그 색의
+           식구 수가 컷마다 달라진다. Step 3에서 그랬다 — #5a5580이 앞 컷
+           2개(홈의 테·폰의 아랫단) 대 뒤 컷 4개(거기에 그림자 타원 둘)라
+           **그 색 전체가 짝짓기에서 통째로 빠졌다.** 그래서 폰의 검은 면
+           둘만 홈으로 내려가고 아랫단은 제자리에 남아, 폰이 두 조각으로
+           갈라져 보였다(재서 확인: 작가의 뒤 컷에서 아랫단은 11.39px 위로
+           올라가 있다 — 검은 면이 줄어드는 몫과 같다). */
+        rest.forEach((c) => { inlineFills(c); markGround(c); });
         easeCut(head, rest, sub(i, m), dur);
       }
       return head;

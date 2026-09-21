@@ -1730,7 +1730,18 @@
      (아래 '낮은 화면') 한쪽으로 붙으면 안 된다. */
   inset-inline: 0; margin-inline: auto;
   width: 100%; height: auto;
-  translate: 0 calc(var(--focus, 50%) * -1);
+  /* --focus는 **코드가 잰 값**이다 — 그린 것의 세로 한가운데(svgAsset ·
+     focusOn). 그 자리가 칸 한가운데에 선다.
+
+     --lift는 그 위에 얹는 **사람의 판단**이다. 장마다 그린 거리가 달라
+     (캐릭터 키: Step 1이 184px, Step 2가 425px — 두 배가 넘는다) 그린 것의
+     한가운데를 맞춰 놓아도 **눈이 가야 할 것**은 제각각 높이에 선다. 그것을
+     끌어올리거나 내리는 값이다. 양수면 아래로, 음수면 위로 간다.
+
+     %인 이유: 삽화는 낮은 화면에서 작아진다. px로 박아 두면 그림만 줄고
+     미는 몫은 그대로라 작은 화면에서 과하게 밀린다. %는 svg 높이에 비례해
+     같은 비율로 따라 줄어든다. */
+  translate: 0 calc(var(--focus, 50%) * -1 + var(--lift, 0%));
 }
 /* ── 낮은 화면에서는 **자르지 말고 줄인다** (2026-09-21) ────────────────
    삽화는 칸 폭을 다 쓰고 넘치는 높이를 칸이 잘랐다. 844에서는 97%가 보여
@@ -1770,7 +1781,19 @@
      두었다 — 잘리던 것이 다리 한가운데였다. overflow를 열어 발까지 낸다.
    · 발끝과 '다음' 버튼 사이가 벌어진다.
 
-   좌우로 나가는 그림이 없어서(x 74.3~315.7) 줄여도 잘리는 것이 없다. */
+   좌우로 나가는 그림이 없어서(x 74.3~315.7) 줄여도 잘리는 것이 없다.
+
+   ── 낮은 화면에서는 **발을 내준다** (2026-09-22) ─────────────────────
+   그림자가 화판 밖까지 뻗은 몫을 세로 셈(--reach)에 싣던 것을 화판
+   끝에서 자르면서(svgAsset · withGround) 이 장의 그림이 커졌다 — 재서
+   확인: 568에서 175→201px, 칸의 45→51%. 그 대신 발과 그림자가 칸 아래로
+   14~26px 밀려 잘린다. 둘은 같이 못 가진다 — 발까지 셈에 넣어 봤자
+   폭이 180px에 그쳐 아무것도 달라지지 않는다.
+
+   발을 내주기로 한 것은 **이 장이 하는 말** 때문이다. 위의 조율 카드 셋
+   (크기·빠르기·무게)이 곧 이 장의 내용인데 175px에서는 그 글자가 뭉개져
+   읽히지 않았다. 발은 인물이 서 있다는 표시이지 설명이 아니다.
+   844에서는 여전히 발까지 온전히 선다 — 내주는 것은 낮은 화면뿐이다. */
 .info-art.is-fitted > span > svg{
   width: min(88%, calc(100cqh * var(--art, 0.647) / var(--reach, 1)));
   overflow: visible;   /* 화판 밖의 발과 그림자까지 낸다. 칸이 대신 자른다 */
@@ -2580,7 +2603,14 @@
 /* 워드마크는 브랜드 빨강이다 (2026-09-15 스케치). 흰 글자를 받치는 자리가
    아니라 흰 바탕 위의 글자라, 채움 버튼용 --brand-strong이 아니라 실물
    하드웨어의 색 그대로를 쓴다. */
-.home-headline > span{ display: inline-block; white-space: nowrap; font-family: 'Lineal VF', sans-serif; font-weight: 900; font-variation-settings: 'wght' 1150; font-size: 56px; color: var(--brand-main); }
+.home-headline > span{ display: inline-block; white-space: nowrap; font-family: 'Lineal VF', sans-serif; font-weight: 900; font-variation-settings: 'wght' 1200; font-size: 52px; color: var(--brand-main); }
+/* 2026-09-22: 워드마크를 92%로 줄이고 자간을 있던 값(0)에서 0.01em 조인다.
+   절대값 -0.01em을 정한 것이 아니라 **있던 값에 더한** 것이다 — 위에서
+   .home-headline의 자간을 0으로 두었으므로 결과가 같아 보일 뿐이다.
+   굵기는 1150에서 1200으로 — 줄어든 만큼 가벼워진 존재감을 되돌리는 한 칸이다.
+   격자(1150·1200·1250·1300)로 골랐다: 1300은 e·a의 속공간이 닫혀 뭉치고,
+   1150은 형태는 또렷하나 가볍다. */
+.home-headline > span{ letter-spacing: calc(0em - 0.01em); }
 /* 24px 작은 제목으로 한 번 올렸다가 본문 칸으로 돌아왔다 (2026-09-15).
    위계를 올리는 대신 굵기만 한 칸 —— 400에서 500으로. 500은 이 프로젝트가
    '보조 라벨'에 쓰는 굵기고(typography-revision-2026-09-07), 크기를 건드리지
@@ -2615,8 +2645,10 @@
 
 .is-settle .sim-crowd, .is-ambient .sim-crowd{ opacity: 1; }
 .home-intro .home-headline{ container-type: inline-size; }
-/* 21cqw는 잉크 328px이었다. 스케치가 308.6이라 한 급 줄인다 — 19.8cqw. */
-.home-headline > span{ font-size: 19.8cqw; }
+/* 21cqw는 잉크 328px이었다. 스케치가 308.6이라 한 급 줄인다 — 19.8cqw.
+   2026-09-22: 그 92% — 18.2cqw. (위의 52px은 컨테이너 단위를 모르는
+   브라우저의 예비값, 56의 92%) */
+.home-headline > span{ font-size: 18.2cqw; }
 
 .sim-crowd-item{ font-size: 2.4cqw; max-width: 60cqw; white-space: normal; word-break: keep-all; }
 
@@ -2685,16 +2717,26 @@
 /* ── 큰 메가폰트 ────────────────────────────────────────────────── */
 /* 직접 만지는 크기. 340px에서 80%로 줄였다. */
 /* 2026-09-20: 끌어 옮기던 것을 걷어냈다. 손을 안 받으므로 커서도 평범하다 —
-   grab 커서를 남겨 두면 잡을 수 있다고 거짓말을 한다. */
+   grab 커서를 남겨 두면 잡을 수 있다고 거짓말을 한다.
+   2026-09-22: 그중 **위로 들어 올리는 것 하나만** 되살렸다. 손은 받되
+   (pointer-events · touch-action) 커서는 그대로 둔다 — 폰에 커서는 없고,
+   데스크톱에서 grab을 보이면 옮길 수 있다고 또 거짓말을 한다. */
 /* position과 line-height는 2026-09-07까지 홈 섹션 위쪽에 따로 서 있었다.
    같이 있던 자리·크기 여섯(z-index 1 · left 50% · top 46% · width 44vw ·
    max-width 170px · translate(-50%,-50%))은 아래 줄이 이미 덮고 있었다.
    죽은 값이라 걷어내고, 살아 있던 둘만 아래로 합쳤다. */
-.home-char{ position: absolute; left: 0; top: 0; width: min(70vw, 272px); max-width: none; height: auto; aspect-ratio: 1; border: 0; padding: 0; margin: 0; background: none; color: inherit; pointer-events: none; user-select: none; -webkit-user-select: none; transform: translate(0, 0); will-change: transform; line-height: 0; }
-/* 회전은 --char-turn 이 가로로 한 번 좁혔다 편다. 기울기는 --char-tilt.
+.home-char{ position: absolute; left: 0; top: 0; width: min(70vw, 272px); max-width: none; height: auto; aspect-ratio: 1; border: 0; padding: 0; margin: 0; background: none; color: inherit; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; transform: translate(0, 0); will-change: transform; line-height: 0; }
+/* 들린 높이. JS가 --lift를 프레임마다 적고(HomeCharacter), 몸은 그만큼
+   올라간다. transform이 아니라 translate인 이유는 그쪽 주석에 — 놓았을 때
+   여기 transition이 제자리로 데려온다. 들고 있는 동안은 transition을 끈다,
+   손가락을 한 박자 늦게 따라오면 안 된다. */
+.home-char{ translate: 0 calc(-1 * var(--lift, 0px)); transition: translate var(--t-return) var(--ease-standard); }
+.home-char[data-held]{ transition: none; }
+/* 회전은 --char-turn 이 가로로 한 번 좁혔다 편다. 기울기는 --char-tilt,
+   옆 흔들림은 --char-sway(둘 다 손에 들렸을 때의 버둥거림 · HomeCharacter).
    포즈끼리는 path를 직접 보간하므로 겹쳐 놓고 페이드할 그림이 없다. */
 .home-char-motion{ display: block; position: relative; width: 100%; height: 100%;
-  transform: rotate(var(--char-tilt, 0deg))
+  transform: translate(var(--char-sway, 0px), 0) rotate(var(--char-tilt, 0deg))
              scale(calc(var(--char-stretch, 1) * var(--char-turn, 1)), var(--char-squash, 1));
   pointer-events: none; }
 .home-char-motion > svg{ display: block; width: 100%; height: 100%; overflow: visible; }
@@ -2710,11 +2752,14 @@
   50%      { translate: 0 1.7%; rotate: 1.4deg; }
 }
 /* 그림자는 같이 뜨지 않는다 — 바닥에 지는 것이니까. 대신 몸이 멀어지면
-   옅고 넓어진다. 몸과 **반대 박자**라야 떠 있는 것으로 읽힌다. */
+   넓어진다. 몸과 **반대 박자**라야 떠 있는 것으로 읽힌다.
+   옅어지는 것은 뺐다(2026-09-22) — 그림자 색이 불투명한 한 색이 되면서
+   (--char-shade-floor) 투명도를 흔들면 구경꾼 그림자와 겹치는 자리가 다시
+   진해진다. */
 .home-char-shade{ animation: charFloatShade 5.2s ease-in-out infinite; }
 @keyframes charFloatShade{
-  0%, 100% { scale: 1.06; opacity: 0.14; }
-  50%      { scale: 0.94; opacity: 0.2; }
+  0%, 100% { scale: 1.06; }
+  50%      { scale: 0.94; }
 }
 @media (prefers-reduced-motion: reduce){
   .home-char-motion, .home-char-shade{ animation: none; }
@@ -2733,11 +2778,21 @@
    흰자가 보여서 이미 얼굴이 된다. 세 번 끔뻑이는 동안 이 줄이 붙었다
    떨어진다(HomeCharacter · WAKE). */
 .home-char[data-blind='true'] .home-char-eye{ visibility: hidden; }
-.home-char-shade{ position: absolute; left: 50%; top: calc(var(--shade-y, 0.87) * 100%);
-  translate: -50% -50%; width: calc(var(--shade-w, 0.38) * 100%); height: 6%;
-  border-radius: 50%; background: var(--char-shade); opacity: 0.18; pointer-events: none;
-  /* 포즈가 바뀌면 실루엣이 달라진다. 글자·형태가 건너가는 260ms를 같이 탄다 */
-  transition: width 260ms var(--ease-standard), top 260ms var(--ease-standard); }
+/* 들리면 그림자는 바닥에 남는다 — 상자가 --lift만큼 올라가므로 그림자는
+   같은 만큼 내려 적는다. 높이에 따라 조금 넓어지고(1 + 0.3k) 가장자리가
+   흐려진다(상자 한 변의 2%까지). 흐림은 불투명한 한 색을 번지게 할 뿐
+   투명도를 건드리지 않으므로, 구경꾼 그림자와 겹쳐도 진해지지 않는다. */
+.home-char-shade{ position: absolute; left: 50%; top: calc(var(--shade-y, 0.87) * 100% + var(--lift, 0px));
+  filter: blur(calc(var(--char-box) * 0.02 * var(--lift-k, 0)));
+  translate: -50% -50%; width: calc(var(--shade-w, 0.38) * 100% * (1 + 0.3 * var(--lift-k, 0))); height: 6%;
+  border-radius: 50%; background: var(--char-shade-floor); pointer-events: none;
+  /* 포즈가 바뀌면 실루엣이 달라진다. 글자·형태가 건너가는 260ms를 같이 탄다.
+     top만 --t-return이다 — 놓았을 때 몸이 그 시간에 내려오므로 그림자의
+     되돌림(top 안의 --lift)도 같은 시간이어야 바닥에 붙어 있는 것으로
+     보인다. 들고 있는 동안은 transition을 끈다 — 프레임마다 바뀌는 top을
+     따라가느라 그림자가 바닥에서 미끄러진다. */
+  transition: width 260ms var(--ease-standard), top var(--t-return) var(--ease-standard), filter var(--t-return) var(--ease-standard); }
+.home-char[data-held] .home-char-shade{ transition: none; }
 /* 가끔 뱉는 글자 (2026-09-15 홈_4 스케치).
    몸 바깥에 둔다 — 몸이 기울고 눌릴 때 같이 일그러지면 글자로 안 읽힌다.
    상자에 걸린 scale은 같이 받으므로 멀리 있으면 글자도 작다.
@@ -2910,8 +2965,11 @@
    장면의 내용이라 뚝 끊기지 않고 건너가야 한다. */
 .walker{ color: var(--char-cyan); transition: color 620ms var(--ease-standard); }
 /* 발밑 그림자도 여기서 칠한다. 전에는 HomeCrowd가 fill 속성으로 직접
-   적었는데, 그러면 같은 색이 CSS와 TS 두 곳에 살게 된다. */
-.w-shade{ fill: var(--char-shade); }
+   적었는데, 그러면 같은 색이 CSS와 TS 두 곳에 살게 된다.
+   색은 메가폰트 그림자와 같은 바닥용 한 색이다(2026-09-22). 전에는
+   --char-shade 원색 그대로여서 화면에서 제일 어두운 것이 여섯 사람의
+   발밑이었다 — 그림자가 인물보다 먼저 눈에 들었다. */
+.w-shade{ fill: var(--char-shade-floor); }
 .walker[data-tone='red']{ color: var(--brand-main); }
 /* 표정 넷을 다 그려 두고 하나만 보여 준다. 바꿀 때마다 React를 거치면
    여섯이 초당 몇 번씩 다시 그려진다. */
@@ -2920,6 +2978,10 @@
 .walker[data-eye='wide'] .w-eye-wide,
 .walker[data-eye='shut'] .w-eye-shut,
 .walker[data-eye='smile'] .w-eye-smile{ display: block; }
+/* 메가폰트가 들려 있는 동안 올려다본다(HomeCrowd · awed). 놀란 눈의 점을
+   흰자 안에서 위로 올린다 — 값은 작가 화판의 단위다(흰자 반지름 59.67,
+   점 반지름 18 · walker.ts). 디자인 토큰이 아니라 그림의 기하다. */
+.walker[data-gaze='up'] .w-eye-wide{ transform: translate(0, -24px); }
 /* 걷기는 여기에 없다. 다리 모양이 65프레임에 걸쳐 바뀌는 것이라 CSS로는
    못 쓰고, 작가의 그림 안에 든 움직임(SMIL)을 그대로 돌린다(walker.ts).
    세우고 다시 걷게 하는 것도 CSS가 못 하므로 HomeCrowd가 그림 하나씩

@@ -140,6 +140,8 @@ export default function HomeCrowd() {
       el: HTMLElement; art: SVGSVGElement;
       x: number; y: number; dir: 1 | -1; speed: number;
       phase: Phase; until: number; beat: number;
+      /** 메가폰트가 들려 있어 멈춰 서서 올려다보는 중인가 */
+      awed: boolean;
       born: number; live: boolean; moving: boolean;
       /** 메가폰트가 돌아선 뒤 이만큼(ms) 있다가 들어온다 */
       wait: number;
@@ -177,7 +179,7 @@ export default function HomeCrowd() {
       const p: Walker = {
         el, art: el.querySelector('svg')!,
         x: 0, y: 0, dir: 1, speed: 0, phase: 'walk',
-        until: 0, beat: 0, born: 0, live: false, moving: false, wait: 0
+        until: 0, beat: 0, born: 0, live: false, moving: false, wait: 0, awed: false
       };
       // 걸음은 그림 안의 움직임(SMIL)이라 CSS로 못 세운다. 나올 때까지 재워 둔다
       p.art.setCurrentTime(0);
@@ -200,6 +202,12 @@ export default function HomeCrowd() {
       const floor = groundLimit(frame, frame.clientHeight);
       if (!turned && charPos.greeted) turned = t;
 
+      /* 메가폰트가 손에 들려 있으면 다들 멈춰 서서 놀란 눈으로 올려다본다.
+         걷던 사람은 그 자리에, 앞에 서서 표정을 짓던 사람은 그 칸에 멈춘다
+         (until을 같이 밀어 차례가 흐르지 않게). 내려오면 하던 것을 잇는다 —
+         걷던 사람은 다시 걷고, 표정 차례는 멈춘 칸의 눈으로 돌아온다. */
+      const lifted = charPos.lift > 0;
+
       for (const p of crowd) {
         if (!p.live) {
           // 아직 나올 때가 아니다 — 돌아서기 전이거나 제 차례가 안 됐다
@@ -207,7 +215,19 @@ export default function HomeCrowd() {
           spawn(p, t);
         }
 
-        if (!reduced) {
+        if (lifted !== p.awed) {
+          p.awed = lifted;
+          if (lifted) {
+            p.el.dataset.gaze = 'up';
+            p.el.dataset.eye = 'wide';
+          } else {
+            delete p.el.dataset.gaze;
+            p.el.dataset.eye = p.phase === 'meet' ? MEETING[p.beat].eye : 'look';
+          }
+        }
+        if (p.awed) {
+          if (p.phase === 'meet') p.until += dt * 1000;
+        } else if (!reduced) {
           if (p.phase === 'meet') {
             // 멈춰 서서 표정을 차례로 보인다
             if (t > p.until) {
@@ -262,7 +282,7 @@ export default function HomeCrowd() {
           const age = (t - p.born) / 420;
           p.el.style.opacity = age >= 1 ? '1' : age.toFixed(2);
         }
-        const moving = !reduced && p.phase !== 'meet';
+        const moving = !reduced && p.phase !== 'meet' && !p.awed;
         if (moving !== p.moving) {
           p.moving = moving;
           p.el.dataset.walking = String(moving);
@@ -273,7 +293,7 @@ export default function HomeCrowd() {
         }
         // 메가폰트 앞에 섰을 때는 그를 본다. 그림이 왼쪽을 보고 있으므로
         // 오른쪽을 보려면 뒤집는다.
-        const face = p.phase === 'meet'
+        const face = p.phase === 'meet' || p.awed
           ? (charPos.x > p.x ? -1 : 1)
           : (p.dir > 0 ? -1 : 1);
         // 발끝이 낮을수록 뒤, 높을수록(아래일수록) 앞. 메가폰트도 이 줄에 낀다.

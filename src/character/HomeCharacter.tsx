@@ -31,6 +31,32 @@ export const SHADE_GAP = 0.06;
 /** 그림자 폭 — 실루엣 폭에 대한 비율 */
 const SHADE_W = 0.62;
 
+/**
+ * 손으로 들어 올릴 수 있는 높이의 상한 — 실루엣 키에 대한 비율.
+ *
+ * 위로만 든다. 좌우로 옮기거나 던지던 것은 2026-09-20에 걷어냈고
+ * (홈이 장난감이 되면 안 된다), 이건 그중 **들어 올리는 것 하나만**
+ * 되살린 것이다(2026-09-22). 키의 절반보다 조금 낮게 — 그 위에 인사
+ * 말풍선과 부제가 선다.
+ */
+const LIFT_MAX = 0.42;
+/**
+ * 손가락이 이만큼 움직이기 전에는 든 것이 아니다(px). 탭과 끌기를 가르는
+ * 문턱 — 탭은 지금 아무 일도 안 하지만, 문턱이 없으면 누르기만 해도
+ * 캐릭터가 한 픽셀 들썩인다.
+ */
+const LIFT_SLOP = 6;
+/**
+ * 들려 있는 동안의 버둥거림 — 기울기(deg)와 옆 흔들림(상자 한 변에 대한
+ * 비율)의 최대 진폭. 들린 높이에 비례해 커진다(0에서는 0). 두 주파수를
+ * 섞어 박자가 안 잡히게 한다 — 한 주파수면 메트로놈이다.
+ *
+ * 작아야 한다. 손가락을 따라 오르는 것이 주된 움직임이고 이건 그 위에
+ * 얹는 잔떨림이다. 크면 캐릭터가 손에서 빠져나가려는 것으로 읽힌다.
+ */
+const WIGGLE_DEG = 5;
+const WIGGLE_SWAY = 0.012;
+
 /** 한 포즈에서 다음 포즈로 형태가 넘어가는 데 걸리는 시간 (ms) */
 const TURN_MS = 380;
 /** 포즈가 방향을 따라 바뀌더라도 이 간격보다 자주 바뀌지 않는다 (ms) */
@@ -230,6 +256,26 @@ export default function HomeCharacter() {
      * 것까지 들썩이면 볼 데가 둘이 된다.
      */
     const depth = 1;
+    const liftMax = () => size * geo.span.y * LIFT_MAX;
+    /** 표정이 머무는 시간 — tokens.css의 --t-hold. 값은 거기 한 곳에만 산다 */
+    const holdMs = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--t-hold')) || 700;
+    /**
+     * 들려 있는 손. 누른 자리(y0)와 지금 얼마나 떠 있는지(lift, px).
+     *
+     * 손가락을 그대로 따르지 않고 **고무줄처럼** 따른다 — 상한에
+     * 가까워질수록 덜 올라와서, 끝에서 뚝 멈추지 않는다.
+     * lift = MAX · (1 − e^(−raw/MAX)). 처음엔 기울기 1(손과 같이), 끝에서
+     * 0으로 눕는다.
+     */
+    let held: { id: number; y0: number } | null = null;
+    let lift = 0;
+    /** 옆 흔들림(px). 기울기(tilt)와 같이 버둥거림을 만든다 */
+    let sway = 0;
+    /**
+     * 들렸을 때 지은 표정. 잡는 순간 당황·웃음 중 하나로 정해 그 드래그
+     * 내내 유지한다 — 도중에 바뀌면 왜 바뀌었는지 읽을 수 없다.
+     */
+    let mood: 'surprise' | 'happy' | null = null;
     let sayUntil = 0;
     /** 지금 찍고 있는 마디. 한 글자씩 늘려 적는다 */
     let typing: { text: string; from: number; built?: boolean; shown?: number } | null = null;
@@ -333,14 +379,22 @@ export default function HomeCharacter() {
          매 프레임 쓰지 않는다 — 값이 바뀌는 것은 포즈가 건너갈 때뿐인데
          (두둥실은 CSS가 맡는다), 액자에 변수를 쓰면 그 변수를 읽는 모든
          것이 다시 계산된다. 반 픽셀 넘게 움직였을 때만 적는다. */
+      /* 말은 캐릭터에 붙어 있다 — 들리면 같이 올라간다. */
       const cx = x + ((size * (bx0 + bx1)) / 2 / CANVAS - size / 2) * depth;
-      const ty = y + ((size * by0) / CANVAS - size / 2) * depth;
+      const ty = y - lift + ((size * by0) / CANVAS - size / 2) * depth;
       if (Math.abs(cx - saidX) > 0.5) { saidX = cx; frame.style.setProperty('--say-cx', `${cx.toFixed(1)}px`); }
       if (Math.abs(ty - saidY) > 0.5) { saidY = ty; frame.style.setProperty('--say-top', `${ty.toFixed(1)}px`); }
 
       // scale이 translate 뒤에 와야 상자 가운데를 붙든 채 커진다.
       el.style.transform = `translate(${x - size / 2}px, ${y - size / 2}px) scale(${depth.toFixed(3)})`;
-      el.style.setProperty('--char-tilt', `${tilt}deg`);
+      /* 들린 높이는 transform이 아니라 translate로 따로 얹는다. 놓았을 때의
+         복귀를 CSS transition이 맡게 하려는 것이다 — transform은 매 프레임
+         JS가 통째로 다시 쓰므로 거기 섞으면 transition이 걸 자리가 없다.
+         그림자는 같은 변수를 거꾸로 받아 바닥에 남는다(app.css). */
+      el.style.setProperty('--lift', `${lift.toFixed(1)}px`);
+      el.style.setProperty('--lift-k', (size ? lift / (size * geo.span.y * LIFT_MAX) : 0).toFixed(3));
+      el.style.setProperty('--char-tilt', `${tilt.toFixed(2)}deg`);
+      el.style.setProperty('--char-sway', `${sway.toFixed(1)}px`);
       el.style.setProperty('--char-squash', String(1 - squash));
       el.style.setProperty('--char-stretch', String(1 + squash * 0.45));
       el.dataset.pose = pose;
@@ -356,6 +410,7 @@ export default function HomeCharacter() {
       charPos.y = y;
       charPos.size = size * depth;
       charPos.ground = y + size * depth * floor;   // 그림자가 놓인 줄이 바닥이다
+      charPos.lift = lift;
       // 나팔이 향한 쪽. 'left'는 입이 왼쪽이라 소리가 오른쪽으로 나간다.
       charPos.voice = pose.startsWith('left') ? 1 : -1;
       charPos.ready = initialized;
@@ -465,14 +520,15 @@ export default function HomeCharacter() {
       if (visible && !reduced && !intro) {
         // 이따금 고개를 돌린다. 부풀거나 말하는 중에는 가만히 둔다 —
         // 한 번에 두 가지가 일어나면 둘 다 흐려진다.
-        if (t > nextPose && !sayUntil && t - lastPose > POSE_DWELL) {
+        // 들려 있는 동안은 고개도 안 돌린다 — 손이 하는 일에 끼어들지 않는다.
+        if (t > nextPose && !sayUntil && !held && t - lastPose > POSE_DWELL) {
           setPose(idlePose(), t);
           nextPose = t + random(5000, 9000);
         }
         contain();
       }
 
-      // 2초가 지나면 조용히 무표정으로 돌아온다
+      // 놓인 뒤의 표정은 제 시간(--t-hold)이 지나면 조용히 기본으로 돌아온다
       if (t > faceUntil && faceUntil > 0) {
         faceUntil = 0;
         setEyes('general');
@@ -523,13 +579,75 @@ export default function HomeCharacter() {
       // 형태 변화만으로는 방향이 안 읽힌다.
       const swing = raw > 0 && raw < 1 ? Math.sin(Math.PI * raw) : 0;
       const spin = turn === 'spin' ? swing * 0.22 : 0;
-      // 기울기는 흐르던 속도를 따라갔다. 이제 흐르지 않으므로 늘 곧게 선다.
-      tilt += (0 - tilt) * (1 - Math.exp(-dt * 6));
+      // 기울기는 흐르던 속도를 따라갔다. 이제 흐르지 않으므로 곧게 선다 —
+      // 손에 들려 있을 때만 버둥거린다. 놓으면 잔떨림이 제 속도로 잦아든다
+      // (뚝 멎지 않는다).
+      if (held) {
+        const k = lift / Math.max(1, liftMax());
+        const s = t / 1000;
+        const wantTilt = k * WIGGLE_DEG * (Math.sin(s * 2 * Math.PI * 2.6) + 0.35 * Math.sin(s * 2 * Math.PI * 4.1 + 1));
+        const wantSway = k * size * WIGGLE_SWAY * Math.sin(s * 2 * Math.PI * 3.3 + 0.5);
+        const f = 1 - Math.exp(-dt * 18);
+        tilt += (wantTilt - tilt) * f;
+        sway += (wantSway - sway) * f;
+      } else {
+        const f = 1 - Math.exp(-dt * 6);
+        tilt += (0 - tilt) * f;
+        sway += (0 - sway) * f;
+      }
       el.style.setProperty('--char-turn', String(1 - spin));
 
       paint(p);
       raf = requestAnimationFrame(step);
     };
+
+    /* ── 들어 올리기 ─────────────────────────────────────────────
+       누른 채 위로 끌면 손가락을 따라 뜬다. 좌우와 아래는 무시한다.
+       첫인사 중에는 안 받는다 — 한 번에 두 가지가 일어나면 둘 다 흐려진다.
+       손이 캐릭터 밖으로 나가도(setPointerCapture) 계속 들고 있고, 취소
+       되거나 놓으면 제자리로 돌아온다. 짧은 탭은 문턱(LIFT_SLOP)을 못
+       넘어 아무 일도 안 일어난다. */
+    const onDown = (e: PointerEvent) => {
+      if (held || intro || reduced || !e.isPrimary) return;
+      held = { id: e.pointerId, y0: e.clientY };
+      /* 표정은 문턱을 넘어 실제로 들릴 때 짓는다(onMove) — 누르기만 하고
+         놓는 탭에 표정이 바뀌면 탭이 무언가 하는 것이 된다. */
+      mood = null;
+      try { el.setPointerCapture(e.pointerId); } catch { /* 이미 잡혔거나 사라진 포인터 */ }
+      el.dataset.held = 'true';
+      e.preventDefault();
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!held || e.pointerId !== held.id) return;
+      const raw = Math.max(0, held.y0 - e.clientY - LIFT_SLOP);
+      const max = liftMax();
+      lift = max > 0 ? max * (1 - Math.exp(-raw / max)) : 0;
+      if (lift > 0 && !mood) {
+        mood = Math.random() < 0.5 ? 'surprise' : 'happy';
+        faceUntil = 0;
+        setEyes(mood);
+      }
+    };
+    const onUp = (e: PointerEvent) => {
+      if (!held || e.pointerId !== held.id) return;
+      held = null;
+      lift = 0;
+      delete el.dataset.held;
+      /* 놓인 뒤의 반응. 당황했던 애는 화나거나 슬프고, 웃던 애는 조금 더
+         웃는다. --t-hold만큼 머물다 기본으로 돌아온다(step의 faceUntil). */
+      if (mood) {
+        const after: Eyes = mood === 'happy' ? 'happy' : (Math.random() < 0.5 ? 'angry' : 'sad');
+        mood = null;
+        setEyes(after);
+        faceUntil = performance.now() + holdMs();
+      }
+      try { el.releasePointerCapture(e.pointerId); } catch { /* 이미 풀렸다 */ }
+    };
+    el.addEventListener('pointerdown', onDown);
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointercancel', onUp);
+    el.addEventListener('lostpointercapture', onUp);
 
     const resize = new ResizeObserver(measure);
     resize.observe(frame);
@@ -547,6 +665,11 @@ export default function HomeCharacter() {
     return () => {
       cancelAnimationFrame(raf);
       resize.disconnect();
+      el.removeEventListener('pointerdown', onDown);
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointercancel', onUp);
+      el.removeEventListener('lostpointercapture', onUp);
       document.removeEventListener('visibilitychange', onVisibility);
       media.removeEventListener('change', onReduced);
     };

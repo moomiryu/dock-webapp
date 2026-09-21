@@ -30,7 +30,6 @@ import artGlyphs1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_1.sv
 import artGlyphs2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_2.svg?raw';
 import artGlyphs3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_3.svg?raw';
 import artGlyphs4 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_4.svg?raw';
-import artDock1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_1.svg?raw';
 import artDock2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_2.svg?raw';
 import artDock3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_3.svg?raw';
 import artDock4 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_4.svg?raw';
@@ -146,7 +145,7 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
        동안 읽을 것이 없었다. 판을 나란히 놓고 화판으로 자르면 겹치는
        순간이 아예 없다. */
     art: <Built name="rules" still={artRule1}
-      make={(k) => slideSvg([artRule1, artRule2, artRule3], k, 10)} />,
+      make={(k) => slideSvg([artRule1, artRule2, artRule3], k, 10, [1, 0.7, 0.7])} />,
     artClass: 'is-wide'
   },
   {
@@ -183,17 +182,21 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
         메가폰트를 작동시키세요.
       </p>
     ),
-    /* 네 컷인데 **장면은 셋**이다(2026-09-21에 작가가 다시 그렸다).
-       가운데 둘은 한 장면 안에서 포개어 잇는다 — 거기가 **폰이 홈으로
+    /* 세 컷인데 **장면은 둘**이다(2026-09-21에 작가가 다시 그렸다).
+       앞의 둘은 한 장면 안에서 포개어 잇는다 — 거기가 **폰이 홈으로
        내려가는 대목**이라 옆으로 넘기면 안 된다. 두 컷은 픽셀의 1.21%만
        다르고(재서 확인), 그 차이가 폰의 자리다. 화면을 통째로 밀면 거의
        같은 그림이 다시 서서 멈칫한 것으로 읽힌다.
 
-       나머지 사이는 옆으로 넘긴다: 빈 메가폰 → [사람이 와서 꽂는다] →
-       느낌표. 장면이 바뀌는 자리와 한 장면 안에서 손이 움직이는 자리를
-       서로 다른 말로 한다. */
+       장면 사이는 옆으로 넘긴다: [사람이 폰을 들고 서서 꽂는다] → 느낌표.
+       장면이 바뀌는 자리와 한 장면 안에서 손이 움직이는 자리를 서로 다른
+       말로 한다.
+
+       빈 메가폰만 서 있던 첫 컷(example_step3_1)은 2026-09-22에 뺐다.
+       고리가 '폰 든 사람 → 꽂힘 → 느낌표 → 폰 든 사람'으로 바로 돌아,
+       기다리는 컷 없이 동작만 남는다. */
     art: <Built name="dock" still={artDock4}
-      make={(k) => slideSvg([artDock1, [artDock2, artDock3], artDock4], k, 10)} />,
+      make={(k) => slideSvg([[artDock2, artDock3], artDock4], k, 10)} />,
     artClass: 'is-wide'
   },
   {

@@ -56,31 +56,28 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
   // 장이 바뀌면 그 장으로 초점을 옮긴다 — 읽는 도구에 새 내용이 왔다고 알린다
   useEffect(() => { trackRef.current?.focus({ preventScroll: true }); }, [idx]);
 
-  // 좌상단은 한 걸음씩 되돌린다. 첫 장에서만 이 화면을 닫는다 — 여섯 장을
+  // 좌상단은 한 걸음씩 되돌린다. 첫 장에서만 이 화면을 닫는다 — 여러 장을
   // 읽고 나서 한 장 앞을 다시 보려면 되돌아갈 데가 있어야 한다.
   const back = () => (idx === 0 ? onClose() : setIdx(idx - 1));
   const s = SLIDES[idx];
   return (
     /* 밤 장면은 화면이 통째로 검정이다. 어느 장이 그런지는 삽화가 아니라
-       **그 장 자신**이 정한다 — 앞으로 설 Problem·Solution도 삽화를 화면
-       끝까지 쓸 수 있지만 검정은 아니다(app.css · is-dark) */
+       **그 장 자신**이 정한다 — 도입 두 장은 삽화가 없고 검정도 아니다
+       (app.css · is-dark) */
     <div className={'info-overlay' + (s.dark ? ' is-dark' : '')}
       aria-label="메가폰트 소개">
-      {/* 'About / Step 1'과 '1 / 6'은 둘 다 **지금 어디인가**를 말하는
-          정보라 한 줄에 둔다 — 왼쪽이 이름, 오른쪽이 숫자. 단계 이름이
-          제목 위에 제 줄을 차지하던 때는 제목이 작성 화면보다 27px 아래에
-          섰다(84 대 111, 390×844 실측). 그 줄이 올라오면서 제목이 작성
-          화면과 같은 높이에 선다. */}
+      {/* 단계명은 머리줄에 둔다. 제목 위에 제 줄을 차지하던 때는 제목이
+          작성 화면보다 27px 아래에 섰다(84 대 111, 390×844 실측). 그 줄이
+          올라오면서 제목이 작성 화면과 같은 높이에 선다. */}
       <div className="info-head">
         <BackButton label={idx === 0 ? '처음으로' : '이전 설명'} onClick={back} />
-        {/* 단계명과 진행 숫자는 **한 묶음**이다 — 둘 다 "지금 어디인가"를
-            말한다. 양끝으로 갈라 두었더니 둘이 서로 다른 일을 하는 것처럼
-            보였다. 오른쪽에 붙여 가운뎃점으로 나눈다. */}
-        <span className="info-where">
-          <span>{s.step}</span>
-          <span aria-hidden="true">·</span>
-          <span>{idx + 1}/{SLIDES.length}</span>
-        </span>
+        {/* '1/7' 같은 전체 진행 숫자는 뺐다(2026-09-22). 남은 장을 세게
+            만드는 정보였고, 단계명이 하려는 말과도 겹쳤다. 이름 하나만
+            남기고 그 이름을 **이 장이 무엇인가**를 말하는 섹션 제목으로
+            올린다 — 화면 한가운데에, 뒤로가기보다 진하게. 가운데 정렬은
+            흐름(flex)이 아니라 절대 자리로 잡는다. 흐름으로 두면 왼쪽
+            아이콘의 폭만큼 밀려서 '거의 가운데'가 된다(app.css). */}
+        <span className="info-where">{s.step}</span>
       </div>
       <div className="info-track" ref={trackRef} tabIndex={-1} role="region"
         aria-live="polite" aria-label="메가폰트 사용 안내">
@@ -90,7 +87,10 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
               balance가 알아서 두 줄을 고르게 나눈다 — 둘은 같이 못 쓴다. */}
           <h2 data-break={s.title.includes('\n') ? 'true' : undefined}>{s.title}</h2>
           <div className="info-said">{s.body}</div>
-          <div className={'info-art ' + (s.artClass ?? '')} aria-hidden>{s.art}</div>
+          {/* 도입 두 장(Problem · Solution)에는 삽화가 없다. 빈 칸을 남기지
+              않고 아예 안 세운다 — 테두리만 남은 상자는 '그림이 안 떴다'로
+              읽힌다. 글의 자리는 그대로다(제목은 다른 장과 같은 높이). */}
+          {s.art && <div className={'info-art ' + (s.artClass ?? '')} aria-hidden>{s.art}</div>}
         </section>
       </div>
       <div className="info-nav">
@@ -127,7 +127,35 @@ function Built({ name, still, make }: { name: string; still: string; make: (key:
 }
 
 
-const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNode; artClass?: string; dark?: boolean }> = [
+const SLIDES: Array<{ step: string; title: string; body: ReactNode; art?: ReactNode; artClass?: string; dark?: boolean }> = [
+  /* 사용법보다 **왜**가 먼저다(2026-09-22). 첫 장이 곧바로 '메시지를
+     작성합니다'였던 동안, 읽는 사람은 무엇을 하는 물건인지 모른 채 조작
+     순서부터 받았다. 앞에 두 장을 둔다 — 문턱을 말하고(Problem), 그래서
+     무엇을 두었는지 말한다(Solution). 이 둘은 글만으로 선다. 삽화를 새로
+     그리지 않았고, 있는 그림을 빌려 오면 그 장의 말이 아닌 것이 선다. */
+  {
+    step: 'Problem',
+    title: '발화의 문턱을 발견했습니다.',
+    body: (
+      <p>
+        대자보, 에브리타임, 공청회.<br />
+        말을 전할 통로는 있지만,<br />
+        형식과 절차, 주변의 시선은<br />
+        자유롭게 말하기를 어렵게 합니다.
+      </p>
+    )
+  },
+  {
+    step: 'Solution',
+    title: '말을 꺼내는 또 하나의 방식',
+    body: (
+      <p>
+        메가폰트는 글을 빛으로 띄우는 카트입니다.<br />
+        내가 다듬은 한 줄을 밤의 벽에 펼치고,<br />
+        그 말을 본 사람도 한마디를 보탤 수 있습니다.
+      </p>
+    )
+  },
   {
     step: 'Step 1',
     title: '메시지를 작성합니다.',
@@ -226,6 +254,11 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
         공간을 지나는 사람들에게 닿습니다.
       </p>
     ),
+    /* 한 바퀴를 12초에서 **8.4초(70%)로** 줄인다(2026-09-22). 보고 있으면
+       길었다 — 다섯 걸음(어둠·불빛·문구·사람·도로 어둠) 중 사람이 걸어
+       들어오는 구간이 혼자 5몫이라 그동안 화면이 멈춘 듯 보인다. 걸음의
+       비율은 그대로 두고 전체만 줄이므로 사람은 여전히 두 걸음으로 들어온다
+       (그 이유는 aboutSvg의 timeline 주석). 1번도 같은 값으로 줄였다. */
     art: <Built name="about" still={artAboutFull}
       make={(k) => aboutSvg(artAboutLit, artAboutFull, k, 8.4)} />,
     artClass: 'is-bleed',
@@ -254,11 +287,6 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
             <dd>보낸 뒤에는 수정할 수 없습니다.</dd>
           </div>
           <div>
-    /* 한 바퀴를 12초에서 **8.4초(70%)로** 줄인다(2026-09-22). 보고 있으면
-       길었다 — 다섯 걸음(어둠·불빛·문구·사람·도로 어둠) 중 사람이 걸어
-       들어오는 구간이 혼자 5몫이라 그동안 화면이 멈춘 듯 보인다. 걸음의
-       비율은 그대로 두고 전체만 줄이므로 사람은 여전히 두 걸음으로 들어온다
-       (그 이유는 aboutSvg의 timeline 주석). 1번도 같은 값으로 줄였다. */
             <dt>운영 원칙</dt>
             <dd>타인에게 피해를 주거나 문제가 되는 글은 관리자가 삭제할 수 있습니다.</dd>
           </div>

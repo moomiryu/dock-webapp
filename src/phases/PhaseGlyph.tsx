@@ -49,20 +49,44 @@ export default function PhaseGlyph({ text, initialTone, onBack, onNext }: Props)
    *
    * 위의 guess는 한 글자를 1em으로 치는 어림이라 — 03과 같은 문제 — 실제
    * 자폭(0.5~0.8em)에서는 카드 폭의 35%만 썼다. 그린 것을 재서 카드 폭의
-   * 86%, 높이의 55%에 먼저 닿는 쪽으로 맞춘다. 자폭은 크기에 정비례하므로
-   * 한 번 재면 끝이고 1% 안의 흔들림은 버린다(PhaseTone과 같은 결).
+   * 86%, 높이의 55%에 먼저 닿는 쪽으로 맞춘다. 1% 안의 흔들림은 버린다
+   * (PhaseTone과 같은 결).
+   *
+   * ── 몇 번까지만 맞춘다 (2026-09-21) ────────────────────────────────
+   * "자폭은 크기에 정비례하므로 한 번 재면 끝"이라고 적어 두었는데, **줄이
+   * 안 바뀔 때만** 맞는 말이었다. 크기가 달라지면서 줄이 다시 나뉘면 높이가
+   * 뛴다. 그러면 A에서 잰 답이 B이고 B에서 잰 답이 A인 자리가 생겨 둘이
+   * 서로를 끝없이 부른다 — React가 'Maximum update depth'로 끊고 **화면이
+   * 통째로 하얘졌다.** 차분한(Source Han Serif)에서 360·380·430 폭이 그랬다
+   * (폭 열 가지 × 성격 넷을 훑어 확인. 다른 셋은 어느 폭에서도 멀쩡했다).
+   *
+   * 그래서 고쳐 잡는 횟수를 넷으로 묶는다. 정비례가 성립하는 보통의 경우는
+   * 첫 번에 끝나므로 이 마개에 닿지도 않는다. 닿을 때는 **본 것 중 제일
+   * 작은 값**을 쓴다 — 두 값을 오가는 자리에서 큰 쪽에 멈추면 글이 칸을
+   * 넘치기 때문이다.
+   *
+   * 재는 조건(성격·글·칸 크기)이 달라지면 셈을 처음부터 다시 시작한다.
    */
   const full = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState<number | null>(null);
+  const tries = useRef(0);
+  const seen = useRef('');
+  const least = useRef(Infinity);
   useLayoutEffect(() => {
     const el = full.current;
     if (!el) return;
     const fs = parseFloat(getComputedStyle(el).fontSize);
     const card = el.parentElement as HTMLElement;
     if (!fs || !card) return;
+    const key = `${font}|${text}|${card.clientWidth}x${card.clientHeight}`;
+    if (seen.current !== key) { seen.current = key; tries.current = 0; least.current = Infinity; }
+    if (tries.current >= 4) return;
     const per = { w: el.offsetWidth / fs, h: el.offsetHeight / fs };
     const next = Math.min((card.clientWidth * 0.86) / per.w, (card.clientHeight * 0.55) / per.h);
-    if (next > 0 && (fit === null || Math.abs(next - fit) / next > 0.01)) setFit(next);
+    if (!(next > 0)) return;
+    least.current = Math.min(least.current, next);
+    const want = tries.current < 3 ? next : least.current;
+    if (fit === null || Math.abs(want - fit) / want > 0.01) { tries.current += 1; setFit(want); }
   });
   const size = fit === null ? guess : `${fit.toFixed(1)}px`;
   // 고른 칸의 줄·칸만 남기고 나머지를 0으로 접는다 (0·1번 = 윗줄, 0·2번 = 왼칸)

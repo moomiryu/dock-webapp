@@ -71,6 +71,8 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
      * 먹는다. 자판과 붙여넣기는 서로 다른 사건이라 엇갈릴 일이 없다.
      */
     const [cut, setCut] = useState(0);
+    /** 줄이 넘쳤다고 말해 주는 한 줄. 다음 자판에서 지워진다 */
+    const [over, setOver] = useState('');
     useEffect(() => { input.current?.focus({ preventScroll: true }); }, []);
     /* 닫으면 쓰던 자리로 돌려보낸다. 힌트를 보고 나서 다시 입력창을 찾아
        누르게 하면, 힌트를 연 것이 작성을 끊은 것이 된다. */
@@ -105,8 +107,18 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
         const over = e.clipboardData.getData('text').length - room;
         if (over > 0) setCut(over);
       }}
-      onKeyDown={() => { if (cut) setCut(0); }}
-      onChange={e => setText(e.target.value.slice(0, 60))}/>
+      onKeyDown={() => { if (cut) setCut(0); if (over) setOver(''); }}
+      onChange={e => {
+        const next = e.target.value.slice(0, 60);
+        /* **다섯 줄까지.** 60자와 다른 규칙이 아니라 같은 규칙의 다른
+           얼굴이다 — 벽의 한 줄이 열두 자이고 다섯 줄이 들어가므로
+           12 x 5 = 60이다. 자동으로 접힐 때는 60자가 곧 다섯 줄이라 이
+           검사에 걸릴 일이 없고, 발화자가 엔터로 직접 끊었을 때만 걸린다
+           (한 글자짜리 줄 여섯이면 여섯 자로도 여섯 줄이 된다).
+           넘치면 **받지 않는다** — 이미 쓴 글을 잘라 내는 것보다 낫다. */
+        if (foldLines(next).length > 5) { setOver('다섯 줄까지 쓸 수 있어요'); return; }
+        setOver(''); setText(next);
+      }}/>
   </div>
   {/* 다 찼다는 말을 **숫자와 글자 둘로** 한다. 색만 바꾸면 색을 못 보는
       사람에게는 아무 일도 안 일어난 화면이다. */}
@@ -115,7 +127,7 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
     {full && <b>다 찼어요</b>}
   </span>
   {/* 잘린 것은 그 자리에서 말한다. 다음 글자를 치면 사라진다 */}
-  {cut > 0 && <span className="compose-cut" role="status">{cut}자는 들어가지 않았어요</span>}
+  {(cut > 0 || over) && <span className="compose-cut" role="status">{over || `${cut}자는 들어가지 않았어요`}</span>}
   {/* 낭독기에는 **마지막 열 자**만 알린다. 한 자마다 읽어 주면 쓰는 것을
       방해하고, 안 알리면 한도가 있다는 것조차 모른다. */}
   <span className="sr-only" aria-live="polite">

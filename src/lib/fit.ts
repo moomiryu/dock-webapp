@@ -127,7 +127,12 @@ export function fillFromLegacySize(size: number | undefined): number {
  * 6자였으니 12자 한도에서는 거의 오지 않는 길이다.
  */
 export function foldLines(text: string, per = CHARS_PER_LINE): string[] {
-  if (text.includes('\n')) return text.split('\n');
+  /* 발화자가 끊은 자리는 지킨다. 다만 그 안에서도 **한 줄에 들어갈 만큼만**
+     접는다 — 2026-09-22까지는 줄바꿈이 하나라도 있으면 접기를 통째로 껐고,
+     그래서 '가'를 60자 친 뒤 엔터를 한 번 누르면 그 60자가 한 줄로 벽을
+     가로질렀다. 발화자가 정하는 것은 **어디서 끊을지**이지 한 줄이 얼마나
+     길어도 되는지가 아니다. 벽의 한 줄은 열두 자다. */
+  if (text.includes('\n')) return text.split('\n').flatMap((part) => foldLines(part, per));
   const out: string[] = [];
   let line = '';
   const len = (v: string) => Array.from(v).length;

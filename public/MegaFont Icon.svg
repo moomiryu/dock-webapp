@@ -1,10 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  MEGAFONT 마크. 작가가 준 것(by_moomiryu/Renewal_v1/Tutorial/MegaFont Icon.svg,
-  화판 418.34×605.21)을 **자르지 않고** 정사각 안에 넣었다. 높이가 판을 채우고
-  남는 좌우가 여백이다(114.4px씩). 비례는 원본 그대로다.
--->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 741 741" width="741" height="741">
+<svg id="_레이어_2" data-name="레이어 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 418.34 605.21">
   <defs>
     <style>
       .cls-1 {
@@ -20,8 +15,7 @@
       }
     </style>
   </defs>
-  <g transform="translate(114.4 0) scale(1.22)">
-<g id="_레이어_1-2" data-name="레이어 1">
+  <g id="_레이어_1-2" data-name="레이어 1">
     <g>
       <g>
         <path class="cls-3" d="M381.6,11.64v581.93c0,10.35-12.51,15.53-19.83,8.21L70.81,310.82c-4.54-4.54-4.54-11.89,0-16.43L361.77,3.43c7.32-7.32,19.83-2.13,19.83,8.21Z"/>
@@ -34,6 +28,5 @@
       </g>
       <path class="cls-2" d="M0,405.71v-206.21c0-5.17,6.26-7.76,9.91-4.11l103.11,103.11c2.27,2.27,2.27,5.94,0,8.21L9.91,409.82C6.26,413.48,0,410.88,0,405.71Z"/>
     </g>
-  </g>
   </g>
 </svg>

@@ -146,7 +146,7 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
        동안 읽을 것이 없었다. 판을 나란히 놓고 화판으로 자르면 겹치는
        순간이 아예 없다. */
     art: <Built name="rules" still={artRule1}
-      make={(k) => slideSvg([artRule1, artRule2, artRule3], k, 14)} />,
+      make={(k) => slideSvg([artRule1, artRule2, artRule3], k, 10)} />,
     artClass: 'is-wide'
   },
   {
@@ -162,7 +162,11 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
     // 끝까지 갔다가 되짚어 돌아온다 — 1→2→3→4→3→2→1.
     art: <Built name="glyphs" still={artGlyphs1}
       make={(k) => chainSvg([artGlyphs1, artGlyphs2, artGlyphs3, artGlyphs4], k)} />,
-    artClass: 'is-wide'
+    /* is-fitted: 이 장만 삽화가 글 바로 밑에서 시작해 혼자 크게 올라와
+       보였다(재서 확인: 칸 위에서 15px. Step 1은 92, Step 3은 38). 조금
+       줄여 칸에 맞춘다 — 그래야 캐릭터의 발까지 서고 버튼과도 벌어진다.
+       값은 app.css가 들고 있다. */
+    artClass: 'is-wide is-fitted'
   },
   {
     step: 'Step 3',
@@ -183,7 +187,7 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
        느낌표. 장면이 바뀌는 자리와 한 장면 안에서 손이 움직이는 자리를
        서로 다른 말로 한다. */
     art: <Built name="dock" still={artDock4}
-      make={(k) => slideSvg([artDock1, [artDock2, artDock3], artDock4], k)} />,
+      make={(k) => slideSvg([artDock1, [artDock2, artDock3], artDock4], k, 10)} />,
     artClass: 'is-wide'
   },
   {

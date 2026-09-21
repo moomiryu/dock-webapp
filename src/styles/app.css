@@ -3057,6 +3057,11 @@
   0%, 96.5%, 100% { transform: scaleY(1); }
   98.2%           { transform: scaleY(0.06); }
 }
+/* 쓰는 자리의 커서. 진짜 글자 옆에 서서 깜빡인다(svgAsset · typeIn) */
+.mf-caret{ animation: mfCaret 1.06s steps(1, end) infinite; }
+@keyframes mfCaret{ 0%, 55% { opacity: 1; } 55.01%, 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce){ .mf-caret{ animation: none; } }
+
 .mf-eye{
   transform-box: fill-box;
   transform-origin: center;

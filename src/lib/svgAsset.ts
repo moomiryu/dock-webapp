@@ -209,14 +209,23 @@ const DRAWN = 'path,ellipse,circle,rect,polygon,line,text';
  * 작가가 첫 컷에 이름을 달아 두었다(`typed-message` · `insertion-cursor` ·
  * `keyboard`). 그 이름이 있는 그림에서만 돈다.
  *
- * 문구는 **낱자로 나뉘어 있지 않다** — 한 덩이 path다. 그래서 글자를
- * 하나씩 켜는 대신 **왼쪽에서 자라는 창**으로 가린다(clipPath). 창의 오른쪽
- * 끝이 곧 커서 자리라, 커서를 그 끝에 세우면 둘이 저절로 맞는다.
- * calcMode=discrete라 창이 한 칸씩 **뚝뚝** 넓어진다 — 그게 타이핑이다.
+ * ── 왜 진짜 글자인가 ─────────────────────────────────────────────────
+ * 작가의 문구는 **글자가 아니라 한 덩이 path**다. 처음에는 그것을 왼쪽에서
+ * 자라는 창(clipPath)으로 가려 쳐지는 것처럼 보이게 했는데, 그러면 글자가
+ * 입력되는 것이 아니라 **벡터가 잘려 드러나는 것**으로 읽혔다 — 획 중간이
+ * 세로로 잘린 채 서 있는 순간이 생긴다.
  *
- * 한 칸에 한 번씩 자판의 키가 하늘색으로 눌리고 손이 내려앉는다. 어느 키를
- * 누를지는 알 수 없으므로(문구가 한 덩이다) 자판 위를 고르게 훑는다 —
- * 마지막 한 칸은 작가가 `pressed-key`라고 이름 붙인 넓은 키가 받는다.
+ * 그래서 path를 걷어내고 Pretendard로 그린 진짜 글자를 앉힌다.
+ *
+ * ── 커서 자리를 어떻게 아는가 ────────────────────────────────────────
+ * 한 글자씩 켜고 커서를 그 뒤에 세우려면 글자마다의 자리를 알아야 하는데,
+ * 여기는 문서 밖이라(DOMParser) 글자를 재 볼 수가 없다.
+ *
+ * 그래서 재지 않는다. **앞부분마다 <text>를 하나씩** 만들어 두고 한 번에
+ * 하나만 켠다 — '내', '내 ', '내 생'… 각각이 제 힘으로 배치되므로 커서는
+ * 늘 마지막 글자 바로 뒤에 선다. 글자 수가 적어(다섯) 요소 여섯이면 끝난다.
+ *
+ * 커서는 그 <text> 안의 마지막 tspan이다. 깜빡임은 CSS가 맡는다(.mf-caret).
  */
 function typeIn(root: Element, t: ReturnType<typeof timeline>, dur: number) {
   const msg = root.querySelector('#typed-message');
@@ -228,75 +237,87 @@ function typeIn(root: Element, t: ReturnType<typeof timeline>, dur: number) {
 
   const doc = root.ownerDocument;
   const NS = 'http://www.w3.org/2000/svg';
-  /** 몇 번에 나눠 치는가. 문구가 '내 생각은'(다섯 칸)이라 다섯이다 */
-  const STEPS = 5;
-  /* 치는 구간은 첫 마디 안이다 — 다 치고 나서 읽을 짬이 남아야 한다 */
+  /** 판에 쳐지는 말. 작가가 그려 둔 그 문구다 */
+  const WORD = Array.from('내 생각은');
+  const ink = (path.getAttribute('fill') || '#fff');
+  const rule = caret.getAttribute('fill') || '#2ce9f7';
+
+  /* 글자 크기는 작가가 그린 덩이에 맞춘다. 한글은 Pretendard에서 한 글자가
+     한 em쯤이고 사이 띄개는 그 3분의 1쯤이라, 그 셈으로 폭을 맞춘다. */
+  const em = WORD.reduce((n, c) => n + (c === ' ' ? 0.34 : 1), 0);
+  const size = r2(box.w / em);
+  /* 세로는 밑줄 자리로 맞춘다 — 그린 덩이의 아래에서 글자 아랫배가
+     조금 올라온 자리다(0.14em쯤이 한글의 아래 여백이다). */
+  const baseY = r2(box.y + box.h);
+
+  /* 원래의 덩이와 네모 커서는 걷어낸다 — 둘 다 이 아래가 대신한다 */
+  path.parentNode?.removeChild(path);
+  caret.parentNode?.removeChild(caret);
+
+  const STEPS = WORD.length;
   const from = t.at[1] * 0.05, to = t.at[1] * 0.75;
   /* 마디가 촘촘해서 소수 둘로는 이웃끼리 같은 값이 된다 — 실제로 키가
      켜지고 꺼지는 두 마디가 0.08;0.08로 겹쳐 브라우저가 그 애니메이션을
      통째로 버렸다. 여기서만 셋으로 쓴다. */
   const r3 = (n: number) => Number(n.toFixed(3));
   const step = (i: number) => r3(from + ((to - from) * i) / STEPS);
-
-  /* 창. 위아래로 넉넉히 잡는다 — 글자의 삐침이 상자 밖으로 나간다 */
-  const clip = doc.createElementNS(NS, 'clipPath');
-  clip.setAttribute('id', 'mf-type');
-  clip.setAttribute('clipPathUnits', 'userSpaceOnUse');
-  const win = doc.createElementNS(NS, 'rect');
-  win.setAttribute('x', r2(box.x - 2) + '');
-  win.setAttribute('y', r2(box.y - 20) + '');
-  win.setAttribute('height', r2(box.h + 40) + '');
-  win.setAttribute('width', '0');
-  clip.appendChild(win);
-  (root.querySelector('defs') ?? root.insertBefore(doc.createElementNS(NS, 'defs'), root.firstChild)).appendChild(clip);
-  msg.setAttribute('clip-path', 'url(#mf-type)');
-
-  const widths = Array.from({ length: STEPS + 1 }, (_, i) => r2((box.w + 4) * (i / STEPS)));
-  const times = Array.from({ length: STEPS + 1 }, (_, i) => step(i));
-  /* 마지막 머묾이 시작되면 판을 비운다. 그 머묾은 고리를 건너 맨 앞의
-     머묾과 **이어 붙으므로**, 거기서 비워 두어야 한 바퀴가 돌 때 글이
-     사라졌다 다시 쳐지는 것으로 이어진다 — 안 비우면 다 쓴 글이 고리를
-     넘는 한 프레임에 툭 없어진다. */
+  /* 마지막 머묾이 시작하고 한참 뒤에 판을 비운다. 그 머묾은 고리를 건너
+     맨 앞의 머묾과 **이어 붙으므로**, 거기서 비워 두어야 한 바퀴가 돌 때
+     글이 사라졌다 다시 쳐지는 것으로 이어진다. */
   const last = t.at[t.at.length - 2];
   const clear = r3(last + (1 - last) * 0.7);
-  const keyTimes = ['0', ...times.map(String), String(clear), '1'].join(';');
-  put(win, 'animate', {
-    attributeName: 'width', calcMode: 'discrete',
-    values: ['0', ...widths.map(String), '0', '0'].join(';'),
-    keyTimes, dur: `${dur}s`, repeatCount: 'indefinite'
-  });
-  /* 커서는 창 끝에 선다. 글 뒤로 반 칸 띄운 자리가 작가가 그린 x이므로,
-     그 차이를 그대로 지니고 따라간다. */
-  const gap = Number(caret.getAttribute('x') ?? 0) - (box.x + box.w);
-  put(caret, 'animate', {
-    attributeName: 'x', calcMode: 'discrete',
-    values: [r2(box.x + gap), ...widths.map((w) => r2(box.x + w + gap)),
-      r2(box.x + gap), r2(box.x + gap)].join(';'),
-    keyTimes, dur: `${dur}s`, repeatCount: 'indefinite'
-  });
 
-  /* 자판. 키를 왼쪽 위부터 읽어 고르게 훑고, 마지막은 넓은 키가 받는다. */
+  /* 앞부분마다 한 줄씩. i = 0은 커서만 있는 빈 줄이다. */
+  for (let i = 0; i <= STEPS; i++) {
+    const line = doc.createElementNS(NS, 'text');
+    line.setAttribute('x', r2(box.x) + '');
+    line.setAttribute('y', baseY + '');
+    line.setAttribute('font-family', "'Pretendard Variable', Pretendard, sans-serif");
+    line.setAttribute('font-size', size + '');
+    line.setAttribute('font-weight', '600');
+    line.setAttribute('fill', ink);
+    line.setAttribute('opacity', '0');
+    /* 띄개가 줄 끝에 오면 브라우저가 지워 버린다 — 커서가 앞 글자에
+       붙어 버리므로 안 지워지는 공백으로 바꿔 둔다. */
+    const head = WORD.slice(0, i).join('').replace(/ /g, '\u00a0');
+    if (head) line.appendChild(doc.createTextNode(head));
+    const bar = doc.createElementNS(NS, 'tspan');
+    bar.setAttribute('class', 'mf-caret');
+    bar.setAttribute('fill', rule);
+    bar.appendChild(doc.createTextNode('|'));
+    line.appendChild(bar);
+    msg.appendChild(line);
+    /* 제 차례에만 켜진다. 마지막 줄은 판을 비울 때까지 남는다. */
+    const on = i === 0 ? '0' : step(i - 1);
+    const off = i === STEPS ? clear : step(i);
+    put(line, 'animate', {
+      attributeName: 'opacity', calcMode: 'discrete',
+      values: '0;1;0;0', keyTimes: `0;${on};${off};1`,
+      dur: `${dur}s`, repeatCount: 'indefinite'
+    });
+  }
+
+  /* 자판. 글자 하나에 키 하나가 하늘색으로 눌린다. 어느 키인지는 알 수
+     없으므로(문구가 한 덩이였다) 자판 위를 고르게 훑고, 띄개 자리는
+     작가가 `pressed-key`라고 이름 붙인 넓은 키가 받는다. */
   const keys = Array.from(root.querySelectorAll('#keyboard rect'));
   const wide = root.querySelector('#pressed-key');
-  const hits = Array.from({ length: STEPS }, (_, i) =>
-    (i === STEPS - 1 && wide) ? wide : keys[Math.floor((i * keys.length) / STEPS) % Math.max(1, keys.length)]);
+  const hits = WORD.map((c, i) =>
+    (c === ' ' && wide) ? wide : keys[Math.floor((i * keys.length) / STEPS) % Math.max(1, keys.length)]);
   const lit = (el: Element, i: number) => {
     const rest = el.getAttribute('fill') ?? '#fff';
-    const a = step(i), b = r3(Math.min(1, a + ((to - from) / STEPS) * 0.55));
-    /* discrete는 다음 마디까지 그 값을 물고 있는다 — 켜고, 끄고, 끝.
-       마디 넷이면 되고 그래야 겹칠 자리가 없다. */
+    const a2 = step(i), b2 = r3(Math.min(1, a2 + ((to - from) / STEPS) * 0.55));
     put(el, 'animate', {
       attributeName: 'fill', calcMode: 'discrete',
-      values: [rest, ONLOOKER, rest, rest].join(';'),
-      keyTimes: `0;${a};${b};1`,
+      values: [rest, rule, rest, rest].join(';'),
+      keyTimes: `0;${a2};${b2};1`,
       dur: `${dur}s`, repeatCount: 'indefinite'
     });
   };
   hits.forEach((el, i) => { if (el) lit(el, i); });
 
-  /* 손. 키를 누를 때마다 살짝 내려앉는다 — 자판 쪽으로 3px, 그리고 돌아온다.
-     손은 몸에서 떨어진 작은 동그라미다(walker와 같은 얼개). 자판에 제일
-     가까운 것을 고른다. */
+  /* 손. 키를 누를 때마다 자판 쪽으로 3px 내려앉았다 돌아온다. 손은 몸에서
+     떨어진 작은 동그라미다(walker와 같은 얼개) — 자판에 제일 가까운 것. */
   const kb = keys.length ? boxOf(itemOf(keys[0])) : null;
   const hand = Array.from(root.querySelectorAll('circle'))
     .map((el) => ({ el, b: boxOf(itemOf(el)) }))
@@ -306,8 +327,8 @@ function typeIn(root: Element, t: ReturnType<typeof timeline>, dur: number) {
     const cy = Number(hand.el.getAttribute('cy') ?? 0);
     const beat: string[] = ['0'], vals: string[] = [r2(cy) + ''];
     for (let i = 0; i < STEPS; i++) {
-      const a = step(i), b = r3(Math.min(1, a + ((to - from) / STEPS) * 0.5));
-      beat.push(String(a), String(b));
+      const a2 = step(i), b2 = r3(Math.min(1, a2 + ((to - from) / STEPS) * 0.5));
+      beat.push(String(a2), String(b2));
       vals.push(r2(cy + 3) + '', r2(cy) + '');
     }
     beat.push('1'); vals.push(r2(cy) + '');

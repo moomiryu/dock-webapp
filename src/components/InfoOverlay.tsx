@@ -147,9 +147,13 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
        규칙 둘을 나란히 놓는 대신 한 자리에서 갈아 끼운다.
 
        even을 켜는 이유: 셋 다 **읽을 말**이라 가운데도 끝과 같이 머물러야
-       한다. 기본 규칙(가운데는 짧게)은 가운데가 건너가는 중일 때의 것이다. */
+       한다. 기본 규칙(가운데는 짧게)은 가운데가 건너가는 중일 때의 것이다.
+
+       loop을 켜는 이유: 셋은 한 동작의 앞뒤가 아니라 **차례로 읽을 목록**
+       이라 되짚을 순서가 없다. 쓰는 중 → 최대 60자 → 비속어 금지, 그리고
+       다시 처음. */
     art: <Built name="rules" still={artRule1}
-      make={(k) => chainSvg([artRule1, artRule2, artRule3], k, 14, true)} />,
+      make={(k) => chainSvg([artRule1, artRule2, artRule3], k, 14, true, true)} />,
     artClass: 'is-wide'
   },
   {

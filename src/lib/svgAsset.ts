@@ -231,7 +231,7 @@ function typeIn(root: Element, t: ReturnType<typeof timeline>, dur: number) {
   /** 몇 번에 나눠 치는가. 문구가 '내 생각은'(다섯 칸)이라 다섯이다 */
   const STEPS = 5;
   /* 치는 구간은 첫 마디 안이다 — 다 치고 나서 읽을 짬이 남아야 한다 */
-  const from = t.at[1] * 0.12, to = t.at[1] * 0.8;
+  const from = t.at[1] * 0.05, to = t.at[1] * 0.75;
   /* 마디가 촘촘해서 소수 둘로는 이웃끼리 같은 값이 된다 — 실제로 키가
      켜지고 꺼지는 두 마디가 0.08;0.08로 겹쳐 브라우저가 그 애니메이션을
      통째로 버렸다. 여기서만 셋으로 쓴다. */
@@ -253,10 +253,16 @@ function typeIn(root: Element, t: ReturnType<typeof timeline>, dur: number) {
 
   const widths = Array.from({ length: STEPS + 1 }, (_, i) => r2((box.w + 4) * (i / STEPS)));
   const times = Array.from({ length: STEPS + 1 }, (_, i) => step(i));
-  const keyTimes = ['0', ...times.map(String), '1'].join(';');
+  /* 마지막 머묾이 시작되면 판을 비운다. 그 머묾은 고리를 건너 맨 앞의
+     머묾과 **이어 붙으므로**, 거기서 비워 두어야 한 바퀴가 돌 때 글이
+     사라졌다 다시 쳐지는 것으로 이어진다 — 안 비우면 다 쓴 글이 고리를
+     넘는 한 프레임에 툭 없어진다. */
+  const last = t.at[t.at.length - 2];
+  const clear = r3(last + (1 - last) * 0.7);
+  const keyTimes = ['0', ...times.map(String), String(clear), '1'].join(';');
   put(win, 'animate', {
     attributeName: 'width', calcMode: 'discrete',
-    values: ['0', ...widths.map(String), String(box.w + 4)].join(';'),
+    values: ['0', ...widths.map(String), '0', '0'].join(';'),
     keyTimes, dur: `${dur}s`, repeatCount: 'indefinite'
   });
   /* 커서는 창 끝에 선다. 글 뒤로 반 칸 띄운 자리가 작가가 그린 x이므로,
@@ -264,7 +270,8 @@ function typeIn(root: Element, t: ReturnType<typeof timeline>, dur: number) {
   const gap = Number(caret.getAttribute('x') ?? 0) - (box.x + box.w);
   put(caret, 'animate', {
     attributeName: 'x', calcMode: 'discrete',
-    values: [r2(box.x + gap), ...widths.map((w) => r2(box.x + w + gap)), r2(box.x + box.w + gap)].join(';'),
+    values: [r2(box.x + gap), ...widths.map((w) => r2(box.x + w + gap)),
+      r2(box.x + gap), r2(box.x + gap)].join(';'),
     keyTimes, dur: `${dur}s`, repeatCount: 'indefinite'
   });
 
@@ -1100,7 +1107,7 @@ function dockPhone(root: Element, home: Item, held: Item, hand: Item | null,
  * 되돌아서는 두 컷(처음과 끝)에 머무는 몫을 더 준다 — 거기서 안 쉬면
  * 방향이 바뀌는 것이 아니라 튕겨 나온 것으로 보인다.
  */
-export function chainSvg(raws: string[], key: string, dur = 11, even = false): string {
+export function chainSvg(raws: string[], key: string, dur = 11, even = false, loop = false): string {
   if (typeof DOMParser === 'undefined' || raws.length < 2) return scopeSvg(raws[0], key);
   try {
     const cuts = raws.map((r) => new DOMParser().parseFromString(r, 'image/svg+xml').documentElement);
@@ -1110,10 +1117,21 @@ export function chainSvg(raws: string[], key: string, dur = 11, even = false): s
     const items = cuts.map(itemsOf);
     const n = cuts.length;
 
-    /** 오가는 차례: 0,1,…,n-1,n-2,…,0 */
+    /**
+     * 도는 차례.
+     *
+     * 기본은 **왔던 길을 되짚는다**: 0,1,…,n-1,…,1,0. 컷이 한 장면의
+     * 앞뒤일 때(Step 3의 꽂기) 그래야 한 동작이 오간다.
+     *
+     * loop면 **앞으로만 간다**: 0,1,…,n-1,0. 컷이 서로 다른 규칙일 때가
+     * 그렇다 — Step 1의 셋(쓰는 중 · 최대 60자 · 비속어 금지)은 되짚을
+     * 순서가 아니라 차례로 읽을 목록이다. 끝에 0을 한 번 더 두어야 마지막
+     * 컷에서 첫 컷으로 건너가는 구간이 생기고, 그래야 이어 붙는다.
+     */
     const order: number[] = [];
     for (let k = 0; k < n; k++) order.push(k);
-    for (let k = n - 2; k >= 0; k--) order.push(k);
+    if (loop) order.push(0);
+    else for (let k = n - 2; k >= 0; k--) order.push(k);
     /* 첫 구간과 마지막 구간을 길게 준다. 거기서 사람이 걸어 들어오고
        나가기 때문이다(Step 3). 걸음이 짧으면 미끄러진 것으로 보인다.
        사람이 없는 장(Step 2)에서는 그저 첫 전환이 조금 느긋해질 뿐이다.
@@ -1122,12 +1140,17 @@ export function chainSvg(raws: string[], key: string, dur = 11, even = false): s
        마지막 구간이라 **전부**가 느려진다. 5/2로 주면 머무는 1.7초보다
        건너가는 2.9초가 길어져, 읽어야 할 판이 늘 바뀌는 중이었다. */
     const moves = order.slice(1).map((_, i) =>
-      (!even && n > 2 && (i === 0 || i === order.length - 2) ? 5 : 2));
+      (!loop && !even && n > 2 && (i === 0 || i === order.length - 2) ? 5 : 2));
     /* 가운데 컷을 짧게 잡는 것은 그것이 **건너가는 중**일 때의 이야기다
        (Step 2의 잣대 손잡이가 그렇다). Step 1처럼 컷 하나하나가 읽을
        말이면 가운데도 끝과 같이 머물러야 한다 — 0.44초짜리 'max 60'은
        지나가는 깜빡임이지 규칙이 아니다. */
-    const t = timeline(order.map((k) => (even || k === 0 || k === n - 1 ? 3 : 1)), moves);
+    const t = timeline(order.map((k, i) =>
+      /* loop에서 0번 컷은 처음과 끝에 한 번씩 선다. 그 둘은 고리를 건너
+         **이어 붙는 한 구간**이므로 반씩 나눠 가져야 다른 컷과 같아진다 —
+         3씩 주면 0번만 두 배로 머문다. */
+      loop ? (i === 0 || i === order.length - 1 ? 1.5 : 3)
+        : (even || k === 0 || k === n - 1 ? 3 : 1)), moves);
 
     // 첫 컷의 요소 → 컷마다의 짝
     const of: Array<Map<Element, Item>> = cuts.map(() => new Map());

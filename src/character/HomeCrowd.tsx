@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { charPos } from './pos';
+import { said } from './says';
 import {
   BODY, CLIP_H, EYE_LOOK, EYE_SHUT, EYE_SMILE, EYE_WHITE, EYE_WIDE, EYE_FAR_DX,
   HEAD, SHADOW, SHADOW_FRONT, SHADOW_SIDE, VIEW, WALK, type WalkerEye
@@ -76,6 +77,11 @@ const FRONT = { x: 0.1, y: 1.05 };
  *
  * 간격을 고르게 두면 여섯이 비슷한 때에 메가폰트 앞에 닿아 **한꺼번에
  * 빨개진다.** 그건 흐름이 아니라 신호에 맞춘 것이다. 간격을 넓게 흩는다.
+ *
+ * 흩되 **차례는 지킨다.** 앞사람 것에 더해 가며 쌓는다 — 저마다 제 번호에
+ * 무작위를 곱하던 때는(500 + i × 0.7~2.6초) 앞사람이 큰 값을, 뒷사람이
+ * 작은 값을 뽑으면 순서가 뒤집혔다. 둘이 같은 때에 나란히 들어오는 장면도
+ * 생겼다. 쌓으면 다음 사람은 반드시 앞사람보다 0.7초 이상 뒤다.
  */
 const JOIN_DELAY = 500, JOIN_GAP = { min: 700, max: 2600 };
 /** 메가폰트 앞에서 보이는 표정의 차례 */
@@ -165,7 +171,9 @@ export default function HomeCrowd() {
       p.born = t;
     };
 
-    const crowd: Walker[] = nodes.map((el, i) => {
+    /** 다음 사람이 들어오는 때. 한 명씩 쌓아 올린다 */
+    let join = JOIN_DELAY;
+    const crowd: Walker[] = nodes.map((el) => {
       const p: Walker = {
         el, art: el.querySelector('svg')!,
         x: 0, y: 0, dir: 1, speed: 0, phase: 'walk',
@@ -177,7 +185,8 @@ export default function HomeCrowd() {
       // 처음 여섯은 한꺼번에 들이닥치지 않게 차례로 들어온다. 시각은
       // 메가폰트가 돌아선 뒤에 정해진다(아래 step).
       p.el.style.opacity = '0';
-      p.wait = JOIN_DELAY + i * random(JOIN_GAP.min, JOIN_GAP.max);
+      p.wait = join;
+      join += random(JOIN_GAP.min, JOIN_GAP.max);
       return p;
     });
 
@@ -217,6 +226,11 @@ export default function HomeCrowd() {
                 if (p.beat >= TURN_AT) {
                   p.el.dataset.tone = 'red';
                   p.el.dataset.face = 'front';
+                  /* 빨개진 **그 자리**를 적어 둔다. 배경에 흐르는 말은 이제
+                     시계가 아니라 여기서 시작한다 — 이 머리 위로 한 줄이
+                     떠서 흘러간다(HomeVoices). 넘기는 값은 발끝이 아니라
+                     머리 끝이다: 상자가 p.y - HEIGHT에 놓여 있다. */
+                  said(p.x, p.y - HEIGHT);
                 }
                 p.until = t + m.ms;
               }

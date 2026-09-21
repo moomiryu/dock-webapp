@@ -916,15 +916,17 @@
 
 /* 머리줄 왼쪽, 뒤로가기 바로 옆. 숫자(.info-count)가 오른쪽 끝을 잡고
    이름은 남는 자리를 가져간다 — 그래야 이름이 길어져도 숫자가 안 밀린다. */
-.info-step-label{
+/* 단계명 · 진행 숫자. 둘은 같은 위계의 보조 정보라 크기도 굵기도 색도
+   같다 — 제목보다 작고 낮은 대비다. 가운뎃점이 둘을 나눈다.
+   (2026-09-22: 단계명은 왼쪽 끝, 숫자는 오른쪽 끝이었다.) */
+.info-where{
+  flex: none; display: flex; align-items: center; gap: var(--s2);
   font-family: var(--label-font);
   font-size: var(--fs-cap);
   letter-spacing: 0.02em;
   color: var(--muted);
-  flex: 1 1 auto;
   text-transform: none;
 }
-.info-count{ flex: none; color: var(--ink); }
 
 .info-slide h2{
   text-wrap: balance;
@@ -1675,43 +1677,31 @@
    차지해서, 390 화면에서 왼쪽 14px·오른쪽 10px이 비쳤다. 그림을 잘라 내는
    대신(그러면 가장자리로 흘러나간 두 그림자가 잘린다) 자리에 같은 검정을
    깔아 이음매를 없앤다 — 판의 검정도 순검정이라 경계가 안 보인다. */
-/* 그림이 잘려 나간 자리를 같은 검정으로 메운다. 윗변은 여기서도 풀어야
-   한다 — 마스크로 그림만 지워 봐야 그 밑의 이 검정이 하드에지로 메운다
-   (재서 확인: 윗변 위 y38이 순백, 4px 아래 y42가 이미 #120306이었다). */
-.info-art.is-bleed{
-  background: linear-gradient(to bottom, transparent 0, var(--night) 32px);
-}
-/* 검정 판이 흰 종이에서 **칼로 자른 듯** 시작했다(390×844에서 y 211).
-   그림째 윗변을 32px에 걸쳐 투명으로 보낸다 — 그림이 사라지는 것이
-   아니라 종이가 어두워지는 것으로 읽힌다. 아래·좌우는 화면 끝까지
-   이어지므로 위만 잡는다. */
-.info-art.is-bleed > span{
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 32px);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 32px);
-}
+/* 그림이 잘려 나간 자리를 같은 검정으로 메운다. 윗변을 풀던 그라데이션과
+   마스크는 2026-09-22에 걷어냈다 — 이 삽화가 서는 장이 화면째 검정이 되면서
+   검정에서 검정으로 스미는 일이 됐다. */
+.info-art.is-bleed{ background: var(--night); }
 
-/* ── About의 밤은 화면 맨 아래까지 간다 ──────────────────────────────
-   검정이 삽화 칸에서 끝나면(y 724) 그 아래 120px이 흰 종이로 남고, 거기에
-   바닥의 더운 기운이 얹혀 **검정과 분홍이 따로 노는 두 층**으로 보였다.
-   밤은 발밑까지 이어져야 하고, 기운은 그 위에 얹혀야 한다.
+/* ── 밤인 장은 화면이 통째로 검정이다 ───────────────────────────────
+   덮개 바닥에만 같은 검정 띠를 깔아 삽화와 이어 붙이던 방식이었다. 그
+   방식은 **머리줄과 글 뒤가 흰 종이**로 남아서, 위아래가 다른 화면처럼
+   읽혔다. 이제 위에서 아래까지 --night 하나다 — 삽화의 검정과 같은 값이라
+   판이 어디서 시작하는지 안 보인다.
 
-   삽화 칸을 늘리는 대신 덮개 바닥에 같은 검정을 깐다 — 칸을 늘리려면
-   .info-track의 잘라내기를 풀어야 하는데, 그건 한 장이 한 쪽보다 길어질 때
-   글이 버튼 위로 삐져나오지 말라고 걸어 둔 것이다.
-
-   띠의 높이는 삽화 칸 아래에 있는 것들의 합이다. 삽화는 남은 자리를 다
-   받으므로(flex: 1 1 0) 그 아래는 늘 이 넷뿐이다:
-     장의 아래 여백(--s7) + 덮개의 사이(--s3) + 버튼(--btn-xl) + 덮개의 아래 여백
-   층은 기운(::after, 1)과 버튼(2) 아래다. */
-.info-overlay.is-dark::before{
-  content: '';
-  position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  height: calc(var(--s7) + var(--s3) + var(--btn-xl) + max(var(--s6), env(safe-area-inset-bottom, 0px)));
-  background: var(--night);
-  pointer-events: none;
-}
+   그래서 걷어낸 것 셋:
+   · 바닥의 검정 띠(::before) — 배경이 이미 검정이라 할 일이 없다
+   · 바닥의 더운 기운(::after) — 흰 종이를 받치려던 것이다
+   · 삽화 윗변을 풀던 그라데이션과 마스크 — 검정에서 검정으로 스미는 것은
+     아무것도 아니다(is-bleed 쪽에 남겨 두면 죽은 규칙이 된다) */
+.info-overlay.is-dark{ background: var(--night); }
+.info-overlay.is-dark::after{ display: none; }
+/* 어두운 화면의 위계: 제목은 흰색, 보조 설명과 단계 정보는 읽히는 회색.
+   밝은 화면과 같은 차례이고 밝기만 뒤집힌다. */
+.info-overlay.is-dark .z-back{ color: var(--paper); }
+.info-overlay.is-dark .info-slide h2{ color: var(--paper); }
+.info-overlay.is-dark .info-slide p,
+.info-overlay.is-dark .info-said{ color: var(--grey-400); }
+.info-overlay.is-dark .info-where{ color: var(--grey-500); }
 @media (max-height: 700px){
   /* 짧은 화면에서는 장의 위아래 여백이 한 칸 좁다(--s5) */
   .info-overlay.is-dark::before{

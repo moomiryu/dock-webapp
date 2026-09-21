@@ -60,9 +60,10 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
   const back = () => (idx === 0 ? onClose() : setIdx(idx - 1));
   const s = SLIDES[idx];
   return (
-    /* 밤 장면일 때는 덮개 바닥까지 검정이다 — 삽화의 검정과 이어져야
-       바닥의 더운 기운이 그 위에 얹힌 한 겹으로 읽힌다(app.css · is-dark) */
-    <div className={'info-overlay' + (s.artClass === 'is-bleed' ? ' is-dark' : '')}
+    /* 밤 장면은 화면이 통째로 검정이다. 어느 장이 그런지는 삽화가 아니라
+       **그 장 자신**이 정한다 — 앞으로 설 Problem·Solution도 삽화를 화면
+       끝까지 쓸 수 있지만 검정은 아니다(app.css · is-dark) */
+    <div className={'info-overlay' + (s.dark ? ' is-dark' : '')}
       aria-label="메가폰트 소개">
       {/* 'About / Step 1'과 '1 / 6'은 둘 다 **지금 어디인가**를 말하는
           정보라 한 줄에 둔다 — 왼쪽이 이름, 오른쪽이 숫자. 단계 이름이
@@ -71,8 +72,14 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
           화면과 같은 높이에 선다. */}
       <div className="info-head">
         <BackButton label={idx === 0 ? '처음으로' : '이전 설명'} onClick={back} />
-        <span className="info-step-label">{s.step}</span>
-        <span className="info-count">{idx + 1} / {SLIDES.length}</span>
+        {/* 단계명과 진행 숫자는 **한 묶음**이다 — 둘 다 "지금 어디인가"를
+            말한다. 양끝으로 갈라 두었더니 둘이 서로 다른 일을 하는 것처럼
+            보였다. 오른쪽에 붙여 가운뎃점으로 나눈다. */}
+        <span className="info-where">
+          <span>{s.step}</span>
+          <span aria-hidden="true">·</span>
+          <span>{idx + 1}/{SLIDES.length}</span>
+        </span>
       </div>
       <div className="info-track" ref={trackRef} tabIndex={-1} role="region"
         aria-live="polite" aria-label="메가폰트 사용 안내">
@@ -119,20 +126,7 @@ function Built({ name, still, make }: { name: string; still: string; make: (key:
 }
 
 
-const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNode; artClass?: string }> = [
-  {
-    step: 'About',
-    title: '소리 대신 빛으로 말해보세요.',
-    body: (
-      <p>
-        텍스트가 화면에 떠올라<br />
-        공간을 지나는 사람들에게 닿습니다.
-      </p>
-    ),
-    art: <Built name="about" still={artAboutFull}
-      make={(k) => aboutSvg(artAboutLit, artAboutFull, k)} />,
-    artClass: 'is-bleed'
-  },
+const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNode; artClass?: string; dark?: boolean }> = [
   {
     step: 'Step 1',
     title: '메시지를 작성합니다.',
@@ -158,7 +152,7 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
   },
   {
     step: 'Step 2',
-    title: '성격을 골라 다듬습니다.',
+    title: '발화의 성격을 정합니다.',
     body: (
       <p>
         크기와 빠르기, 무게를 조절하며<br />
@@ -189,10 +183,25 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art: ReactNo
     artClass: 'is-wide'
   },
   {
+    /* About에 있던 장면이 여기로 왔다(2026-09-22). 벽에 글이 떠오르는
+       그림은 **무엇을 하는 앱인가**가 아니라 **꽂으면 무슨 일이 일어나는가**
+       라서, 차례의 이 자리가 맞다. 선 그림 자리표(ArtBig)를 새로 그리는
+       대신 이것을 옮긴다.
+
+       이 장만 화면이 통째로 검정이다(dark) — 삽화의 밤이 화면 끝까지
+       이어져야 판과 배경 사이에 경계가 안 생긴다. */
     step: 'Step 4',
-    title: '당신의 한마디가 외쳐집니다.',
-    body: <p>최대 {EMPHASIS_SEC}초 동안 나타납니다.</p>,
-    art: <ArtBig />
+    title: '소리 대신 빛으로 말해보세요.',
+    body: (
+      <p>
+        텍스트가 화면에 떠올라<br />
+        최대 {EMPHASIS_SEC}초 동안 공간을 지나는 사람들에게 닿습니다.
+      </p>
+    ),
+    art: <Built name="about" still={artAboutFull}
+      make={(k) => aboutSvg(artAboutLit, artAboutFull, k)} />,
+    artClass: 'is-bleed',
+    dark: true
   },
   {
     step: 'Step 5',
@@ -234,16 +243,6 @@ function Art({ children }: { children: ReactNode }) {
   );
 }
 
-
-function ArtBig() {
-  return (
-    <Art>
-      {/* 벽 전체를 한 줄이 차지한다 */}
-      <rect x="30" y="18" width="180" height="92" strokeWidth="1.8" />
-      <line x1="52" y1="64" x2="188" y2="64" strokeWidth="14" />
-    </Art>
-  );
-}
 
 function ArtEcho() {
   return (

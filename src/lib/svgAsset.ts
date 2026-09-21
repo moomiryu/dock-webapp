@@ -203,6 +203,61 @@ function inlineFills(root: Element) {
 // 내내 켜진 채로 남는다 (실제로 그랬다).
 const DRAWN = 'path,ellipse,circle,rect,polygon,line,text';
 
+/** 구경꾼의 몸 색. morph.ts의 HAT_FILL과 같은 종류의 지문이다 — 칠하는
+    색이 아니라 작가의 파일에서 **누가 구경꾼인지** 알아내는 열쇠라 토큰
+    (--char-cyan)으로 못 바꾼다. 같은 값이어야 하고, 작가가 바꾸면 둘 다 바꾼다. */
+const ONLOOKER = '#2ce9f7';
+
+/**
+ * 벽에 글이 켜질 때 **구경꾼이 놀란다.**
+ *
+ * 눈이 커졌다 돌아온다. 이 그림의 캐릭터에는 입이 없어서 표정을 지을 수
+ * 있는 곳이 눈뿐이다 — 그래서 크기로 말한다.
+ *
+ * 놀라는 것은 지나가는 사람들이지 발화자가 아니다. 제 글이 벽에 뜬 것을
+ * 보고 놀랄 사람은 없다. 그래서 눈동자가 구경꾼의 몸 색인 눈만 고른다.
+ *
+ * 깜빡임(.mf-eye)은 CSS가 눈 **자체**에 걸고 있다. 같은 요소의 transform을
+ * 여기서 또 건드리면 둘 중 하나가 죽는다(CSS 애니메이션이 이긴다). 눈 한
+ * 벌을 <g>로 감싸고 그 <g>를 키운다 — 감는 것과 커지는 것이 다른 요소에
+ * 걸려 서로를 안 덮는다.
+ */
+function startle(root: Element, from: number, to: number, dur: number) {
+  const doc = root.ownerDocument;
+  const ns = 'http://www.w3.org/2000/svg';
+  const pupils = Array.from(root.querySelectorAll('.mf-eye'))
+    .filter((el) => (el.getAttribute('fill') ?? '').toLowerCase() === ONLOOKER);
+  for (const pupil of pupils) {
+    const white = pupil.previousElementSibling;
+    if (!white || !white.classList.contains('mf-eye') || white.parentNode !== pupil.parentNode) continue;
+    const b = boxOf(itemOf(white));
+    if (!b || !b.w) continue;
+    const cx = r2(b.x + b.w / 2), cy = r2(b.y + b.h / 2);
+    const outer = doc.createElementNS(ns, 'g');
+    const inner = doc.createElementNS(ns, 'g');
+    outer.setAttribute('transform', `translate(${cx} ${cy})`);
+    inner.setAttribute('transform', `translate(${-cx} ${-cy})`);
+    pupil.parentNode!.insertBefore(outer, white);
+    outer.appendChild(inner);
+    inner.appendChild(white);
+    inner.appendChild(pupil);
+    /* **빠르게 커지고 천천히 돌아온다.** 반대로 하면 놀란 것이 아니라
+       숨 쉬는 것으로 보인다. */
+    const peak = r2(from + (to - from) * 0.18);
+    /* 커진 채로 한 박자 더 머문다. to(다음 마디의 끝)까지만 쓰면 0.86초
+       만에 왕복해서 놀란 줄도 모르고 지나간다 — 글은 그 뒤로도 한참 켜져
+       있으므로 그만큼 더 본다(재서 확인: 3.84초에 글이 다 켜지고 3.96에
+       눈이 제일 크다). */
+    const back = r2(Math.min(1, from + (to - from) * 0.18 + 0.1));
+    put(outer, 'animateTransform', {
+      attributeName: 'transform', type: 'scale', additive: 'sum',
+      values: '1;1;1.45;1;1', keyTimes: `0;${r2(from)};${peak};${back};1`,
+      calcMode: 'spline', keySplines: '0 0 1 1;.2 0 .1 1;.4 0 .6 1;0 0 1 1',
+      dur: `${dur}s`, repeatCount: 'indefinite'
+    });
+  }
+}
+
 /**
  * 눈을 찾아 깜빡이게 표시한다.
  *
@@ -223,14 +278,29 @@ function markEyes(root: Element) {
   const vb = (root.getAttribute('viewBox') ?? '').split(/[ ,]+/).map(Number);
   const canvas = vb.length === 4 ? Math.max(vb[2], vb[3]) : 0;
   if (!canvas) return;
-  const balls = Array.from(root.querySelectorAll('circle,ellipse')).map((el) => {
+  /* path로 그린 원도 눈이다. 작가가 같은 눈을 어떤 칸에서는 <circle>로,
+     어떤 칸에서는 호를 이어 붙인 <path>로 내보낸다 — About의 하늘색
+     구경꾼 둘이 그랬고, 그래서 그 넷만 안 깜빡이고 있었다. 정사각에
+     가까운 상자(±12%)만 원으로 친다. */
+  const balls = Array.from(root.querySelectorAll('circle,ellipse,path')).flatMap((el) => {
+    const white = (el.getAttribute('fill') ?? '').toLowerCase();
+    if (el.tagName === 'path') {
+      const b = boxOf(itemOf(el));
+      if (!b || !b.w || Math.abs(b.w - b.h) > b.w * 0.12) return [];
+      return [{ el, cx: b.x + b.w / 2, cy: b.y + b.h / 2, r: b.w / 2, white }];
+    }
     const n = (a: string) => Number(el.getAttribute(a) ?? 0);
     const r = el.tagName === 'circle' ? n('r') : Math.max(n('rx'), n('ry'));
-    return { el, cx: n('cx'), cy: n('cy'), r, white: (el.getAttribute('fill') ?? '').toLowerCase() };
+    return [{ el, cx: n('cx'), cy: n('cy'), r, white }];
   });
   const isWhite = (f: string) => f === '#fff' || f === '#ffffff' || f === 'white';
   // 눈알: 흰색이고, 화판의 0.6~5% 크기. 그보다 크면 몸통이나 바닥 그림자다.
-  const eyes = balls.filter((b) => isWhite(b.white) && b.r > canvas * 0.006 && b.r < canvas * 0.05);
+  /* 눈은 **눈동자를 품은** 흰 원이다. 크기만으로 거르면 흰 글자가 같이
+     걸린다 — path까지 보게 하자 About 벽의 '내 생각은…' 낱자 넷이 눈으로
+     잡혀 같이 깜빡였다. 제 안에 더 작은 다른 색 원이 있는 것만 눈이다. */
+  const eyes = balls.filter((b) => isWhite(b.white) && b.r > canvas * 0.006 && b.r < canvas * 0.05
+    && balls.some((p) => p !== b && !isWhite(p.white) && p.r > 0 && p.r < b.r
+      && Math.hypot(p.cx - b.cx, p.cy - b.cy) < b.r));
   eyes.forEach((eye, i) => {
     const delay = (i * 1.37) % 5.4;              // 서로 어긋나게. 5.4는 한 바퀴
     for (const b of balls) {
@@ -1180,6 +1250,7 @@ export function aboutSvg(litRaw: string, fullRaw: string, key: string, dur = 12)
 
     focusOn(B, [...ia, ...ib]);
     markEyes(B);
+    startle(B, t.at[4], t.at[5], dur);
     return scopeSvg(new XMLSerializer().serializeToString(B), key);
   } catch {
     return scopeSvg(fullRaw, key);

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import BackButton from '../components/BackButton';
 import { fontMap, opticalFix, opticalStroke } from '../lib/palettes';
 import { foldLines } from '../lib/fit';
@@ -16,10 +16,25 @@ interface Props {
 /**
  * 02 성격 — 두 걸음이다.
  *
- * **고르는 걸음.** 네 칸에 성격 이름을 그 서체로 찍는다. 한때 여기에 내
- * 문장을 넣어 봤는데(2026-09-19), 칸이 195px이라 열두 자가 19px로 내려앉아
- * 획이 안 보였다. 여섯 자로 접어 키우니 이번엔 문장이 토막 났다. 칸은
- * 좁고, 좁은 칸에서 서체를 보여주는 건 결국 **한 낱말**이다.
+ * **고르는 걸음.** 네 칸에 **내 글의 앞부분**을 그 서체로 세운다
+ * (2026-09-25). 성격 이름은 칸 왼쪽 위의 작은 이름표로 물러난다.
+ *
+ * 이름만 찍던 동안은 서체를 고르면서 제 문장이 어떻게 보일지는 상상해야
+ * 했다. 2026-09-19에도 문장을 넣어 봤다가 접었는데, 그때는 **열두 자를
+ * 다 넣으려고** 글자를 줄였기 때문이다(칸 195px에서 19px). 이번에는 크기를
+ * 지키고 글을 덜어 낸다. 비교표를 세 번 거쳐 고른 규칙:
+ *
+ *   · 크기는 이름이 쓰던 그 크기(--fs-h1 × 서체 보정)다. 네 칸이 같다 —
+ *     크기가 다르면 서체를 공정하게 견줄 수 없다. 44·52px도 봤는데
+ *     차분한·다정한이 '오늘' 한 낱말로 줄어 견줄 거리가 없어졌다.
+ *   · 두 줄까지. 띄어쓰기에서만 접으므로 낱말이 중간에서 잘리지 않는다 —
+ *     셋째 줄부터는 보이지 않을 뿐이다. 폭이 좁은 서체는 낱말이 더 들어간다.
+ *   · 보이는 두 줄 안의 낱말이 칸 폭보다 넓으면 **네 칸을 같이** 줄인다
+ *     (sampleScale). 한 칸만 줄이면 서체를 견줄 수 없고, 그대로 두면 낱말이
+ *     잘린다 — 360 화면에서 다정한의 '캠퍼스는'이 '캠퍼스'로 보였다.
+ *     줄이는 바닥은 --fs-h3(이름 크기 --fs-h1에 대한 비)이다.
+ *   · 바닥까지 줄여도 안 들어가는 낱말만 글자에서 자른다. 바닥 없이 다 넣으려
+ *     하면 띄어쓰기 없는 18자 한 덩어리가 8px까지 내려앉았다.
  *
  * **확인하는 걸음.** 고르면 **그 칸이 아래를 통째로 차지하고** 내 글 전문이
  * 그 얼굴로 선다. 다른 화면으로 갈아타는 것이 아니라 누른 칸이 그대로
@@ -89,6 +104,87 @@ export default function PhaseGlyph({ text, initialTone, onBack, onNext }: Props)
     if (fit === null || Math.abs(want - fit) / want > 0.01) { tries.current += 1; setFit(want); }
   });
   const size = fit === null ? guess : `${fit.toFixed(1)}px`;
+
+  /**
+   * 네 견본이 함께 쓰는 배율. 1이면 이름이 쓰던 크기 그대로다.
+   *
+   * 칸마다 낱말 폭을 **재서**(서체·보정·획이 다 들어간 그린 폭) 두 줄에
+   * 어떻게 앉을지 흉내 낸다. 보이는 두 줄에 칸보다 넓은 낱말이 있으면 그
+   * 낱말이 들어갈 만큼 줄인다 — 줄이면 줄에 더 들어오는 낱말이 생기므로 몇 번
+   * 되짚는다. 넷 중 가장 작은 값을 넷이 같이 쓴다.
+   *
+   * 잰 폭은 지금 배율로 나눠 **배율 1의 폭**으로 바꿔 쓴다. 그래서 답이 지금
+   * 배율에 기대지 않고, 한 번 맞추면 다시 재도 같은 답이 나온다.
+   */
+  const samples = useRef<Array<HTMLSpanElement | null>>([]);
+  const [scale, setScale] = useState(1);
+  const [remeasure, setRemeasure] = useState(0);
+  useEffect(() => {
+    const again = () => setRemeasure((n) => n + 1);
+    window.addEventListener('resize', again);
+    void document.fonts?.ready.then(again);
+    return () => window.removeEventListener('resize', again);
+  }, []);
+  useLayoutEffect(() => {
+    if (at >= 0) return;
+    const root = getComputedStyle(document.documentElement);
+    const floor = parseFloat(root.getPropertyValue('--fs-h3')) / parseFloat(root.getPropertyValue('--fs-h1'));
+    const gapToken = parseFloat(root.getPropertyValue('--s2')) || 0;
+    let shared = 1;
+    for (const el of samples.current) {
+      const card = el?.parentElement;
+      if (!el || !card) continue;
+      /* 폭과 높이는 **칸**에게 묻는다. 견본 자신은 제 글만큼만 넓어서(칸이
+         가운데 정렬) 그걸 재면 짧은 글이 '제 폭보다 넓다'고 읽혀 바닥까지
+         줄었다. 폭은 3% 덜어 쓴다 — 딱 맞게 줄였더니 반올림 1px 차이로
+         '캠퍼스는'이 도로 '캠퍼스'가 됐다(360 · 다정한). */
+      const box = getComputedStyle(card);
+      const pt = parseFloat(box.paddingTop);
+      const W = (card.clientWidth - parseFloat(box.paddingLeft) - parseFloat(box.paddingRight)) * 0.97;
+      /* 견본은 칸 한가운데에 선다. 이름표 밑으로 --s2만큼 띄우려면 위아래로
+         같은 몫을 비워야 한다 — 칸을 늘려 자리를 만들면 320 화면이 3px
+         스크롤됐다. 칸은 그대로 두고 글이 줄어든다. */
+      const label = card.querySelector<HTMLElement>('.style-card-label');
+      const clear = label ? Math.max(0, label.offsetTop + label.offsetHeight + gapToken - pt) : 0;
+      const H = card.clientHeight - pt - parseFloat(box.paddingBottom) - 2 * clear;
+      const lineH = parseFloat(getComputedStyle(el).lineHeight) / scale;
+      if (!W || !H || !lineH) continue;
+      const probe = document.createElement('span');
+      probe.style.whiteSpace = 'pre';
+      el.appendChild(probe);
+      const widthOf = (t: string) => { probe.textContent = t; return probe.getBoundingClientRect().width / scale; };
+      const gap = widthOf('a a') - widthOf('aa');
+      const rows = (text.trim() || '발화').split('\n').map((l) => l.split(/\s+/).filter(Boolean).map(widthOf));
+      el.removeChild(probe);
+      let k = 1;
+      for (let round = 0; round < 4; round++) {
+        // k 배율에서 앞 두 줄에 앉는 낱말들과 쓰이는 줄 수
+        const seen: number[] = [];
+        let line = 0;
+        let used = 0;
+        for (const row of rows) {
+          let cur = 0;
+          for (const w of row) {
+            if (cur > 0 && cur + (gap + w) * k > W) { line += 1; cur = 0; }
+            if (line >= 2) break;
+            seen.push(w);
+            used = line + 1;
+            cur += (cur > 0 ? gap * k : 0) + w * k;
+          }
+          if (line >= 2) break;
+          line += 1;
+          if (line >= 2) break;
+        }
+        // 높이도 본다 — 이름표 밑 여백을 비우고 남은 자리에 쓰는 줄이 들어가야 한다
+        const need = Math.min(1, W / Math.max(1, ...seen), H / (Math.max(1, used) * lineH));
+        if (need >= k - 0.001) break;
+        k = need;
+      }
+      shared = Math.min(shared, k);
+    }
+    shared = Math.max(floor || 0, shared);
+    if (Math.abs(shared - scale) > 0.005) setScale(shared);
+  }, [at, text, scale, remeasure]);
   // 고른 칸의 줄·칸만 남기고 나머지를 0으로 접는다 (0·1번 = 윗줄, 0·2번 = 왼칸)
   const grid: CSSProperties | undefined = at < 0 ? undefined : {
     gridTemplateColumns: at % 2 === 0 ? '1fr 0fr' : '0fr 1fr',
@@ -106,7 +202,8 @@ export default function PhaseGlyph({ text, initialTone, onBack, onNext }: Props)
         {at < 0 && <p>마음에 드는 것을 골라주세요.</p>}
       </div>
 
-      <div className="style-cards" role="group" aria-label="성격 고르기" style={grid}>
+      <div className="style-cards" role="group" aria-label="성격 고르기"
+        style={{ ...grid, '--sample-scale': scale } as CSSProperties}>
         {/* '다른 성격 보기'는 제목 밑에 혼자 서 있었다 — 무엇을 되무르는지와
             떨어져 있어 독립된 버튼처럼 읽혔다. 되무를 대상(붉은 카드) 위에
             올린다. 옷은 색이 바뀌는 면 위에 앉는 보조 버튼의 그것이다
@@ -129,16 +226,20 @@ export default function PhaseGlyph({ text, initialTone, onBack, onNext }: Props)
               </div>
             ) : (
               /* 서체마다 잉크가 차지하는 높이도 굵기도 달라 같은 크기·같은
-                 굵기로 안 보인다. 잰 값은 palettes.ts에 있다. */
-              <span className="style-card-name" style={{
+                 굵기로 안 보인다. 잰 값은 palettes.ts에 있다. 이름은 낭독기가
+                 버튼 이름(aria-label)으로 읽으므로 이름표는 가린다. */
+              <>
+              <span className="style-card-label" aria-hidden>{s.label}</span>
+              <span ref={(el) => { samples.current[i] = el; }} className="style-card-name is-sample" aria-hidden style={{
                 fontFamily: fontMap[s.val],
                 '--optical': opticalFix[s.val]?.scale ?? 1,
                 /* 이 카드는 무게를 고르는 자리가 아니다 — CSS가 400으로 찍는다. */
                 '--optical-stroke': opticalStroke(s.val, 400),
                 '--optical-shift': (opticalFix[s.val]?.shift ?? 0) + 'em'
               } as CSSProperties}>
-                {s.label}
+                {text.trim() || s.label}
               </span>
+              </>
             )}
           </button>
         ))}

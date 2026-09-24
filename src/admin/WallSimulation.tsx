@@ -98,9 +98,9 @@ const ROTATE_MS = 20_000;
  * 95vh면 8.4cm가 남는다. 짧은 글은 어차피 제 크기만 쓰므로(6자는 높이의
  * 39%) 이 값은 **가장 긴 글이 넘지 않는 선**으로 잡는다.
  */
-const BIG_SIDE_VH = 95;
+export const BIG_SIDE_VH = 95;
 /** 폰으로 /wall을 열었을 때처럼 세로가 긴 화면의 상한 */
-const BIG_SIDE_MAX_VW = 88;
+export const BIG_SIDE_MAX_VW = 88;
 /**
  * 잔상의 한 변. 22였다 — 강조와 같은 이유로 올린다.
  * 열 개가 다 떠 있어도 화면의 15%뿐이라(재서 확인: 22vh에서 7%) 자리는
@@ -617,10 +617,12 @@ const WallBlock = memo(function WallBlock({ msg, ghost, onEl }: { msg: StoredMes
 });
 
 // ─── 발화 (검정 위의 큰 상자. 잦아들다 내려앉는다) ────────────────────
+// 폰의 5/5 미리보기(PhasePreview)가 이것을 그대로 빌려 쓴다 — 벽과 따로
+// 그리면 서체·구름·줄바꿈 중 하나가 반드시 어긋난다.
 
 /* 말풍선 때는 물결이 30초에 걸쳐 잦아들어 잔상의 세기에 닿았다(calmAt).
    구름은 강조와 잔상이 같은 숨(중)을 쉰다 — 크기만 내려앉는다. */
-const WallShowMessage = memo(function WallShowMessage({ msg, land }: { msg: StoredMessage; land: Land | null; startedAt: number }) {
+export const WallShowMessage = memo(function WallShowMessage({ msg, land }: { msg: StoredMessage; land: Land | null; startedAt: number }) {
   const { bg, text, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
   const { lines, cloud, box } = useMemo(() => cloudOf(msg), [msg]);
 

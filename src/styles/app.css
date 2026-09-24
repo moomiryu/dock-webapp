@@ -967,6 +967,7 @@
   gap: var(--s5);
 }
 
+.info-said p + p{ margin-top: var(--s3); }   /* 소개 한 장 안의 두 문단(문턱 · 그래서 둔 것) */
 .info-said p{
   font-size: var(--fs-body);
   line-height: 1.5;
@@ -993,6 +994,11 @@
 }
 .info-slide{ animation: infoSlideIn 280ms var(--ease-standard) both; }
 @media (prefers-reduced-motion: reduce){ .info-slide{ animation: none; } }
+/* 한 장 안에서 삽화가 다음 그림으로 넘어갈 때(Relay). 장이 넘어가는 결보다
+   조용하게 — 자리를 옮기지 않고 번지기만 한다. */
+@keyframes infoRelayIn{ from{ opacity: 0; } to{ opacity: 1; } }
+.info-art.is-relay{ animation: infoRelayIn var(--t-slow) var(--ease-standard) both; }
+@media (prefers-reduced-motion: reduce){ .info-art.is-relay{ animation: none; } }
 
 .info-rules{
   display: flex;
@@ -2071,12 +2077,18 @@
      그 높이만큼 튀어 오른다. */
   display: grid; }
 .write-fit > *{ grid-area: 1 / 1; min-width: 0; }
+/* 쓰는 글의 얼굴과 크기. 안내(.write-lead)가 같은 값을 같이 쓴다.
+   얼굴은 Pretendard 하나다(2026-09-24) — UI 얼굴(--ui-font)은 라틴·숫자를
+   Lineal로 그려서 한 줄 안에서 한글과 영문이 다른 서체로 섞였다. */
+.write-fit{ --write-font: 'Pretendard Variable', sans-serif;
+  --write-size: min(8cqw, calc(96cqh / (var(--rows, 1) * 1.5))); }
+.write-screen.is-typing .write-fit{ --write-size: 8cqw; }
 .write-input{ width: 100%; height: 100%; border: 0; background: none;
-  resize: none; outline: none; font-family: inherit;
+  resize: none; outline: none; font-family: var(--write-font);
   /* 폭의 12분의 1. 96을 12로 나눈 것은 12자가 폭에 꼭 맞으면 반올림 한 번에
      열한 자로 접히기 때문이다 — 4%를 남겨 접히는 자리를 벽과 맞춘다.
      줄이 다섯을 넘어가면(발화자가 손으로 더 끊으면) 높이가 먼저 닿는다. */
-  font-size: min(8cqw, calc(96cqh / (var(--rows, 1) * 1.5)));
+  font-size: var(--write-size);
   line-height: 1.5; color: var(--ink); text-align: center; padding: 0;
   /* **위에서부터 쓴다.** 세로 가운데였다 — 빈 상자 꼭대기에 한 줄이
      붙어 있는 것이 어색해서 그랬는데, 이제 그 자리에 안내가 선다.
@@ -2099,16 +2111,30 @@
    어긋나면 글이 들어오는 순간 왼쪽에서 가운데로 미끄러진다.
 
    손가락은 통과시킨다. 이 자리를 눌렀을 때 받아야 하는 것은 입력칸이다. */
+/* 2026-09-24: 제목(--fs-h2 · 700)과 설명(--fs-body)으로 가르던 것을 한
+   문장 덩어리로 합쳤다. 크기·행간은 **입력칸 글과 같다** — 같은 자리에서
+   곧 내 글로 바뀌는 문장이라, 크기가 다르면 첫 글자에 화면이 출렁인다.
+   굵기는 보통, 색은 흐리게: 힌트이지 제목이 아니다. */
 .write-lead{
-  display: flex; flex-direction: column; gap: var(--s4);
   align-self: start; text-align: center; pointer-events: none;
+  font-family: var(--write-font);
+  font-size: var(--write-size); font-weight: 400; line-height: 1.5;
+  color: var(--muted);
 }
-.write-lead h1{
-  font-size: var(--fs-h2); font-weight: 700;
-  line-height: var(--lh-head); letter-spacing: -0.02em;
-  color: var(--ink);
+/* 문장 끝의 커서. 입력칸에 초점이 있을 때만 선다(.is-typing) — 초점이
+   없는데 깜빡이면 쓸 수 있다고 거짓말하는 셈이다. 깜빡임은 기기 커서의
+   박자(약 1초)에 맞춘다. */
+.write-caret{ display: none; }
+.write-screen.is-typing .write-caret{
+  display: inline-block; vertical-align: -0.15em;
+  width: 0.07em; height: 1.15em; margin-left: 0.06em;
+  background: var(--ink);
+  animation: writeCaret calc(var(--t-hold) * 1.5) steps(1) infinite;
 }
-.write-lead p{ font-size: var(--fs-body); line-height: 1.5; color: var(--muted); }
+@keyframes writeCaret{ 0%{ opacity: 1; } 50%{ opacity: 0; } }
+@media (prefers-reduced-motion: reduce){ .write-screen.is-typing .write-caret{ animation: none; } }
+/* 빈 동안 진짜 커서는 감춘다 — 빈 칸 한가운데 위에 서서 안내와 겹친다 */
+.write-screen:not(.has-text) .write-input{ caret-color: transparent; }
 
 /* **자리 값을 지운다.** 이 둘은 다른 화면에서 화면 구석에 절대 위치로
    붙는 물건이라 right·bottom을 들고 있는데(아래 .compose-count 기본형),
@@ -2229,7 +2255,13 @@
    길어지면 쓰던 줄이 칸 한가운데에서 위아래로 오르내린다. */
 /* 위에서부터 쓰는 것은 이제 늘 그렇다(위 .write-input). 여기서는 자판 위의
    좁은 칸에서 글자가 세로로 먼저 걸리지 않게 폭 기준만 남긴다. */
-.write-screen.is-typing .write-input{ font-size: 8cqw; overflow-y: auto; }
+.write-screen.is-typing .write-input{ overflow-y: auto; }
+/* 띄어쓰기 없이 붙여 쓴 글도 접는다(2026-09-24에 재서 알았다). global.css의
+   `*`가 overflow-wrap을 normal로 되돌려서, 붙여 쓴 59자가 한 줄로 흘러
+   입력칸 폭의 4배까지 옆으로 밀려 나갔다 — 쓰는 사람은 끝의 여덟 자만
+   봤다. anywhere는 들어갈 데가 없을 때만 끊으므로 띄어쓰기가 있는 글은
+   그대로 띄어쓰기에서 접힌다. 벽의 foldLines도 긴 어절을 글자 수로 자른다. */
+.write-input, .write-lead{ overflow-wrap: anywhere; }
 /* **본문이 보이는 창보다 길지 않게 한다.**
    body가 늘 100dvh 이상이라(global.css), 자판이 올라와 창이 380이 되어도
    문서는 844로 남아 있었다. 그러면 브라우저가 초점을 보이려고 페이지를
@@ -2416,15 +2448,17 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   font-size: var(--fig); color: rgb(255 255 255 / 92%);
   animation: toneDemo 7s var(--ease-standard) infinite;
 }
-/* 마디마다 둘을 모두 적는다. 한 마디에서 빠뜨린 속성은 그 마디를 건너뛰고
+/* 빠르기는 잣대와 같은 방향으로 훑는다 — 천천히(넓게)에서 빠르게(좁게).
+   잣대를 뒤집을 때 함께 뒤집었다(2026-09-24).
+   마디마다 둘을 모두 적는다. 한 마디에서 빠뜨린 속성은 그 마디를 건너뛰고
    보간되어, 크기를 되돌리는 도중에 폭이 먼저 움직인다. */
 @keyframes toneDemo{
   0%,   9%  { font-size: var(--fig);             scale: 1 1; }
   21%       { font-size: calc(var(--fig) * 0.64); scale: 1 1; }
   39%       { font-size: calc(var(--fig) * 1.18); scale: 1 1; }
   50%,  59% { font-size: var(--fig);             scale: 1 1; }
-  71%       { font-size: var(--fig);             scale: 0.7 1; }
-  89%       { font-size: var(--fig);             scale: 1.3 1; }
+  71%       { font-size: var(--fig);             scale: 1.3 1; }
+  89%       { font-size: var(--fig);             scale: 0.7 1; }
   100%      { font-size: var(--fig);             scale: 1 1; }
 }
 @media (prefers-reduced-motion: reduce){ .tone-figure{ animation: none; } }
@@ -3918,3 +3952,11 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 /* align-items: center였다 — 알약이 252px 고정폭이라 가운데 세웠다.
    눈금 줄은 화면 폭을 다 쓴다(다섯 칸을 나눠야 해서). stretch로 되돌린다. */
 
+
+/* ─── 5/5 미리보기 — 벽의 발화 부품을 액자 안에 (2026-09-24) ─────
+   .wall-show는 벽에서 화면 전체를 덮는다(position: fixed). 여기서는 16:9
+   액자가 곧 벽이므로 액자 안에 가둔다. 한 변(--big-side)은 PhasePreview가
+   벽과 같은 비율을 액자 단위(cqh·cqw)로 준다. 나머지 — 검정, 구름, 들어오는
+   결 — 는 global.css의 벽 규칙을 그대로 탄다. */
+.sim-frame.is-wall .wall-show{ position: absolute; }
+.sim-legend{ justify-content: flex-end; }

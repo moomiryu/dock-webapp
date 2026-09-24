@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import BackButton from './BackButton';
 import { aboutSvg, chainSvg, scopeSvg, slideSvg, withGround } from '../lib/svgAsset';
-import { STAY_DAYS } from '../lib/wall';
 
 // 작가가 삽화를 컷으로 나눠 준다. 컷 사이를 이어 도는 일은 svgAsset이 한다.
 //
@@ -90,7 +89,8 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
           {/* 도입 두 장(Problem · Solution)에는 삽화가 없다. 빈 칸을 남기지
               않고 아예 안 세운다 — 테두리만 남은 상자는 '그림이 안 떴다'로
               읽힌다. 글의 자리는 그대로다(제목은 다른 장과 같은 높이). */}
-          {s.art && <div className={'info-art ' + (s.artClass ?? '')} aria-hidden>{s.art}</div>}
+          {s.relay ? <Relay legs={s.relay} />
+            : s.art && <div className={'info-art ' + (s.artClass ?? '')} aria-hidden>{s.art}</div>}
         </section>
       </div>
       <div className="info-nav">
@@ -127,86 +127,93 @@ function Built({ name, still, make }: { name: string; still: string; make: (key:
 }
 
 
-const SLIDES: Array<{ step: string; title: string; body: ReactNode; art?: ReactNode; artClass?: string; dark?: boolean }> = [
-  /* 사용법보다 **왜**가 먼저다(2026-09-22). 첫 장이 곧바로 '메시지를
-     작성합니다'였던 동안, 읽는 사람은 무엇을 하는 물건인지 모른 채 조작
-     순서부터 받았다. 앞에 두 장을 둔다 — 문턱을 말하고(Problem), 그래서
-     무엇을 두었는지 말한다(Solution). 이 둘은 글만으로 선다. 삽화를 새로
-     그리지 않았고, 있는 그림을 빌려 오면 그 장의 말이 아닌 것이 선다. */
+type Leg = { art: ReactNode; artClass: string; sec: number };
+
+/**
+ * 삽화 둘을 차례로 돈다 — 한 그림이 제 바퀴(sec)를 마치면 다음 그림이 선다.
+ * 새로 서는 그림은 제 시계를 0부터 탄다(SMIL은 svg가 문서에 들어온 순간
+ * 시작한다). 모션을 끈 사람에게는 넘기지 않고 첫 그림의 멈춘 컷만 준다.
+ */
+function Relay({ legs }: { legs: Leg[] }) {
+  const [i, setI] = useState(0);
+  const off = typeof matchMedia !== 'undefined'
+    && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  useEffect(() => {
+    if (off) return;
+    const t = setTimeout(() => setI((i + 1) % legs.length), legs[i].sec * 1000);
+    return () => clearTimeout(t);
+  }, [i, off, legs]);
+  const leg = legs[i];
+  return <div key={i} className={'info-art is-relay ' + leg.artClass} aria-hidden>{leg.art}</div>;
+}
+
+const SLIDES: Array<{ step: string; title: string; body: ReactNode; art?: ReactNode; artClass?: string; relay?: Leg[]; dark?: boolean }> = [
+  /* 사용법보다 **왜**가 먼저다(2026-09-22). 그때 문턱(Problem)과 그래서
+     둔 것(Solution)을 두 장으로 나눴는데, 2026-09-24에 한 장으로 합쳤다.
+     조작을 배우기 전에 읽을 장이 둘이면 '왜'가 설명의 절반을 먹는다.
+     문장은 두 장에 있던 것을 그대로 잇고 새로 쓰지 않았다(초안). 삽화는 없다 —
+     있는 그림을 빌려 오면 이 장의 말이 아닌 것이 선다. */
   {
-    step: 'Problem',
-    title: '발화의 문턱을 발견했습니다.',
-    body: (
-      <p>
-        대자보, 에브리타임, 공청회.<br />
-        말을 전할 통로는 있지만,<br />
-        형식과 절차, 주변의 시선은<br />
-        자유롭게 말하기를 어렵게 합니다.
-      </p>
-    )
-  },
-  {
-    step: 'Solution',
+    step: 'About',
     title: '말을 꺼내는 또 하나의 방식',
     body: (
-      <p>
-        메가폰트는 글을 빛으로 띄우는 카트입니다.<br />
-        내가 다듬은 한 줄을 밤의 벽에 펼치고,<br />
-        그 말을 본 사람도 한마디를 보탤 수 있습니다.
-      </p>
+      <>
+        <p>
+          대자보, 에브리타임, 공청회.<br />
+          말을 전할 통로는 있지만,<br />
+          형식과 절차, 주변의 시선은<br />
+          자유롭게 말하기를 어렵게 합니다.
+        </p>
+        <p>
+          메가폰트는 글을 빛으로 띄우는 카트입니다.<br />
+          내가 다듬은 한 줄을 밤의 벽에 펼치고,<br />
+          그 말을 본 사람도 한마디를 보탤 수 있습니다.
+        </p>
+      </>
     )
   },
   {
+    /* 쓰기와 성격 정하기를 한 장으로(2026-09-24). 실제로도 한 자리에서
+       이어지는 일이고, 둘 다 '폰 안에서 하는 일'이다 — 폰 밖(꽂기·벽)과
+       갈리는 선이 여기다. 삽화 둘은 그대로 두고 **차례로 잇는다**(Relay):
+       작성판 세 컷이 한 번 돌고, 이어서 캐릭터가 한 번 오간다. */
     step: 'Step 1',
-    title: '메시지를 작성합니다.',
+    title: '메시지를 쓰고,\n성격을 정합니다.',
     body: (
       <p>
-        최대 60자까지 작성할 수 있습니다.<br />
+        최대 60자까지 쓰고, 크기와 빠르기, 무게로<br />
+        나만의 목소리를 만들어보세요.<br />
         <b>비속어 및 타인을 해치는 표현은 사용할 수 없습니다.</b>
       </p>
     ),
-    /* 세 컷이 차례로 온다: 쓰는 중('내 생각은|') → 최대 60자 → 비속어
-       금지. 셋은 한 동작의 앞뒤가 아니라 **차례로 읽을 목록**이다.
+    relay: [
+      /* 세 컷은 한 동작의 앞뒤가 아니라 차례로 읽을 목록이라 옆으로 넘긴다
+         (slideSvg). 한 자리에서 갈아 끼우던 때는 건너가는 동안 두 판의
+         글이 반투명으로 겹쳤다. is-lowered: 이 그림만 작성판이 다른 삽화
+         보다 71~115px 위에 떠 있어 큰 화면에서 한 단 내린다(app.css).
 
-       그래서 포개지 않고 **옆으로 넘긴다**(slideSvg). 한 자리에서 갈아
-       끼우던 때는 건너가는 1.9초 동안 두 판의 글이 반투명으로 겹쳐, 그
-       동안 읽을 것이 없었다. 판을 나란히 놓고 화판으로 자르면 겹치는
-       순간이 아예 없다. */
-    art: <Built name="rules" still={artRule1}
-      make={(k) => slideSvg([artRule1, artRule2, artRule3], k, 10, [1, 0.7, 0.7])} />,
-    /* is-lowered: 이 장만 **눈이 가야 할 것**(작성판)이 다른 넷보다
-       71~115px 위에 떠 있었다(재서 확인: 1번 371 · 2번 446 · 3번 486 ·
-       4번 442). 큰 화면에서 한 단 내려 앉힌다 — 값과 고른 이유는 app.css가
-       들고 있다. */
-    artClass: 'is-wide is-lowered'
+         6.36초 — 한 바퀴(8.18초) 중 셋째 판이 다 선 순간. 거기서 넘겨야
+         첫 판으로 돌아가는 1.8초를 건너뛰고 곧바로 다음 그림이 온다. */
+      {
+        art: <Built name="rules" still={artRule1}
+          make={(k) => slideSvg([artRule1, artRule2, artRule3], k, 10, [1, 0.7, 0.7])} />,
+        artClass: 'is-wide is-lowered', sec: 6.36
+      },
+      /* 네 컷을 1→2→3→4→3→2→1로 되짚는다. 손잡이가 끝에서 처음으로 순간
+         이동하면 '손잡이를 움직이면 글자가 따라 바뀐다'가 그 순간 거짓이
+         된다. 한 바퀴(11초)를 다 돌아 첫 컷에 선 채로 넘긴다.
+         그림자는 작가가 따로 준 example_step2_shadow.svg에서 잰 자리다.
+         is-fitted: 글 바로 밑에서 혼자 크게 올라와 보여 칸에 맞춰 줄인다. */
+      {
+        art: <Built name="glyphs" still={artGlyphs1}
+          make={(k) => withGround(chainSvg([artGlyphs1, artGlyphs2, artGlyphs3, artGlyphs4], k),
+            { cx: 202.2, cy: 626.45, rx: 68.5, ry: 12.05 })} />,
+        artClass: 'is-wide is-fitted', sec: 11
+      }
+    ]
   },
   {
     step: 'Step 2',
-    title: '발화의 성격을 정합니다.',
-    body: (
-      <p>
-        크기와 빠르기, 무게를 조절하며<br />
-        나만의 목소리를 만들어보세요.
-      </p>
-    ),
-    // 파일 번호가 곧 차례다(2026-09-20에 작가가 넷으로 다시 그렸다).
-    // 끝까지 갔다가 되짚어 돌아온다 — 1→2→3→4→3→2→1.
-    /* 그림자는 컷에 없다. 작가가 그것까지 그린 한 장을 따로 줬고
-       (example_step2_shadow.svg) 거기서 잰 자리를 그대로 옮긴다 —
-       그 화판(242.82×525.39)은 잘라 낸 것이라 (74.3, 113.0)을 더하면
-       이 컷의 좌표가 된다. 몸통 한가운데(202.2)에 놓이고, 발 아래끝
-       (629.8)이 그 안에 든다. */
-    art: <Built name="glyphs" still={artGlyphs1}
-      make={(k) => withGround(chainSvg([artGlyphs1, artGlyphs2, artGlyphs3, artGlyphs4], k),
-        { cx: 202.2, cy: 626.45, rx: 68.5, ry: 12.05 })} />,
-    /* is-fitted: 이 장만 삽화가 글 바로 밑에서 시작해 혼자 크게 올라와
-       보였다(재서 확인: 칸 위에서 15px. Step 1은 92, Step 3은 38). 조금
-       줄여 칸에 맞춘다 — 그래야 캐릭터의 발까지 서고 버튼과도 벌어진다.
-       값은 app.css가 들고 있다. */
-    artClass: 'is-wide is-fitted'
-  },
-  {
-    step: 'Step 3',
     title: '완료 후, 폰을 홈에 꽂습니다.',
     body: (
       <p>
@@ -242,7 +249,7 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art?: ReactN
 
        이 장만 화면이 통째로 검정이다(dark) — 삽화의 밤이 화면 끝까지
        이어져야 판과 배경 사이에 경계가 안 생긴다. */
-    step: 'Step 4',
+    step: 'Step 3',
     title: '메가폰트가 작동됩니다.',
     /* '최대 30초 동안은'을 뺐다(2026-09-21). 이 장이 하는 말은 **빛으로
        말한다**는 것이고, 몇 초인지는 그다음 문제다 — 소개에서 먼저 시간을
@@ -263,66 +270,6 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art?: ReactN
       make={(k) => aboutSvg(artAboutLit, artAboutFull, k, 8.4)} />,
     artClass: 'is-bleed',
     dark: true
-  },
-  {
-    step: 'Step 5',
-    title: '그러면 끝입니다.',
-    body: (
-      <>
-        {/* 3일·30초 같은 수치는 여기 적지 않고 wall.ts에서 받아 온다.
-            체류 기간을 바꾸면 이 문장이 같이 따라와야 하기 때문이다. */}
-        {/* 한 문장을 두 줄로 나눈다. 쉼표에서 끊어야 '맴돌다가 사라진다'가
-            한 호흡으로 읽힌다 — 다른 장의 보조 설명도 같은 꼴이다. */}
-        <p>
-          메아리처럼 화면을 맴돌며,<br />
-          <b>{STAY_DAYS}일 후에 사라집니다.</b>
-        </p>
-        <dl className="info-rules">
-          <div>
-            <dt>익명성</dt>
-            <dd>누가 썼는지는 남지 않습니다.</dd>
-          </div>
-          <div>
-            <dt>불변성</dt>
-            <dd>보낸 뒤에는 수정할 수 없습니다.</dd>
-          </div>
-          <div>
-            <dt>운영 원칙</dt>
-            <dd>타인에게 피해를 주거나 문제가 되는 글은 관리자가 삭제할 수 있습니다.</dd>
-          </div>
-        </dl>
-      </>
-    ),
-    art: <ArtEcho />
   }
 ];
 
-// ─── 삽화 ────────────────────────────────────────────────────
-
-function Art({ children }: { children: ReactNode }) {
-  return (
-    <svg viewBox="0 0 240 130" width="100%" height="100%" fill="none" stroke="currentColor">
-      {children}
-    </svg>
-  );
-}
-
-
-function ArtEcho() {
-  return (
-    <Art>
-      {/* 굵던 한 줄이 가늘어져 이웃들 사이로 들어간다 */}
-      <rect x="30" y="18" width="180" height="92" strokeWidth="1.8" />
-      <line x1="96" y1="44" x2="144" y2="44" strokeWidth="4" />
-      <g strokeWidth="3" opacity="0.6">
-        <line x1="46" y1="70" x2="88" y2="70" />
-        <line x1="150" y1="70" x2="192" y2="70" />
-      </g>
-      <g strokeWidth="2" opacity="0.3">
-        <line x1="60" y1="92" x2="92" y2="92" />
-        <line x1="112" y1="92" x2="136" y2="92" />
-        <line x1="156" y1="92" x2="180" y2="92" />
-      </g>
-    </Art>
-  );
-}

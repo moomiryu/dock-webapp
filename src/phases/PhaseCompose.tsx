@@ -194,10 +194,18 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
 
         손가락은 통과시킨다(pointer-events: none). 이 자리를 눌렀을 때
         받아야 하는 것은 입력칸이다. */}
-    {!text && <div className="write-lead">
-     <h1>어떤 발화를<br />시작해볼까요?</h1>
-     <p>혼잣말도, 함께 나누고 싶은 생각도 좋아요.</p>
-    </div>}
+    {/* 제목·설명으로 나누지 않는다(2026-09-24). 30px 굵은 제목 밑에 설명이
+        붙어 있으니 '읽을 문서'로 보였다 — 여기는 쓰는 자리고, 이 문장은
+        쓰기 전의 힌트다. 한 덩어리로, 쓰게 될 글과 같은 크기·보통 굵기·
+        흐린 색으로 둔다.
+
+        커서는 **문장 끝에** 선다. 입력칸의 진짜 커서는 빈 칸 한가운데
+        위에 서서 안내 글자 위에 겹쳤다. 빈 동안은 진짜 커서를 감추고
+        (app.css) 문장 끝에 그린 커서를 대신 깜빡인다. 안내는 입력값이
+        아니다 — 칸의 값은 비어 있고, 첫 글자에 이 문장째 사라진다. */}
+    {!text && <p className="write-lead">
+     어떤 발화를 시작해볼까요? 혼잣말도, 함께 나누고 싶은 생각도 좋아요.<i className="write-caret" aria-hidden />
+    </p>}
     <textarea ref={input} className="write-input" aria-label="벽에 올릴 한 줄"
       style={{ '--rows': Math.max(1, foldLines(text || ' ').length) } as React.CSSProperties}
       value={text} maxLength={60} spellCheck={false}

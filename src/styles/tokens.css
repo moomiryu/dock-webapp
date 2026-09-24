@@ -183,6 +183,10 @@
   /* ─── 글꼴 ─────────────────────────────────────────────── */
   --ui-font: 'Lineal VF', 'Pretendard Variable', -apple-system, BlinkMacSystemFont, sans-serif;
   --label-font: var(--ui-font);
+  /* 한글·라틴을 **한 얼굴로** 그리는 자리. --ui-font는 라틴·숫자를 Lineal로
+     그려서 한 줄 안에 두 서체가 섞인다 — 쓰는 글(1/5 입력칸)과 단계 표시가
+     그걸 피하려고 각자 Pretendard를 적고 있었다(2026-09-25에 모았다). */
+  --text-font: 'Pretendard Variable', sans-serif;
 
   /* ─── 벽 전용 ──────────────────────────────────────────────
      여기 아래 아홉 개만 옛 토큰 체계에서 살아남았다. 전부 global.css의

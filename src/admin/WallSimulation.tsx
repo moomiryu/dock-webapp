@@ -78,6 +78,19 @@ const SPEED_MIN = 0.012;
 const SPEED_MAX = 0.032;
 /** 열 개가 차 있을 때 한 칸을 갈아 끼우는 간격 */
 const ROTATE_MS = 20_000;
+/**
+ * 막 내려앉은 글을 붙잡아 두는 시간 — 벽의 한 바퀴(15개 × 20초 = 5분).
+ *
+ * 붙잡는 것이 착지(1.2초)까지뿐이었다(2026-09-25에 재서 알았다). 그 뒤로는
+ * 다른 글과 똑같이 갈아 끼우는 차례를 타서, 열다섯 중 열 칸 창 밖이면 —
+ * 셋에 하나꼴로 — 내려앉은 **그 순간** 벽에서 사라졌다. 목록 폴링(60초)이
+ * 아직 그 글을 못 받았으면 차례와 상관없이 사라졌다. 폰을 뺀 사람이
+ * 벽을 돌아보면 제 글이 내려앉자마자 없어지는 장면을 봤다.
+ *
+ * 한 바퀴를 붙잡아 두면 그동안 떠 있던 다른 글들이 한 번씩 다 갈려
+ * 나가는 것을 제 글이 같이 본다. 그 뒤로는 다른 글과 같다.
+ */
+const LINGER_MS = RECENT_N * ROTATE_MS;
 
 // ─── 파동 상자의 치수 ─────────────────────────────────────────────────
 // 발화하는 동안 서는 큰 상자와, 그 뒤 풍경에 남는 잔상. 둘의 글자 크기가
@@ -219,6 +232,10 @@ export default function WallSimulation() {
   const [emphKey, setEmphKey] = useState(0);
   /** 그 발화가 시작된 순간(파이가 잰 값). 잦아듦과 상한이 여기서 센다 */
   const [emphStart, setEmphStart] = useState(0);
+  /** 막 내려앉은 글. LINGER_MS 동안 풍경에 붙잡아 둔다 */
+  const [linger, setLinger] = useState<StoredMessage | null>(null);
+  const lingerTimerRef = useRef(0);
+  useEffect(() => () => clearTimeout(lingerTimerRef.current), []);
 
   // 떠다니는 몸들과 그것을 그리는 요소. 둘 다 React 바깥에 둔다 —
   // 프레임마다 상태를 갱신하면 열 개 × 60프레임을 다시 그리게 된다.
@@ -307,9 +324,10 @@ export default function WallSimulation() {
       .sort((a, b) => b.createdAt - a.createdAt);
     // 발화 중인 글이 목록에 아직 없으면(폴링 전) 끼워 넣는다 — 잔상 자리가
     // 있어야 내려앉을 곳이 있다. 폴링이 따라오면 같은 id라 그대로 합쳐진다.
-    if (emphMsg && !list.some((m) => m.id === emphMsg.id)) list.unshift(emphMsg);
+    // 막 내려앉은 글도 같다 — 폴링이 아직 못 받았으면 착지하자마자 사라진다.
+    for (const m of [linger, emphMsg]) if (m && !list.some((x) => x.id === m.id)) list.unshift(m);
     return list.slice(0, RECENT_N);
-  }, [messages, now, emphMsg]);
+  }, [messages, now, emphMsg, linger]);
 
   // '최신 글'을 따로 들고 있지 않는다. 지목된 글을 못 가져왔을 때 그걸로
   // 대신 띄우던 길이 있었고, 그 길이 남의 글을 남의 발화로 만들었다.
@@ -324,6 +342,8 @@ export default function WallSimulation() {
   const seenIdRef = useRef<string>(readSeen());
   const landingRef = useRef(false);
   const emphIdRef = useRef<string | null>(null);
+  /** 발화 중인 글 그 자체. 내려앉은 뒤 붙잡아 둘 때 쓴다 */
+  const emphMsgRef = useRef<StoredMessage | null>(null);
   const closeTimerRef = useRef(0);
   const hideTimerRef = useRef(0);
   useEffect(() => {
@@ -352,6 +372,14 @@ export default function WallSimulation() {
       }
       hideTimerRef.current = window.setTimeout(() => {
         if (body) body.held = false;      // 도착했으니 다시 떠다닌다
+        // 도착한 글을 한 바퀴 붙잡아 둔다(LINGER_MS). 다음 발화가 오면 그 글이 이어받는다
+        const m = emphMsgRef.current;
+        if (m) {
+          setLinger(m);
+          clearTimeout(lingerTimerRef.current);
+          lingerTimerRef.current = window.setTimeout(() => setLinger(null), LINGER_MS);
+        }
+        emphMsgRef.current = null;
         setEmphMsg(null);
         setEmphLand(null);
         emphIdRef.current = null;
@@ -362,6 +390,7 @@ export default function WallSimulation() {
       clearTimeout(closeTimerRef.current);
       clearTimeout(hideTimerRef.current);
       emphIdRef.current = msg.id;
+      emphMsgRef.current = msg;
       landingRef.current = false;
       setEmphStart(startedAt);
       setEmphLand(null);
@@ -435,14 +464,17 @@ export default function WallSimulation() {
   const shown = useMemo(() => {
     if (visible.length <= FLOAT_N) return visible;
     const out: StoredMessage[] = [];
-    const pinned = emphMsg ? visible.find((m) => m.id === emphMsg.id) : null;
-    if (pinned) out.push(pinned);
+    // 발화 중인 글, 그리고 막 내려앉은 글(LINGER_MS)
+    for (const keep of [emphMsg, linger]) {
+      const pinned = keep ? visible.find((m) => m.id === keep.id) : null;
+      if (pinned && !out.some((x) => x.id === pinned.id)) out.push(pinned);
+    }
     for (let i = 0; out.length < FLOAT_N && i < visible.length; i++) {
       const m = visible[(i + rotate) % visible.length];
       if (!out.some((x) => x.id === m.id)) out.push(m);
     }
     return out;
-  }, [visible, rotate, emphMsg]);
+  }, [visible, rotate, emphMsg, linger]);
 
   // 프레임마다 한 걸음 걷고 자리를 요소에 적는다. transform만 건드리므로
   // 레이아웃을 다시 계산하지 않는다 — 파이에서 이게 프레임을 지킨다.

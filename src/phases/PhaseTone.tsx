@@ -179,8 +179,9 @@ function Slider({ name, words, value, onChange }: {
      </div>
      <div className={'tslider-track' + (moving ? ' is-moving' : '')}>
       {/* 막대 선은 첫 눈금에서 시작해 끝 눈금에서 끝난다 — 옆으로 삐져나오지
-          않고 끝은 직각이다. 손잡이 가운데가 그 두 끝 사이를 오간다 */}
-      <i className="tslider-line" aria-hidden />
+          않고 끝은 직각이다. 손잡이 가운데가 그 두 끝 사이를 오간다.
+          --at까지가 지나온 막대, 그 뒤가 남은 막대(색은 app.css) */}
+      <i className="tslider-line" style={{ '--at': value } as CSSProperties} aria-hidden />
       {Array.from({ length: STOPS }, (_, i) =>
         <i key={i} className="tslider-tick" style={{ '--p': i / (STOPS - 1) } as CSSProperties} aria-hidden />)}
       <input type="range" min={0} max={1000} step={1} value={Math.round(value * 1000)}

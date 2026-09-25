@@ -4114,7 +4114,14 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    typoclast의 짜임: 1px 선 위의 작은 손잡이. 알약은 없다.
    · 줄 하나 = 위에 [축 이름 ······ 지금 상태의 말], 아래에 막대(높이 44).
      이름과 말 사이는 같은 묶음(8), 막대 사이는 독립 묶음(16, 패널 gap).
-   · 막대는 1px 잉크 선. 세 지점(0 · ½ · 1)에 짧은 세로 눈금.
+   · 막대는 1px 선. 다섯 칸 자리에 짧은 세로 눈금.
+   · 색은 검정이 아니라 회색 사다리(2026-09-25, 작업 지침 12번 · 사용자가
+     세 조합 중 ①을 골랐다): 손잡이 --grey-800 · 지나온 막대 --grey-500 ·
+     남은 막대 --grey-200 · 눈금 --grey-300. 말투 스위치도 같은 사다리를 따른다
+     — 고른 칸의 면은 손잡이 색, 테두리·칸 나눔 선은 지나온 막대 색, 안 고른
+     칸의 글자는 --grey-700(그보다 옅으면 바탕 위 글자 대비 4.5:1에 못 미친다).
+     남은 막대는 바탕과 1.18:1로 거의 안 보인다 — 알고 고른 값이다. 자리는
+     손잡이와 지나온 막대가 말한다.
    · 손잡이는 16px 원. 가만히 있을 때 채움, 누르는 동안 테두리만(반전).
      손잡이는 기호가 아니라 **점**이라 3px 규칙이 아니라 원이다.
    · 브라우저의 range를 그대로 쓰고 모양만 바꾼다 — 끌기·누른 자리로
@@ -4128,22 +4135,26 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 /* 눈금은 손잡이 가운데가 지나는 자리에 선다 — 손잡이 반지름(8)만큼 안에서
    시작해 막대 폭에서 지름(16)을 뺀 만큼을 오간다 */
 .tslider-tick{ position: absolute; top: 50%; left: calc(var(--s3) + (100% - var(--s5)) * var(--p));
-  width: 1px; height: var(--s3); background: var(--grey-500); translate: -50% -50%; pointer-events: none; }
+  width: 1px; height: var(--s3); background: var(--grey-300); translate: -50% -50%; pointer-events: none; }
 .tslider-track input{ -webkit-appearance: none; appearance: none; position: absolute; inset: 0;
   width: 100%; height: 100%; margin: 0; background: transparent; cursor: pointer; }
 .tslider-track input:focus-visible{ outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--r-control); }
 /* 막대 선은 브라우저 트랙이 아니라 따로 그린다(2026-09-25). 브라우저 트랙은
    입력칸 폭 전체라 첫·끝 눈금 밖으로 손잡이 반지름(8)만큼 삐져나왔다. 선은
-   손잡이 가운데가 오가는 구간(첫 눈금 ~ 끝 눈금)만 긋고, 끝은 직각이다. */
+   손잡이 가운데가 오가는 구간(첫 눈금 ~ 끝 눈금)만 긋고, 끝은 직각이다.
+   손잡이 가운데도 그 구간을 같은 비율로 오가므로, 선의 --at(막대 자리 0~1)
+   지점에서 지나온 색과 남은 색이 갈리면 손잡이 가운데와 맞는다. */
 .tslider-track input::-webkit-slider-runnable-track{ height: 1px; background: transparent; }
 .tslider-track input::-moz-range-track{ height: 1px; background: transparent; }
 .tslider-line{ position: absolute; top: 50%; left: var(--s3); right: var(--s3); height: 1px;
-  background: var(--ink); translate: 0 -50%; pointer-events: none; }
+  background: linear-gradient(to right, var(--grey-500) 0 calc(var(--at) * 100%),
+    var(--grey-200) calc(var(--at) * 100%) 100%);
+  translate: 0 -50%; pointer-events: none; }
 .tslider-track input::-webkit-slider-thumb{ -webkit-appearance: none; appearance: none;
   box-sizing: border-box; width: var(--s5); height: var(--s5); margin-top: calc(var(--s5) / -2);
-  border-radius: var(--r-full); border: 2px solid var(--ink); background: var(--ink); }
+  border-radius: var(--r-full); border: 2px solid var(--grey-800); background: var(--grey-800); }
 .tslider-track input::-moz-range-thumb{ box-sizing: border-box; width: var(--s5); height: var(--s5);
-  border-radius: var(--r-full); border: 2px solid var(--ink); background: var(--ink); }
+  border-radius: var(--r-full); border: 2px solid var(--grey-800); background: var(--grey-800); }
 .tslider-track input:active::-webkit-slider-thumb,
 .tslider-track.is-moving input::-webkit-slider-thumb{ background: var(--grey-50); }
 .tslider-track input:active::-moz-range-thumb,
@@ -4151,11 +4162,11 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 
 /* 말투 — 두 칸 스위치. 1px 선으로 나누고 고른 칸을 채운다. 바깥 모서리 3px */
 .tswitch{ display: grid; grid-template-columns: 1fr 1fr; min-height: var(--btn-m);
-  border: 1px solid var(--ink); border-radius: var(--r-control); overflow: hidden; }
+  border: 1px solid var(--grey-500); border-radius: var(--r-control); overflow: hidden; }
 .tswitch-cell{ min-height: var(--btn-m); padding: 0 var(--pad-btn-x); border: 0; background: transparent;
-  color: var(--ink); font-size: var(--fs-body); cursor: pointer; }
-.tswitch-cell + .tswitch-cell{ border-left: 1px solid var(--ink); }
-.tswitch-cell.on{ background: var(--ink); color: var(--paper); }
+  color: var(--grey-700); font-size: var(--fs-body); cursor: pointer; }
+.tswitch-cell + .tswitch-cell{ border-left: 1px solid var(--grey-500); }
+.tswitch-cell.on{ background: var(--grey-800); color: var(--paper); }
 .tswitch-cell:focus-visible{ outline: 2px solid var(--ink); outline-offset: -4px; }
 .tswitch-cell.on:focus-visible{ outline-color: var(--paper); }
 

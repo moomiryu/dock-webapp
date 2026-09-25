@@ -80,6 +80,36 @@ service cloud.firestore {
         && validTone(d.tone);
     }
 
+    // ── 제안 (완료 화면의 의견 칸, 2026-09-25) ─────────────────────────
+    //
+    // 받는 것은 본문과 보낸 시각 둘뿐이다. 시각은 서버가 정한다 — 폰이 보내는
+    // 값이 요청 시각과 같아야만 통과한다(REST의 REQUEST_TIME 변환이 그렇게
+    // 적는다). 새로 만들기만 되고, 고치기·지우기는 누구도 못 한다.
+    //
+    // 읽기는 관리자 계정 하나뿐이다. 계정은 Firebase 콘솔(Authentication)에서
+    // 만들고 그 UID를 아래 목록에 넣는다. **비어 있는 동안은 아무도 못 읽는다**
+    // — 기본이 닫힘이다.
+    function isAdmin() {
+      return request.auth != null && request.auth.uid in [
+        // 'ADMIN_UID_HERE'
+      ];
+    }
+
+    function validFeedback(d) {
+      return d.keys().hasOnly(['text', 'createdAt'])
+        && d.keys().hasAll(['text', 'createdAt'])
+        && d.text is string
+        && d.text.trim().size() >= 1
+        && d.text.size() <= 200
+        && d.createdAt == request.time;
+    }
+
+    match /feedback/{id} {
+      allow create: if validFeedback(request.resource.data);
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
     match /messages/{id} {
       // 벽과 /admin이 로그인 없이 읽는다. 글 자체가 공개물이고 누가 썼는지는
       // 애초에 저장하지 않는다(익명성).

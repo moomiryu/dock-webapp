@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import MessageTile from '../components/MessageTile';
-import { isFirebaseConfigured, listMessages } from '../lib/firebase';
-import type { StoredMessage } from '../lib/firebase';
+import { adminSignIn, isFirebaseConfigured, listFeedback, listMessages } from '../lib/firebase';
+import type { Feedback, StoredMessage } from '../lib/firebase';
 
 export default function AdminWall() {
   const [messages, setMessages] = useState<StoredMessage[] | null>(null);
@@ -63,7 +63,71 @@ export default function AdminWall() {
           ))}
         </div>
       )}
+
+      <FeedbackList />
     </div>
+  );
+}
+
+/**
+ * 받은 제안(완료 화면의 의견 칸, 2026-09-25). 관리자만 읽는다 — 이메일·
+ * 비밀번호로 로그인하면 그 표(idToken)로 읽고, 표는 이 탭이 닫힐 때까지만
+ * 쥔다(sessionStorage). 규칙(firestore.rules · feedback)이 관리자 계정 하나만
+ * 통과시킨다. 가장 최근이 위, 줄 사이는 1px 선.
+ */
+const TOKEN_KEY = 'megafont.admin.idToken';
+function FeedbackList() {
+  const [token, setToken] = useState<string | null>(() => {
+    if (!isFirebaseConfigured()) return 'mock';
+    try { return sessionStorage.getItem(TOKEN_KEY); } catch { return null; }
+  });
+  const [items, setItems] = useState<Feedback[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    listFeedback(token).then((l) => { if (!cancelled) { setItems(l); setError(null); } })
+      .catch((e: Error) => { if (!cancelled) { setError(e.message); setItems(null); try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* */ } setToken(null); } });
+    return () => { cancelled = true; };
+  }, [token]);
+  async function signIn(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      const t = await adminSignIn(email.trim(), password);
+      try { sessionStorage.setItem(TOKEN_KEY, t); } catch { /* */ }
+      setPassword('');
+      setToken(t);
+    } catch (err) { setError((err as Error).message); }
+  }
+  return (
+    <section className="admin-feedback" aria-labelledby="admin-feedback-title">
+      <h2 id="admin-feedback-title" className="admin-feedback__title">
+        제안{items ? ` ${items.length}건` : ''} <span className="admin-feedback__note">가장 최근이 위</span>
+      </h2>
+      {error && <p className="admin-feedback__error" role="alert">{error}</p>}
+      {!token && (
+        <form className="admin-feedback__login" onSubmit={signIn}>
+          <label>관리자 이메일<input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
+          <label>비밀번호<input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
+          <button type="submit">로그인</button>
+        </form>
+      )}
+      {token && !items && !error && <p className="admin-feedback__note">불러오는 중…</p>}
+      {items && items.length === 0 && <p className="admin-feedback__note">아직 받은 제안이 없어요.</p>}
+      {items && items.length > 0 && (
+        <ul className="admin-feedback__list">
+          {items.map((f) => (
+            <li key={f.id}>
+              <time>{new Date(f.createdAt).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</time>
+              <p>{f.text}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

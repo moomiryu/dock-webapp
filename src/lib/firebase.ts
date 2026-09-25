@@ -571,3 +571,78 @@ export async function getMessage(id: string): Promise<StoredMessage | null> {
     return null;
   }
 }
+
+// ─── 제안 — 완료 화면의 의견 칸 (2026-09-25) ───────────────────────────
+//
+// 저장하는 것은 **보낸 시각과 본문 둘뿐**이다. 누가 보냈는지, 어느 기기인지,
+// 어느 글을 보낸 뒤인지는 받지 않는다. 시각은 서버가 적는다(요청 시각) — 폰이
+// 적으면 꾸밀 수 있다. 규칙(firestore.rules · feedback)이 같은 것을 한 번 더
+// 본다: 새로 만들기만, 두 칸만, 1~200자.
+//
+// 읽는 것은 관리자뿐이다. /admin이 관리자 계정(이메일·비밀번호)으로 로그인해
+// 받은 표(idToken)를 붙여 읽는다. SDK 없이 REST로 한다(이 파일의 다른 길과 같다).
+//
+// 연달아 보내기는 **앱에서만** 막는다(PhaseDone: 보내면 칸이 닫히고, 같은
+// 기기는 1분 뒤에야 다시). 로그인도 서버도 없는 구조라 규칙은 '같은 사람'을
+// 알아볼 수 없다 — 진짜로 막으려면 App Check나 서버가 필요하다(README).
+
+export const FEEDBACK_MAX = 200;
+export interface Feedback { id: string; text: string; createdAt: number }
+const FEEDBACK_MOCK = 'megafont.mock.feedback.v1';
+
+function randomId(n = 20): string {
+  const abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const buf = new Uint8Array(n);
+  crypto.getRandomValues(buf);
+  return Array.from(buf, (b) => abc[b % abc.length]).join('');
+}
+
+export async function submitFeedback(text: string): Promise<void> {
+  const t = text.trim();
+  if (!t || Array.from(t).length > FEEDBACK_MAX) throw new Error('1~200자로 적어주세요.');
+  if (!hasFirebaseEnv()) {
+    const list = JSON.parse(localStorage.getItem(FEEDBACK_MOCK) ?? '[]') as Feedback[];
+    list.unshift({ id: 'mock-' + Date.now(), text: t, createdAt: Date.now() });
+    localStorage.setItem(FEEDBACK_MOCK, JSON.stringify(list.slice(0, 100)));
+    return;
+  }
+  const project = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+  const body = {
+    writes: [{
+      update: { name: `projects/${project}/databases/(default)/documents/feedback/${randomId()}`, fields: { text: { stringValue: t } } },
+      updateTransforms: [{ fieldPath: 'createdAt', setToServerValue: 'REQUEST_TIME' }],
+      currentDocument: { exists: false }
+    }]
+  };
+  const res = await withTimeout(fetch(`${FS_BASE}:commit?key=${FS_KEY}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  }), 15000).catch(() => { throw new Error('보내지 못했어요. 잠시 뒤 다시 보내주세요.'); });
+  if (!res.ok) throw new Error('보내지 못했어요. 잠시 뒤 다시 보내주세요.');
+}
+
+/** 관리자 로그인 — Firebase Auth REST. 돌려받은 idToken은 한 시간 간다 */
+export async function adminSignIn(email: string, password: string): Promise<string> {
+  if (!hasFirebaseEnv()) return 'mock';
+  const res = await withTimeout(fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FS_KEY}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, returnSecureToken: true })
+  }), 15000);
+  if (!res.ok) throw new Error('로그인하지 못했어요. 이메일과 비밀번호를 확인해주세요.');
+  const json = (await res.json()) as { idToken?: string };
+  if (!json.idToken) throw new Error('로그인하지 못했어요.');
+  return json.idToken;
+}
+
+export async function listFeedback(idToken: string): Promise<Feedback[]> {
+  if (!hasFirebaseEnv()) return JSON.parse(localStorage.getItem(FEEDBACK_MOCK) ?? '[]') as Feedback[];
+  const url = `${FS_BASE}/feedback?key=${FS_KEY}&pageSize=200&orderBy=${encodeURIComponent('createdAt desc')}`;
+  const res = await withTimeout(fetch(url, { headers: { Authorization: `Bearer ${idToken}` } }), 15000);
+  if (res.status === 401 || res.status === 403) throw new Error('읽을 권한이 없어요. 관리자 계정으로 다시 로그인해주세요.');
+  if (!res.ok) throw new Error(`제안을 불러오지 못했어요 (${res.status})`);
+  const json = (await res.json()) as { documents?: Array<{ name: string; fields?: { text?: { stringValue?: string }; createdAt?: { timestampValue?: string } } }> };
+  return (json.documents ?? []).map((d) => ({
+    id: d.name.split('/').pop() ?? '',
+    text: d.fields?.text?.stringValue ?? '',
+    createdAt: Date.parse(d.fields?.createdAt?.timestampValue ?? '') || 0
+  }));
+}

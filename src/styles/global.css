@@ -799,3 +799,20 @@ body.wall-mode {
    자리는 지키되 보이지 않는다 — 자리를 지켜야 도착점을 잴 수 있다.
    그동안 그 몸은 붙잡혀 있다(Body.held) 도착과 함께 다시 떠다닌다. */
 .wall-block.is-ghost{ visibility: hidden; }
+
+/* ─── /admin 받은 제안 (2026-09-25) ─────────────────────────────────
+   상자 없이 줄 사이 1px 선. 시각은 작은 회색, 본문은 보통 글. */
+.admin-feedback{ margin-top: var(--space-block); max-width: 720px; font-family: var(--text-font); }
+.admin-feedback__title{ font-size: var(--fs-h4); font-weight: 700; line-height: 1.3; }
+.admin-feedback__note{ font-size: var(--fs-body-s); font-weight: 400; color: var(--muted); }
+.admin-feedback__error{ margin-top: var(--space-in-group); font-size: var(--fs-body-s); color: var(--body-text); }
+.admin-feedback__login{ margin-top: var(--space-group); display: grid; gap: var(--space-in-group); max-width: 320px; }
+.admin-feedback__login label{ display: grid; gap: var(--space-title-desc); font-size: var(--fs-body-s); color: var(--body-text); }
+.admin-feedback__login input{ min-height: var(--btn-m); padding: 0 var(--pad-box-s); border: 1px solid var(--grey-500);
+  border-radius: var(--r-control); font: inherit; font-size: var(--fs-body); color: var(--ink); }
+.admin-feedback__login button{ min-height: var(--btn-m); border: 1px solid var(--ink); border-radius: var(--r-control);
+  background: none; font: inherit; font-weight: 600; color: var(--ink); cursor: pointer; }
+.admin-feedback__list{ margin-top: var(--space-group); list-style: none; padding: 0; border-top: 1px solid var(--rule); }
+.admin-feedback__list li{ padding: var(--pad-box-s) 0; border-bottom: 1px solid var(--rule); }
+.admin-feedback__list time{ font-size: var(--fs-cap-s); color: var(--muted); }
+.admin-feedback__list p{ margin-top: var(--space-title-desc); font-size: var(--fs-body); line-height: 1.5; color: var(--ink); white-space: pre-wrap; }

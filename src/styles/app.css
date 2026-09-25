@@ -4157,3 +4157,36 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 /* 견본은 칸을 넘어도 자르지 않는다(2026-09-25) — 넓어진 글자를 줄여 맞추면
    참여자가 고른 크기가 바뀐다. 넘치면 넘치는 대로 보인다. */
 .tone-adjust .tone-work .z-glyph-stage, .tone-adjust .tone-work .z-glyph-fit{ overflow: visible; }
+
+/* ─── 08 완료 — 한 줄 더 쓰기 · 의견 칸 · 만든 사람 (2026-09-25) ───────────
+   상자 없이 선 하나와 여백으로만 묶는다. 여백은 전부 역할 토큰이다:
+   한 줄 더 쓰기 → 선 24 · 선 → 제목 24 · 제목 → 설명 4 · 설명 → 입력칸 16 ·
+   입력칸 → 보내기 8 · 의견 칸 → 만든 사람 32. */
+/* 이 화면의 주 행동 — 테두리 칸 버튼은 이것 하나뿐이다 */
+.done .done-home-link{ display: grid; place-items: center; width: 100%; min-height: var(--btn-l);
+  margin-top: var(--space-section); padding: 0 var(--pad-btn-x);
+  border: 1px solid var(--ink); border-radius: var(--r-control); background: none;
+  color: var(--ink); font-family: var(--text-font); font-size: var(--fs-body); font-weight: 600;
+  text-decoration: none; }
+/* 선은 머리줄 밑 선·목록 줄 사이 선과 같은 선 — 화면 끝에서 끝까지 */
+/* .done의 gap(--s3)이 이미 벌려 둔 만큼 빼서 버튼 → 선이 정확히 24 */
+.done-footer{ margin-top: calc(var(--space-section) - var(--s3)); margin-inline: calc(var(--pad-x) * -1);
+  padding: var(--space-section) var(--pad-x) 0; border-top: 1px solid var(--rule); text-align: left; }
+.feedback{ display: grid; }
+.feedback-title{ font-family: var(--text-font); font-size: var(--fs-body); font-weight: 600; line-height: 1.4; color: var(--ink); }
+.feedback-desc{ margin-top: var(--space-title-desc); font-size: var(--fs-body-s); line-height: 1.5; color: var(--muted); }
+/* 입력칸 — 사각 컨트롤이라 3px. 테두리는 흰 바탕에서 3:1을 넘는 --grey-500 */
+.feedback-input{ margin-top: var(--space-group); width: 100%; box-sizing: border-box; resize: none;
+  padding: var(--pad-box-s); border: 1px solid var(--grey-500); border-radius: var(--r-control);
+  font-family: var(--text-font); font-size: var(--fs-body); line-height: 1.5; color: var(--ink); background: var(--paper); }
+.feedback-input::placeholder{ color: var(--muted); }
+.feedback-input:focus-visible{ outline: 2px solid var(--ink); outline-offset: 1px; }
+.feedback-foot{ margin-top: var(--space-in-group); display: flex; align-items: center; gap: var(--space-in-group); flex-wrap: wrap; }
+/* 보내기 — 글자 버튼. 테두리 없음. 누르는 자리는 44 */
+.feedback-send{ order: -1; min-height: var(--btn-m); padding: 0; border: 0; background: none;
+  font-family: var(--text-font); font-size: var(--fs-body); font-weight: 600; color: var(--ink); cursor: pointer; }
+.feedback-send:disabled{ color: var(--grey-500); cursor: default; }
+.feedback-error{ font-size: var(--fs-body-s); color: var(--body-text); }
+.feedback-done{ margin-top: var(--space-group); font-size: var(--fs-body); line-height: 1.5; color: var(--ink); }
+.done-credits{ margin-top: var(--space-block); padding-bottom: var(--space-section);
+  font-size: var(--fs-cap-s); line-height: 1.6; color: var(--muted); }

@@ -254,17 +254,26 @@ export const SIZE_RANGE: Three = [28, 44, 60];
 export const sizeAt = (t: number) => along(t, SIZE_RANGE);
 export const sizePos = (size: number) => Math.min(1, Math.max(0, (size - 28) / 32));
 
-/** 막대마다 세 지점의 말. 말은 가장 가까운 지점의 것을 따른다 */
-export const SIZE_WORDS: [string, string, string] = ['작게', '보통', '크게'];
-export const WEIGHT_WORDS: [string, string, string] = ['가볍게', '보통', '무겁게'];
-export const SPEED_WORDS: Record<string, [string, string, string]> = {
-  ttoryeot: ['진중한', '보통', '거침없는'],
-  deulseok: ['능청능청', '보통', '재잘재잘'],
-  chabun: ['느긋한', '보통', '날렵한'],
-  doran: ['느긋한', '보통', '날렵한']
+/**
+ * 막대마다 다섯 칸의 말(2026-09-25, 작업 지침 13번). 막대는 다섯 칸이고
+ * 손을 떼면 가장 가까운 칸에 붙는다. 칸의 값은 세 지점 표를 0 · ¼ · ½ · ¾ · 1
+ * 자리에서 읽은 것이다 — 사이 칸은 이웃한 두 값의 딱 중간이 된다.
+ */
+type Five = [string, string, string, string, string];
+export const STOPS = 5;
+export const SIZE_WORDS: Five = ['매우 작게', '작게', '보통', '크게', '매우 크게'];
+export const WEIGHT_WORDS: Five = ['매우 가볍게', '가볍게', '보통', '무겁게', '매우 무겁게'];
+export const SPEED_WORDS: Record<string, Five> = {
+  ttoryeot: ['매우 진중한', '진중한', '보통', '거침없는', '매우 거침없는'],
+  deulseok: ['한껏 능청능청', '능청능청', '보통', '재잘재잘', '한껏 재잘재잘'],
+  chabun: ['매우 느긋한', '느긋한', '보통', '날렵한', '매우 날렵한'],
+  doran: ['매우 느긋한', '느긋한', '보통', '날렵한', '매우 날렵한']
 };
-export const wordAt = (t: number, words: [string, string, string]) =>
-  words[t < 0.25 ? 0 : t <= 0.75 ? 1 : 2];
+/** 막대 자리에서 가장 가까운 칸(0~4) */
+export const stopAt = (t: number) => Math.round(Math.min(1, Math.max(0, t)) * (STOPS - 1));
+/** 가장 가까운 칸의 자리(0 · .25 · .5 · .75 · 1) */
+export const snap = (t: number) => stopAt(t) / (STOPS - 1);
+export const wordAt = (t: number, words: Five) => words[stopAt(t)];
 
 export interface Form {
   scaleX: number;

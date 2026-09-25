@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
-import { MANNER, SIZE_WORDS, SPEED_WORDS, WEIGHT_WORDS, fontMap, formFor, hasWeightAxis, legacyFields, opticalFix, sizeAt, sizePos, wordAt } from '../lib/palettes';
+import { MANNER, SIZE_WORDS, SPEED_WORDS, STOPS, WEIGHT_WORDS, fontMap, formFor, hasWeightAxis, legacyFields, opticalFix, sizeAt, sizePos, snap, stopAt } from '../lib/palettes';
 import { DEFAULT_TONE, type PartialTone } from '../lib/tone';
 import { foldLines } from '../lib/fit';
 
@@ -94,6 +94,35 @@ const STAGE_LH = 1.4;
 const USE = { w: 86, h: 88 };
 
 /**
+ * 칸을 지날 때의 짧은 진동. 브라우저의 진동 기능이 있으면(안드로이드) 그걸 쓴다.
+ *
+ * 아이폰 사파리는 그 기능을 주지 않아 우회한다(사용자 결정, 2026-09-25).
+ * iOS 18부터 사파리는 켜기/끄기 스위치(checkbox switch)가 바뀔 때 짧게
+ * 진동하므로, 화면에 안 보이는 스위치 하나를 두고 칸을 지날 때마다 대신
+ * 누른다. 정식 기능이 아니다 — 애플이 막거나 그 전 iOS면 조용히 안 울리고,
+ * 조작은 그대로 된다. 스위치는 머리(head)에 두어 앱의 어떤 칸에도 닿지 않는다.
+ */
+let hiddenSwitch: HTMLLabelElement | null = null;
+function tick() {
+    if (typeof navigator === 'undefined') return;
+    if ('vibrate' in navigator) { navigator.vibrate(8); return; }
+    try {
+        if (!hiddenSwitch) {
+            hiddenSwitch = document.createElement('label');
+            hiddenSwitch.setAttribute('aria-hidden', 'true');
+            hiddenSwitch.style.display = 'none';
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.setAttribute('switch', '');
+            input.tabIndex = -1;
+            hiddenSwitch.appendChild(input);
+            document.head.appendChild(hiddenSwitch);
+        }
+        hiddenSwitch.click();
+    } catch { /* 못 울려도 조작은 그대로 */ }
+}
+
+/**
  * 막대 하나 — 끊김 없이 흐른다(2026-09-25, 작업 지침 8번).
  *
  * 5칸 버튼 줄이던 것을 연속 막대로 바꿨다. 모든 값이 세 지점 사이를
@@ -105,27 +134,61 @@ const USE = { w: 86, h: 88 };
  * 짧은 눈금, 손잡이는 16px 원: 가만히 있을 때 채워져 있고 누르는 동안에는
  * 테두리만 남는다(반전). 누르는 자리는 막대 전체 높이 44px이다.
  */
-function Slider({ name, word, value, onChange }: {
-    name: string; word: string; value: number; onChange: (v: number) => void;
+function Slider({ name, words, value, onChange }: {
+    name: string; words: readonly string[]; value: number; onChange: (v: number) => void;
 }) {
-    /* 옮기는 동안 손잡이는 속이 빈 원이다. 폰에서는 손가락으로 끄는 동안
-       :active가 유지되지 않는 브라우저가 있어 '옮기는 중'을 직접 적는다 */
+    /* 다섯 칸(2026-09-25, 작업 지침 13번). 끄는 동안은 부드럽게 흐르고, 손을
+       떼면 가장 가까운 칸에 붙는다. 오른쪽 위의 말은 늘 손잡이가 있는 칸의
+       말이다. 칸을 지날 때마다 짧게 진동한다(tick — 아이폰은 우회).
+
+       옮기는 동안 손잡이는 속이 빈 원이다. 폰에서는 손가락으로 끄는 동안
+       :active가 유지되지 않는 브라우저가 있어 '옮기는 중'을 직접 적는다. */
     const [moving, setMoving] = useState(false);
-    const stop = () => setMoving(false);
+    const live = useRef(value);
+    live.current = value;
+    const lastStop = useRef(stopAt(value));
+    const move = (v: number) => {
+        const i = stopAt(v);
+        if (i !== lastStop.current) {
+            lastStop.current = i;
+            tick();
+        }
+        onChange(v);
+    };
+    const release = () => {
+        setMoving(false);
+        const snapped = snap(live.current);
+        lastStop.current = stopAt(snapped);
+        if (snapped !== live.current) onChange(snapped);
+    };
+    /* 자판은 칸 단위로 — 화살표 한 번에 한 칸 */
+    const key = (e: React.KeyboardEvent) => {
+        const step = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[e.key];
+        const edge = e.key === 'Home' ? 0 : e.key === 'End' ? STOPS - 1 : null;
+        if (step === undefined && edge === null) return;
+        e.preventDefault();
+        const i = edge ?? Math.min(STOPS - 1, Math.max(0, stopAt(live.current) + step!));
+        lastStop.current = i;
+        onChange(i / (STOPS - 1));
+    };
+    const word = words[stopAt(value)];
     return <div className="tslider">
      <div className="tslider-lab">
       <span className="tslider-name">{name}</span>
       <span className="tslider-word" aria-hidden>{word}</span>
      </div>
      <div className={'tslider-track' + (moving ? ' is-moving' : '')}>
-      {[0, 0.5, 1].map(p => <i key={p} className="tslider-tick" style={{ '--p': p } as CSSProperties} aria-hidden />)}
+      {/* 막대 선은 첫 눈금에서 시작해 끝 눈금에서 끝난다 — 옆으로 삐져나오지
+          않고 끝은 직각이다. 손잡이 가운데가 그 두 끝 사이를 오간다 */}
+      <i className="tslider-line" aria-hidden />
+      {Array.from({ length: STOPS }, (_, i) =>
+        <i key={i} className="tslider-tick" style={{ '--p': i / (STOPS - 1) } as CSSProperties} aria-hidden />)}
       <input type="range" min={0} max={1000} step={1} value={Math.round(value * 1000)}
         aria-label={name} aria-valuetext={word}
-        onPointerDown={() => setMoving(true)} onPointerUp={stop} onPointerCancel={stop}
-        onTouchStart={() => setMoving(true)} onTouchEnd={stop} onTouchCancel={stop}
-        onKeyDown={e => { if (e.key.startsWith('Arrow') || e.key === 'Home' || e.key === 'End' || e.key.startsWith('Page')) setMoving(true); }}
-        onKeyUp={stop} onBlur={stop}
-        onChange={e => onChange(Number(e.target.value) / 1000)} />
+        onPointerDown={() => setMoving(true)} onPointerUp={release} onPointerCancel={release}
+        onTouchStart={() => setMoving(true)} onTouchEnd={release} onTouchCancel={release}
+        onKeyDown={key} onBlur={() => setMoving(false)}
+        onChange={e => move(Number(e.target.value) / 1000)} />
      </div>
     </div>;
 }
@@ -399,12 +462,12 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }:
        만지던 탭은 걷었다. 작은 화면(320)에서는 이 판이 줄지 않고 위의 견본
        칸이 줄어든다(견본 칸은 남는 자리를 받는다). */}
    <div className="tone-panel">
-    <Slider name="크기" word={wordAt(sizePos(tone.size), SIZE_WORDS)} value={sizePos(tone.size)}
+    <Slider name="크기" words={SIZE_WORDS} value={sizePos(tone.size)}
       onChange={v => set({ size: +sizeAt(v).toFixed(2) })} />
-    <Slider name="속도" word={wordAt(speed, SPEED_WORDS[tone.font] ?? SIZE_WORDS)} value={speed}
+    <Slider name="속도" words={SPEED_WORDS[tone.font] ?? SIZE_WORDS} value={speed}
       onChange={v => set({ speed: v })} />
     {hasWeightAxis(tone.font)
-      ? <Slider name="무게" word={wordAt(weight, WEIGHT_WORDS)} value={weight} onChange={v => set({ weight: v })} />
+      ? <Slider name="무게" words={WEIGHT_WORDS} value={weight} onChange={v => set({ weight: v })} />
       : <MannerSwitch font={tone.font} at={tone.manner ?? 0} onPick={i => set({ manner: i })} />}
 
     {/* '다음'이 패널 안에 있다. 밖에 두면 패널과 버튼 사이에 흰 띠가 한 겹

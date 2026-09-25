@@ -4132,8 +4132,13 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .tslider-track input{ -webkit-appearance: none; appearance: none; position: absolute; inset: 0;
   width: 100%; height: 100%; margin: 0; background: transparent; cursor: pointer; }
 .tslider-track input:focus-visible{ outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--r-control); }
-.tslider-track input::-webkit-slider-runnable-track{ height: 1px; background: var(--ink); }
-.tslider-track input::-moz-range-track{ height: 1px; background: var(--ink); }
+/* 막대 선은 브라우저 트랙이 아니라 따로 그린다(2026-09-25). 브라우저 트랙은
+   입력칸 폭 전체라 첫·끝 눈금 밖으로 손잡이 반지름(8)만큼 삐져나왔다. 선은
+   손잡이 가운데가 오가는 구간(첫 눈금 ~ 끝 눈금)만 긋고, 끝은 직각이다. */
+.tslider-track input::-webkit-slider-runnable-track{ height: 1px; background: transparent; }
+.tslider-track input::-moz-range-track{ height: 1px; background: transparent; }
+.tslider-line{ position: absolute; top: 50%; left: var(--s3); right: var(--s3); height: 1px;
+  background: var(--ink); translate: 0 -50%; pointer-events: none; }
 .tslider-track input::-webkit-slider-thumb{ -webkit-appearance: none; appearance: none;
   box-sizing: border-box; width: var(--s5); height: var(--s5); margin-top: calc(var(--s5) / -2);
   border-radius: var(--r-full); border: 2px solid var(--ink); background: var(--ink); }

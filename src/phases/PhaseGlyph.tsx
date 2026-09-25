@@ -211,7 +211,21 @@ export default function PhaseGlyph({ text, initialTone, onBack, onNext }: Props)
             2026-09-22에 그쪽 버튼 둘이 없어졌다(비교는 견본을 누르고,
             되돌리기는 아이콘이 됐다) — 여기 것은 남는다. 머리줄의 뒤로가기는
             **단계**를 되돌리고, 이건 이 안의 걸음을 되돌린다. */}
-        {at >= 0 && <button type="button" className="glyph-reset" onClick={() => setFont(null)}>다른 성격 보기</button>}
+        {/* 글자 알약이 네 칸 아이콘이 됐다(2026-09-25). 유턴 화살표도 후보였는데
+            3/5의 되돌리기와 같은 모양이라 뺐다 — 머리줄 뒤로가기(‹)·되돌리기(↶)와
+            나란히 놓으면 단계 이동·값 되돌림·다시 고르기가 한 몸짓으로 읽혔다.
+            네 칸은 누르면 무엇이 나오는지(네 칸 목록)를 말하고, 채운 한 칸이
+            지금 고른 자리다. 이름은 낭독기가 읽는다. */}
+        {at >= 0 && (
+          <button type="button" className="glyph-reset" aria-label="다른 성격 보기" onClick={() => setFont(null)}>
+            <svg viewBox="0 0 24 24" aria-hidden focusable="false">
+              {[[4, 4], [13, 4], [4, 13], [13, 13]].map(([x, y], i) => (
+                <rect key={i} x={x} y={y} width="7" height="7" rx="2"
+                  className={i === at ? 'is-on' : undefined} />
+              ))}
+            </svg>
+          </button>
+        )}
         {STYLE_OPTIONS.map((s, i) => (
           <button key={s.val} type="button" className={'style-card ' + (at === i ? 'on' : '')}
             aria-pressed={at === i} aria-label={s.label} onClick={() => setFont(s.val)}>

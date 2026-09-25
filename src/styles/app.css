@@ -2348,10 +2348,14 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    앉는 보조 버튼은 검정 반투명(--face-scrim)에 흰 글자다. */
 .style-cards{ position: relative; }
 .glyph-reset{ position: absolute; top: var(--s4); left: var(--s4); z-index: 2;
-  min-height: var(--btn-l); padding: 0 var(--s5);
+  width: var(--btn-l); height: var(--btn-l); padding: 0;
+  display: grid; place-items: center;
   border: 0; border-radius: var(--r-full);
-  background: var(--face-scrim); color: var(--paper);
-  font-family: var(--ui-font); font-size: var(--fs-cap); line-height: 1; cursor: pointer; }
+  background: var(--face-scrim); color: var(--paper); cursor: pointer; }
+/* 네 칸 아이콘(PhaseGlyph). 고른 자리 한 칸만 채운다. */
+.glyph-reset svg{ width: var(--s6); height: var(--s6); }
+.glyph-reset rect{ fill: none; stroke: currentColor; stroke-width: 1.6; }
+.glyph-reset rect.is-on{ fill: currentColor; stroke: none; }
 .glyph-reset:active{ background: var(--face-scrim-on); }
 /* 줄은 발화자가 끊은 그대로. 재서 맞추는 동안 칸보다 넓어져도 다시 접지
    않는다 — 접히면 폭이 칸 폭으로 읽혀 끝없이 커진다(03에서 겪었다). */

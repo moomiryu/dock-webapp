@@ -1,5 +1,5 @@
 import { LINE_HEIGHT, type BoxShape } from './fit';
-import { opticalFix } from './palettes';
+import { formFor, opticalFix } from './palettes';
 
 /**
  * 발화 배경 — 구름.
@@ -103,13 +103,26 @@ export function personaFor(font?: string): Persona {
  * 핸드젯 0.177em. 이걸 안 재고 '한 칸 = 1u'로 두면 핸드젯 글은 늘 여백이
  * 넉넉하고 장평 1.3의 다카포 글은 윤곽을 뚫는다.
  */
+/* 2026-09-25에 다시 쟀다(서체가 다 받아진 뒤, 100px). 둥켈·본명조·핸드젯이
+   표와 달랐다 — 둥켈 1 → 0.839(폭 축 700, 기본), 본명조 1 → 0.989, 핸드젯
+   0.722 → 0.790(굵기·말투와 상관없이 같다). 먼저 잰 값은 서체가 덜 받아진
+   채 대신 선 서체를 쟀던 것으로 보인다. 둥켈은 폭 축을 따라 넓어진다
+   (1000에서 0.984) — advanceFor가 그 사이를 잇는다. */
 const ADVANCE: Record<string, { hangul: number; space: number }> = {
-  ttoryeot: { hangul: 1, space: 0.352 },
-  chabun: { hangul: 1, space: 0.352 },
+  ttoryeot: { hangul: 0.839, space: 0.116 },
+  chabun: { hangul: 0.989, space: 0.31 },
   doran: { hangul: 1, space: 0.35 },
-  deulseok: { hangul: 0.722, space: 0.177 },
+  deulseok: { hangul: 0.79, space: 0.177 },
   botong: { hangul: 0.864, space: 0.251 }
 };
+/** 둥켈산스 폭 축 1000에서의 글자폭 */
+const TTORYEOT_WIDE = { hangul: 0.984, space: 0.174 };
+function advanceFor(key: string, wdth?: number) {
+  const a = ADVANCE[key] ?? ADVANCE.botong;
+  if (key !== 'ttoryeot' || !wdth) return a;
+  const k = Math.min(1, Math.max(0, (wdth - 700) / 300));
+  return { hangul: a.hangul + (TTORYEOT_WIDE.hangul - a.hangul) * k, space: a.space + (TTORYEOT_WIDE.space - a.space) * k };
+}
 const LATIN = 0.55;
 
 export interface Circle {
@@ -152,13 +165,14 @@ function hash(s: string): number {
 }
 
 /** 한 줄의 폭 (u). 한글·띄어쓰기·라틴을 따로 세고 광학 보정과 장평을 곱한다 */
-function lineWidth(line: string, font: string | undefined, optic: number, scaleX: number, slant: number): number {
-  const adv = ADVANCE[BY_FONT[font ?? ''] ?? font ?? ''] ?? ADVANCE.botong;
+function lineWidth(line: string, font: string | undefined, optic: number, scaleX: number, slant: number, wdth?: number, track = 0): number {
+  const adv = advanceFor(BY_FONT[font ?? ''] ?? font ?? '', wdth);
   let w = 0;
   for (const ch of Array.from(line)) {
     if (ch === ' ') w += adv.space;
     else if (/[A-Za-z0-9.,!?'"-]/.test(ch)) w += LATIN;
     else w += adv.hangul;
+    w += track;   // 자간은 글자마다 붙는다(차분한 -0.025em)
   }
   // 기운 글자는 위아래 끝이 옆으로 나간다 — 줄 높이의 반 × tan
   const lean = Math.abs(Math.tan((slant * Math.PI) / 180)) * LINE_HEIGHT * optic;
@@ -174,6 +188,22 @@ interface Options {
   scaleX?: number;
   /** 기울기 (도) */
   slant?: number;
+  /** 세로 비율 (2026-09-25 표 — 당당한·유머있는·차분한의 한쪽 끝) */
+  scaleY?: number;
+  /** 둥켈산스 폭 축 */
+  wdth?: number;
+  /** 자간 (em) */
+  track?: number;
+}
+
+/**
+ * 조율 값 그대로 구름을 만든다 — 서체별 표(palettes.ts · formFor)가 계산한
+ * 장평·세로·기울기·폭 축·자간을 넘긴다. 4/5와 벽이 같은 이 함수를 쓴다.
+ */
+export function cloudForTone(lines: readonly string[], tone: Parameters<typeof formFor>[0] | null | undefined, o: Pick<Options, 'seed' | 'minDiameter'> = {}): Cloud {
+  if (!tone) return cloudFor(lines, undefined, o);
+  const f = formFor(tone);
+  return cloudFor(lines, tone.font, { ...o, scaleX: f.scaleX, scaleY: f.scaleY, slant: f.slant, wdth: f.wdth, track: parseFloat(f.letterSpacing) || 0 });
 }
 
 /**
@@ -190,13 +220,14 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
   const pr = personaFor(font);
   const optic = opticalFix[font ?? '']?.scale ?? 1;
   const scaleX = o.scaleX ?? 1, slant = o.slant ?? 0;
-  const LH = LINE_HEIGHT * optic;                          // 줄 높이 (u)
+  /* 세로 비율은 글 덩어리를 가운데에서 누른다 — 보이는 줄 높이가 그만큼 준다 */
+  const LH = LINE_HEIGHT * optic * (o.scaleY ?? 1);        // 줄 높이 (u)
   const H = LH / 2 + PAD;                                  // 줄 위아래로 반드시 덮을 반높이
   const R = rng(hash((o.seed ?? lines.join('\n')) + '|' + pr.key));
   const pick = (range: readonly [number, number]) => range[0] + (range[1] - range[0]) * R();
 
   // 글 덩어리. 줄은 가운데 정렬 — VoiceBubble이 그렇게 앉힌다
-  const widths = lines.map((l) => lineWidth(l, font, optic, scaleX, slant));
+  const widths = lines.map((l) => lineWidth(l, font, optic, scaleX, slant, o.wdth, o.track ?? 0));
   const TW = Math.max(0.5, ...widths), TH = Math.max(1, lines.length) * LH;
   const boxes = widths.map((w, i) => ({ x0: (TW - w) / 2, x1: (TW + w) / 2, yc: (i + 0.5) * LH }));
   const rule: 'B' | 'C' = boxes.length <= 2 ? 'B' : 'C';

@@ -173,7 +173,6 @@ export default function App() {
     case 'glyph':
       return (
         <PhaseGlyph
-          text={text}
           initialTone={glyphTone ?? (draft?.tone ? toPartial(draft.tone) : null)}
           onBack={() => setScreen('compose')}
           onHome={goHome}
@@ -187,7 +186,6 @@ export default function App() {
         // 성격을 아직 안 골랐으면 그 화면으로 물러선다
         return (
           <PhaseGlyph
-            text={text}
             initialTone={null}
             onBack={() => setScreen('compose')}
             onHome={goHome}

@@ -2,7 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
 import VoiceBubble from '../components/VoiceBubble';
 import CloudBubble from '../components/CloudBubble';
-import { cloudFor, cloudShape } from '../lib/cloud';
+import { cloudForTone, cloudShape } from '../lib/cloud';
 import { bubbleAt, fillFromLegacySize, foldLines } from '../lib/fit';
 import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
@@ -58,7 +58,7 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
     const initial = messageColors(tone);
     const lines = foldLines(text);
     // 벽과 같은 구름이어야 미리보기가 거짓말이 아니다 — 씨앗은 글 자체(cloud.ts)
-    const cloud = cloudFor(lines, tone.font, { scaleX: tone.tone, slant: tone.slnt });
+    const cloud = cloudForTone(lines, tone);
     const box = bubbleAt(lines, cloudShape(cloud), fillFromLegacySize(tone.size));
     const [bg, setBg] = useState(initial.bg);
     const [fg, setFg] = useState(initial.text);
@@ -77,6 +77,7 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
     <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={bg}>
      <VoiceBubble text={lines.join('\n')} bg={bg} color={fg} fontFamily={fontMap[tone.font]} font={tone.font}
        weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size} manner={tone.manner}
+       speed={tone.speed} weightPos={tone.weight}
        fontSize={`calc(var(--color-area) * ${box.unit.toFixed(4)})`} />
     </CloudBubble>
    </div>

@@ -79,11 +79,15 @@ export const fontMap: Record<string, string> = {
  *
  * 여기 없는 키는 보정하지 않는다.
  */
+/* 2026-09-25: scale을 사용자가 정한 **크기감 비율**로 바꿨다 — 둥켈을 1로
+   두고 핸드젯 0.93 · 본명조 0.73 · 다카포 0.77. 위 설명의 22.5·22·23·28과
+   평균 나누기는 그 전 값(0.942 · 0.921 · 0.963 · 1.173)의 내력이다. 2/5 이름,
+   3/5 견본, 4/5, 벽이 모두 이 값을 곱한다. shift는 그대로다. */
 export const opticalFix: Record<string, { scale?: number; shift?: number }> = {
-  ttoryeot: { scale: 0.942, shift: 0.0172 },   // 당당한   22.5 / 23.875
-  chabun: { scale: 0.921, shift: 0.0227 },     // 차분한   22   / 23.875
-  doran: { scale: 0.963, shift: -0.0187 },     // 다정한   23   / 23.875
-  deulseok: { scale: 1.173, shift: -0.0211 }   // 유머있는 28   / 23.875
+  ttoryeot: { scale: 1, shift: 0.0172 },       // 당당한   둥켈산스
+  chabun: { scale: 0.73, shift: 0.0227 },      // 차분한   본명조
+  doran: { scale: 0.77, shift: -0.0187 },      // 다정한   다카포
+  deulseok: { scale: 0.93, shift: -0.0211 }    // 유머있는 핸드젯
 };
 /**
  * 획 보정 — 무게 축이 없는 서체에 획을 덧대 대신 답하게 한다.
@@ -186,7 +190,7 @@ export const MANNER: Record<string, { labels: [string, string]; axes: [string, s
     // 시니컬한의 ELSH는 **8.8**이다. 0.8로 적혀 있었다(2026-09-20에 안내서와
     // 대조해 고쳤다) — 0.8이면 획이 거의 사라져 글자가 점선으로 흩어진다.
     labels: ['귀여운', '시니컬한'],
-    axes: ['"ELSH" 12, "ELGR" 1.75', '"ELSH" 8.8, "ELGR" 1']
+    axes: ['"ELSH" 12, "ELGR" 1.75', '"ELSH" 0.8, "ELGR" 1']   // 시니컬한 ELSH 8.8 → 0.8 (2026-09-25 표)
   }
 };
 
@@ -203,4 +207,126 @@ export function variationFor(font: string, wght: number, manner = 0): string {
   const m = MANNER[font];
   if (m) return m.axes[manner ? 1 : 0];
   return `"wght" ${wght}`;
+}
+
+
+/* ─── 목소리의 모양 — 서체별 표 (2026-09-25) ──────────────────────────────
+   3/5의 막대 셋(크기 · 속도 · 무게/말투)이 정한 자리에서 글자의 모양을
+   계산한다. **표는 여기 하나다** — 3/5 견본, 4/5, 미리보기, 벽이 모두 이
+   함수를 거친다. 값은 사용자가 정했다(작업 지침 8번).
+
+     성격 · 서체              속도 왼쪽            가운데              오른쪽
+     당당한 · 둥켈산스        진중한 폭1000 세로75% 보통 폭700 세로75%  거침없는 폭700 세로100%
+     유머있는 · 핸드젯(840)   능청능청 가로121%     보통                 재잘재잘 가로88%
+                              세로75%
+     차분한 · 본명조(자간-25) 느긋한 세로86%       보통                 날렵한 가로88%
+     다정한 · 다카포          느긋한 가로138%      보통                 날렵한 가로84%
+
+     무게  차분한 wght 250 · 445 · 900   다정한 획 0 · 0.1pt · 0.2pt(12pt 기준)
+     말투  당당한 GLAT 1000 · 0          유머있는 ELSH 12/ELGR 1.75 · 0.8/1
+
+   기울기는 속도 가운데에서 0, 오른쪽 끝에서 18도 — 그 사이를 이어서 기운다
+   (12~18도로 세기를 조절, 사용자 결정). 모든 값은 세 지점 사이를 곧게 잇는다.
+   장평·세로·기울기는 서체의 축이 아니라 브라우저 변형이다(scale · oblique). */
+export const SLANT_MAX = 18;
+type Three = [number, number, number];
+const SPEED: Record<string, { sx: Three; sy: Three; wdth?: Three }> = {
+  ttoryeot: { sx: [1, 1, 1], sy: [0.75, 0.75, 1], wdth: [1000, 700, 700] },
+  deulseok: { sx: [1.21, 1, 0.88], sy: [0.75, 1, 1] },
+  chabun: { sx: [1, 1, 0.88], sy: [0.86, 1, 1] },
+  doran: { sx: [1.38, 1, 0.84], sy: [1, 1, 1] }
+};
+const CHABUN_WGHT: Three = [250, 445, 900];
+/** 다카포 획 덧대기 — 12pt에서 0 · 0.1 · 0.2pt, 글자 크기에 비례하므로 em으로 */
+const DORAN_STROKE: Three = [0, 0.1 / 12, 0.2 / 12];
+/** 핸드젯은 두께 840에 고정 */
+const HANDJET_WGHT = 840;
+/** 차분한은 늘 자간 -25 */
+const CHABUN_TRACK = '-0.025em';
+
+/** 세 지점(0 · 0.5 · 1) 사이를 곧게 잇는다 */
+export const along = (t: number, [l, m, r]: Three) => {
+  const x = Math.min(1, Math.max(0, t));
+  return x < 0.5 ? l + (m - l) * (x / 0.5) : m + (r - m) * ((x - 0.5) / 0.5);
+};
+/** 크기 막대 — 옛 척도 28..60을 그대로 쓴다(가운데 44 = 보통) */
+export const SIZE_RANGE: Three = [28, 44, 60];
+export const sizeAt = (t: number) => along(t, SIZE_RANGE);
+export const sizePos = (size: number) => Math.min(1, Math.max(0, (size - 28) / 32));
+
+/** 막대마다 세 지점의 말. 말은 가장 가까운 지점의 것을 따른다 */
+export const SIZE_WORDS: [string, string, string] = ['작게', '보통', '크게'];
+export const WEIGHT_WORDS: [string, string, string] = ['가볍게', '보통', '무겁게'];
+export const SPEED_WORDS: Record<string, [string, string, string]> = {
+  ttoryeot: ['진중한', '보통', '거침없는'],
+  deulseok: ['능청능청', '보통', '재잘재잘'],
+  chabun: ['느긋한', '보통', '날렵한'],
+  doran: ['느긋한', '보통', '날렵한']
+};
+export const wordAt = (t: number, words: [string, string, string]) =>
+  words[t < 0.25 ? 0 : t <= 0.75 ? 1 : 2];
+
+export interface Form {
+  scaleX: number;
+  scaleY: number;
+  /** 도(°), 양수 */
+  slant: number;
+  variation: string;
+  /** 획 덧대기(em 문자열) */
+  stroke: string;
+  letterSpacing: string;
+  weight: number;
+  /** 둥켈산스의 폭 축(700~1000). 구름이 글자폭을 셀 때 쓴다. 다른 서체는 없음 */
+  wdth?: number;
+}
+
+type FormInput = { font: string; tone?: number; slnt?: number; wght?: number; manner?: number; speed?: number; weight?: number };
+
+/**
+ * 한 글의 모양. speed가 있으면 새 표로, 없으면(옛 글) 옛 칸 그대로 그린다.
+ */
+export function formFor(t: FormInput): Form {
+  const font = t.font;
+  const track = font === 'chabun' ? CHABUN_TRACK : '0';
+  if (t.speed === undefined || t.speed === null || !SPEED[font]) {
+    const wght = t.wght ?? 400;
+    return {
+      scaleX: t.tone ?? 1, scaleY: 1, slant: Math.abs(t.slnt ?? 0),
+      variation: variationFor(font, wght, t.manner ?? 0),
+      stroke: opticalStroke(font, wght), letterSpacing: track, weight: wght
+    };
+  }
+  const s = t.speed;
+  const w = t.weight ?? 0.5;
+  const row = SPEED[font];
+  const slant = s <= 0.5 ? 0 : ((s - 0.5) / 0.5) * SLANT_MAX;
+  let variation = '';
+  let stroke = '0';
+  let weight = 400;
+  let wdth: number | undefined;
+  if (font === 'ttoryeot') {
+    wdth = Math.round(along(s, row.wdth!));
+    variation = `"wdth" ${wdth}, ${MANNER.ttoryeot.axes[t.manner ? 1 : 0]}`;
+  } else if (font === 'deulseok') {
+    weight = HANDJET_WGHT;
+    variation = `"wght" ${HANDJET_WGHT}, ${MANNER.deulseok.axes[t.manner ? 1 : 0]}`;
+  } else if (font === 'chabun') {
+    weight = Math.round(along(w, CHABUN_WGHT));
+    variation = `"wght" ${weight}`;
+  } else if (font === 'doran') {
+    stroke = along(w, DORAN_STROKE).toFixed(4) + 'em';
+  }
+  return {
+    scaleX: along(s, row.sx), scaleY: along(s, row.sy), slant,
+    variation, stroke, letterSpacing: track, weight, wdth
+  };
+}
+
+/**
+ * 새 표를 모르는 곳을 위한 옛 칸 — 표가 계산한 모양을 옛 칸(tone · slnt · wght)
+ * 으로도 적어 둔다. 세로 비율과 둥켈의 폭 축은 옛 칸에 자리가 없어 빠진다.
+ */
+export function legacyFields(t: FormInput) {
+  const f = formFor(t);
+  return { tone: +f.scaleX.toFixed(3), slnt: -+f.slant.toFixed(2), wght: f.weight };
 }

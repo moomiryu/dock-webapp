@@ -40,7 +40,10 @@ service cloud.firestore {
         && t.keys().hasAll(['font', 'tone', 'wght', 'slnt', 'size', 'paletteIdx', 'graphicIdx'])
         && t.keys().hasOnly([
              'font', 'tone', 'wght', 'slnt', 'size', 'paletteIdx', 'graphicIdx',
-             'align', 'backgroundColor', 'textColor', 'manner'
+             'align', 'backgroundColor', 'textColor', 'manner',
+             // 2026-09-25: 3/5 막대의 자리(0~1). 모양은 서체별 표가 이 자리에서
+             // 계산한다(palettes.ts · formFor). 옛 칸(tone·slnt·wght)도 같이 온다
+             'speed', 'weight'
            ])
         // 옛 글이 서체를 잃지 않게 키는 그대로 둔다(palettes.ts fontMap)
         && t.font in ['ttoryeot', 'chabun', 'doran', 'deulseok', 'botong']
@@ -53,6 +56,8 @@ service cloud.firestore {
         && t.graphicIdx is int && t.graphicIdx >= -1 && t.graphicIdx <= 20
         && (!('align' in t) || t.align in ['left', 'center', 'right'])
         && (!('manner' in t) || (t.manner is number && t.manner >= 0 && t.manner <= 1))
+        && (!('speed' in t) || (t.speed is number && t.speed >= 0 && t.speed <= 1))
+        && (!('weight' in t) || (t.weight is number && t.weight >= 0 && t.weight <= 1))
         && (!('backgroundColor' in t) || isHex(t.backgroundColor))
         && (!('textColor' in t) || isHex(t.textColor));
     }

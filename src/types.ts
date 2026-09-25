@@ -25,7 +25,17 @@ export interface ToneState {
    * 없어도 되는 값이라 옵션이다 — 벽에 떠 있는 옛 글은 이게 없고, 없으면 0이다.
    */
   manner?: number;
-  size: number;       // px
+  size: number;       // 28..60 옛 척도. 2026-09-25부터 그 사이 연속값
+  /**
+   * 속도·무게 막대의 자리(0 왼쪽 · 0.5 가운데 · 1 오른쪽). 2026-09-25 슬라이더.
+   *
+   * 있으면 모양은 이 자리에서 **서체별 표**(palettes.ts · formFor)로 계산한다 —
+   * 3/5 · 4/5 · 벽이 같은 표를 읽는다. 없으면(옛 글) tone·slnt·wght 그대로
+   * 그린다. 옛 칸(tone·slnt·wght)도 같이 적어 둔다 — 새 표를 모르는 곳이
+   * 대략이라도 같은 모양을 그리게.
+   */
+  speed?: number;
+  weight?: number;
   paletteIdx: number; // index into palettes
   graphicIdx: number; // -1 means off
 }

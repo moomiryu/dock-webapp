@@ -10,7 +10,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import CloudBubble from '../components/CloudBubble';
-import { cloudFor, cloudShape, type Cloud } from '../lib/cloud';
+import { cloudForTone, cloudShape, type Cloud } from '../lib/cloud';
 import { bubbleAt, fillFromLegacySize, foldLines, type Boxed } from '../lib/fit';
 import { fontMap } from '../lib/palettes';
 import { palettes as legacyPalettes } from '../lib/palettes';
@@ -153,7 +153,7 @@ type Body = { x: number; y: number; vx: number; vy: number; r: number; held: boo
 function cloudOf(msg: StoredMessage): { lines: string[]; cloud: Cloud; box: Boxed } {
   const lines = foldLines(msg.text);
   // 씨앗은 글 자체 — 04 미리보기와 같은 구름이 뜬다(cloud.ts)
-  const cloud = cloudFor(lines, msg.tone?.font, { scaleX: msg.tone?.tone, slant: msg.tone?.slnt });
+  const cloud = cloudForTone(lines, msg.tone);
   return { lines, cloud, box: bubbleAt(lines, cloudShape(cloud), fillFromLegacySize(msg.tone?.size)) };
 }
 
@@ -642,6 +642,7 @@ const WallBlock = memo(function WallBlock({ msg, ghost, onEl }: { msg: StoredMes
       <CloudBubble cloud={cloud} box={box} side="var(--echo-side)" color={bg} still={!ECHO_MOTION}>
         <VoiceBubble text={lines.join('\n')} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght}
           width={scaleX} slant={skew} align={msg.tone?.align} size={msg.tone?.size} manner={msg.tone?.manner}
+          speed={msg.tone?.speed} weightPos={msg.tone?.weight}
           fontSize={`calc(var(--echo-side) * ${box.unit.toFixed(4)})`} />
       </CloudBubble>
     </div>
@@ -669,6 +670,7 @@ export const WallShowMessage = memo(function WallShowMessage({ msg, land }: { ms
         <CloudBubble cloud={cloud} box={box} side="var(--big-side)" color={bg}>
           <VoiceBubble text={lines.join('\n')} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght}
             width={scaleX} slant={skew} align={msg.tone?.align} size={msg.tone?.size} manner={msg.tone?.manner}
+          speed={msg.tone?.speed} weightPos={msg.tone?.weight}
             fontSize={`calc(var(--big-side) * ${box.unit.toFixed(4)})`} />
         </CloudBubble>
       </div>

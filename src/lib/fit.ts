@@ -124,10 +124,16 @@ export function bubbleAt(lines: readonly string[], shape: BoxShape, fill: number
   return { unit, w: at1.w * unit, h: at1.h * unit, tail: tail1 * unit };
 }
 
-/** 저장된 옛 크기(28~60)를 새 다섯 칸 중 가까운 자리로 읽는다 */
+/**
+ * 저장된 크기(28~60)를 채움 비율로 읽는다. 다섯 칸 사이를 **곧게 잇는다**
+ * (2026-09-25) — 3/5의 크기 막대가 연속이 되면서, 가까운 칸으로 붙이던 것을
+ * 그대로 두면 막대로 고른 크기가 4/5와 벽에서 계단으로 끊겼다. 옛 글(칸 값
+ * 28·36·44·52·60)은 칸 위에 정확히 서므로 전과 같다.
+ */
 export function fillFromLegacySize(size: number | undefined): number {
-  const i = Math.round(((Math.min(60, Math.max(28, size ?? 44)) - 28) / 32) * (SIZE_FILLS.length - 1));
-  return SIZE_FILLS[i];
+  const x = ((Math.min(60, Math.max(28, size ?? 44)) - 28) / 32) * (SIZE_FILLS.length - 1);
+  const i = Math.min(SIZE_FILLS.length - 2, Math.floor(x));
+  return SIZE_FILLS[i] + (SIZE_FILLS[i + 1] - SIZE_FILLS[i]) * (x - i);
 }
 
 /**

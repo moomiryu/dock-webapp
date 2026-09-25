@@ -1,6 +1,6 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
-import { MANNER, fontMap, hasWeightAxis, opticalFix, opticalStroke, variationFor } from '../lib/palettes';
+import { MANNER, SIZE_WORDS, SPEED_WORDS, WEIGHT_WORDS, fontMap, formFor, hasWeightAxis, legacyFields, opticalFix, sizeAt, sizePos, wordAt } from '../lib/palettes';
 import { DEFAULT_TONE, type PartialTone } from '../lib/tone';
 import { foldLines } from '../lib/fit';
 
@@ -88,142 +88,121 @@ interface Props {
 const TAP_SLOP = 10;
 
 
-/* ─── 도구 아이콘 ────────────────────────────────────────────────────
-   넷뿐이라 그림 없이 이름만으로도 되지만, 원형 버튼은 이름을 넣을 자리가
-   좁다. 이름은 버튼 아래에 따로 적고 안쪽에는 표시만 둔다.
-
-   글자를 그리지 않는다 — 여기 놓일 '가'는 지금 고른 서체로 그려야 맞는데,
-   서체마다 굵기도 폭도 달라 넷이 한 줄에 서면 크기가 제각각이 된다.
-   무엇을 만지는지를 **도형의 성질**로 말한다: 크기는 커지는 사각형,
-   빠르기는 기운 획, 무게는 굵기가 다른 두 줄, 말투는 모난 것과 둥근 것. */
-const ICON: Record<string, ReactNode> = {
-  size: (
-    <svg viewBox="0 0 24 24" aria-hidden focusable="false">
-      {/* 작은 것과 큰 것. 둘을 붙여 놨더니 한 덩어리로 읽혀서, 작은 쪽은
-          테두리만 남기고 사이를 벌렸다. */}
-      <rect x="2.5" y="14" width="7" height="7" rx="1.4" fill="none" strokeWidth="1.8" />
-      <rect x="13" y="3" width="8.5" height="18" rx="1.8" />
-    </svg>
-  ),
-  tone: (
-    <svg viewBox="0 0 24 24" aria-hidden focusable="false">
-      <path d="M13.4 3.5 8.2 20.5" strokeWidth="3.4" strokeLinecap="round" />
-      <path d="M19.4 3.5 16.6 20.5" strokeWidth="2" strokeLinecap="round" opacity=".45" />
-      <path d="M6.2 3.5 4.6 20.5" strokeWidth="2" strokeLinecap="round" opacity=".45" />
-    </svg>
-  ),
-  wght: (
-    <svg viewBox="0 0 24 24" aria-hidden focusable="false">
-      <rect x="3" y="5" width="18" height="2.2" rx="1.1" />
-      <rect x="3" y="11" width="18" height="3.6" rx="1.8" />
-      <rect x="3" y="17.6" width="18" height="1.2" rx=".6" />
-    </svg>
-  ),
-  manner: (
-    <svg viewBox="0 0 24 24" aria-hidden focusable="false">
-      <path d="M3.4 20.6 12 3.4l3.1 6.2" strokeWidth="2.2" fill="none" strokeLinejoin="round" />
-      <circle cx="16.2" cy="16" r="5.2" />
-    </svg>
-  )
-};
-
-/* 되돌리기 — 글자였다가 아이콘이 됐다(2026-09-22). 같은 화면에서 '크기'가
-   여러 번 읽히던 문제와, 되무르는 일이 만드는 일만큼 커 보이던 문제를
-   한꺼번에 던다. 왼쪽으로 돌아가는 화살표 하나 — 무슨 항목을 되돌리는지는
-   낭독되는 이름이 말한다('크기 되돌리기'). 아이콘은 20px이지만 누르는
-   자리는 48px이다(.tone-revert). */
-const REVERT = (
-  <svg viewBox="0 0 24 24" aria-hidden focusable="false">
-    <path d="M4.5 9.5h9.8a5.2 5.2 0 1 1 0 10.4H7.6" fill="none" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M8.6 4.8 3.8 9.5l4.8 4.7" fill="none" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
 /** 견본 행간. 낱자 두 개('발화')일 때 쓰던 1은 문장에서 줄끼리 붙는다 */
 const STAGE_LH = 1.4;
 /** 견본이 제 자리에서 쓰는 몫 — 가로·세로(%). 나머지는 숨 쉴 여백이다 */
 const USE = { w: 86, h: 88 };
 
 /**
- * 세 축. 차례는 스케치를 따른다 — 크기 · 빠르기 · 무게.
+ * 막대 하나 — 끊김 없이 흐른다(2026-09-25, 작업 지침 8번).
  *
- * 2026-09-15 알약 슬라이더에서 눈금 다섯 칸 버튼으로 되돌렸다. 슬라이더는
- * 손잡이가 글자 위에 얹혀 슬라이더인지 버튼인지 읽히지 않았고, 값이 연속인
- * 대신 **지금 무슨 축을 만지는지**가 화면에서 사라졌다 — 손잡이를 조금만
- * 밀어도 가운데 글자가 축 이름('크기')에서 잣대 이름('작게')으로 바뀌어서다.
+ * 5칸 버튼 줄이던 것을 연속 막대로 바꿨다. 모든 값이 세 지점 사이를
+ * 이어서 변하고(palettes.ts · formFor), 오른쪽 위의 말만 가장 가까운 지점의
+ * 것을 따른다. 숫자는 보이지 않는다.
  *
- * 다섯 칸으로 되돌리되 칸 안에 글자를 넣지 않는다. 제일 긴 잣대 이름이
- * '아주 묵직하게'라 320 화면에서는 한 칸이 51px인데 그 글자가 안 들어간다.
- * 대신 칸은 점의 크기로 "왼쪽이 적고 오른쪽이 많다"만 말하고, 축 이름과
- * 지금 고른 칸의 이름은 그 위 한 줄이 늘 글자로 들고 있는다.
- *
- * '빠르기'는 장평이다. 천천히 말하면 글자가 옆으로 퍼지고(1.3),
- * 빠르게 말하면 좁아진다(0.7).
- *
- * 방향을 뒤집었다(2026-09-24). 왼쪽이 '아주 빠르게'였는데, 다른 두 축은
- * 모두 오른쪽으로 갈수록 **더**(더 크게 · 더 묵직하게)라 이 축만 거꾸로
- * 읽혔다. 이제 오른쪽이 더 빠르다 — 칸이 오른쪽으로 갈수록 글자가 좁아지고
- * 빠른 쪽 두 칸(오른쪽 끝 둘)에서 기운다. 글자·값·기울기가 같이 뒤집히므로
- * 저장된 글은 그대로다: 값(장평)으로 저장되고 칸은 nearest가 값에서 찾는다.
- * 기본(1 · 보통)은 여전히 가운데 칸이다.
+ * 브라우저의 range 입력을 그대로 쓰고 모양만 바꾼다 — 끌기·누른 자리로
+ * 옮기기·자판의 화살표·낭독기가 전부 따라온다. 막대는 1px 선, 세 지점에
+ * 짧은 눈금, 손잡이는 16px 원: 가만히 있을 때 채워져 있고 누르는 동안에는
+ * 테두리만 남는다(반전). 누르는 자리는 막대 전체 높이 44px이다.
  */
-const AXES = [
-    {
-        key: 'size', label: '크기',
-        stops: [28, 36, 44, 52, 60],
-        names: ['아주 작게', '작게', '보통', '크게', '아주 크게']
-    },
-    {
-        key: 'tone', label: '빠르기',
-        stops: [1.3, 1.15, 1, 0.85, 0.7],
-        names: ['아주 천천히', '천천히', '보통', '빠르게', '아주 빠르게']
-    },
-    {
-        key: 'wght', label: '무게',
-        stops: [300, 400, 500, 600, 700],
-        names: ['아주 가볍게', '가볍게', '보통', '묵직하게', '아주 묵직하게']
-    }
-] as const;
+function Slider({ name, word, value, onChange }: {
+    name: string; word: string; value: number; onChange: (v: number) => void;
+}) {
+    /* 옮기는 동안 손잡이는 속이 빈 원이다. 폰에서는 손가락으로 끄는 동안
+       :active가 유지되지 않는 브라우저가 있어 '옮기는 중'을 직접 적는다 */
+    const [moving, setMoving] = useState(false);
+    const stop = () => setMoving(false);
+    return <div className="tslider">
+     <div className="tslider-lab">
+      <span className="tslider-name">{name}</span>
+      <span className="tslider-word" aria-hidden>{word}</span>
+     </div>
+     <div className={'tslider-track' + (moving ? ' is-moving' : '')}>
+      {[0, 0.5, 1].map(p => <i key={p} className="tslider-tick" style={{ '--p': p } as CSSProperties} aria-hidden />)}
+      <input type="range" min={0} max={1000} step={1} value={Math.round(value * 1000)}
+        aria-label={name} aria-valuetext={word}
+        onPointerDown={() => setMoving(true)} onPointerUp={stop} onPointerCancel={stop}
+        onTouchStart={() => setMoving(true)} onTouchEnd={stop} onTouchCancel={stop}
+        onKeyDown={e => { if (e.key.startsWith('Arrow') || e.key === 'Home' || e.key === 'End' || e.key.startsWith('Page')) setMoving(true); }}
+        onKeyUp={stop} onBlur={stop}
+        onChange={e => onChange(Number(e.target.value) / 1000)} />
+     </div>
+    </div>;
+}
 
 /**
- * 기울기는 이제 제 축이 아니다 — 빠르기가 함께 정한다.
- *
- * 정렬·기울기 버튼 둘이 따로 서 있었는데, 기울기는 '빠르게 말하기'와 같은
- * 것을 다른 손짓으로 두 번 묻고 있었다. 빠르게 말하면 글자가 좁아지고
- * (장평 0.7) 앞으로 기운다 — 한 동작이다. 그래서 빠른 쪽 두 칸(오른쪽
- * 끝 둘)에만 붙는다.
- *
- * 처음엔 12도·24도였는데 '빠르게'가 기운 티가 안 났다. 한 칸씩 올려
- * **빠르게 24도, 아주 빠르게 32도**로 둔다.
- *
- * 32도인 이유: 견본을 24·28·32·36·40도로 한 장에 놓고 골랐다. 36도부터는
- * ㅂ과 ㅎ의 세로획이 '기울어진 글꼴'이 아니라 '찌그러진 도형'으로 읽힌다.
- * 게다가 이 칸은 장평 0.7이 함께 걸려서 좁고 기운 글자가 되는데, 그건
- * 벽에서 멀리 볼 때 제일 불리한 조합이다. 32가 마지막으로 골격이 버티는
- * 자리였다.
- *
- * 값은 음수 skewX 시절의 부호를 그대로 쓴다(0 · -24 · -32). 이미 보낸 글의
- * -12는 VoiceBubble이 절댓값으로 읽으므로 12도로 그대로 뜬다.
+ * 말투 — 두 칸 스위치. 알약이 아니라 1px 선으로 나눈 두 칸이고, 고른 칸이
+ * 채워진다. 칸마다 그 말투의 글자 모양을 입힌다.
  */
-const slantFor = (tone: number) => (tone <= 0.75 ? -32 : tone <= 0.9 ? -24 : 0);
-
-type Axis = (typeof AXES)[number];
-
-/** 저장된 값이 눈금에 정확히 없을 수 있다 — 제일 가까운 칸으로 읽는다 */
-const nearest = (stops: readonly number[], v: number) =>
-    stops.reduce((best, s, i) => (Math.abs(s - v) < Math.abs(stops[best] - v) ? i : best), 0);
+function MannerSwitch({ font, at, onPick }: { font: string; at: number; onPick: (i: number) => void }) {
+    const m = MANNER[font];
+    return <div className="tslider">
+     <div className="tslider-lab">
+      <span className="tslider-name" id="tswitch-name">말투</span>
+      <span className="tslider-word" aria-hidden>{m.labels[at ? 1 : 0]}</span>
+     </div>
+     <div className="tswitch" role="radiogroup" aria-labelledby="tswitch-name">
+      {m.labels.map((label, i) =>
+        <button key={i} type="button" role="radio" aria-checked={(at ? 1 : 0) === i}
+          className={'tswitch-cell' + ((at ? 1 : 0) === i ? ' on' : '')}
+          style={{ fontFamily: fontMap[font], fontVariationSettings: m.axes[i] } as CSSProperties}
+          onClick={() => onPick(i)}>{label}</button>)}
+     </div>
+    </div>;
+}
 
 export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }: Props) {
-    const [tone, setTone] = useState<PartialTone>(initialTone);
+    /* 막대 자리가 없는 초안(슬라이더 전에 만든 것)은 가운데('보통')에서 시작한다 */
+    const [tone, setTone] = useState<PartialTone>(() => {
+        const t = { ...initialTone, speed: initialTone.speed ?? 0.5, weight: initialTone.weight ?? 0.5 };
+        return { ...t, ...legacyFields(t) };
+    });
     /** 'intro' = 설명하는 장 · 'work' = 조작하는 장 */
     const [step, setStep] = useState<'intro' | 'work'>('intro');
-    /** 패널에서 지금 세워 둔 항목 */
-    const [axis, setAxis] = useState('size');
     /** 견본을 눌러 기본 상태를 보고 있는가. 값을 만지면 편집값으로 돌아온다 */
     const [compare, setCompare] = useState(false);
     const lines = foldLines(text);
+
+    /**
+     * 첫 장면의 견본 — '발화' 두 글자였던 자리에 **내 글**이 선다(2026-09-25).
+     *
+     * 시연(toneDemo)이 크기를 1.18배까지, 폭을 1.3배까지 늘린다. 가장 커지는
+     * 순간에도 칸 밖으로 나가지 않는 크기를 **재서** 정한다: 줄마다 그린 폭 ×
+     * 1.3이 칸 폭에, 줄 수 × 행간 × 1.18이 칸 높이에 들어와야 한다. 짧은 글이
+     * 한없이 커지지 않게 '발화' 때의 크기(칸 폭 46% · 화면 높이 28%)를 위
+     * 한도로 둔다. 줄은 벽의 줄 접기(foldLines)가 정한 그대로다.
+     */
+    const figure = useRef<HTMLDivElement>(null);
+    const figText = useRef<HTMLSpanElement>(null);
+    const [fig, setFig] = useState<number | null>(null);
+    const [refit, setRefit] = useState(0);
+    useEffect(() => {
+        const again = () => setRefit((n) => n + 1);
+        window.addEventListener('resize', again);
+        void document.fonts?.ready.then(again);
+        return () => window.removeEventListener('resize', again);
+    }, []);
+    /* 안전장치: 같은 조건에서 고쳐 잡는 것은 세 번까지. 정상이면 첫 번에 끝난다 */
+    const figTries = useRef({ key: '', n: 0 });
+    useLayoutEffect(() => {
+        const box = figure.current;
+        const span = figText.current;
+        if (!box || !span) return;
+        const key = `${text}|${tone.font}|${refit}`;
+        if (figTries.current.key !== key) figTries.current = { key, n: 0 };
+        if (figTries.current.n >= 3) return;
+        const fs = parseFloat(getComputedStyle(span).fontSize);
+        const W = box.clientWidth;
+        const H = box.clientHeight;
+        if (!fs || !W || !H) return;
+        // 글자 크기 1px당 폭·높이 — 시연이 걸어 둔 배율(scale)은 offset 값에 안 들어간다
+        const perW = span.offsetWidth / fs;
+        const perH = span.offsetHeight / fs;
+        if (!perW || !perH) return;
+        const cap = Math.min(W * 0.46, window.innerHeight * 0.28);
+        const next = Math.min(cap, (W * 0.97) / (perW * 1.3), (H * 0.97) / (perH * 1.18));
+        if (fig === null || Math.abs(next - fig) / next > 0.01) { figTries.current.n += 1; setFig(next); }
+    }, [text, tone.font, refit, fig]);
     const longest = Math.max(1, ...lines.map((l) => Array.from(l).length));
     /**
      * 견본 크기 — **제 자리를 재서 정한다.**
@@ -281,72 +260,25 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }:
     /* 아직 한 번도 못 쟀으면 옛 어림값(한 글자 = 1em)으로 그린다. 그 한
        프레임 뒤에 잰 값으로 다시 선다. */
     const shape = run ?? { w: longest, h: lines.length * STAGE_LH };
-    const byLine = ((USE.w / (shape.w * Math.max(1, shown.tone))) * fill).toFixed(2);
+    /* 장평·기울기로 넓어진 글이 칸을 넘을 때만, 넘지 않을 만큼 줄인다
+       (2026-09-25, 사용자 결정 — 안 잘리게, 유동적으로). 넘지 않으면 고른
+       크기 그대로다. 넓어진 폭 = 줄 폭 × 장평 + 기울기가 밀어낸 몫(1em × tan).
+       세로 비율은 1 이하라 높이는 늘 들어온다. */
+    const form = formFor(shown);
+    const tanS = Math.tan((form.slant * Math.PI) / 180);
+    const byLine = Math.min((USE.w / shape.w) * fill, USE.w / (shape.w * form.scaleX + tanS)).toFixed(2);
     const byHeight = ((USE.h / shape.h) * fill).toFixed(2);
-    /** 한 축을 i번 칸으로. '빠르기'는 기울기도 같이 가져간다 */
-    const pick = (a: Axis, i: number) => {
-        const v = a.stops[i];
-        setTone(t => ({ ...t, [a.key]: v, ...(a.key === 'tone' ? { slnt: slantFor(v) } : null) }));
-    };
-
     /**
-     * 패널이 다루는 것들. 축 셋과 말투를 **한 꼴로** 세운다.
-     *
-     * 말투는 값이 둘뿐이고 잣대가 아니라 버튼이지만, 탭에서는 나머지와
-     * 같은 항목이고 끄는 면에서도 같은 손짓으로 움직인다 — 다루는 방식이
-     * 항목마다 다르면 '편집 도구'가 아니라 화면 모음이 된다.
+     * 막대를 옮긴다. 비교 중이었으면 편집값으로 돌아온다 — 기본을 보는 채로
+     * 막대를 만지는 사고를 막는다. 옛 칸(tone · slnt · wght)도 함께 적어 둔다
+     * (palettes.ts · legacyFields).
      */
-    const tools = [
-        ...AXES.filter(a => a.key !== 'wght' || hasWeightAxis(tone.font)).map(a => ({
-            key: a.key as string,
-            label: a.label,
-            names: a.names as readonly string[],
-            at: nearest(a.stops, tone[a.key]),
-            /** 고른 성격의 기본 자리. 여기서 얼마나 옮겼는지를 이걸로 잰다 */
-            def: nearest(a.stops, DEFAULT_TONE[a.key]),
-            /* 비교 중에 값을 만지면 편집값으로 돌아온다 — 기본을 보는 채로
-               잣대를 만지는 사고를 여기서 막는다(머리 주석 참조) */
-            set: (i: number) => { setCompare(false); pick(a, i); },
-            manner: false
-        })),
-        ...(MANNER[tone.font] ? [{
-            key: 'manner',
-            label: '말투',
-            names: MANNER[tone.font].labels as readonly string[],
-            at: tone.manner ? 1 : 0,
-            def: DEFAULT_TONE.manner,
-            set: (i: number) => { setCompare(false); setTone(t => ({ ...t, manner: i })); },
-            manner: true
-        }] : [])
-    ];
-    /* 고른 항목이 없어질 수 있다 — 무게는 서체에 따라 있고 없다 */
-    const cur = tools.find(t => t.key === axis) ?? tools[0];
-    const last = cur.names.length - 1;
-
-    /**
-     * 트랙 위의 손가락 — 누른 자리에서 **제일 가까운 칸**에 선다.
-     *
-     * 끌면 지나가는 칸마다 값이 따라오고, 손을 떼면 그 칸이다. 트랙이
-     * 240px로 짧아 절대 위치라도 엄지 호 안에 다 들어온다(머리 주석).
-     */
-    const track = useRef<HTMLDivElement>(null);
-    const slide = (e: React.PointerEvent) => {
-        const el = track.current;
-        if (!el) return;
-        const r = el.getBoundingClientRect();
-        /* 칸은 트랙을 last등분한 자리에 있다. 양 끝 칸은 반 칸 몫만 있으면
-           집히므로 반올림으로 충분하다. */
-        const i = Math.min(last, Math.max(0, Math.round(((e.clientX - r.left) / r.width) * last)));
-        if (i !== cur.at) cur.set(i);
+    const set = (patch: Partial<PartialTone>) => {
+        setCompare(false);
+        setTone(t => { const n = { ...t, ...patch }; return { ...n, ...legacyFields(n) }; });
     };
-    const trackDown = (e: React.PointerEvent) => {
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-        slide(e);
-    };
-    const trackMove = (e: React.PointerEvent) => {
-        if (!(e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) return;
-        slide(e);
-    };
+    const speed = tone.speed ?? 0.5;
+    const weight = tone.weight ?? 0.5;
 
     /**
      * 견본을 눌러 기본과 비교. 토글이다 — 한 번 누르면 기본, 다시 누르면
@@ -372,12 +304,13 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }:
     /* --optical-stroke: 무게 축이 없는 서체(당당한·다정한)에 획으로 대신
        답한다. 축이 있는 서체는 '0'이라 아무 일도 일어나지 않는다(palettes.ts). */
     const face = {
-        fontFamily: fontMap[shown.font], fontWeight: shown.wght,
-        fontVariationSettings: variationFor(shown.font, shown.wght, shown.manner),
-        transform: 'scaleX(' + shown.tone + ')',
-        fontStyle: shown.slnt ? `oblique ${Math.abs(shown.slnt)}deg` : 'normal',
+        fontFamily: fontMap[shown.font], fontWeight: form.weight,
+        fontVariationSettings: form.variation,
+        transform: `scale(${form.scaleX.toFixed(3)}, ${form.scaleY.toFixed(3)})`,
+        fontStyle: form.slant ? `oblique ${form.slant.toFixed(1)}deg` : 'normal',
+        letterSpacing: form.letterSpacing,
         fontSize: `calc(min(${byLine}cqw, ${byHeight}cqh) * ${optic})`,
-        '--optical-stroke': opticalStroke(shown.font, shown.wght)
+        '--optical-stroke': form.stroke
     } as CSSProperties;
 
     return <div className="z-frame z1 tone-adjust">
@@ -395,13 +328,16 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }:
         설명이 사라지는 계기가 **누르는 손**이어야 한다. '가'와 같이 간다. */}
     <div className="z-ask">
      <h1>전하고 싶은 느낌으로<br />조절해보세요</h1>
-     <p>발화의 크기, 빠르기, {hasWeightAxis(tone.font) ? '무게' : '말투'}를 정해봐요.</p>
+     <p>발화의 크기, 속도, {hasWeightAxis(tone.font) ? '무게' : '말투'}를 정해봐요.</p>
     </div>
     {/* 삽화 자리. 아직 그려지지 않았다 — 지금은 '발화' 두 글자가 대신
         서서 크기와 빠르기 축을 차례로 훑는다(app.css · toneDemo).
         연출은 전부 CSS에 있다: 여기서 상태를 만들지 않으므로 이 움직임이
         참여자가 고른 값에 닿을 길이 없다. */}
-    <div className="tone-figure" aria-hidden="true" style={{ fontFamily: fontMap[tone.font] }}>발화</div>
+    <div ref={figure} className="tone-figure" aria-hidden="true"
+      style={{ fontFamily: fontMap[tone.font], ...(fig ? { '--fig': `${fig.toFixed(1)}px` } : null) } as CSSProperties}>
+     <span ref={figText} className="tone-figure-text">{lines.join('\n')}</span>
+    </div>
     {/* 글자였다. 그러면 이 장에서 **앞으로 가는 길이 손가락뿐**이라
         자판·스위치·낭독기를 쓰는 사람은 03에 들어와 빠져나갈 수가 없었다
         (탭을 눌러 보면 뒤로가기 하나를 지나 안 보이는 둘째 장으로 굴러
@@ -428,7 +364,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }:
       onPointerDown={faceDown} onPointerUp={faceUp}
       onPointerCancel={() => { tap.current = null; }} onKeyDown={faceKey}>
      <div className="z-glyph-fit">
-      <div ref={glyph} className={'z-glyph is-line' + (shown.slnt ? ' is-gust' : '')} style={face}>
+      <div ref={glyph} className={'z-glyph is-line' + (form.slant ? ' is-gust' : '')} style={face}>
        <span>{lines.map((l, i) => <b key={i} className="z-glyph-char">{l}</b>)}</span>
       </div>
      </div>
@@ -457,85 +393,19 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }:
        위에서 아래로 — 지금 만지는 것의 이름과 값 · 도구 셋 · 공통 조절
        영역. 조절 영역은 도구에 따라 눈금자이거나 말투 버튼 둘이고, 자리와
        높이가 같아서 도구를 옮겨도 화면이 흔들리지 않는다. */}
+   {/* ── 편집 패널 ─────────────────────────────────────────────────
+       막대 셋을 한꺼번에 세운다(2026-09-25, 배치 A). 크기 · 속도, 그리고 무게
+       (차분한·다정한) 또는 말투 스위치(당당한·유머있는). 도구를 골라 하나씩
+       만지던 탭은 걷었다. 작은 화면(320)에서는 이 판이 줄지 않고 위의 견본
+       칸이 줄어든다(견본 칸은 남는 자리를 받는다). */}
    <div className="tone-panel">
-    {/* 지금 만지는 것과 그 상태. 위계의 둘째 칸이다(미리보기 → **여기** →
-        도구 → 다섯 칸 → 다음). 눈금자 밑에 있던 값을 여기로 올렸다 —
-        항목 이름과 값이 떨어져 있으면 '무엇이 보통인지'를 눈이 이어야 한다.
-
-        되돌리기가 이 줄 오른쪽 끝에 붙는다. 되무르는 대상이 바로 왼쪽에
-        적혀 있어 무엇이 되돌아가는지가 자리로도 읽힌다. */}
-    <div className="tone-now">
-     <span className="tone-now-text">
-      <span className="tone-now-name">{cur.label}</span>
-      <span className="tone-now-value" aria-live="polite">{cur.names[cur.at]}</span>
-     </span>
-     {/* 기본값이면 되돌릴 것이 없다. **자리는 그대로 두고** 끈다 —
-         나타났다 사라지는 버튼은 옆 것을 밀어 손이 자리를 못 외운다. */}
-     <button type="button" className="tone-revert" disabled={cur.at === cur.def}
-       aria-label={`${cur.label} 되돌리기`} onClick={() => cur.set(cur.def)}>{REVERT}</button>
-    </div>
-
-    {/* 도구 셋. 테두리도 고리도 없다(2026-09-22) — 원 테두리 위에 고리를
-        한 겹 더 두르니 같은 것을 두 번 그리는 꼴이었고, 아래 다섯 칸까지
-        더해 이 화면에만 둥근 테두리가 세 켜였다.
-
-        고른 도구는 **아이콘 자리가 채워진다**(브랜드 면 + 흰 아이콘).
-        안 고른 것은 면 없이 아이콘만. 바꾼 도구는 그것과 겹치지 않게
-        작은 점으로 따로 말한다 — 채움 하나에 두 가지 뜻을 얹지 않는다. */}
-    <div className="tone-picks" role="tablist" aria-label="조절할 것">
-     {tools.map(x =>
-       <button key={x.key} type="button" role="tab" aria-selected={x.key === cur.key}
-         className={'tone-pick' + (x.key === cur.key ? ' on' : '')}
-         onClick={() => setAxis(x.key)}>
-         <span className="tone-dial">
-           {ICON[x.key]}
-           {x.at !== x.def && <i className="tone-moved" aria-hidden />}
-         </span>
-         <span className="tone-pick-name">{x.label}</span>
-         {x.at !== x.def && <span className="sr-only">바뀜</span>}
-       </button>
-     )}
-    </div>
-
-    {/* 공통 조절 영역. 다섯 칸 트랙이거나 말투 버튼 둘이고, 자리와 높이가
-        같아서 도구를 옮겨도 '다음'이 안 움직인다. 값 글자는 위의 .tone-now로
-        올라갔다 — 조절하는 자리 아래위로 글자가 겹치지 않는다. */}
-    <div className="tone-area">
-    {cur.manner
-      ? <div className="z-manner" role="group" aria-label="말투">
-          {MANNER[tone.font].labels.map((name, i) =>
-            <button key={i} type="button"
-              className={'z-manner-btn' + (cur.at === i ? ' on' : '')}
-              aria-pressed={cur.at === i}
-              style={{ fontFamily: fontMap[tone.font],
-                fontVariationSettings: MANNER[tone.font].axes[i] } as CSSProperties}
-              onClick={() => cur.set(i)}>{name}</button>
-          )}
-        </div>
-      : /* 다섯 칸. 짧은 트랙 하나에 점 다섯이고, 칸마다 48px짜리 버튼이
-           그 점을 덮는다 — 보이는 것은 작아도 손이 닿는 자리는 넉넉하다.
-           트랙을 잡고 끌면 지나가는 칸마다 값이 따라오고 손을 떼면 제일
-           가까운 칸에 선다(slide). */
-        <div className="tone-track" ref={track} style={{ '--at': cur.at, '--last': last } as CSSProperties}
-          onPointerDown={trackDown} onPointerMove={trackMove}>
-          <span className="tone-track-line" aria-hidden />
-          {/* 점은 버튼이 아니라 표식이다. 누르는 일은 트랙 하나가 받아
-              제일 가까운 칸을 고른다 — 점마다 버튼을 두면 버튼 다섯이
-              낭독기에서 트랙과 겹쳐 같은 것을 두 번 읽는다. */}
-          {cur.names.map((_, i) =>
-            <span key={i} className={'tone-stop' + (i === cur.at ? ' on' : '')}
-              style={{ '--i': i } as CSSProperties} aria-hidden />
-          )}
-          {/* 진짜 입력은 트랙을 통째로 덮는다. 자판의 화살표키와 낭독기가
-              이걸 잡는다 — ± 버튼을 걷어낸 자리를 여기가 받는다.
-              손가락은 안 받는다(pointer-events: none): 네이티브 range는
-              누른 자리로 값을 순간이동시키는데, 그 규칙과 위 버튼 다섯의
-              규칙이 한 자리에서 부딪친다. */}
-          <input type="range" className="tone-track-input" min={0} max={last} step={1}
-            value={cur.at} aria-label={cur.label} aria-valuetext={cur.names[cur.at]}
-            onChange={e => cur.set(Number(e.target.value))} />
-        </div>}
-    </div>
+    <Slider name="크기" word={wordAt(sizePos(tone.size), SIZE_WORDS)} value={sizePos(tone.size)}
+      onChange={v => set({ size: +sizeAt(v).toFixed(2) })} />
+    <Slider name="속도" word={wordAt(speed, SPEED_WORDS[tone.font] ?? SIZE_WORDS)} value={speed}
+      onChange={v => set({ speed: v })} />
+    {hasWeightAxis(tone.font)
+      ? <Slider name="무게" word={wordAt(weight, WEIGHT_WORDS)} value={weight} onChange={v => set({ weight: v })} />
+      : <MannerSwitch font={tone.font} at={tone.manner ?? 0} onPick={i => set({ manner: i })} />}
 
     {/* '다음'이 패널 안에 있다. 밖에 두면 패널과 버튼 사이에 흰 띠가 한 겹
         더 생겨, 이 화면에 색이 바뀌는 경계가 둘이 된다. 하나면 된다 —

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { fontMap, opticalStroke } from '../lib/palettes';
+import { fontMap, formFor, opticalStroke } from '../lib/palettes';
 import { messageColors } from '../lib/messageStyle';
 import type { ToneState } from '../types';
 
@@ -20,6 +20,7 @@ const FALLBACK_TONE: ToneState = {
 
 export default function MessageTile({ text, tone }: Props) {
   const t = tone ?? FALLBACK_TONE;
+  const form = formFor(t);
   const m = messageColors(t);
   const txtRef = useRef<HTMLDivElement>(null);
 
@@ -95,7 +96,9 @@ export default function MessageTile({ text, tone }: Props) {
           style={{
             fontFamily: fontMap[t.font],
             fontSize: Math.min(t.size, 30) + 'px',
-            transform: `scaleX(${t.tone}) skewX(${t.slnt}deg)`,
+            // 서체별 표(palettes.ts · formFor)로 — 벽과 같은 장평·세로·기울기·자간
+            transform: `scale(${form.scaleX}, ${form.scaleY}) skewX(${-form.slant}deg)`,
+            letterSpacing: form.letterSpacing,
             ['--wght-base' as string]: String(low),
             ['--wght-active' as string]: String(t.wght),
             // 줄마다 무게가 오갈 때 축 없는 서체는 꿈쩍도 않는다 — 획이 같이 오간다

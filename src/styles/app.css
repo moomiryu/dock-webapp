@@ -1644,7 +1644,7 @@
    2026-09-15 스케치는 33/28 = 1.18이라 조금 더 좁았는데, 조판은 스케치가
    아니라 그 문서를 기준으로 두기로 했다. 1.5(45px)로 돌아가지는 않는다 —
    그건 문서 사이트의 데스크톱 값이고 실측이 아니다. */
-.z-ask h1{ font-size: var(--fs-h2); line-height: var(--lh-head); text-wrap: initial; }
+.z-ask h1{ font-size: var(--fs-h4); line-height: var(--lh-head); text-wrap: initial; }   /* 30 → 22 (2026-09-25 사용자 결정) */
 .z-ask p{ font-size: var(--fs-body); }
 /* 24였다. 단계 막대가 빠지면서 제목이 8px 내려앉았다 — 16으로 줄여
    스케치의 잉크 78.5px 자리로 되돌린다. */
@@ -1675,7 +1675,7 @@
 .info-overlay{ padding-inline: 0; }
 .info-head, .info-nav{ padding-inline: var(--pad-x); }
 .info-slide{ padding-inline: calc(var(--pad-x) + var(--s1)); }
-.info-slide h2{ font-size: var(--fs-h2); line-height: 1.5; }
+.info-slide h2{ font-size: var(--fs-h4); line-height: 1.5; }   /* 30 → 22 (2026-09-25 사용자 결정) — 작성 단계 제목과 같은 크기 */
 /* 작가가 끊어 준 자리를 지키는 제목. text-wrap: balance는 white-space가
    줄바꿈을 지키는 순간 꺼지므로(명세가 그렇다) 굳이 같이 두지 않는다. */
 .info-slide h2[data-break]{ white-space: pre-line; text-wrap: initial; }
@@ -1955,9 +1955,9 @@
   .info-slide{ padding-block: var(--s4) var(--s5); gap: var(--s2); }
 }
 .info-rules{ text-align: left; }
-@media (max-width: 359px){
-  .z-ask h1, .info-slide h2{ font-size: var(--fs-h3); }
-}
+/* 좁은 화면(359 이하)에서 두 제목을 24(--fs-h3)로 줄이던 규칙이 여기 있었다.
+   2026-09-25에 두 제목이 모든 폭에서 22(--fs-h4)가 되면서 걷었다 — 남겨 두면
+   좁은 화면에서만 도리어 커진다. */
 
 /* Separate choosing a voice from adjusting its expression. */
 
@@ -1985,6 +1985,7 @@
      닿는다. 글자는 줄 안쪽 여백(--pad-x)에서 시작해 머리줄 글자와 같은
      세로선에 선다. */
   margin-inline: calc(var(--pad-x) * -1);
+  container-type: inline-size;   /* 줄 높이(50cqw)가 이 폭에서 잰다 */
   /* 화면 여백 **안**에 선다(2026-09-22). 좌우 여백을 되물려 가장자리까지
      갔었는데, 이 앱의 다른 모든 요소는 모든 화면에서 x20~370이라 1/5에서
      넘어오는 순간 콘텐츠가 화면 밖으로 터져 나가는 것처럼 보였다
@@ -2018,15 +2019,21 @@
    안쪽 여백은 16. 위아래는 이름표 한 줄(12 × 1.2)과 그 밑 8을 **양쪽에 같이**
    더 비운다 — 견본이 이름표와 겹치지 않으면서 줄의 한가운데에 선다. */
 .tone-choice .style-card{ position: relative; min-width: 0; overflow: visible;
-  aspect-ratio: 2 / 1; min-height: var(--choice-row-min); border: 0; border-radius: 0;
+  /* 높이는 **최소값**으로만 준다: 폭의 절반(2:1)과 160 중 큰 쪽. aspect-ratio로
+     주었더니 둘이 부딪쳐 — 폭의 절반이 160보다 작아지는 순간 브라우저가
+     높이×2로 폭을 다시 계산해 320 화면이 16px 옆으로 밀렸고, 긴 글이 칸을
+     키우지 못하고 아래 줄 밑으로 넘쳤다(2026-09-25 실측). 폭의 절반은 목록
+     상자(.style-cards)의 폭에서 잰다(50cqw). */
+  min-height: max(var(--choice-row-min), 50cqw); border: 0; border-radius: 0;
   display: grid; place-items: center; background: var(--paper); text-align: center;
-  padding: calc(var(--pad-box) + var(--fs-cap-s) * 1.2 + var(--space-in-group)) var(--pad-x);
+  padding: var(--pad-box) var(--pad-x);
   container-type: inline-size; }
 /* 줄 안의 칸 폭을 줄 폭에 못박는다. 칸이 제 내용으로 폭을 정하면, 폭을 재서
    크기를 정하는 --sample-scale이 제 결과를 다시 재 끝없이 줄었다(재서 확인:
    'Maximum update depth'로 화면이 멈췄다). */
 .tone-choice .style-card{ grid-template-columns: minmax(0, 1fr); }
-.tone-choice .style-card-sample{ display: block; width: 100%; }
+/* 줄 안의 견본 칸(.style-card-sample)과 이름표(.style-card-label)는 이름이
+   다시 큰 글자가 되면서 없어졌다(2026-09-25). */
 /* 고른 칸은 빨강이 칸 전체를 먹는다. 스케치는 #CF5B4C이지만 그 위의 흰
    글자는 4.00:1 — AA(4.5)에 못 미친다. 채움 버튼과 같은 --brand-strong(4.64:1). */
 .tone-choice .style-card.on{ background: var(--brand-strong); color: var(--paper); }
@@ -2475,6 +2482,13 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   100%      { font-size: var(--fig);             scale: 1 1; }
 }
 @media (prefers-reduced-motion: reduce){ .tone-figure{ animation: none; } }
+/* 첫 장면의 견본은 이제 내 글이다(2026-09-25, PhaseTone). 줄은 벽의 줄 접기
+   그대로(pre)이고 행간은 조작 장의 견본과 같은 1.4(STAGE_LH)다 — 두 글자
+   '발화'를 위한 행간 1이면 여러 줄이 서로 닿는다. 칸은 제 글로 자라지 않는다
+   (min-height: 0) — 크기는 칸을 재서 정하는데, 칸이 글을 따라 자라면 제 결과를
+   다시 재게 된다. */
+.tone-figure{ min-height: 0; align-self: stretch; }   /* 폭도 제 글이 아니라 판이 정한다 */
+.tone-figure-text{ display: inline-block; white-space: pre; line-height: 1.4; text-align: center; }
 /* 다음 걸음으로 가는 유일한 손짓이라 위계를 본문 자리에 둔다 —
    라벨(14px·76%)로 두었더니 잔글씨로 읽혀 눌러야 하는 줄 몰랐다. */
 /* span이었다가 버튼이 됐다(2026-09-21) — 이 장에서 앞으로 가는 길이
@@ -2509,30 +2523,10 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   -webkit-text-stroke: var(--optical-stroke, 0) currentColor; paint-order: stroke fill;
   /* --optical-shift: 베이스라인 보정. 네 칸의 베이스라인이 3px 어긋나 있었다. */
   translate: 0 var(--optical-shift, 0); }
-/* 이름 대신 내 글의 앞부분(2026-09-25, PhaseGlyph 머리 주석). 크기는 위의
-   이름 규칙 그대로다. 두 줄에서 끊는다 — 띄어쓰기에서만 접히므로(keep-all)
-   보이는 두 줄은 늘 온전한 낱말이고, 셋째 줄부터는 가려진다. 줄임표는
-   없다: 이어지는 말이 있다는 표시보다 서체의 모양이 먼저다.
-   anywhere는 띄어쓰기 없는 긴 낱말이 한 줄에 안 들어갈 때만 글자에서
-   자른다(global.css의 `*`가 되돌리므로 여기에 직접 건다). 발화자가 넣은
-   줄바꿈은 지킨다(pre-line). */
-/* --sample-scale: 보이는 낱말이 칸보다 넓을 때 네 칸이 함께 줄어드는 배율
-   (PhaseGlyph). 1이면 이름 크기 그대로. */
-.tone-choice .style-card-name.is-sample{
-  font-size: calc(min(var(--fs-h1), var(--card-fit, 29cqw)) * var(--optical, 1) * var(--sample-scale, 1));
-  /* 2026-09-25 세로 목록: 전문을 다 보인다. 줄은 벽의 줄 접기(foldLines)가
-     정한 그대로라 넷이 같은 자리에서 끊고, 저절로 다시 접지 않는다(pre).
-     넘치지 않는 크기는 --sample-scale이 잰다. 자르지도 줄이지도 않는다. */
-  display: block; white-space: pre; }
-/* 성격 이름은 이름표로 물러나 칸 왼쪽 위에 선다. 무엇을 누르는지는 여전히
-   말해야 한다 — 다만 보는 것의 주인은 이제 내 글이다. */
+/* 2026-09-25 하루 동안 이름 대신 내 글이 여기 섰다(.is-sample · 이름표
+   .style-card-label · 공유 배율 --sample-scale). 이름이 다시 큰 글자가 되면서
+   걷었다 — 내 글은 3/5 첫 장면이 보여 준다. */
 .tone-choice .style-card{ position: relative; }
-/* 이름표와 견본 사이의 여백은 CSS가 아니라 배율이 지킨다(PhaseGlyph).
-   윗 여백을 늘려 자리를 냈더니 칸이 늘어나 320 화면이 스크롤됐다. */
-.tone-choice .style-card-label{
-  position: absolute; top: var(--pad-box); left: var(--pad-x);
-  font-family: var(--text-font); font-size: var(--fs-cap-s); line-height: 1.2;
-  color: var(--muted); }
 /* 바닥에서 올라오는 더운 기운. 스케치 02a가 화면 맨 아래 125px(844-719)에
    깔아 둔 것이다 — 위는 투명, 60% 지점에서 제 색이 되고 거기부터 아래로는
    그대로 간다. 액자 전체 폭을 쓰므로 좌우 여백 바깥까지 나간다.
@@ -4071,7 +4065,6 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .tone-choice .style-card-check{ position: absolute; top: var(--pad-box); right: var(--pad-x);
   width: var(--s5); height: var(--s5); visibility: hidden; }
 .tone-choice .style-card.on .style-card-check{ visibility: visible; }
-.tone-choice .style-card.on .style-card-label{ color: var(--paper); }
 /* 확정 버튼은 화면 아래에 붙는다. 제 바탕(흰 종이)을 가진 띠라서 스크롤되는
    견본이 그 밑으로 지나가도 글자와 겹쳐 보이지 않는다. 띠가 화면 여백 밖까지
    가고 기기 아래 안전 영역을 비운다. 화면이 커서 다 들어가면 버튼은 그냥
@@ -4106,3 +4099,61 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    (default)상 평소에는 0이다. 튜토리얼과 작성 1~5단계, 도킹·완료가 같이
    올라간다. */
 .mf-frame, .z-frame, .info-overlay{ padding-top: var(--top-safe); }
+
+/* 아래에 줄이 더 있을 때만(PhaseGlyph의 has-more): 띠 윗끝에 1px 선(머리줄
+   밑 선·줄 사이 선과 같은 선)과, 그 위에 뒤로가기와 같은 회색·획의 아래
+   화살표. 끝까지 내리거나 다 보이면 둘 다 없다. 화살표는 목록 위에 뜨지만
+   손가락을 받지 않는다. */
+.tone-choice > .glyph-cta{ border-top: 1px solid transparent; }
+.tone-choice > .glyph-cta.has-more{ border-top-color: var(--rule); }
+.glyph-more{ position: absolute; left: 50%; bottom: calc(100% + var(--s3)); translate: -50% 0;
+  width: var(--s6); height: var(--s6); color: var(--muted); pointer-events: none; visibility: hidden; }
+.glyph-cta.has-more .glyph-more{ visibility: visible; }
+
+/* ─── 3/5 막대와 스위치 (2026-09-25, PhaseTone · Slider · MannerSwitch) ────
+   typoclast의 짜임: 1px 선 위의 작은 손잡이. 알약은 없다.
+   · 줄 하나 = 위에 [축 이름 ······ 지금 상태의 말], 아래에 막대(높이 44).
+     이름과 말 사이는 같은 묶음(8), 막대 사이는 독립 묶음(16, 패널 gap).
+   · 막대는 1px 잉크 선. 세 지점(0 · ½ · 1)에 짧은 세로 눈금.
+   · 손잡이는 16px 원. 가만히 있을 때 채움, 누르는 동안 테두리만(반전).
+     손잡이는 기호가 아니라 **점**이라 3px 규칙이 아니라 원이다.
+   · 브라우저의 range를 그대로 쓰고 모양만 바꾼다 — 끌기·누른 자리로
+     옮기기·화살표 키·낭독기가 전부 따라온다. */
+.tslider{ display: grid; gap: var(--space-in-group); }
+.tslider-lab{ display: flex; justify-content: space-between; align-items: baseline;
+  font-family: var(--text-font); font-size: var(--fs-body-s); line-height: 1.2; }
+.tslider-name{ font-weight: 600; color: var(--ink); }
+.tslider-word{ color: var(--body-text); }   /* --muted는 패널 바탕(--grey-50) 위에서 4.5:1에 못 미친다(접근성 검사) */
+.tslider-track{ position: relative; height: var(--btn-m); }
+/* 눈금은 손잡이 가운데가 지나는 자리에 선다 — 손잡이 반지름(8)만큼 안에서
+   시작해 막대 폭에서 지름(16)을 뺀 만큼을 오간다 */
+.tslider-tick{ position: absolute; top: 50%; left: calc(var(--s3) + (100% - var(--s5)) * var(--p));
+  width: 1px; height: var(--s3); background: var(--grey-500); translate: -50% -50%; pointer-events: none; }
+.tslider-track input{ -webkit-appearance: none; appearance: none; position: absolute; inset: 0;
+  width: 100%; height: 100%; margin: 0; background: transparent; cursor: pointer; }
+.tslider-track input:focus-visible{ outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--r-control); }
+.tslider-track input::-webkit-slider-runnable-track{ height: 1px; background: var(--ink); }
+.tslider-track input::-moz-range-track{ height: 1px; background: var(--ink); }
+.tslider-track input::-webkit-slider-thumb{ -webkit-appearance: none; appearance: none;
+  box-sizing: border-box; width: var(--s5); height: var(--s5); margin-top: calc(var(--s5) / -2);
+  border-radius: var(--r-full); border: 2px solid var(--ink); background: var(--ink); }
+.tslider-track input::-moz-range-thumb{ box-sizing: border-box; width: var(--s5); height: var(--s5);
+  border-radius: var(--r-full); border: 2px solid var(--ink); background: var(--ink); }
+.tslider-track input:active::-webkit-slider-thumb,
+.tslider-track.is-moving input::-webkit-slider-thumb{ background: var(--grey-50); }
+.tslider-track input:active::-moz-range-thumb,
+.tslider-track.is-moving input::-moz-range-thumb{ background: var(--grey-50); }
+
+/* 말투 — 두 칸 스위치. 1px 선으로 나누고 고른 칸을 채운다. 바깥 모서리 3px */
+.tswitch{ display: grid; grid-template-columns: 1fr 1fr; min-height: var(--btn-m);
+  border: 1px solid var(--ink); border-radius: var(--r-control); overflow: hidden; }
+.tswitch-cell{ min-height: var(--btn-m); padding: 0 var(--pad-btn-x); border: 0; background: transparent;
+  color: var(--ink); font-size: var(--fs-body); cursor: pointer; }
+.tswitch-cell + .tswitch-cell{ border-left: 1px solid var(--ink); }
+.tswitch-cell.on{ background: var(--ink); color: var(--paper); }
+.tswitch-cell:focus-visible{ outline: 2px solid var(--ink); outline-offset: -4px; }
+.tswitch-cell.on:focus-visible{ outline-color: var(--paper); }
+
+/* 견본은 칸을 넘어도 자르지 않는다(2026-09-25) — 넓어진 글자를 줄여 맞추면
+   참여자가 고른 크기가 바뀐다. 넘치면 넘치는 대로 보인다. */
+.tone-adjust .tone-work .z-glyph-stage, .tone-adjust .tone-work .z-glyph-fit{ overflow: visible; }

@@ -103,12 +103,25 @@ function buildRestClient(): FirestoreLike {
     const json = (await res.json()) as { documents?: RestDoc[] };
     return (json.documents ?? []).map(restDocToStored);
   }
+  /**
+   * 벽으로 보내는 조율 값. 2026-09-25 슬라이더가 막대 자리(speed · weight)를
+   * 새로 들고 있는데, 벽의 쓰기 규칙(firestore.rules · validTone)은 아직 그
+   * 두 칸을 모른다 — 보내면 전송째 거부된다. 규칙을 고쳐 배포할 때까지는
+   * 옛 칸(tone · slnt · wght, palettes.ts · legacyFields가 적어 둔 것)만
+   * 보낸다. 규칙이 나가면 이 거름을 걷는다.
+   */
+  function toneForWall(t: Draft['tone']) {
+    if (!t) return t;
+    const { speed, weight, ...rest } = t;
+    void speed; void weight;
+    return rest;
+  }
   return {
     async addMessage(d: Draft) {
       const body = {
         fields: {
           text: { stringValue: d.text },
-          tone: toFsValue(d.tone),
+          tone: toFsValue(toneForWall(d.tone)),
           startedAt: { integerValue: String(d.startedAt) },
           createdAt: { timestampValue: new Date().toISOString() }
         }

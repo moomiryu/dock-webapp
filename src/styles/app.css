@@ -254,6 +254,52 @@
   padding: 0;
   gap: 0;
   background: linear-gradient(to bottom, var(--grey-50) 0 50%, var(--grey-200) 60% 100%);
+  /* 격자 간격과 선 색. 2026-09-25 격자 한 장(16·24·32 × grey-100·200)에서
+     가운데를 기본으로 두었다 — 사용자가 고르면 이 두 줄만 바꾼다 */
+  --home-grid: var(--s6);
+  --home-grid-line: var(--grey-200);
+  /* 격자를 방 안 맨 뒤(-1)에 두려고 쌓임 맥락을 여기서 닫는다. 안 닫으면 -1이
+     이 바탕색보다도 뒤로 가서 안 보인다 */
+  isolation: isolate;
+}
+
+/* 바탕의 격자와 가운데 세로 눈금자 (R11, 2026-09-25).
+   '조밀한 기계 안에서 조율되는 곳'이라는 장소를 말한다. 늘 내용보다 한 단계
+   약하다 — 선 색을 곱하기(multiply)로 얹어서, 벽(grey-50) 위에서도 바닥
+   (grey-200) 위에서도 바탕보다 딱 한 겹 진하다. 새 색을 만들지 않는다.
+   격자는 화면 가운데에 선 하나가 오도록 맞춘다 — 양 끝의 남는 칸이 좌우 같다.
+   가로 눈금자는 긋지 않는다: 50%쯤에 가로선이 서면 지평선이 되고, 이 바탕은
+   바깥(들판)이 아니라 방 안이다(위 주석, 2026-09-22). 세로 눈금자만 둔다 —
+   8px마다 짧은 눈금, 격자선마다 긴 눈금. */
+.home-frame::before,
+.home-frame::after{
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  mix-blend-mode: multiply;
+}
+.home-frame::before{
+  background-image:
+    linear-gradient(to right, var(--home-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--home-grid-line) 1px, transparent 1px);
+  background-size: var(--home-grid) var(--home-grid);
+  /* 반복 무늬의 %는 (칸 폭 - 무늬 한 칸)에 대해 계산된다 — 50%만 주면 무늬
+     한 칸의 가운데가 화면 가운데에 와서 선이 반 칸 어긋난다(실측 11.5px).
+     반 칸을 더 밀어 선이 가운데에 서게 한다. 반 픽셀은 빼지 않는다 — 빼면
+     1px 선이 두 픽셀에 걸쳐 흐린 2px로 찍힌다 */
+  --grid-at: calc(50% + var(--home-grid) / 2);
+  background-position: var(--grid-at) var(--grid-at);
+}
+/* 눈금자: 폭 16(--s5)짜리 띠. 가운데 세로선 + 8px마다 폭 8 눈금 + 격자선마다
+   폭 16 눈금. 눈금은 격자와 같은 기준(가운데)에서 반복하므로 긴 눈금이 가로
+   격자선과 정확히 만난다(8은 16·24·32를 다 나눈다) */
+.home-frame::after{
+  left: calc(50% - var(--s3)); right: auto; width: var(--s5);
+  background-image:
+    linear-gradient(to right, transparent 50%, var(--grey-300) 0 calc(50% + 1px), transparent 0),
+    linear-gradient(to bottom, var(--grey-300) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grey-300) 1px, transparent 1px);
+  background-size: 100% 100%, var(--s3) var(--s3), 100% var(--home-grid);
+  background-position: 0 0, center calc(50% + var(--s3) / 2), center calc(50% + var(--home-grid) / 2);
+  background-repeat: no-repeat, repeat-y, repeat-y;
 }
 
 .home-layer{

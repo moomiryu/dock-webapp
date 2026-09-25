@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
-import { fontMap, opticalFix, opticalStroke } from '../lib/palettes';
+import { fontMap, formFor, opticalFix } from '../lib/palettes';
 import { DEFAULT_TONE, STYLE_OPTIONS, type PartialTone } from '../lib/tone';
 import type { ToneState } from '../types';
 
@@ -28,6 +28,21 @@ interface Props {
  * 것을 말하지 않는다. 체크 자리는 늘 비워 두어 고르기 전후로 글자가 움직이지
  * 않는다. 고르는 것만으로는 넘어가지 않고 아래 버튼이 정한다.
  */
+/** 3/5 기본형(막대 가운데 · 말투 첫째 칸)의 글자 모양 — palettes.ts · formFor */
+function faceOf(font: string): CSSProperties {
+  const f = formFor({ font, speed: 0.5, weight: 0.5, manner: 0 });
+  return {
+    fontFamily: fontMap[font],
+    fontWeight: f.weight,
+    fontVariationSettings: f.variation,
+    letterSpacing: f.letterSpacing,
+    transform: `scale(${f.scaleX}, ${f.scaleY})`,
+    '--optical': opticalFix[font]?.scale ?? 1,
+    '--optical-stroke': f.stroke,
+    '--optical-shift': (opticalFix[font]?.shift ?? 0) + 'em'
+  } as CSSProperties;
+}
+
 export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Props) {
   const [font, setFont] = useState<ToneState['font'] | null>(initialTone?.font ?? null);
   const at = font ? STYLE_OPTIONS.findIndex(s => s.val === font) : -1;
@@ -77,19 +92,24 @@ export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Prop
             </svg>
             {/* 서체마다 잉크가 차지하는 높이도 굵기도 달라 같은 크기·같은
                 굵기로 안 보인다. 잰 값은 palettes.ts에 있다. 이름은 낭독기가
-                버튼 이름(aria-label)으로 읽으므로 글자는 가린다. */}
-            <span className="style-card-name" aria-hidden style={{
-              fontFamily: fontMap[s.val],
-              '--optical': opticalFix[s.val]?.scale ?? 1,
-              /* 이 줄은 무게를 고르는 자리가 아니다 — CSS가 400으로 찍는다. */
-              '--optical-stroke': opticalStroke(s.val, 400),
-              '--optical-shift': (opticalFix[s.val]?.shift ?? 0) + 'em'
-            } as CSSProperties}>
+                버튼 이름(aria-label)으로 읽으므로 글자는 가린다.
+
+                모양은 **3/5의 기본형** 그대로다(2026-09-25) — 막대 셋이 가운데
+                ('보통'), 말투는 첫째 칸. 당당한은 폭 700 · 세로 75%, 유머있는은
+                굵기 840, 차분한은 무게 445 · 자간 −25, 다정한은 획 0.1pt. 여기서
+                고르고 3/5로 넘어가도 글자 모양이 바뀌지 않는다. */}
+            <span className="style-card-name" aria-hidden style={faceOf(s.val)}>
               {s.label}
             </span>
           </button>
         ))}
       </div>
+
+      {/* 목록 아래 안내 한 줄(2026-09-25). 입력칸·버튼 없이 글자만. 성격이
+          넷으로 끝나지 않는다는 것과, 바라는 성격을 어디에 적으면 되는지
+          (완료 화면의 의견 칸)를 말한다. 선택을 권하지 않는다 — 절대원칙. */}
+      {/* 줄은 문장 단위로 바꾼다(사용자 결정) — 문장 사이에서 한 번 끊는다 */}
+      <p className="glyph-note">성격은 앞으로 더 늘어나요.<br />해 보고 싶은 성격이 있다면 마지막 화면에 적어 주세요.</p>
 
       {/* 확정 버튼은 화면 아래에 붙어 있고 제 바탕을 가진다 — 목록이 그 밑으로
           지나가도 글자와 겹쳐 보이지 않는다. 목록이 끝나면 버튼 위에서 끝난다. */}

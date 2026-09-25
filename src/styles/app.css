@@ -4190,3 +4190,11 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .feedback-done{ margin-top: var(--space-group); font-size: var(--fs-body); line-height: 1.5; color: var(--ink); }
 .done-credits{ margin-top: var(--space-block); padding-bottom: var(--space-section);
   font-size: var(--fs-cap-s); line-height: 1.6; color: var(--muted); }
+
+/* 2/5 목록 아래 안내 한 줄(2026-09-25). 마지막 줄 → 선은 틀의 gap(섹션 24).
+   선은 머리줄 밑 선·줄 사이 선과 같은 선이고 화면 끝에서 끝까지 간다.
+   선 → 글은 같은 묶음 안의 간격(16). 글자는 보조 글자 크기·색 그대로. */
+.tone-choice > .glyph-note{ margin-inline: calc(var(--pad-x) * -1);
+  padding: var(--space-group) var(--pad-x) 0; border-top: 1px solid var(--rule);
+  font-size: var(--fs-body-s); line-height: 1.5; color: var(--muted);
+  word-break: keep-all; }   /* 좁은 화면에서 둘째 문장이 꺾여도 낱말 안에서는 안 꺾인다 */

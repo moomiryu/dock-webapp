@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import BackButton from '../components/BackButton';
+import StepHeader from '../components/StepHeader';
 import { MANNER, fontMap, hasWeightAxis, opticalFix, opticalStroke, variationFor } from '../lib/palettes';
 import { DEFAULT_TONE, type PartialTone } from '../lib/tone';
 import { foldLines } from '../lib/fit';
@@ -9,6 +9,8 @@ interface Props {
     text: string;
     initialTone: PartialTone;
     onBack: (tone: PartialTone) => void;
+    /** 초기 화면으로. 초안은 지우지 않는다 */
+    onHome: () => void;
     onNext: (tone: PartialTone) => void;
 }
 
@@ -213,7 +215,7 @@ type Axis = (typeof AXES)[number];
 const nearest = (stops: readonly number[], v: number) =>
     stops.reduce((best, s, i) => (Math.abs(s - v) < Math.abs(stops[best] - v) ? i : best), 0);
 
-export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) {
+export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }: Props) {
     const [tone, setTone] = useState<PartialTone>(initialTone);
     /** 'intro' = 설명하는 장 · 'work' = 조작하는 장 */
     const [step, setStep] = useState<'intro' | 'work'>('intro');
@@ -388,10 +390,7 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
   <section className="tone-pane tone-intro"
     onClick={e => { if (!(e.target as HTMLElement).closest('button')) setStep('work'); }}>
    <div className="z-glyph-stage has-face">
-    <div className="z-header">
-     <BackButton label="성격 다시 고르기" onClick={() => onBack(tone)}/>
-     <span className="z-step-of">3 / 5 · 조율</span>
-    </div>
+    <StepHeader at={3} back={{ label: '성격 다시 고르기', onClick: () => onBack(tone) }} onHome={onHome} />
     {/* is-brief를 뺐다 — 그 규칙은 3초 뒤 제목을 저절로 접는다. 여기서는
         설명이 사라지는 계기가 **누르는 손**이어야 한다. '가'와 같이 간다. */}
     <div className="z-ask">
@@ -416,10 +415,7 @@ export default function PhaseTone({ text, initialTone, onBack, onNext }: Props) 
   {/* ── 둘째 장: 견본과 편집 패널 ──────────────────────────────── */}
   <section className="tone-pane tone-work">
    <div className="z-glyph-stage has-face">
-    <div className="z-header">
-     <BackButton label="설명 다시 보기" onClick={() => setStep('intro')}/>
-     <span className="z-step-of">3 / 5 · 조율</span>
-    </div>
+    <StepHeader at={3} back={{ label: '설명 다시 보기', onClick: () => setStep('intro') }} onHome={onHome} />
     {/* 견본은 글자뿐이다. 도형은 색을 고르는 화면에서 처음 나온다.
         한 겹을 더 두른 것은 **자리를 재기 위해서다** — 머리줄을 뺀 나머지가
         견본의 몫인데, 칸 전체를 기준으로 삼으면 머리줄 높이만큼 넘친다.

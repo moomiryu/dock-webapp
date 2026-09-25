@@ -138,7 +138,7 @@ await page.locator('.write-screen .primary-action').click();
 await page.waitForTimeout(400);
 snap['02 성격'] = await grab();
 
-await page.getByRole('button', { name: '당당한' }).click();
+await page.getByRole('radio', { name: '당당한' }).click();
 await page.waitForTimeout(800);        // 칸이 자라는 680ms
 await page.locator('.tone-choice .primary-action').click();
 await page.waitForTimeout(400);

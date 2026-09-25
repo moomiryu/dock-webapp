@@ -10,9 +10,11 @@ interface Props {
     /** 07이 송출 확정을 알린다 — 파이가 잰 꽂힌 순간과 이 참여의 이름표 */
     onDocked: (startedAt: number, session: string) => void;
     onEdit: () => void;
+    /** 미리보기의 X — 초기 화면으로. 초안은 지우지 않는다 */
+    onHome: () => void;
     onRestart: () => void;
 }
-export default function PhaseSubmit({ draft, onDocked, onEdit, onRestart }: Props) {
+export default function PhaseSubmit({ draft, onDocked, onEdit, onHome, onRestart }: Props) {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [id, setId] = useState<string | null>(null);
@@ -37,5 +39,5 @@ export default function PhaseSubmit({ draft, onDocked, onEdit, onRestart }: Prop
         return <PhaseDocking messageId={id} onDocked={onDocked} onHome={onRestart}/>;
     if (!draft?.text || !draft.tone)
         return <MegafontFrame phaseLabel="보내지 못함"><div className="guide-hero"><h1>아직 벽에 닿지 않았어요</h1><p>보낼 글이 없어요. 처음부터 다시 시작해주세요.</p><button className="primary-action" onClick={onRestart}>처음부터</button></div></MegafontFrame>;
-    return <PhasePreview text={draft.text} tone={draft.tone} onBack={onEdit} onConfirm={send} busy={busy} error={error}/>;
+    return <PhasePreview text={draft.text} tone={draft.tone} onBack={onEdit} onHome={onHome} onConfirm={send} busy={busy} error={error}/>;
 }

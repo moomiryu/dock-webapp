@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react';
-import BackButton from '../components/BackButton';
+import StepHeader from '../components/StepHeader';
 import VoiceBubble from '../components/VoiceBubble';
 import CloudBubble from '../components/CloudBubble';
 import { cloudFor, cloudShape } from '../lib/cloud';
@@ -12,6 +12,8 @@ interface Props {
     text: string;
     tone: ToneState;
     onBack: (tone: ToneState) => void;
+    /** 초기 화면으로. 초안은 지우지 않는다 */
+    onHome: () => void;
     onNext: (tone: ToneState) => void;
 }
 /**
@@ -52,7 +54,7 @@ interface Props {
  */
 const AREA = 'min(96cqw, 96cqh)';
 
-export default function PhaseColor({ text, tone, onBack, onNext }: Props) {
+export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props) {
     const initial = messageColors(tone);
     const lines = foldLines(text);
     // 벽과 같은 구름이어야 미리보기가 거짓말이 아니다 — 씨앗은 글 자체(cloud.ts)
@@ -65,10 +67,7 @@ export default function PhaseColor({ text, tone, onBack, onNext }: Props) {
       style={{ '--pane-bg': bg, '--chrome-ink': fg } as CSSProperties}>
  <div className="proj-stage is-bleed"><div className="proj-fit">
   <div className="proj-frame compose-editor is-pulled">
-   <div className="compose-chrome">
-    <BackButton label="조율 다시" onClick={() => onBack(current)}/>
-    <span className="z-step-of">4 / 5 · 색</span>
-   </div>
+   <StepHeader className="compose-chrome" at={4} back={{ label: '조율 다시', onClick: () => onBack(current) }} onHome={onHome} />
    {/* 03에서 자판을 내렸을 때 선 제목이 그 자리 그대로 글자만 바뀐다.
        화면이 갈린 게 아니라 묻는 것이 바뀐 것으로 읽혀야 한다. */}
    <div className="z-ask compose-ask">

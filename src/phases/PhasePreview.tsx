@@ -1,5 +1,5 @@
 import { useMemo, useState, type CSSProperties } from 'react';
-import BackButton from '../components/BackButton';
+import StepHeader from '../components/StepHeader';
 import { BIG_SIDE_MAX_VW, BIG_SIDE_VH, WallShowMessage } from '../admin/WallSimulation';
 import type { StoredMessage } from '../lib/firebase';
 import type { ToneState } from '../types';
@@ -8,6 +8,8 @@ interface Props {
     tone: ToneState;
     onConfirm: () => void;
     onBack: () => void;
+    /** 초기 화면으로. 초안은 지우지 않는다(전송 전이다) */
+    onHome: () => void;
     busy?: boolean;
     error?: string | null;
 }
@@ -27,13 +29,13 @@ interface Props {
  * 이야기는 발화 종료 화면이 한다. 여기 남는 보조 조작은 '다시 보기' 하나다 —
  * 등장을 한 번 더 본다.
  */
-export default function PhasePreview({ text, tone, onConfirm, onBack, busy = false, error }: Props) {
+export default function PhasePreview({ text, tone, onConfirm, onBack, onHome, busy = false, error }: Props) {
     const [run, setRun] = useState(0);
     // 벽 부품이 받는 꼴. 아직 저장 전이라 id·시각은 이 화면의 자리표다
     const msg = useMemo<StoredMessage>(() => ({ id: 'preview', text, tone, createdAt: 0 }), [text, tone]);
     const frame = { '--big-side': `min(${BIG_SIDE_VH}cqh, ${BIG_SIDE_MAX_VW}cqw)` } as CSSProperties;
-    return <div className="z-frame preview-screen"><div className="z-header"><BackButton label="색 다시 고르기" onClick={() => { if (!busy)
-        onBack(); }}/><span className="z-step-of">5 / 5 · 미리보기</span></div>
+    return <div className="z-frame preview-screen"><StepHeader at={5} back={{ label: '색 다시 고르기', onClick: () => { if (!busy) onBack(); } }}
+      onHome={() => { if (!busy) onHome(); }} />
  {/* 여기가 마지막이라는 것을 말로 해 둔다. 이 뒤(도킹)에는 '이전'이 없다 —
      글은 이미 보내진 뒤라, 거기서 나가는 문은 처음으로만 난다.
      '보낸 뒤에는 수정할 수 없어요'는 튜토리얼 마지막 장의 불변성이 옮겨 온

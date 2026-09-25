@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import BackButton from '../components/BackButton';
+import StepHeader from '../components/StepHeader';
 import { foldLines } from '../lib/fit';
 
 interface Props {
@@ -158,10 +158,9 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
       onPointerDown={outside}>
   {/* 뒤로는 쓰는 동안 감춘다. 자판이 올라온 채로 뒤로 가면 쓰던 글이
       날아가는데, 그 순간 손가락이 있는 자리가 하필 거기다. */}
-  <div className="z-header">
-   <BackButton label="처음으로" onClick={() => onBack(text)}/>
-   <span className="z-step-of">1 / 5 · 한 줄</span>
-  </div>
+  {/* X도 뒤로가기와 같이 초안을 저장하고 처음으로 간다 — 이 화면의 '처음으로'가
+      원래 그렇게 동작했다(App: saveText 뒤 home). 지우지 않는다. */}
+  <StepHeader at={1} back={{ label: '처음으로', onClick: () => onBack(text) }} onHome={() => onBack(text)} />
   {/* 줄바꿈은 발화자가 정한다 — 자판의 줄바꿈이 그대로 남는다.
       계산도 상자도 끼어들지 않는다.
 
@@ -270,7 +269,7 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
            내려앉았다. 닫으면 다시 초점을 돌려주므로 자판도 같이 돌아온다. */
         input.current?.blur();
         setHint(true);
-      }}>무슨 말을 쓸까요?</button>
+      }}>어떤 말을 쓸지 모르겠어요.</button>
     {/* 다 찼다는 말을 **숫자와 글자 둘로** 한다. 색만 바꾸면 색을 못 보는
         사람에게는 아무 일도 안 일어난 화면이다. */}
     <span className={'compose-count' + (full ? ' is-full' : '')}>

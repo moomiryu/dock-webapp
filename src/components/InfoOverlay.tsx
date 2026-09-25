@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import BackButton from './BackButton';
+import { HomeX } from './StepHeader';
 import { aboutSvg, chainSvg, scopeSvg, slideSvg, withGround } from '../lib/svgAsset';
 
 // 작가가 삽화를 컷으로 나눠 준다. 컷 사이를 이어 도는 일은 svgAsset이 한다.
@@ -77,6 +78,9 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
             흐름(flex)이 아니라 절대 자리로 잡는다. 흐름으로 두면 왼쪽
             아이콘의 폭만큼 밀려서 '거의 가운데'가 된다(app.css). */}
         <span className="info-where">{s.step}</span>
+        {/* 오른쪽 X — 어느 장에서든 곧장 첫 화면으로(2026-09-25). 뒤로가기는
+            한 장씩 되짚고, X는 소개를 통째로 닫는다. 네 장 모두 같은 자리다. */}
+        <HomeX onClick={onClose} />
       </div>
       <div className="info-track" ref={trackRef} tabIndex={-1} role="region"
         aria-live="polite" aria-label="메가폰트 사용 안내">

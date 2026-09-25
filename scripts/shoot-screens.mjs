@@ -112,7 +112,7 @@ async function main() {
   await page.locator('.write-screen .primary-action').click();
   await page.waitForTimeout(400);
   await shoot(page, '02-glyph-empty');
-  await page.getByRole('button', { name: '당당한' }).click();
+  await page.getByRole('radio', { name: '당당한' }).click();
   await shoot(page, '02-glyph-picked');
 
   // 03 조율

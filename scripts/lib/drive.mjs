@@ -107,7 +107,7 @@ export async function toVoice(page, font = null, text = SAMPLE_TEXT) {
   await toCompose(page, text);
   await page.locator('.write-screen .primary-action').click();
   await page.waitForTimeout(300);
-  if (font) await page.getByRole('button', { name: font }).click();
+  if (font) await page.getByRole('radio', { name: font }).click();   // 2026-09-25: 성격은 단일 선택(radio) 목록이다
 }
 
 /** 03 조율 — 크기·빠르기·무게 */

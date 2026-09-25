@@ -67,7 +67,7 @@ console.log(`\n한 줄: ${STAMP}\n`);
 await phone.getByRole('button', { name: /써봤어요/ }).click();
 await phone.locator('.write-input').fill(STAMP);
 await phone.locator('.write-screen .primary-action').click();   // 다 썼어요 → 성격
-await phone.getByRole('button', { name: '당당한' }).click();
+await phone.getByRole('radio', { name: '당당한' }).click();
 await phone.locator('.tone-choice .primary-action').click();      // 이 성격으로 → 조율
 await phone.locator('.tone-intro').click();                       // 설명 → 조작
 await phone.locator('.tone-work .primary-action').click();        // 다음 → 색

@@ -130,6 +130,15 @@ export default function App() {
     setDraft(updateDraftTone(tone));
   }
 
+  /**
+   * 작성 1~5단계 머리줄의 X. 초기 화면으로 가기만 한다 — 초안(글·형식)은
+   * 그대로 남아 '써봤어요'로 다시 들어오면 이어진다. 1/5의 '처음으로'가
+   * 원래 그렇게 했다. 초안을 지우는 것은 handleRestart(도킹 이후)뿐이다.
+   */
+  function goHome() {
+    setScreen('home');
+  }
+
   function handleRestart() {
     clearDraft();
     setDraft(null);
@@ -167,6 +176,7 @@ export default function App() {
           text={text}
           initialTone={glyphTone ?? (draft?.tone ? toPartial(draft.tone) : null)}
           onBack={() => setScreen('compose')}
+          onHome={goHome}
           onNext={(partial) => { setGlyphTone(partial); setScreen('tone'); }}
         />
       );
@@ -180,6 +190,7 @@ export default function App() {
             text={text}
             initialTone={null}
             onBack={() => setScreen('compose')}
+            onHome={goHome}
             onNext={(p) => { setGlyphTone(p); setScreen('tone'); }}
           />
         );
@@ -189,6 +200,7 @@ export default function App() {
           text={text}
           initialTone={partial}
           onBack={(p) => { setGlyphTone(p); setScreen('glyph'); }}
+          onHome={goHome}
           onNext={(p) => { saveTone(p); setScreen('color'); }}
         />
       );
@@ -209,10 +221,11 @@ export default function App() {
       if (screen === 'color') {
         return <PhaseColor text={draft.text} tone={draft.tone}
           onBack={(tone) => { saveFull(draft.text, tone); setScreen('tone'); }}
+          onHome={goHome}
           onNext={(tone) => { saveFull(draft.text, tone); setScreen('preview'); }} />;
       }
       return (
-        <PhaseSubmit draft={draft} onDocked={handleDocked} onEdit={() => setScreen('color')} onRestart={handleRestart} />
+        <PhaseSubmit draft={draft} onDocked={handleDocked} onEdit={() => setScreen('color')} onHome={goHome} onRestart={handleRestart} />
       );
 
     case 'submit':
@@ -221,6 +234,7 @@ export default function App() {
           draft={draft}
           onDocked={handleDocked}
           onEdit={() => setScreen('color')}
+          onHome={goHome}
           onRestart={handleRestart}
         />
       );

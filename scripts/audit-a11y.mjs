@@ -96,7 +96,7 @@ await page.waitForTimeout(300);
 await page.locator('.write-screen .primary-action').click();
 await page.waitForTimeout(400);
 await audit('02 성격 (빈 상태)');
-await page.getByRole('button', { name: '당당한' }).click();
+await page.getByRole('radio', { name: '당당한' }).click();
 await audit('02 성격 (고른 뒤)');
 
 await page.locator('.tone-choice .primary-action').click();

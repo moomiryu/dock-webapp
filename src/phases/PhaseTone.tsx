@@ -195,8 +195,10 @@ function Slider({ name, words, value, onChange }: {
 }
 
 /**
- * 말투 — 두 칸 스위치. 알약이 아니라 1px 선으로 나눈 두 칸이고, 고른 칸이
- * 채워진다. 칸마다 그 말투의 글자 모양을 입힌다.
+ * 말투 — 맞닿은 네모 두 칸, 말은 칸 바깥 양옆(R12, 2026-09-25).
+ * `온화한 [ | ] 예리한`. 켜고 끄기가 아니라 대등한 둘이다 — 고른 칸은 채우고
+ * 반대쪽은 칸의 선과 말이 옅어진다. 버튼 하나가 말과 칸을 함께 품어서 말을
+ * 눌러도 칸을 눌러도 고른다. 말에는 그 말투의 글자 모양을 입힌다.
  */
 function MannerSwitch({ font, at, onPick }: { font: string; at: number; onPick: (i: number) => void }) {
     const m = MANNER[font];
@@ -208,9 +210,12 @@ function MannerSwitch({ font, at, onPick }: { font: string; at: number; onPick: 
      <div className="tswitch" role="radiogroup" aria-labelledby="tswitch-name">
       {m.labels.map((label, i) =>
         <button key={i} type="button" role="radio" aria-checked={(at ? 1 : 0) === i}
-          className={'tswitch-cell' + ((at ? 1 : 0) === i ? ' on' : '')}
-          style={{ fontFamily: fontMap[font], fontVariationSettings: m.axes[i] } as CSSProperties}
-          onClick={() => onPick(i)}>{label}</button>)}
+          className={'tswitch-side' + ((at ? 1 : 0) === i ? ' on' : '')}
+          onClick={() => onPick(i)}>
+          <span className="tswitch-word"
+            style={{ fontFamily: fontMap[font], fontVariationSettings: m.axes[i] } as CSSProperties}>{label}</span>
+          <i className="tswitch-cell" aria-hidden />
+        </button>)}
      </div>
     </div>;
 }

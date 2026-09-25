@@ -4160,15 +4160,25 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .tslider-track input:active::-moz-range-thumb,
 .tslider-track.is-moving input::-moz-range-thumb{ background: var(--grey-50); }
 
-/* 말투 — 두 칸 스위치. 1px 선으로 나누고 고른 칸을 채운다. 바깥 모서리 3px */
-.tswitch{ display: grid; grid-template-columns: 1fr 1fr; min-height: var(--btn-m);
-  border: 1px solid var(--grey-500); border-radius: var(--r-control); overflow: hidden; }
-.tswitch-cell{ min-height: var(--btn-m); padding: 0 var(--pad-btn-x); border: 0; background: transparent;
-  color: var(--grey-700); font-size: var(--fs-body); cursor: pointer; }
-.tswitch-cell + .tswitch-cell{ border-left: 1px solid var(--grey-500); }
-.tswitch-cell.on{ background: var(--grey-800); color: var(--paper); }
-.tswitch-cell:focus-visible{ outline: 2px solid var(--ink); outline-offset: -4px; }
-.tswitch-cell.on:focus-visible{ outline-color: var(--paper); }
+/* 말투 — 맞닿은 네모 두 칸, 말은 바깥 양옆(R12, 2026-09-25).
+   `온화한 [ | ] 예리한`. 버튼 하나 = 말 + 칸. 왼쪽 버튼은 칸이 오른쪽 끝에,
+   오른쪽 버튼은 칸이 왼쪽 끝에 붙어 두 칸이 가운데서 맞닿는다. 가운데 선은
+   왼쪽 칸의 오른쪽 선 하나뿐이다(두 겹이 되지 않게 오른쪽 칸은 왼쪽 선 없음).
+   고르지 않은 쪽의 말은 --grey-700까지만 옅어진다 — 그보다 옅으면 패널
+   바탕(--grey-50) 위에서 4.5:1에 못 미친다(접근성 검사). 칸의 선은 더 옅다. */
+.tswitch{ display: grid; grid-template-columns: 1fr 1fr; }
+.tswitch-side{ display: flex; align-items: center; gap: var(--space-in-group);
+  min-height: var(--btn-m); padding: 0; border: 0; background: transparent; cursor: pointer;
+  color: var(--grey-700); font-size: var(--fs-body); }
+.tswitch-side:first-child{ justify-content: flex-end; }
+.tswitch-side:last-child{ flex-direction: row-reverse; justify-content: flex-end; }
+.tswitch-cell{ box-sizing: border-box; width: var(--btn-m); height: var(--btn-m); flex: none;
+  border: 1px solid var(--grey-400); }
+.tswitch-side:first-child .tswitch-cell{ border-radius: var(--r-control) 0 0 var(--r-control); }
+.tswitch-side:last-child .tswitch-cell{ border-left: 0; border-radius: 0 var(--r-control) var(--r-control) 0; }
+.tswitch-side.on{ color: var(--ink); }
+.tswitch-side.on .tswitch-cell{ background: var(--grey-800); border-color: var(--grey-800); }
+.tswitch-side:focus-visible{ outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--r-control); }
 
 /* 견본은 칸을 넘어도 자르지 않는다(2026-09-25) — 넓어진 글자를 줄여 맞추면
    참여자가 고른 크기가 바뀐다. 넘치면 넘치는 대로 보인다. */

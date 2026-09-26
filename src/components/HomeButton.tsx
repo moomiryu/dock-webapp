@@ -1,5 +1,13 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { pick, useLang } from '../lib/lang';
+
+const T = {
+  erase: { ko: '만든 발화 기록이 사라져요.', en: 'What you made will be deleted.' },
+  ask: { ko: '정말 종료하시겠어요?', en: 'Are you sure you want to leave?' },
+  yes: { ko: '네', en: 'Yes' },
+  no: { ko: '아니오', en: 'No' }
+};
 
 interface Props {
   /** 스크린리더가 읽을 목적지 — "처음으로" */
@@ -29,6 +37,7 @@ interface Props {
 export default function HomeButton({ label, onClick }: Props) {
   const [asking, setAsking] = useState(false);
   const backRef = useRef<HTMLButtonElement>(null);
+  const lang = useLang();
 
   return (
     <>
@@ -44,7 +53,7 @@ export default function HomeButton({ label, onClick }: Props) {
         </svg>
       </button>
       {asking && (
-        <AskLeave desc="만든 발화 기록이 사라져요." onYes={onClick}
+        <AskLeave desc={pick(T.erase, lang)} onYes={onClick}
           onNo={() => { setAsking(false); backRef.current?.focus(); }} />
       )}
     </>
@@ -68,6 +77,7 @@ export default function HomeButton({ label, onClick }: Props) {
 export function AskLeave({ desc, onYes, onNo }: { desc: string; onYes: () => void; onNo: () => void }) {
   const titleId = useId();
   const yesRef = useRef<HTMLButtonElement>(null);
+  const lang = useLang();
   /* 부모가 다시 그려질 때마다 초점을 '네'로 되돌리지 않도록, 여는 순간 한 번만 */
   const no = useRef(onNo);
   no.current = onNo;
@@ -80,11 +90,11 @@ export function AskLeave({ desc, onYes, onNo }: { desc: string; onYes: () => voi
   return createPortal(
     <div className="ask-veil" role="dialog" aria-modal="true" aria-labelledby={titleId}>
       <div className="ask-card">
-        <h2 id={titleId}>정말 종료하시겠어요?</h2>
+        <h2 id={titleId}>{pick(T.ask, lang)}</h2>
         <p>{desc}</p>
         <div className="ask-answers">
-          <button ref={yesRef} type="button" className="ask-yes" onClick={onYes}>네</button>
-          <button type="button" className="ask-no" onClick={() => no.current()}>아니오</button>
+          <button ref={yesRef} type="button" className="ask-yes" onClick={onYes}>{pick(T.yes, lang)}</button>
+          <button type="button" className="ask-no" onClick={() => no.current()}>{pick(T.no, lang)}</button>
         </div>
       </div>
     </div>,

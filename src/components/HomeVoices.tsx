@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { charPos } from '../character/pos';
 import { says } from '../character/says';
+import { getLang } from '../lib/lang';
 
 /**
  * 배경을 흘러가는 말들.
@@ -97,17 +98,31 @@ const FADE = { in: 800, out: 1400 };
  *
  * 벽에 오를 법한 한 줄들이다(design/line-length-2026-09-17.md의 열두 자
  * 안에 든다). 이 물건이 무엇을 받아 주는 자리인지 배경이 먼저 말한다.
+ *
+ * 영어판 목록을 따로 둔다(2026-09-26, 초안). 한 마디씩 옮겼고 차례도 같다.
+ * 영어는 열두 자 안에 안 드는 줄이 많다 — 배경이라 줄을 접지 않고 한 줄로 흐른다.
+ * 말이 뜨는 순간의 언어로 고른다: 언어를 바꾸면 떠 있던 말은 그대로 흘러가고
+ * 다음 말부터 바뀐다.
  */
-const VOICES = [
-  '학생은 소모품이 아니다', '등록금 내고 자리 없다', '여기 누가 있었다',
-  '도서관 자리 좀', '졸업은 언제 오나', '나 아직 안 죽었어',
-  '우리는 여기 있습니다', '오늘 하루가 어땠는지', '밥 먹었어?',
-  '말하지 않으면 아무도', '수업은 끝났는데', '이 학교는 우리 것이다',
-  '왜?', '나도 모르니까', '한 줄을 남긴다'
-];
+const VOICES = {
+  ko: [
+    '학생은 소모품이 아니다', '등록금 내고 자리 없다', '여기 누가 있었다',
+    '도서관 자리 좀', '졸업은 언제 오나', '나 아직 안 죽었어',
+    '우리는 여기 있습니다', '오늘 하루가 어땠는지', '밥 먹었어?',
+    '말하지 않으면 아무도', '수업은 끝났는데', '이 학교는 우리 것이다',
+    '왜?', '나도 모르니까', '한 줄을 남긴다'
+  ],
+  en: [
+    'Students are not disposable', 'Paid tuition, still no seat', 'Someone was here',
+    'A library seat, please', 'When does graduation come', "I'm not dead yet",
+    'We are here', 'How your day went', 'Have you eaten?',
+    "If we don't speak, nobody", 'Class is over, but', 'This school is ours',
+    'Why?', "Because I don't know either", 'Leaving one line'
+  ]
+};
 
 /** 맨 처음 발화자가 되는 사람이 하는 말 */
-const HELLO = '안녕하세요';
+const HELLO = { ko: '안녕하세요', en: 'Hello' };
 
 const mix = (lo: number, hi: number, k: number) => lo + (hi - lo) * k;
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -184,12 +199,14 @@ export default function HomeVoices() {
       /* 첫 말은 인사다. 그다음부터는 지금 떠 있지 않은 것 중에서 고른다 —
          열다섯 마디에 일곱까지 동시에 사는 구성이라 그냥 뽑으면 같은 줄이
          두 군데에 뜬다(60초를 지켜보는 동안 세 번 겹쳤다). */
+      const lang = getLang();
       if (says.count === 0) {
-        p.el.textContent = HELLO;
+        p.el.textContent = HELLO[lang];
       } else {
+        const voices = VOICES[lang];
         const onAir = pool.filter((v) => v.live).map((v) => v.el.textContent);
-        const free = VOICES.filter((v) => !onAir.includes(v));
-        p.el.textContent = pick(free.length ? free : VOICES);
+        const free = voices.filter((v) => !onAir.includes(v));
+        p.el.textContent = pick(free.length ? free : voices);
       }
 
       // 말한 사람의 머리 위에 선다. 안내가 서는 칸이면 그 아래로 민다.

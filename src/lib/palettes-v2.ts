@@ -12,13 +12,16 @@
 // graphic/blend는 효과 기능을 걷어내며 화면에서 쓰지 않게 됐지만,
 // Firestore에 남아 있는 옛 메시지를 읽을 때를 위해 타입은 유지한다.
 
+import type { Pair } from './lang';
+
 export type MoodId =
   | 'night' | 'print' | 'day' | 'mono' | 'electric'
   | 'paper' | 'neon' | 'flag' | 'ink' | 'lime';
 
 export interface Mood {
   id: MoodId;
-  name: string;
+  /** 색 칩의 낭독 이름. 영문판(2026-09-26)을 위해 두 언어로 든다 */
+  name: Pair;
   nameLatin: string;
   bg: string;
   text: string;
@@ -30,7 +33,7 @@ export interface Mood {
 export const moods: Mood[] = [
   {
     id: 'night',
-    name: '밤',
+    name: { ko: '밤', en: 'Night' },
     nameLatin: 'NIGHT',
     bg: '#00FF88',
     text: '#000000',
@@ -40,7 +43,7 @@ export const moods: Mood[] = [
   },
   {
     id: 'print',
-    name: '인쇄',
+    name: { ko: '인쇄', en: 'Print' },
     nameLatin: 'RETRO',
     bg: '#FF6B6B',
     text: '#1E2A52',
@@ -50,7 +53,7 @@ export const moods: Mood[] = [
   },
   {
     id: 'day',
-    name: '낮',
+    name: { ko: '낮', en: 'Day' },
     nameLatin: 'POP',
     bg: '#FFFF00',
     text: '#000000',
@@ -60,7 +63,7 @@ export const moods: Mood[] = [
   },
   {
     id: 'mono',
-    name: '흑백',
+    name: { ko: '흑백', en: 'Black and white' },
     nameLatin: 'MONO',
     bg: '#FFFFFF',
     text: '#000000',
@@ -70,7 +73,7 @@ export const moods: Mood[] = [
   },
   {
     id: 'electric',
-    name: '전기',
+    name: { ko: '전기', en: 'Electric' },
     nameLatin: 'VIVID',
     bg: '#0033FF',
     text: '#FFEE00',
@@ -80,7 +83,7 @@ export const moods: Mood[] = [
   },
   {
     id: 'paper',
-    name: '백지',
+    name: { ko: '백지', en: 'Blank paper' },
     nameLatin: 'PAPER',
     bg: '#FFFFFF',
     text: '#000000',
@@ -90,7 +93,7 @@ export const moods: Mood[] = [
   },
   {
     id: 'neon',
-    name: '분홍',
+    name: { ko: '분홍', en: 'Pink' },
     nameLatin: 'HOTPINK',
     bg: '#FF0080',
     text: '#000000',
@@ -100,7 +103,7 @@ export const moods: Mood[] = [
   },
   {
     id: 'flag',
-    name: '적기',
+    name: { ko: '적기', en: 'Red flag' },
     nameLatin: 'FLAG',
     bg: '#E4002B',
     text: '#FFFFFF',
@@ -110,7 +113,7 @@ export const moods: Mood[] = [
   },
   {
     id: 'ink',
-    name: '남색',
+    name: { ko: '남색', en: 'Navy' },
     nameLatin: 'INK',
     bg: '#1E2A52',
     text: '#FFD93D',
@@ -120,7 +123,7 @@ export const moods: Mood[] = [
   },
   {
     id: 'lime',
-    name: '형광',
+    name: { ko: '형광', en: 'Fluorescent' },
     nameLatin: 'LIME',
     bg: '#00FF88',
     text: '#000000',

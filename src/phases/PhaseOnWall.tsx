@@ -2,6 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { endBroadcast, fakeSwitch, isFirebaseConfigured, subscribeDock } from '../lib/firebase';
 import { EMPHASIS_MS, EMPHASIS_SEC } from '../lib/wall';
 import { isDevMode } from '../lib/stage';
+import { pick, useLang } from '../lib/lang';
+
+/* 이 화면의 말. 영어는 초안이다(2026-09-26, 영문판) */
+const T = {
+    /* 개발용 버튼(?dev=1)이라 참여자는 못 본다 */
+    test: { ko: '폰을 뺐어요', en: "I've taken the phone out" },
+    count: { ko: '남은 발화 시간', en: 'Speaking time left' }
+};
 
 interface Props {
     /**
@@ -42,6 +50,7 @@ function remain(startedAt: number): number {
 
 export default function PhaseOnWall({ startedAt, session, onDone }: Props) {
     const doneRef = useRef(false);
+    const lang = useLang();
 
     /** 끝나는 길은 하나다 — 누가 끝냈든 여기로 모인다.
      *  `at`이 0이면 벽에 알리지 않는다(이미 끝났거나, 내 송출이 아니다) */
@@ -98,13 +107,13 @@ export default function PhaseOnWall({ startedAt, session, onDone }: Props) {
     }, [startedAt]);
 
     return <div className="onwall-screen">
- {isDevMode() && <div className="onwall"><button className="onwall-release" onClick={handleTestRelease}>폰을 뺐어요</button></div>}
+ {isDevMode() && <div className="onwall"><button className="onwall-release" onClick={handleTestRelease}>{pick(T.test, lang)}</button></div>}
  {/* 바닥 한 줄 — 왼쪽에 눈, 오른쪽에 남은 초.
      '최대 30초'는 걷어냈다. 숫자가 이만큼 커지면 그게 무엇인지는 줄어드는
      것만 봐도 알고, 상한은 이미 첫 숫자가 말하고 있다. */}
  <div className={'onwall-floor' + (left <= KEEN_SEC ? ' is-keen' : '')}>
   <Eye/>
-  <div className="onwall-count" aria-label="남은 발화 시간">{Math.ceil(left)}</div>
+  <div className="onwall-count" aria-label={pick(T.count, lang)}>{Math.ceil(left)}</div>
  </div>
 </div>;
 }

@@ -1,8 +1,23 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import StepHeader from '../components/StepHeader';
 import { fontMap, formFor, opticalFix } from '../lib/palettes';
 import { DEFAULT_TONE, STYLE_OPTIONS, type PartialTone } from '../lib/tone';
+import { pick, useLang, type Pair } from '../lib/lang';
 import type { ToneState } from '../types';
+
+/* 이 화면의 말. 영어는 초안이다(2026-09-26, 영문판) */
+const T = {
+  back: { ko: '한 줄 다시 쓰기', en: 'Rewrite your line' },
+  title: { ko: <>어떤 성격으로<br />말해볼까요?</>, en: <>Which character will you speak with?</> },
+  lead: { ko: '마음에 드는 것을 골라주세요.', en: 'Choose the one you like.' },
+  group: { ko: '성격 고르기', en: 'Choose a character' },
+  /* 줄은 문장 단위로 바꾼다(사용자 결정) — 문장 사이에서 한 번 끊는다 */
+  note: {
+    ko: <>성격은 앞으로 더 늘어나요.<br />해 보고 싶은 성격이 있다면 마지막 화면에 적어 주세요.</>,
+    en: <>More characters are on the way.<br />If there is one you'd like to try, tell us on the last screen.</>
+  } as Pair<ReactNode>,
+  next: { ko: '이 성격으로 할게요', en: 'Use this character' }
+};
 
 interface Props {
   initialTone?: PartialTone | null;
@@ -45,6 +60,7 @@ function faceOf(font: string): CSSProperties {
 
 export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Props) {
   const [font, setFont] = useState<ToneState['font'] | null>(initialTone?.font ?? null);
+  const lang = useLang();
   const at = font ? STYLE_OPTIONS.findIndex(s => s.val === font) : -1;
 
   /**
@@ -74,18 +90,20 @@ export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Prop
 
   return (
     <div className="z-frame z1 tone-choice">
-      <StepHeader at={2} back={{ label: '한 줄 다시 쓰기', onClick: onBack }} onHome={onHome} />
+      <StepHeader at={2} back={{ label: pick(T.back, lang), onClick: onBack }} onHome={onHome} />
       {/* 설명은 고른 뒤에도 남는다 — 사라지면 그만큼 목록이 위로 뛴다 */}
       <div className="z-ask">
-        <h1>어떤 성격으로<br />말해볼까요?</h1>
-        <p>마음에 드는 것을 골라주세요.</p>
+        <h1>{pick(T.title, lang)}</h1>
+        <p>{pick(T.lead, lang)}</p>
       </div>
 
-      <div ref={list} className="style-cards" role="radiogroup" aria-label="성격 고르기">
-        {STYLE_OPTIONS.map((s, i) => (
+      <div ref={list} className="style-cards" role="radiogroup" aria-label={pick(T.group, lang)}>
+        {STYLE_OPTIONS.map((s, i) => {
+          const name = lang === 'en' ? s.en : s.label;
+          return (
           <button key={s.val} type="button" role="radio" aria-checked={at === i}
             className={'style-card' + (at === i ? ' on' : '')}
-            aria-label={s.label} onClick={() => setFont(s.val)}>
+            aria-label={name} onClick={() => setFont(s.val)}>
             <svg className="style-card-check" viewBox="0 0 24 24" aria-hidden focusable="false">
               <path d="M5.5 12.5 L10 17 L18.5 7.5" fill="none" stroke="currentColor"
                 strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
@@ -99,17 +117,17 @@ export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Prop
                 굵기 840, 차분한은 무게 445 · 자간 −25, 다정한은 획 0.1pt. 여기서
                 고르고 3/5로 넘어가도 글자 모양이 바뀌지 않는다. */}
             <span className="style-card-name" aria-hidden style={faceOf(s.val)}>
-              {s.label}
+              {name}
             </span>
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {/* 목록 아래 안내 한 줄(2026-09-25). 입력칸·버튼 없이 글자만. 성격이
           넷으로 끝나지 않는다는 것과, 바라는 성격을 어디에 적으면 되는지
           (완료 화면의 의견 칸)를 말한다. 선택을 권하지 않는다 — 절대원칙. */}
-      {/* 줄은 문장 단위로 바꾼다(사용자 결정) — 문장 사이에서 한 번 끊는다 */}
-      <p className="glyph-note">성격은 앞으로 더 늘어나요.<br />해 보고 싶은 성격이 있다면 마지막 화면에 적어 주세요.</p>
+      <p className="glyph-note">{pick(T.note, lang)}</p>
 
       {/* 확정 버튼은 화면 아래에 붙어 있고 제 바탕을 가진다 — 목록이 그 밑으로
           지나가도 글자와 겹쳐 보이지 않는다. 목록이 끝나면 버튼 위에서 끝난다. */}
@@ -121,7 +139,7 @@ export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Prop
             strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         <button className="primary-action" disabled={!font}
-          onClick={() => font && onNext({ ...(initialTone ?? DEFAULT_TONE), font })}>이 성격으로 할게요</button>
+          onClick={() => font && onNext({ ...(initialTone ?? DEFAULT_TONE), font })}>{pick(T.next, lang)}</button>
       </div>
     </div>
   );

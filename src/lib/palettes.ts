@@ -1,3 +1,5 @@
+import type { Pair } from './lang';
+
 export interface Palette {
   bg: string;
   text: string;
@@ -183,13 +185,14 @@ export const graphics: string[] = [
  * 다정한(다카포)은 축이 없어 획(-webkit-text-stroke)으로 대신 답한다 —
  * 그건 opticalStroke가 이미 하고 있다.
  */
-export const MANNER: Record<string, { labels: [string, string]; axes: [string, string] }> = {
+/* 이름은 두 언어로 든다(2026-09-26, 영문판). 쓰는 곳이 지금 언어를 고른다 */
+export const MANNER: Record<string, { labels: Pair<[string, string]>; axes: [string, string] }> = {
   // 차례는 안내서가 적어 둔 차례다 — 온화한이 먼저, 예리한이 나중.
-  ttoryeot: { labels: ['온화한', '예리한'], axes: ['"GLAT" 1000', '"GLAT" 0'] },
+  ttoryeot: { labels: { ko: ['온화한', '예리한'], en: ['Gentle', 'Sharp'] }, axes: ['"GLAT" 1000', '"GLAT" 0'] },
   deulseok: {
     // 시니컬한의 ELSH는 **8.8**이다. 0.8로 적혀 있었다(2026-09-20에 안내서와
     // 대조해 고쳤다) — 0.8이면 획이 거의 사라져 글자가 점선으로 흩어진다.
-    labels: ['귀여운', '시니컬한'],
+    labels: { ko: ['귀여운', '시니컬한'], en: ['Cute', 'Cynical'] },
     axes: ['"ELSH" 12, "ELGR" 1.75', '"ELSH" 0.8, "ELGR" 1']   // 시니컬한 ELSH 8.8 → 0.8 (2026-09-25 표)
   }
 };
@@ -261,13 +264,31 @@ export const sizePos = (size: number) => Math.min(1, Math.max(0, (size - 28) / 3
  */
 type Five = [string, string, string, string, string];
 export const STOPS = 5;
-export const SIZE_WORDS: Five = ['매우 작게', '작게', '보통', '크게', '매우 크게'];
-export const WEIGHT_WORDS: Five = ['매우 가볍게', '가볍게', '보통', '무겁게', '매우 무겁게'];
-export const SPEED_WORDS: Record<string, Five> = {
-  ttoryeot: ['매우 진중한', '진중한', '보통', '거침없는', '매우 거침없는'],
-  deulseok: ['한껏 능청능청', '능청능청', '보통', '재잘재잘', '한껏 재잘재잘'],
-  chabun: ['매우 느긋한', '느긋한', '보통', '날렵한', '매우 날렵한'],
-  doran: ['매우 느긋한', '느긋한', '보통', '날렵한', '매우 날렵한']
+/* 칸 말은 두 언어로 든다(2026-09-26, 영문판 — 영어 말은 사용자가 정했다).
+   쓰는 곳(PhaseTone)이 pick으로 지금 언어를 고른다. */
+export const SIZE_WORDS: Pair<Five> = {
+  ko: ['매우 작게', '작게', '보통', '크게', '매우 크게'],
+  en: ['Very small', 'Small', 'Regular', 'Large', 'Very large']
+};
+export const WEIGHT_WORDS: Pair<Five> = {
+  ko: ['매우 가볍게', '가볍게', '보통', '무겁게', '매우 무겁게'],
+  en: ['Very light', 'Light', 'Regular', 'Heavy', 'Very heavy']
+};
+const LEISURE: Pair<Five> = {
+  ko: ['매우 느긋한', '느긋한', '보통', '날렵한', '매우 날렵한'],
+  en: ['Very leisurely', 'Leisurely', 'Regular', 'Nimble', 'Very nimble']
+};
+export const SPEED_WORDS: Record<string, Pair<Five>> = {
+  ttoryeot: {
+    ko: ['매우 진중한', '진중한', '보통', '거침없는', '매우 거침없는'],
+    en: ['Very deliberate', 'Deliberate', 'Regular', 'Unstoppable', 'Very unstoppable']
+  },
+  deulseok: {
+    ko: ['한껏 능청능청', '능청능청', '보통', '재잘재잘', '한껏 재잘재잘'],
+    en: ['Extra deadpan', 'Deadpan', 'Regular', 'Chatty', 'Extra chatty']
+  },
+  chabun: LEISURE,
+  doran: LEISURE
 };
 /** 막대 자리에서 가장 가까운 칸(0~4) */
 export const stopAt = (t: number) => Math.round(Math.min(1, Math.max(0, t)) * (STOPS - 1));

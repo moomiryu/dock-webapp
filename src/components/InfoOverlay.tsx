@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import BackButton from './BackButton';
 import { HomeX } from './StepHeader';
 import { aboutSvg, chainSvg, scopeSvg, slideSvg, withGround } from '../lib/svgAsset';
+import { pick, useLang, type Pair } from '../lib/lang';
 
 // 작가가 삽화를 컷으로 나눠 준다. 컷 사이를 이어 도는 일은 svgAsset이 한다.
 //
@@ -36,6 +37,16 @@ import artDock4 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_4.svg?
 
 interface Props { onClose: () => void; onStart: () => void; }
 
+/* 틀의 말. 장마다의 말은 아래 SLIDES에 있다. 영어는 초안이다(2026-09-26) */
+const T = {
+  about: { ko: '메가폰트 소개', en: 'About MegaFont' },
+  home: { ko: '처음으로', en: 'Back to start' },
+  prev: { ko: '이전 설명', en: 'Previous page' },
+  guide: { ko: '메가폰트 사용 안내', en: 'How to use MegaFont' },
+  start: { ko: '시작하기', en: 'Start' },
+  next: { ko: '다음', en: 'Next' }
+};
+
 /**
  * 한 장에 한 가지.
  *
@@ -47,6 +58,7 @@ interface Props { onClose: () => void; onStart: () => void; }
 export default function InfoOverlay({ onClose, onStart }: Props) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
+  const lang = useLang();
   const last = idx === SLIDES.length - 1;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -60,17 +72,18 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
   // 읽고 나서 한 장 앞을 다시 보려면 되돌아갈 데가 있어야 한다.
   const back = () => (idx === 0 ? onClose() : setIdx(idx - 1));
   const s = SLIDES[idx];
+  const title = pick(s.title, lang);
   return (
     /* 밤 장면은 화면이 통째로 검정이다. 어느 장이 그런지는 삽화가 아니라
        **그 장 자신**이 정한다 — 도입 두 장은 삽화가 없고 검정도 아니다
        (app.css · is-dark) */
     <div className={'info-overlay' + (s.dark ? ' is-dark' : '')}
-      aria-label="메가폰트 소개">
+      aria-label={pick(T.about, lang)}>
       {/* 단계명은 머리줄에 둔다. 제목 위에 제 줄을 차지하던 때는 제목이
           작성 화면보다 27px 아래에 섰다(84 대 111, 390×844 실측). 그 줄이
           올라오면서 제목이 작성 화면과 같은 높이에 선다. */}
       <div className="info-head">
-        <BackButton label={idx === 0 ? '처음으로' : '이전 설명'} onClick={back} />
+        <BackButton label={pick(idx === 0 ? T.home : T.prev, lang)} onClick={back} />
         {/* '1/7' 같은 전체 진행 숫자는 뺐다(2026-09-22). 남은 장을 세게
             만드는 정보였고, 단계명이 하려는 말과도 겹쳤다. 이름 하나만
             남기고 그 이름을 **이 장이 무엇인가**를 말하는 섹션 제목으로
@@ -83,13 +96,13 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
         <HomeX onClick={onClose} />
       </div>
       <div className="info-track" ref={trackRef} tabIndex={-1} role="region"
-        aria-live="polite" aria-label="메가폰트 사용 안내">
+        aria-live="polite" aria-label={pick(T.guide, lang)}>
         {/* key가 바뀌면 장이 새로 서고, 그때 들어오는 결(infoSlideIn)이 돈다 */}
-        <section className="info-slide" key={idx} aria-label={s.title}>
+        <section className="info-slide" key={idx} aria-label={title}>
           {/* 줄바꿈이 적힌 제목은 그 자리를 지킨다(data-break). 나머지는
               balance가 알아서 두 줄을 고르게 나눈다 — 둘은 같이 못 쓴다. */}
-          <h2 data-break={s.title.includes('\n') ? 'true' : undefined}>{s.title}</h2>
-          <div className="info-said">{s.body}</div>
+          <h2 data-break={title.includes('\n') ? 'true' : undefined}>{title}</h2>
+          <div className="info-said">{pick(s.body, lang)}</div>
           {/* 도입 두 장(Problem · Solution)에는 삽화가 없다. 빈 칸을 남기지
               않고 아예 안 세운다 — 테두리만 남은 상자는 '그림이 안 떴다'로
               읽힌다. 글의 자리는 그대로다(제목은 다른 장과 같은 높이). */}
@@ -100,7 +113,7 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
       <div className="info-nav">
         <button type="button" className="primary-action"
           onClick={last ? onStart : () => setIdx(idx + 1)}>
-          {last ? '시작하기' : '다음'}
+          {pick(last ? T.start : T.next, lang)}
         </button>
       </div>
     </div>
@@ -151,7 +164,10 @@ function Relay({ legs }: { legs: Leg[] }) {
   return <div key={i} className={'info-art is-relay ' + leg.artClass} aria-hidden>{leg.art}</div>;
 }
 
-const SLIDES: Array<{ step: string; title: string; body: ReactNode; art?: ReactNode; artClass?: string; relay?: Leg[]; dark?: boolean }> = [
+/* 제목과 본문은 두 언어로 든다(2026-09-26, 영문판 — 영어는 초안). 영어에는 손으로
+   끊은 줄을 넣지 않는다. 한국어가 문장과 문장 사이에서 끊은 자리만 한 번 끊는다.
+   한국 캠퍼스에 묶인 예(대자보·에브리타임·공청회)는 뜻을 살려 옮겼다. */
+const SLIDES: Array<{ step: string; title: Pair; body: Pair<ReactNode>; art?: ReactNode; artClass?: string; relay?: Leg[]; dark?: boolean }> = [
   /* 사용법보다 **왜**가 먼저다(2026-09-22). 그때 문턱(Problem)과 그래서
      둔 것(Solution)을 두 장으로 나눴는데, 2026-09-24에 한 장으로 합쳤다.
      조작을 배우기 전에 읽을 장이 둘이면 '왜'가 설명의 절반을 먹는다.
@@ -159,22 +175,36 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art?: ReactN
      있는 그림을 빌려 오면 이 장의 말이 아닌 것이 선다. */
   {
     step: 'About',
-    title: '말을 꺼내는 또 하나의 방식',
-    body: (
-      <>
-        <p>
-          대자보, 에브리타임, 공청회.<br />
-          말을 전할 통로는 있지만,<br />
-          형식과 절차, 주변의 시선은<br />
-          자유롭게 말하기를 어렵게 합니다.
-        </p>
-        <p>
-          메가폰트는 글을 빛으로 띄우는 카트입니다.<br />
-          내가 다듬은 한 줄을 밤의 벽에 펼치고,<br />
-          그 말을 본 사람도 한마디를 보탤 수 있습니다.
-        </p>
-      </>
-    )
+    title: { ko: '말을 꺼내는 또 하나의 방식', en: 'Another way to speak up' },
+    body: {
+      ko: (
+        <>
+          <p>
+            대자보, 에브리타임, 공청회.<br />
+            말을 전할 통로는 있지만,<br />
+            형식과 절차, 주변의 시선은<br />
+            자유롭게 말하기를 어렵게 합니다.
+          </p>
+          <p>
+            메가폰트는 글을 빛으로 띄우는 카트입니다.<br />
+            내가 다듬은 한 줄을 밤의 벽에 펼치고,<br />
+            그 말을 본 사람도 한마디를 보탤 수 있습니다.
+          </p>
+        </>
+      ),
+      en: (
+        <>
+          <p>
+            Protest posters, anonymous student forums, town hall meetings.<br />
+            There are ways to be heard, but formats, procedures and the eyes of others make it hard to speak freely.
+          </p>
+          <p>
+            MegaFont is a cart that casts words in light.<br />
+            You spread a line you have shaped across the night wall, and anyone who sees it can add a word of their own.
+          </p>
+        </>
+      )
+    }
   },
   {
     /* 쓰기와 성격 정하기를 한 장으로(2026-09-24). 실제로도 한 자리에서
@@ -182,14 +212,22 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art?: ReactN
        갈리는 선이 여기다. 삽화 둘은 그대로 두고 **차례로 잇는다**(Relay):
        작성판 세 컷이 한 번 돌고, 이어서 캐릭터가 한 번 오간다. */
     step: 'Step 1',
-    title: '메시지를 쓰고,\n성격을 정합니다.',
-    body: (
-      <p>
-        최대 60자까지 쓰고, 크기와 빠르기, 무게로<br />
-        나만의 목소리를 만들어보세요.<br />
-        <b>비속어 및 타인을 해치는 표현은 사용할 수 없습니다.</b>
-      </p>
-    ),
+    title: { ko: '메시지를 쓰고,\n성격을 정합니다.', en: 'Write a message and choose its character.' },
+    body: {
+      ko: (
+        <p>
+          최대 60자까지 쓰고, 크기와 빠르기, 무게로<br />
+          나만의 목소리를 만들어보세요.<br />
+          <b>비속어 및 타인을 해치는 표현은 사용할 수 없습니다.</b>
+        </p>
+      ),
+      en: (
+        <p>
+          Write up to 60 characters, then make your own voice with size, pace and weight.<br />
+          <b>Slurs and words that harm others are not allowed.</b>
+        </p>
+      )
+    },
     relay: [
       /* 세 컷은 한 동작의 앞뒤가 아니라 차례로 읽을 목록이라 옆으로 넘긴다
          (slideSvg). 한 자리에서 갈아 끼우던 때는 건너가는 동안 두 판의
@@ -218,13 +256,20 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art?: ReactN
   },
   {
     step: 'Step 2',
-    title: '완료 후, 폰을 홈에 꽂습니다.',
-    body: (
-      <p>
-        앞쪽 홈에 폰을 세로로, 위쪽부터 밀어 넣어<br />
-        메가폰트를 작동시키세요.
-      </p>
-    ),
+    title: { ko: '완료 후, 폰을 홈에 꽂습니다.', en: 'When you are done, put your phone in the slot.' },
+    body: {
+      ko: (
+        <p>
+          앞쪽 홈에 폰을 세로로, 위쪽부터 밀어 넣어<br />
+          메가폰트를 작동시키세요.
+        </p>
+      ),
+      en: (
+        <p>
+          Slide your phone upright into the slot at the front, top end first, to start MegaFont.
+        </p>
+      )
+    },
     /* 세 컷인데 **장면은 둘**이다(2026-09-21에 작가가 다시 그렸다).
        앞의 둘은 한 장면 안에서 포개어 잇는다 — 거기가 **폰이 홈으로
        내려가는 대목**이라 옆으로 넘기면 안 된다. 두 컷은 픽셀의 1.21%만
@@ -254,17 +299,24 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art?: ReactN
        이 장만 화면이 통째로 검정이다(dark) — 삽화의 밤이 화면 끝까지
        이어져야 판과 배경 사이에 경계가 안 생긴다. */
     step: 'Step 3',
-    title: '메가폰트가 작동됩니다.',
+    title: { ko: '메가폰트가 작동됩니다.', en: 'MegaFont comes on.' },
     /* '최대 30초 동안은'을 뺐다(2026-09-21). 이 장이 하는 말은 **빛으로
        말한다**는 것이고, 몇 초인지는 그다음 문제다 — 소개에서 먼저 시간을
        재 주면 읽는 사람이 남은 시간을 세게 된다. 강조 시간 자체는 그대로다
        (wall.ts의 EMPHASIS_SEC). */
-    body: (
-      <p>
-        텍스트가 화면에 떠올라<br />
-        공간을 지나는 사람들에게 닿습니다.
-      </p>
-    ),
+    body: {
+      ko: (
+        <p>
+          텍스트가 화면에 떠올라<br />
+          공간을 지나는 사람들에게 닿습니다.
+        </p>
+      ),
+      en: (
+        <p>
+          Your text rises onto the screen and reaches the people passing through.
+        </p>
+      )
+    },
     /* 한 바퀴를 12초에서 **8.4초(70%)로** 줄인다(2026-09-22). 보고 있으면
        길었다 — 다섯 걸음(어둠·불빛·문구·사람·도로 어둠) 중 사람이 걸어
        들어오는 구간이 혼자 5몫이라 그동안 화면이 멈춘 듯 보인다. 걸음의

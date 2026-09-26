@@ -2,7 +2,21 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
 import { BIG_SIDE_MAX_VW, BIG_SIDE_VH, WallShowMessage } from '../admin/WallSimulation';
 import type { StoredMessage } from '../lib/firebase';
+import { pick, useLang } from '../lib/lang';
 import type { ToneState } from '../types';
+
+/* 이 화면의 말. 영어는 초안이다(2026-09-26, 영문판) */
+const T = {
+    back: { ko: '색 다시 고르기', en: 'Choose the colour again' },
+    title: { ko: '이렇게 보여요', en: 'This is how it will look' },
+    lock: { ko: '보낸 뒤에는 수정할 수 없어요.', en: "You can't edit it after sending." },
+    frame: { ko: '벽에 뜨는 모습', en: 'How it will appear on the wall' },
+    replay: { ko: '다시 보기', en: 'Replay' },
+    kept: { ko: '쓰신 글은 그대로 있어요. 사라지지 않았어요.', en: "Your line is still here. It hasn't been lost." },
+    sending: { ko: '전송 중', en: 'Sending' },
+    retry: { ko: '다시 보낼게요', en: 'Send it again' },
+    send: { ko: '이대로 보낼게요', en: 'Send it as it is' }
+};
 interface Props {
     text: string;
     tone: ToneState;
@@ -31,10 +45,11 @@ interface Props {
  */
 export default function PhasePreview({ text, tone, onConfirm, onBack, onHome, busy = false, error }: Props) {
     const [run, setRun] = useState(0);
+    const lang = useLang();
     // 벽 부품이 받는 꼴. 아직 저장 전이라 id·시각은 이 화면의 자리표다
     const msg = useMemo<StoredMessage>(() => ({ id: 'preview', text, tone, createdAt: 0 }), [text, tone]);
     const frame = { '--big-side': `min(${BIG_SIDE_VH}cqh, ${BIG_SIDE_MAX_VW}cqw)` } as CSSProperties;
-    return <div className="z-frame preview-screen"><StepHeader at={5} back={{ label: '색 다시 고르기', onClick: () => { if (!busy) onBack(); } }}
+    return <div className="z-frame preview-screen"><StepHeader at={5} back={{ label: pick(T.back, lang), onClick: () => { if (!busy) onBack(); } }}
       onHome={() => { if (!busy) onHome(); }} />
  {/* 여기가 마지막이라는 것을 말로 해 둔다. 이 뒤(도킹)에는 '이전'이 없다 —
      글은 이미 보내진 뒤라, 거기서 나가는 문은 처음으로만 난다.
@@ -47,17 +62,17 @@ export default function PhasePreview({ text, tone, onConfirm, onBack, onHome, bu
      말한다('다 썼어요' · '이 색으로 할게요'). '이대로'가 방금 본 미리보기를
      가리켜서 무엇이 보내지는지가 버튼 안에서 끝나고, 실패했을 때의
      '다시 보낼게요'와도 말이 이어진다. */}
- <div className="z-ask is-brief"><h1>이렇게 보여요</h1><p>보낸 뒤에는 수정할 수 없어요.</p></div>
+ <div className="z-ask is-brief"><h1>{pick(T.title, lang)}</h1><p>{pick(T.lock, lang)}</p></div>
  <div className="proj-stage"><div className="sim">
-  <div className="sim-frame is-wall" style={frame} aria-label="벽에 뜨는 모습">
+  <div className="sim-frame is-wall" style={frame} aria-label={pick(T.frame, lang)}>
    <WallShowMessage key={run} msg={msg} land={null} startedAt={0} />
   </div>
   {/* 보조 조작은 이것 하나. 테두리만 있는 작은 버튼이라 아래의 채움
       버튼(보내기)과 무게가 다르다 — 다음으로 가는 길과 섞이지 않는다. */}
   <div className="sim-legend">
-   <button type="button" className="sim-replay" onClick={() => setRun(r => r + 1)}>다시 보기</button>
+   <button type="button" className="sim-replay" onClick={() => setRun(r => r + 1)}>{pick(T.replay, lang)}</button>
   </div>
  </div></div>
- {error && <p role="alert" className="error-banner">{error}<br />쓰신 글은 그대로 있어요. 사라지지 않았어요.</p>}
- <button className="primary-action" disabled={busy} aria-busy={busy} aria-label={busy ? '전송 중' : error ? '다시 보낼게요' : '이대로 보낼게요'} onClick={onConfirm}>{busy ? <span className="cta-loading" aria-hidden>…</span> : error ? '다시 보낼게요' : '이대로 보낼게요'}</button></div>;
+ {error && <p role="alert" className="error-banner">{error}<br />{pick(T.kept, lang)}</p>}
+ <button className="primary-action" disabled={busy} aria-busy={busy} aria-label={pick(busy ? T.sending : error ? T.retry : T.send, lang)} onClick={onConfirm}>{busy ? <span className="cta-loading" aria-hidden>…</span> : pick(error ? T.retry : T.send, lang)}</button></div>;
 }

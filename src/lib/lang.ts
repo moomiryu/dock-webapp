@@ -44,3 +44,6 @@ export function useLang(): Lang {
 /** 한 쌍의 말 가운데 지금 언어 쪽 */
 export type Pair<T = string> = { ko: T; en: T };
 export const pick = <T,>(pair: Pair<T>, lang: Lang = current): T => pair[lang];
+
+/** 영어 수 붙이기 — 1 day / 3 days. 한국어는 수로 모양이 안 바뀌어 필요 없다 */
+export const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;

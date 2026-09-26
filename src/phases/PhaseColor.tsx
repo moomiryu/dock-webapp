@@ -7,7 +7,18 @@ import { bubbleAt, fillFromLegacySize, foldLines } from '../lib/fit';
 import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import { messageColors } from '../lib/messageStyle';
+import { pick, useLang } from '../lib/lang';
 import type { ToneState } from '../types';
+
+/* 이 화면의 말. 영어는 초안이다(2026-09-26, 영문판) */
+const T = {
+    back: { ko: '조율 다시', en: 'Tune again' },
+    title: { ko: '발화의 색을 정해주세요', en: 'Choose a colour for your line' },
+    tray: { ko: '색 고르기', en: 'Choose a colour' },
+    /* 칩 안의 견본 글자 — 바탕은 배경색, 이 글자는 글자색 */
+    sample: { ko: '가', en: 'A' },
+    next: { ko: '이 색으로 할게요', en: 'Use this colour' }
+};
 interface Props {
     text: string;
     tone: ToneState;
@@ -56,6 +67,7 @@ const AREA = 'min(96cqw, 96cqh)';
 
 export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props) {
     const initial = messageColors(tone);
+    const lang = useLang();
     const lines = foldLines(text);
     // 벽과 같은 구름이어야 미리보기가 거짓말이 아니다 — 씨앗은 글 자체(cloud.ts)
     const cloud = cloudForTone(lines, tone);
@@ -67,11 +79,11 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
       style={{ '--pane-bg': bg, '--chrome-ink': fg } as CSSProperties}>
  <div className="proj-stage is-bleed"><div className="proj-fit">
   <div className="proj-frame compose-editor is-pulled">
-   <StepHeader className="compose-chrome" at={4} back={{ label: '조율 다시', onClick: () => onBack(current) }} onHome={onHome} />
+   <StepHeader className="compose-chrome" at={4} back={{ label: pick(T.back, lang), onClick: () => onBack(current) }} onHome={onHome} />
    {/* 03에서 자판을 내렸을 때 선 제목이 그 자리 그대로 글자만 바뀐다.
        화면이 갈린 게 아니라 묻는 것이 바뀐 것으로 읽혀야 한다. */}
    <div className="z-ask compose-ask">
-    <h1>발화의 색을 정해주세요</h1>
+    <h1>{pick(T.title, lang)}</h1>
    </div>
    <div className="color-stage" style={{ '--color-area': AREA } as CSSProperties}>
     <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={bg}>
@@ -85,13 +97,13 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
  </div></div>
  {/* 열 조합. 배경과 글자가 한 짝이라 따로 고르지 않는다 — 네모 하나가
      그 짝을 통째로 보여 준다(바탕은 배경색, 안의 '가'는 글자색). */}
- <div className="color-tray" role="group" aria-label="색 고르기">
+ <div className="color-tray" role="group" aria-label={pick(T.tray, lang)}>
   {moods.map(m => {
       const on = m.bg.toUpperCase() === bg.toUpperCase() && m.text.toUpperCase() === fg.toUpperCase();
       return <button key={m.id} type="button" className={'color-chip' + (on ? ' on' : '')}
-        style={{ background: m.bg, color: m.text }} aria-pressed={on} aria-label={m.name}
-        onClick={() => { setBg(m.bg); setFg(m.text); }}>가</button>;
+        style={{ background: m.bg, color: m.text }} aria-pressed={on} aria-label={pick(m.name, lang)}
+        onClick={() => { setBg(m.bg); setFg(m.text); }}>{pick(T.sample, lang)}</button>;
   })}
  </div>
- <button className="primary-action" onClick={() => onNext(current)}>이 색으로 할게요</button></div>;
+ <button className="primary-action" onClick={() => onNext(current)}>{pick(T.next, lang)}</button></div>;
 }

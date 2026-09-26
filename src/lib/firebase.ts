@@ -1,4 +1,21 @@
 import type { Draft, ToneState } from '../types';
+import { getLang, pick, type Pair } from './lang';
+
+/**
+ * 참여자에게 **그대로 보여 줄** 오류 (2026-09-26, 영문판).
+ *
+ * 화면(PhaseSubmit)은 오류 글에 한글이 있는지로 보여 줄지를 가렸다 — 영어
+ * 문구는 그 체에 걸려 늘 '문제가 생겼어요'로 바뀌었다. 이제 이 종류인지로
+ * 가른다. 글은 던지는 순간의 언어로 만든다.
+ */
+export class UserError extends Error {}
+const say = (pair: Pair) => new UserError(pick(pair, getLang()));
+
+const E = {
+  wall: { ko: '벽에 닿지 못했어요. 잠시 뒤 다시 보내주세요.', en: "Couldn't reach the wall. Please try again in a moment." },
+  length: { ko: '1~200자로 적어주세요.', en: 'Please write between 1 and 200 characters.' },
+  feedback: { ko: '보내지 못했어요. 잠시 뒤 다시 보내주세요.', en: "Couldn't send it. Please try again in a moment." }
+};
 
 export interface StoredMessage {
   id: string;
@@ -134,9 +151,9 @@ function buildRestClient(): FirestoreLike {
         }),
         15000
       ).catch(() => {
-        throw new Error('벽에 닿지 못했어요. 잠시 뒤 다시 보내주세요.');
+        throw say(E.wall);
       });
-      if (!res.ok) throw new Error('벽에 닿지 못했어요. 잠시 뒤 다시 보내주세요.');
+      if (!res.ok) throw say(E.wall);
       const json = (await res.json()) as { name?: string };
       return json.name ? (json.name.split('/').pop() ?? 'rest') : 'rest-' + Date.now();
     },
@@ -599,7 +616,7 @@ function randomId(n = 20): string {
 
 export async function submitFeedback(text: string): Promise<void> {
   const t = text.trim();
-  if (!t || Array.from(t).length > FEEDBACK_MAX) throw new Error('1~200자로 적어주세요.');
+  if (!t || Array.from(t).length > FEEDBACK_MAX) throw say(E.length);
   if (!hasFirebaseEnv()) {
     const list = JSON.parse(localStorage.getItem(FEEDBACK_MOCK) ?? '[]') as Feedback[];
     list.unshift({ id: 'mock-' + Date.now(), text: t, createdAt: Date.now() });
@@ -616,8 +633,8 @@ export async function submitFeedback(text: string): Promise<void> {
   };
   const res = await withTimeout(fetch(`${FS_BASE}:commit?key=${FS_KEY}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
-  }), 15000).catch(() => { throw new Error('보내지 못했어요. 잠시 뒤 다시 보내주세요.'); });
-  if (!res.ok) throw new Error('보내지 못했어요. 잠시 뒤 다시 보내주세요.');
+  }), 15000).catch(() => { throw say(E.feedback); });
+  if (!res.ok) throw say(E.feedback);
 }
 
 /** 관리자 로그인 — Firebase Auth REST. 돌려받은 idToken은 한 시간 간다 */

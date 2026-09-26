@@ -11,11 +11,19 @@
  * 따라 바뀐다. 실시간 알림(aria-live)은 걸지 않는다 — 화면 제목과 겹쳐 같은
  * 말을 두 번 한다.
  */
+import { useLang, type Pair } from '../lib/lang';
+
 const COUNT = 5;
-/** 단계 이름은 이 앱이 쓰던 그대로다 — 이전 머리줄과 README의 이름 */
-const NAMES = ['한 줄', '성격', '조율', '색', '미리보기'];
+/** 단계 이름은 이 앱이 쓰던 그대로다 — 이전 머리줄과 README의 이름.
+ *  영어 이름은 사용자가 정했다(2026-09-26) */
+const NAMES: Pair<string[]> = {
+  ko: ['한 줄', '성격', '조율', '색', '미리보기'],
+  en: ['Line', 'Character', 'Tune', 'Colour', 'Preview']
+};
 
 export default function StepOf({ at }: { at: 1 | 2 | 3 | 4 | 5 }) {
+  const lang = useLang();
+  const name = NAMES[lang][at - 1];
   return (
     <span className="step-of">
       <span className="step-dots" aria-hidden="true">
@@ -23,7 +31,9 @@ export default function StepOf({ at }: { at: 1 | 2 | 3 | 4 | 5 }) {
           <i key={i} className={'step-dot' + (i + 1 === at ? ' is-now' : '')} />
         ))}
       </span>
-      <span className="sr-only">{`전체 ${COUNT}단계 중 ${at}단계, ${NAMES[at - 1]}`}</span>
+      <span className="sr-only">
+        {lang === 'en' ? `Step ${at} of ${COUNT}, ${name}` : `전체 ${COUNT}단계 중 ${at}단계, ${name}`}
+      </span>
     </span>
   );
 }

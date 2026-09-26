@@ -1,6 +1,12 @@
 import type { CSSProperties, ReactNode } from 'react';
 import BackButton from './BackButton';
 import HomeButton from './HomeButton';
+import { pick, useLang } from '../lib/lang';
+
+const T = {
+  back: { ko: '이전', en: 'Back' },
+  home: { ko: '처음으로', en: 'Back to start' }
+};
 
 interface Props {
   phaseLabel: string;
@@ -21,11 +27,12 @@ interface Props {
 }
 
 export default function MegafontFrame({ phaseLabel, children, style, onBack, onHome }: Props) {
+  const lang = useLang();
   return (
     <div className="mf-frame" style={style}>
       <div className="mf-header">
-        {onBack ? <BackButton label="이전" onClick={onBack}/>
-          : onHome ? <HomeButton label="처음으로" onClick={onHome}/>
+        {onBack ? <BackButton label={pick(T.back, lang)} onClick={onBack}/>
+          : onHome ? <HomeButton label={pick(T.home, lang)} onClick={onHome}/>
           : <span>MEGAFONT</span>}
         <span>{phaseLabel}</span>
       </div>

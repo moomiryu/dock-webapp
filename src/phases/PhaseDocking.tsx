@@ -13,6 +13,16 @@ import {
 } from '../lib/firebase';
 import { isDevMode } from '../lib/stage';
 import { EMPHASIS_MS } from '../lib/wall';
+import { pick, useLang } from '../lib/lang';
+
+/* 이 화면의 말. 영어는 초안이다(2026-09-26, 영문판) */
+const T = {
+  label: { ko: '도킹', en: 'Docking' },
+  title: { ko: '앞쪽 홈에 폰을 꽂으면 발화가 시작됩니다.', en: 'Put your phone in the slot at the front to start speaking.' },
+  how: { ko: '세로로, 윗부분을 먼저 넣어주세요.', en: 'Hold it upright and put the top end in first.' },
+  /* 개발용 버튼(?dev=1)이라 참여자는 못 본다 */
+  test: { ko: '꽂았어요', en: "I've docked it" }
+};
 
 interface Props {
   /** 방금 보낸 글의 id — 벽이 '어느 글을 띄울지' 알아야 한다 */
@@ -51,11 +61,11 @@ const CLAIM_EVERY_MS = 5000;
  * 돌아오면 저절로 넘어간다.
  */
 const NOTES = {
-  occupied: '앞의 폰이 아직 꽂혀 있어요. 빠지면 바로 꽂을 수 있어요.',
-  queued: '다른 분이 먼저 기다리고 있어요. 곧 차례가 와요.',
-  offline: '설치물과 연결이 안 돼요. 계속 다시 걸어볼게요.',
-  failed: '벽에 닿지 못했어요. 다시 걸어볼게요.'
-} as const;
+  occupied: { ko: '앞의 폰이 아직 꽂혀 있어요. 빠지면 바로 꽂을 수 있어요.', en: "The previous phone is still in the slot. You can put yours in as soon as it's out." },
+  queued: { ko: '다른 분이 먼저 기다리고 있어요. 곧 차례가 와요.', en: 'Someone else is waiting first. Your turn is coming soon.' },
+  offline: { ko: '설치물과 연결이 안 돼요. 계속 다시 걸어볼게요.', en: "Can't connect to the installation. Still trying." },
+  failed: { ko: '벽에 닿지 못했어요. 다시 걸어볼게요.', en: "Couldn't reach the wall. Trying again." }
+};
 
 type Note = keyof typeof NOTES | null;
 
@@ -97,6 +107,7 @@ function newSessionId(): string {
 //   3. 그 둘이 맞으면 송출 시작을 확정하고, 확정된 뒤에만 넘어간다
 export default function PhaseDocking({ messageId, onDocked, onHome }: Props) {
   const [note, setNote] = useState<Note>(null);
+  const lang = useLang();
   const firedRef = useRef(false);
   const sessionRef = useRef('');
   if (!sessionRef.current) sessionRef.current = newSessionId();
@@ -215,19 +226,19 @@ export default function PhaseDocking({ messageId, onDocked, onHome }: Props) {
   }
 
   return (
-    <MegafontFrame phaseLabel="도킹" onHome={onHome}>
+    <MegafontFrame phaseLabel={pick(T.label, lang)} onHome={onHome}>
       <div className="guide-hero docking-simple">
-        <h1>앞쪽 홈에 폰을 꽂으면 발화가 시작됩니다.</h1>
-        <p>세로로, 윗부분을 먼저 넣어주세요.</p>
+        <h1>{pick(T.title, lang)}</h1>
+        <p>{pick(T.how, lang)}</p>
         <DockGuide />
         {note && (
           <p className="dock-note" role="status">
-            {NOTES[note]}
+            {pick(NOTES[note], lang)}
           </p>
         )}
         {dev && (
           <button className="dock-test-link" onClick={handleTestDock}>
-            꽂았어요
+            {pick(T.test, lang)}
           </button>
         )}
       </div>

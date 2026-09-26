@@ -3,6 +3,26 @@ import StepHeader from '../components/StepHeader';
 import { MANNER, SIZE_WORDS, SPEED_WORDS, STOPS, WEIGHT_WORDS, fontMap, formFor, hasWeightAxis, legacyFields, opticalFix, sizeAt, sizePos, snap, stopAt } from '../lib/palettes';
 import { DEFAULT_TONE, type PartialTone } from '../lib/tone';
 import { foldLines } from '../lib/fit';
+import { pick, useLang } from '../lib/lang';
+
+/* 이 화면의 말. 축 이름은 사용자가 정했고 나머지 영어는 초안이다(2026-09-26) */
+const T = {
+    backIntro: { ko: '성격 다시 고르기', en: 'Choose the character again' },
+    backWork: { ko: '설명 다시 보기', en: 'See the explanation again' },
+    title: { ko: <>전하고 싶은 느낌으로<br />조절해보세요</>, en: <>Tune it to the feeling you want to get across</> },
+    /* 셋째 축은 서체가 정한다 — 무게가 없는 서체는 말투를 묻는다(palettes.ts · MANNER) */
+    leadWeight: { ko: '발화의 크기, 속도, 무게를 정해봐요.', en: 'Set the size, pace and weight of your line.' },
+    leadManner: { ko: '발화의 크기, 속도, 말투를 정해봐요.', en: 'Set the size, pace and tone of your line.' },
+    start: { ko: '화면을 누르면 시작해요', en: 'Tap the screen to start' },
+    comparing: { ko: '기본 상태를 보는 중. 눌러서 편집한 상태로 돌아가기', en: 'Showing the default. Tap to go back to your edit' },
+    compare: { ko: '눌러서 기본과 비교', en: 'Tap to compare with the default' },
+    orig: { ko: '기본', en: 'Default' },
+    size: { ko: '크기', en: 'Size' },
+    speed: { ko: '속도', en: 'Pace' },
+    weight: { ko: '무게', en: 'Weight' },
+    manner: { ko: '말투', en: 'Tone' },
+    next: { ko: '다음', en: 'Next' }
+};
 
 interface Props {
     /** 앞 화면들에서 쓰고 고른 것. 견본이 이제 내 글이다 */
@@ -202,13 +222,15 @@ function Slider({ name, words, value, onChange }: {
  */
 function MannerSwitch({ font, at, onPick }: { font: string; at: number; onPick: (i: number) => void }) {
     const m = MANNER[font];
+    const lang = useLang();
+    const labels = pick(m.labels, lang);
     return <div className="tslider">
      <div className="tslider-lab">
-      <span className="tslider-name" id="tswitch-name">말투</span>
-      <span className="tslider-word" aria-hidden>{m.labels[at ? 1 : 0]}</span>
+      <span className="tslider-name" id="tswitch-name">{pick(T.manner, lang)}</span>
+      <span className="tslider-word" aria-hidden>{labels[at ? 1 : 0]}</span>
      </div>
      <div className="tswitch" role="radiogroup" aria-labelledby="tswitch-name">
-      {m.labels.map((label, i) =>
+      {labels.map((label, i) =>
         <button key={i} type="button" role="radio" aria-checked={(at ? 1 : 0) === i}
           className={'tswitch-side' + ((at ? 1 : 0) === i ? ' on' : '')}
           onClick={() => onPick(i)}>
@@ -226,6 +248,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }:
         const t = { ...initialTone, speed: initialTone.speed ?? 0.5, weight: initialTone.weight ?? 0.5 };
         return { ...t, ...legacyFields(t) };
     });
+    const lang = useLang();
     /** 'intro' = 설명하는 장 · 'work' = 조작하는 장 */
     const [step, setStep] = useState<'intro' | 'work'>('intro');
     /** 견본을 눌러 기본 상태를 보고 있는가. 값을 만지면 편집값으로 돌아온다 */
@@ -392,12 +415,12 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }:
   <section className="tone-pane tone-intro"
     onClick={e => { if (!(e.target as HTMLElement).closest('button')) setStep('work'); }}>
    <div className="z-glyph-stage has-face">
-    <StepHeader at={3} back={{ label: '성격 다시 고르기', onClick: () => onBack(tone) }} onHome={onHome} />
+    <StepHeader at={3} back={{ label: pick(T.backIntro, lang), onClick: () => onBack(tone) }} onHome={onHome} />
     {/* is-brief를 뺐다 — 그 규칙은 3초 뒤 제목을 저절로 접는다. 여기서는
         설명이 사라지는 계기가 **누르는 손**이어야 한다. '가'와 같이 간다. */}
     <div className="z-ask">
-     <h1>전하고 싶은 느낌으로<br />조절해보세요</h1>
-     <p>발화의 크기, 속도, {hasWeightAxis(tone.font) ? '무게' : '말투'}를 정해봐요.</p>
+     <h1>{pick(T.title, lang)}</h1>
+     <p>{pick(hasWeightAxis(tone.font) ? T.leadWeight : T.leadManner, lang)}</p>
     </div>
     {/* 삽화 자리. 아직 그려지지 않았다 — 지금은 '발화' 두 글자가 대신
         서서 크기와 빠르기 축을 차례로 훑는다(app.css · toneDemo).
@@ -413,14 +436,14 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }:
         떨어졌다). 보이는 모습은 그대로 두고 버튼으로 바꾼다 — 이름은
         화면에 적힌 그 문장이어야 한다(눈에 보이는 글자와 낭독되는 이름이
         어긋나면 음성으로 조작하는 사람이 부를 이름을 잃는다). */}
-    <button type="button" className="tone-more" onClick={() => setStep('work')}>화면을 누르면 시작해요</button>
+    <button type="button" className="tone-more" onClick={() => setStep('work')}>{pick(T.start, lang)}</button>
    </div>
   </section>
 
   {/* ── 둘째 장: 견본과 편집 패널 ──────────────────────────────── */}
   <section className="tone-pane tone-work">
    <div className="z-glyph-stage has-face">
-    <StepHeader at={3} back={{ label: '설명 다시 보기', onClick: () => setStep('intro') }} onHome={onHome} />
+    <StepHeader at={3} back={{ label: pick(T.backWork, lang), onClick: () => setStep('intro') }} onHome={onHome} />
     {/* 견본은 글자뿐이다. 도형은 색을 고르는 화면에서 처음 나온다.
         한 겹을 더 두른 것은 **자리를 재기 위해서다** — 머리줄을 뺀 나머지가
         견본의 몫인데, 칸 전체를 기준으로 삼으면 머리줄 높이만큼 넘친다.
@@ -429,7 +452,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }:
         둘은 없어졌다 — 비교는 보는 것에 얹혔고, 되돌리기는 아래 패널에서
         지금 항목 옆에 선다. */}
     <div className="tone-face" role="button" tabIndex={0} aria-pressed={compare}
-      aria-label={compare ? '기본 상태를 보는 중. 눌러서 편집한 상태로 돌아가기' : '눌러서 기본과 비교'}
+      aria-label={pick(compare ? T.comparing : T.compare, lang)}
       onPointerDown={faceDown} onPointerUp={faceUp}
       onPointerCancel={() => { tap.current = null; }} onKeyDown={faceKey}>
      <div className="z-glyph-fit">
@@ -448,8 +471,8 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }:
          한 곳만 본다. */}
      <div className="tone-face-foot">
       {compare
-        ? <span className="tone-orig-chip">기본</span>
-        : <span className="tone-compare-hint" aria-hidden>눌러서 기본과 비교</span>}
+        ? <span className="tone-orig-chip">{pick(T.orig, lang)}</span>
+        : <span className="tone-compare-hint" aria-hidden>{pick(T.compare, lang)}</span>}
      </div>
     </div>
    </div>
@@ -468,18 +491,18 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }:
        만지던 탭은 걷었다. 작은 화면(320)에서는 이 판이 줄지 않고 위의 견본
        칸이 줄어든다(견본 칸은 남는 자리를 받는다). */}
    <div className="tone-panel">
-    <Slider name="크기" words={SIZE_WORDS} value={sizePos(tone.size)}
+    <Slider name={pick(T.size, lang)} words={pick(SIZE_WORDS, lang)} value={sizePos(tone.size)}
       onChange={v => set({ size: +sizeAt(v).toFixed(2) })} />
-    <Slider name="속도" words={SPEED_WORDS[tone.font] ?? SIZE_WORDS} value={speed}
+    <Slider name={pick(T.speed, lang)} words={pick(SPEED_WORDS[tone.font] ?? SIZE_WORDS, lang)} value={speed}
       onChange={v => set({ speed: v })} />
     {hasWeightAxis(tone.font)
-      ? <Slider name="무게" words={WEIGHT_WORDS} value={weight} onChange={v => set({ weight: v })} />
+      ? <Slider name={pick(T.weight, lang)} words={pick(WEIGHT_WORDS, lang)} value={weight} onChange={v => set({ weight: v })} />
       : <MannerSwitch font={tone.font} at={tone.manner ?? 0} onPick={i => set({ manner: i })} />}
 
     {/* '다음'이 패널 안에 있다. 밖에 두면 패널과 버튼 사이에 흰 띠가 한 겹
         더 생겨, 이 화면에 색이 바뀌는 경계가 둘이 된다. 하나면 된다 —
         붉은 미리보기 / 회색 조작 영역. */}
-    <button className="primary-action" onClick={() => onNext(tone)}>다음</button>
+    <button className="primary-action" onClick={() => onNext(tone)}>{pick(T.next, lang)}</button>
    </div>
   </section>
 

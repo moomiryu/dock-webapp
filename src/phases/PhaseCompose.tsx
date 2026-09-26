@@ -1,6 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import StepHeader from '../components/StepHeader';
 import { foldLines } from '../lib/fit';
+import { count, pick, useLang, type Pair } from '../lib/lang';
+
+/* 이 화면의 말. 영어는 초안이다(2026-09-26, 영문판) */
+const T = {
+    back: { ko: '처음으로', en: 'Back to start' },
+    lead: { ko: '어떤 발화를 시작해볼까요? 혼잣말도, 함께 나누고 싶은 생각도 좋아요.', en: 'What would you like to say? It can be something to yourself, or a thought to share.' },
+    input: { ko: '벽에 올릴 한 줄', en: 'Your line for the wall' },
+    lines: { ko: '다섯 줄까지 쓸 수 있어요', en: 'You can write up to 5 lines' },
+    hint: { ko: '어떤 말을 쓸지 모르겠어요.', en: "I don't know what to write." },
+    full: { ko: '다 찼어요', en: 'Full' },
+    hintHead: { ko: '이런 말도 좋아요', en: 'Some examples' },
+    close: { ko: '닫기', en: 'Close' },
+    done: { ko: '다 썼어요', en: 'Done writing' }
+};
+/** 잘린 글자 수 · 남은 글자 수 — 영어는 수에 따라 낱말 꼴이 바뀐다 */
+const cutSay = (n: number): Pair => ({ ko: `${n}자는 들어가지 않았어요`, en: `${count(n, 'character', 'characters')} didn't fit` });
+const leftSay = (n: number): Pair => ({ ko: `${n}자 남았어요`, en: `${count(n, 'character', 'characters')} left` });
 
 interface Props {
     initialText: string;
@@ -41,13 +58,25 @@ interface Props {
  *
  * 주제는 넷 다 다른 결이다 — 관찰 · 바람 · 건넴 · 외침. 하나로 쏠리면
  * 그 결이 권장되는 것으로 읽힌다.
+ *
+ * 영어 예문은 초안이다(2026-09-26). 결 넷은 그대로 옮긴다. 넷 다 벽의 줄 접기로
+ * 다섯 줄 안에 든다 — 영어는 낱말째 넘어가 60자 전에 다섯 줄이 차기도 한다
+ * ('광합성'을 옮긴 photosynthesis는 12자를 넘어 낱말 가운데서 잘렸다).
  */
-const HINTS: Array<{ topic: string; line: string }> = [
-    { topic: '오늘 발견한 것', line: '이 시간의 캠퍼스는 생각보다 다정하다.' },
-    { topic: '이곳에 바라는 것', line: '잠깐 앉아 쉴 벤치가 더 있으면 좋겠다.' },
-    { topic: '누군가에게 건네는 말', line: '아직 작업 중인 사람, 나도 여기 있어요.' },
-    { topic: '그냥 외쳐보고 싶은 말', line: '과제도 광합성으로 끝낼 수 있으면 좋겠다.' }
-];
+const HINTS: Pair<Array<{ topic: string; line: string }>> = {
+    ko: [
+        { topic: '오늘 발견한 것', line: '이 시간의 캠퍼스는 생각보다 다정하다.' },
+        { topic: '이곳에 바라는 것', line: '잠깐 앉아 쉴 벤치가 더 있으면 좋겠다.' },
+        { topic: '누군가에게 건네는 말', line: '아직 작업 중인 사람, 나도 여기 있어요.' },
+        { topic: '그냥 외쳐보고 싶은 말', line: '과제도 광합성으로 끝낼 수 있으면 좋겠다.' }
+    ],
+    en: [
+        { topic: 'Something you noticed today', line: 'Campus at this hour is kinder than I thought.' },
+        { topic: 'Something you want for this place', line: 'I wish there were more benches to rest on.' },
+        { topic: 'Words for someone', line: "To whoever is still working: I'm here too." },
+        { topic: 'Something you just want to shout', line: 'I wish my assignments ran on sunlight.' }
+    ]
+};
 
 /**
  * placeholder는 없다 (2026-09-22).
@@ -63,6 +92,7 @@ const HINTS: Array<{ topic: string; line: string }> = [
 
 export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
     const [text, setText] = useState(initialText);
+    const lang = useLang();
     /** 힌트가 펼쳐져 있는가. 글과 따로 사는 값이라 열고 닫아도 글은 그대로다 */
     const [hint, setHint] = useState(false);
     const input = useRef<HTMLTextAreaElement>(null);
@@ -160,7 +190,7 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
       날아가는데, 그 순간 손가락이 있는 자리가 하필 거기다. */}
   {/* X도 뒤로가기와 같이 초안을 저장하고 처음으로 간다 — 이 화면의 '처음으로'가
       원래 그렇게 동작했다(App: saveText 뒤 home). 지우지 않는다. */}
-  <StepHeader at={1} back={{ label: '처음으로', onClick: () => onBack(text) }} onHome={() => onBack(text)} />
+  <StepHeader at={1} back={{ label: pick(T.back, lang), onClick: () => onBack(text) }} onHome={() => onBack(text)} />
   {/* 줄바꿈은 발화자가 정한다 — 자판의 줄바꿈이 그대로 남는다.
       계산도 상자도 끼어들지 않는다.
 
@@ -203,9 +233,9 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
         (app.css) 문장 끝에 그린 커서를 대신 깜빡인다. 안내는 입력값이
         아니다 — 칸의 값은 비어 있고, 첫 글자에 이 문장째 사라진다. */}
     {!text && <p className="write-lead">
-     어떤 발화를 시작해볼까요? 혼잣말도, 함께 나누고 싶은 생각도 좋아요.<i className="write-caret" aria-hidden />
+     {pick(T.lead, lang)}<i className="write-caret" aria-hidden />
     </p>}
-    <textarea ref={input} className="write-input" aria-label="벽에 올릴 한 줄"
+    <textarea ref={input} className="write-input" aria-label={pick(T.input, lang)}
       style={{ '--rows': Math.max(1, foldLines(text || ' ').length) } as React.CSSProperties}
       value={text} maxLength={60} spellCheck={false}
       onPaste={e => {
@@ -233,7 +263,7 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
         /* 조합이 끝나고 나서야 센다. 넘쳤으면 조합이 시작되기 전의 글로
            되돌린다 — 조합 중에 되돌리면 그 글자가 깨진다. */
         const done = e.currentTarget.value.slice(0, 60);
-        if (foldLines(done).length > 5) { setOver('다섯 줄까지 쓸 수 있어요'); setText(lastGood.current); }
+        if (foldLines(done).length > 5) { setOver(pick(T.lines, lang)); setText(lastGood.current); }
         else { lastGood.current = done; setText(done); }
       }}
       onChange={e => {
@@ -246,7 +276,7 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
            검사에 걸릴 일이 없고, 발화자가 엔터로 직접 끊었을 때만 걸린다
            (한 글자짜리 줄 여섯이면 여섯 자로도 여섯 줄이 된다).
            넘치면 **받지 않는다** — 이미 쓴 글을 잘라 내는 것보다 낫다. */
-        if (foldLines(next).length > 5) { setOver('다섯 줄까지 쓸 수 있어요'); return; }
+        if (foldLines(next).length > 5) { setOver(pick(T.lines, lang)); return; }
         setOver(''); setText(next); lastGood.current = next;
       }}/>
   </div>
@@ -269,32 +299,32 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
            내려앉았다. 닫으면 다시 초점을 돌려주므로 자판도 같이 돌아온다. */
         input.current?.blur();
         setHint(true);
-      }}>어떤 말을 쓸지 모르겠어요.</button>
+      }}>{pick(T.hint, lang)}</button>
     {/* 다 찼다는 말을 **숫자와 글자 둘로** 한다. 색만 바꾸면 색을 못 보는
         사람에게는 아무 일도 안 일어난 화면이다. */}
     <span className={'compose-count' + (full ? ' is-full' : '')}>
       {text.length}<span>/60</span>
-      {full && <b>다 찼어요</b>}
+      {full && <b>{pick(T.full, lang)}</b>}
     </span>
   </div>
   {/* 잘린 것은 그 자리에서 말한다. 다음 글자를 치면 사라진다 */}
-  {(cut > 0 || over) && <span className="compose-cut" role="status">{over || `${cut}자는 들어가지 않았어요`}</span>}
+  {(cut > 0 || over) && <span className="compose-cut" role="status">{over || pick(cutSay(cut), lang)}</span>}
   {/* 낭독기에는 **마지막 열 자**만 알린다. 한 자마다 읽어 주면 쓰는 것을
       방해하고, 안 알리면 한도가 있다는 것조차 모른다. */}
   <span className="sr-only" aria-live="polite">
-    {full ? '다 찼어요' : left <= 10 ? `${left}자 남았어요` : ''}
+    {full ? pick(T.full, lang) : left <= 10 ? pick(leftSay(left), lang) : ''}
   </span>
 
   {hint && (
     <div className="write-hint" id="write-hint">
       <div className="write-hint-head">
-        <span>이런 말도 좋아요</span>
-        <button type="button" className="hint-close" onClick={close}>닫기</button>
+        <span>{pick(T.hintHead, lang)}</span>
+        <button type="button" className="hint-close" onClick={close}>{pick(T.close, lang)}</button>
       </div>
       {/* 주제와 예시는 읽는 결이 다르다. 목록의 이름과 설명으로 둔다 —
           예시가 버튼이 아니라는 것도 이 꼴이 말한다. */}
       <dl className="write-hint-list">
-        {HINTS.map(h => (
+        {pick(HINTS, lang).map(h => (
           <div key={h.topic}>
             <dt>{h.topic}</dt>
             <dd>{h.line}</dd>
@@ -304,6 +334,6 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
     </div>
   )}
 
-  <button className="primary-action" disabled={empty} onClick={() => onSubmit(text.trim())}>다 썼어요</button>
+  <button className="primary-action" disabled={empty} onClick={() => onSubmit(text.trim())}>{pick(T.done, lang)}</button>
  </div>;
 }

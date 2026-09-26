@@ -3827,7 +3827,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
      말투와 같은 부품 R12·같은 회색). 제목과 스위치 사이는 확인 창의 제목과
      두 답 사이와 같다(--s4).
    · ✕는 카드의 오른쪽 위 구석에 44×44 상자째 붙는다. */
-.home-char{ cursor: pointer; }
+.home-char[role='button']{ cursor: pointer; }   /* 영문판이 닫혀 있으면 단추가 아니다(LANG_OPEN) */
 .home-char:focus-visible{ outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--r-control); }
 .lang-veil{ z-index: 1200; }
 .lang-card{ position: relative; }

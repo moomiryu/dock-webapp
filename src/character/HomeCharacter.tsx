@@ -5,7 +5,7 @@ import {
   type Eyes, type Pose, type PoseGeo
 } from './morph';
 import { charPos } from './pos';
-import { getLang, type Pair } from '../lib/lang';
+import { LANG_OPEN, getLang, type Pair } from '../lib/lang';
 
 /**
  * 캐릭터가 처음 서는 자리 — 화면 높이에 대한 비율. 가로는 늘 한가운데다.
@@ -96,17 +96,20 @@ const POSE_DWELL = 900;
  * — 그 사람이 창을 찾아야 하는 사람이다. 첫인사 마디라 isLatin이 그 줄만
  * Lineal 굵기로 바꿔 준다. 영어 마디들은 초안이다(3단계 문구에서 다시 본다).
  * 영어 쪽 머무는 시간은 같은 자리의 한국어 마디 값을 그대로 썼다.
+ *
+ * 영문판이 닫혀 있으면(lang.ts · LANG_OPEN) 이 안내 마디(hint)는 빠진다 —
+ * 누를 곳이 없는데 누르라고 하면 안 된다. 그때 인사는 영문판 이전의 세 마디다.
  */
-const WELCOME: Pair<Array<{ text: string; ms: number }>> = {
+const WELCOME: Pair<Array<{ text: string; ms: number; hint?: true }>> = {
   ko: [
     { text: '안녕하세요.', ms: 1400 },
-    { text: 'Tap me for English.', ms: 2600 },
+    { text: 'Tap me for English.', ms: 2600, hint: true },
     { text: '메가폰트 웹앱에 오신 걸\n환영해요.', ms: 2600 },
     { text: '아래 버튼을 눌러,\n발화를 시작해보세요.', ms: 2900 }
   ],
   en: [
     { text: 'Hello.', ms: 1400 },
-    { text: '저를 누르면\n한국어로 바꿀 수 있어요.', ms: 2600 },
+    { text: '저를 누르면\n한국어로 바꿀 수 있어요.', ms: 2600, hint: true },
     { text: 'Welcome to the\nMegaFont web app.', ms: 2600 },
     { text: 'Tap a button below\nto start speaking.', ms: 2900 }
   ]
@@ -520,7 +523,7 @@ export default function HomeCharacter({ onTap }: {
         } else if (!sayUntil && t > welcomeNext) {
           /* 마디마다 지금 언어를 다시 본다 — 인사 도중 창에서 언어를
              바꾸면 다음 마디부터 그 언어로 이어진다 */
-          const welcome = WELCOME[getLang()];
+          const welcome = WELCOME[getLang()].filter((w) => LANG_OPEN || !w.hint);
           if (welcomeIdx >= welcome.length) {
             intro = null;
             charPos.greeted = true;      // 이제 나팔에서 남의 말이 나온다
@@ -726,16 +729,20 @@ export default function HomeCharacter({ onTap }: {
       className="home-char"
       data-eyes={eyes}
       data-blind={blind ? 'true' : undefined}
-      /* 누르면 언어 창이 뜨는 단추다(2026-09-26). 낭독기·자판으로도 누를 수
-         있어야 한다 — 움직임을 끈 사람에게는 인사도 안 나온다. 이름은 두
-         언어로: 이 단추를 찾는 사람은 지금 화면의 언어를 못 읽는 사람이다. */
-      role="button"
-      tabIndex={0}
-      aria-haspopup="dialog"
-      aria-label="언어 · Language"
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTap?.(); }
-      }}
+      /* onTap이 있으면 누르면 언어 창이 뜨는 단추다(2026-09-26). 낭독기·
+         자판으로도 누를 수 있어야 한다 — 움직임을 끈 사람에게는 인사도 안
+         나온다. 이름은 두 언어로: 이 단추를 찾는 사람은 지금 화면의 언어를
+         못 읽는 사람이다. onTap이 없으면(영문판이 닫힌 배포본) 영문판 이전
+         그대로 그림일 뿐이다. */
+      {...(onTap ? {
+        role: 'button',
+        tabIndex: 0,
+        'aria-haspopup': 'dialog' as const,
+        'aria-label': '언어 · Language',
+        onKeyDown: (e: React.KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTap(); }
+        }
+      } : { role: 'img', 'aria-label': '메가폰트 캐릭터' })}
     >
       {frame && say && !matchMedia('(prefers-reduced-motion: reduce)').matches && createPortal(
         /* 글자는 비워 둔다 — 찍는 쪽(rAF)이 프레임마다 채운다. 여기에

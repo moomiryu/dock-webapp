@@ -4,7 +4,7 @@ import LangDialog from '../components/LangDialog';
 import HomeCharacter from '../character/HomeCharacter';
 import HomeCrowd from '../character/HomeCrowd';
 import HomeVoices from '../components/HomeVoices';
-import { pick, useLang } from '../lib/lang';
+import { LANG_OPEN, pick, useLang } from '../lib/lang';
 
 /* 홈의 말. 영어는 초안이다 — 3단계(문구)에서 다시 본다 */
 const T = {
@@ -26,7 +26,8 @@ export default function PhaseHome({ onStart }: Props) {
       <HomeCrowd />
       {/* 나팔에서 나오는 말은 캐릭터 뒤, 배경으로 흩어진다 */}
       <HomeVoices />
-      <HomeCharacter onTap={() => setDialog(true)} />
+      {/* 영문판이 닫힌 배포본에서는 캐릭터에 누를 일이 없다(lib/lang.ts · LANG_OPEN) */}
+      <HomeCharacter onTap={LANG_OPEN ? () => setDialog(true) : undefined} />
       <div className="home-layer">
         <div className="home-intro">
           <h1 className="home-headline"><span>MegaFont</span></h1>

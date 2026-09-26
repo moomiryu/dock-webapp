@@ -12,10 +12,24 @@ import { useSyncExternalStore } from 'react';
  */
 export type Lang = 'ko' | 'en';
 
+/**
+ * 영문판 공개 스위치 — **여기 한 곳**(2026-09-26, 사용자 결정).
+ *
+ * 영문판은 main에 들어 있지만 아직 다 되지 않았다. 설치물(배포본, vite
+ * build)에서는 언어 창으로 가는 길을 닫고 늘 한국어로 그린다 — 폰에 예전에
+ * 'en'이 저장돼 있어도 무시한다. 첫 화면 캐릭터도 영문판 이전처럼 그림일
+ * 뿐 누르는 단추가 아니다. 개발 화면(npm run dev)에서만 열린다.
+ *
+ * 영문판이 끝나면 ENGLISH_PUBLIC 하나를 true로 바꿔 공개한다.
+ */
+const ENGLISH_PUBLIC = false;
+export const LANG_OPEN = ENGLISH_PUBLIC || import.meta.env.DEV;
+
 const KEY = 'megafont.lang';
 const subs = new Set<() => void>();
 
 function read(): Lang {
+  if (!LANG_OPEN) return 'ko';
   try { return localStorage.getItem(KEY) === 'en' ? 'en' : 'ko'; } catch { return 'ko'; }
 }
 
@@ -25,7 +39,7 @@ if (typeof document !== 'undefined') document.documentElement.lang = current;
 export const getLang = () => current;
 
 export function setLang(next: Lang) {
-  if (next === current) return;
+  if (!LANG_OPEN || next === current) return;
   current = next;
   try { localStorage.setItem(KEY, next); } catch { /* 막힌 저장소 — 이번 탭에서만 바뀐다 */ }
   document.documentElement.lang = next;

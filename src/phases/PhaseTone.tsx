@@ -215,28 +215,69 @@ function Slider({ name, words, value, onChange }: {
 }
 
 /**
- * 말투 — 맞닿은 네모 두 칸, 말은 칸 바깥 양옆(R12, 2026-09-25).
- * `온화한 [ | ] 예리한`. 켜고 끄기가 아니라 대등한 둘이다 — 고른 칸은 채우고
- * 반대쪽은 칸의 선과 말이 옅어진다. 버튼 하나가 말과 칸을 함께 품어서 말을
- * 눌러도 칸을 눌러도 고른다. 말에는 그 말투의 글자 모양을 입힌다.
+ * 말투 — 두 칸 스위치. 켜고 끄기가 아니라 대등한 둘이다(R12의 원리는 그대로).
+ * 2026-09-25에 맞닿은 네모 두 칸 + 바깥 말(R12)로 바꿨다가, 2026-09-27에
+ * 사용자가 반으로 나눈 한 칸 + 칸 안의 말로 되돌렸다. 언어 창의 스위치
+ * (LangDialog, .tswitch)는 R12 모양 그대로다.
  */
 function MannerSwitch({ font, at, onPick }: { font: string; at: number; onPick: (i: number) => void }) {
+    /* 2026-09-27 되돌림: 폭 전체를 반으로 나눈 한 칸, 말은 칸 안에(Pretendard).
+       오른쪽 위의 보조 말은 뺐다 — 두 말이 늘 칸 안에 보인다.
+       고른 쪽을 채운 판(tseg-thumb)이 **자석처럼** 움직인다: 누르면 그쪽으로
+       미끄러져 붙고, 끌면 손가락을 따라오다 가운데를 넘는 순간 진동(tick)과
+       함께 말투가 바뀌고, 놓으면 가까운 쪽에 붙는다 — 위 막대들과 같은 손맛.
+       자판·낭독기는 두 radio 단추로 그대로 고른다. */
     const m = MANNER[font];
     const lang = useLang();
     const labels = pick(m.labels, lang);
+    const cur = at ? 1 : 0;
+    const box = useRef<HTMLDivElement>(null);
+    /** 끄는 동안 판의 자리(0 = 왼쪽 칸, 1 = 오른쪽 칸). 끌지 않을 때는 null */
+    const [drag, setDrag] = useState<number | null>(null);
+    const press = useRef<{ x: number; moved: boolean } | null>(null);
+    const side = (p: number) => (p >= 0.5 ? 1 : 0);
+    const pickSide = (i: number) => { if (i !== cur) { tick(); onPick(i); } };
+    /* 판의 가운데는 왼쪽 칸 가운데(1/4)에서 오른쪽 칸 가운데(3/4)까지 오간다 */
+    const posAt = (x: number) => {
+        const r = box.current!.getBoundingClientRect();
+        return Math.min(1, Math.max(0, (x - r.left - r.width / 4) / (r.width / 2)));
+    };
+    const down = (e: React.PointerEvent) => {
+        press.current = { x: e.clientX, moved: false };
+        box.current?.setPointerCapture(e.pointerId);
+    };
+    const moveTo = (e: React.PointerEvent) => {
+        const p = press.current;
+        if (!p) return;
+        if (!p.moved && Math.abs(e.clientX - p.x) < 6) return;   // 누르기와 끌기를 가른다
+        p.moved = true;
+        const at = posAt(e.clientX);
+        setDrag(at);
+        pickSide(side(at));
+    };
+    const up = (e: React.PointerEvent) => {
+        const p = press.current;
+        press.current = null;
+        if (!p) return;
+        if (p.moved) setDrag(null);                               // 놓으면 가까운 쪽에 붙는다
+        else pickSide(side(posAt(e.clientX)));                    // 누르면 그쪽으로 미끄러진다
+    };
+    const shown = drag ?? cur;
     return <div className="tslider">
      <div className="tslider-lab">
       <span className="tslider-name" id="tswitch-name">{pick(T.manner, lang)}</span>
-      <span className="tslider-word" aria-hidden>{labels[at ? 1 : 0]}</span>
      </div>
-     <div className="tswitch" role="radiogroup" aria-labelledby="tswitch-name">
+     <div ref={box} className={'tseg' + (drag !== null ? ' is-moving' : '')}
+       role="radiogroup" aria-labelledby="tswitch-name"
+       onPointerDown={down} onPointerMove={moveTo} onPointerUp={up}
+       onPointerCancel={() => { press.current = null; setDrag(null); }}>
+      <i className="tseg-thumb" style={{ '--pos': shown } as CSSProperties} aria-hidden />
       {labels.map((label, i) =>
-        <button key={i} type="button" role="radio" aria-checked={(at ? 1 : 0) === i}
-          className={'tswitch-side' + ((at ? 1 : 0) === i ? ' on' : '')}
-          onClick={() => onPick(i)}>
-          <span className="tswitch-word"
-            style={{ fontFamily: fontMap[font], fontVariationSettings: m.axes[i] } as CSSProperties}>{label}</span>
-          <i className="tswitch-cell" aria-hidden />
+        <button key={i} type="button" role="radio" aria-checked={cur === i}
+          className={'tseg-side' + (side(shown) === i ? ' on' : '')}
+          /* 자판(Enter·Space)과 낭독기로 고를 때. 손가락은 위 pointer가 맡는다 */
+          onClick={(e) => { if (e.detail === 0) pickSide(i); }}>
+          {label}
         </button>)}
      </div>
     </div>;

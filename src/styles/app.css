@@ -4246,6 +4246,28 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .tswitch-side.on .tswitch-cell{ background: var(--grey-800); border-color: var(--grey-800); }
 .tswitch-side:focus-visible{ outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--r-control); }
 
+/* 3/5 말투 — 반으로 나눈 한 칸, 말은 칸 안에 (2026-09-27 되돌림, PhaseTone ·
+   MannerSwitch). 위의 .tswitch는 이제 언어 창만 쓴다.
+   고른 쪽을 채운 판(.tseg-thumb)이 칸 절반 폭으로 서 있다가 --pos(0 왼쪽 ·
+   1 오른쪽)를 따라 옆으로 미끄러진다. 끄는 동안(.is-moving)은 손가락을 바로
+   따라오도록 움직임을 끄고, 놓거나 누르면 --t-return으로 붙는다 — 막대의
+   손잡이가 제자리로 돌아오는 것과 같은 시간·곡선이다. 움직임 줄이기에서는
+   전역 규칙이 시간을 0으로 만든다.
+   말은 Pretendard(--text-font; 영어 화면이면 Whois). 판 위의 말은 흰색. */
+.tseg{ position: relative; display: grid; grid-template-columns: 1fr 1fr;
+  min-height: var(--btn-m); border: 1px solid var(--grey-500); border-radius: var(--r-control);
+  overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
+.tseg-thumb{ position: absolute; top: 0; bottom: 0; left: 0; width: 50%; background: var(--grey-800);
+  transform: translateX(calc(var(--pos, 0) * 100%));
+  transition: transform var(--t-return) var(--ease-standard); pointer-events: none; }
+.tseg.is-moving .tseg-thumb{ transition: none; }
+.tseg-side{ position: relative; min-height: var(--btn-m); padding: 0 var(--pad-btn-x); border: 0; background: transparent;
+  font-family: var(--text-font); font-size: var(--fs-body); color: var(--grey-700); cursor: inherit;
+  transition: color var(--t-return) var(--ease-standard); }
+.tseg-side.on{ color: var(--paper); }
+.tseg-side:focus-visible{ outline: 2px solid var(--ink); outline-offset: -4px; }
+.tseg-side.on:focus-visible{ outline-color: var(--paper); }
+
 /* 견본은 칸을 넘어도 자르지 않는다(2026-09-25) — 넓어진 글자를 줄여 맞추면
    참여자가 고른 크기가 바뀐다. 넘치면 넘치는 대로 보인다. */
 .tone-adjust .tone-work .z-glyph-stage, .tone-adjust .tone-work .z-glyph-fit{ overflow: visible; }

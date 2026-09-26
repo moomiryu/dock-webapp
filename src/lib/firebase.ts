@@ -27,6 +27,7 @@ export interface StoredMessage {
 interface FirestoreLike {
   addMessage(d: Draft): Promise<string>;
   listMessages(limit: number): Promise<StoredMessage[]>;
+  listSince(since: number): Promise<StoredMessage[]>;
   subscribeMessages(limit: number, cb: (msgs: StoredMessage[]) => void, onError: (e: Error) => void): () => void;
 }
 
@@ -121,6 +122,38 @@ function buildRestClient(): FirestoreLike {
     return (json.documents ?? []).map(restDocToStored);
   }
   /**
+   * 이 시각 이후의 글 전부. 개수로 자르지 않는다 — 벽이 사흘 치를 다 돌리려면
+   * 몇 개인지 모르는 채로 받아야 한다. 목록(list)은 시각으로 거를 수 없어서
+   * 질의(runQuery)로 묻는다. 한 칸짜리 조건이라 따로 색인이 필요 없다.
+   */
+  async function listSince(since: number): Promise<StoredMessage[]> {
+    const body = {
+      structuredQuery: {
+        from: [{ collectionId: 'messages' }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: 'createdAt' },
+            op: 'GREATER_THAN_OR_EQUAL',
+            value: { timestampValue: new Date(since).toISOString() }
+          }
+        },
+        orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }]
+      }
+    };
+    const res = await withTimeout(
+      fetch(`${FS_BASE}:runQuery?key=${FS_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }),
+      15000
+    );
+    if (!res.ok) throw new Error(`벽을 불러오지 못했어요 (${res.status})`);
+    // 결과가 없어도 빈 배열이 아니라 문서 없는 한 줄이 온다
+    const rows = (await res.json()) as { document?: RestDoc }[];
+    return rows.flatMap((r) => (r.document ? [restDocToStored(r.document)] : []));
+  }
+  /**
    * 벽으로 보내는 조율 값. 2026-09-25 슬라이더가 막대 자리(speed · weight)를
    * 새로 들고 있는데, 벽의 쓰기 규칙(firestore.rules · validTone)은 아직 그
    * 두 칸을 모른다 — 보내면 전송째 거부된다. 규칙을 고쳐 배포할 때까지는
@@ -158,6 +191,7 @@ function buildRestClient(): FirestoreLike {
       return json.name ? (json.name.split('/').pop() ?? 'rest') : 'rest-' + Date.now();
     },
     listMessages: list,
+    listSince,
     subscribeMessages(lim, cb, onError) {
       // REST has no realtime stream — poll. 60s: the landscape refreshes once a
       // minute. Polling faster blows through Firestore's free-tier daily read
@@ -246,6 +280,11 @@ function buildMockClient(): FirestoreLike {
         .sort((a, b) => b.createdAt - a.createdAt)
         .slice(0, lim);
     },
+    async listSince(since: number) {
+      return readMockStore()
+        .filter((m) => m.createdAt >= since)
+        .sort((a, b) => b.createdAt - a.createdAt);
+    },
     subscribeMessages(lim, cb) {
       // Mock 'subscription' — fires once with current store, then re-polls every 5s.
       let cancelled = false;
@@ -280,6 +319,12 @@ export async function submitMessage(d: Draft): Promise<string> {
 export async function listMessages(limit = 30): Promise<StoredMessage[]> {
   const c = await client();
   return c.listMessages(limit);
+}
+
+/** 이 시각 이후의 글 전부, 새것부터. 벽이 사흘 치를 돌리는 데 쓴다 */
+export async function listMessagesSince(since: number): Promise<StoredMessage[]> {
+  const c = await client();
+  return c.listSince(since);
 }
 
 /** Real-time subscription. Returns a cleanup function. */

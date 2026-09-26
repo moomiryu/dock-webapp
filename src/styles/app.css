@@ -2201,8 +2201,9 @@
    (위 .compose-count와 대조해 보면 font-family·font-size·color가 같다).
    둘 다 쓰는 일을 거드는 물건이지 손짓이 아니다.
 
-   갈라지는 것은 하나뿐 — 힌트는 **누를 수 있다.** 그 차이만 밑줄이 든다.
-   밑줄은 글자에서 3px 떨어뜨려 글을 밟지 않게 한다.
+   갈라지는 것은 하나뿐 — 힌트는 **누를 수 있다.** 그 차이를 밑줄이 들었다.
+   2026-09-26부터 평소엔 옅은 선(grey-300)만 있고, 닿으면 글자색 선이
+   가운데에서 자란다(아래 ::before · ::after).
 
    손이 닿는 자리는 44로 벌리되 **행은 안 벌린다**: 위아래 여백을 준 만큼
    음수 여백으로 도로 빼면, 보이는 높이는 글자 한 줄이고 눌리는 높이는 44다.
@@ -2216,11 +2217,35 @@
   padding-inline: 0;
   font-family: var(--label-font); font-size: var(--fs-cap); letter-spacing: 0.02em;
   color: var(--body-text); cursor: pointer;
-  text-decoration: underline; text-underline-offset: 3px;
-  text-decoration-color: var(--grey-400);
+  position: relative;
 }
+/* 손가락이 닿거나(누르는 동안) 마우스를 올리면 **가운데에서 양옆으로** 글자색
+   1px 선이 자란다(2026-09-26 사용자 — bow-shop.kr 상단 메뉴의 호버를
+   재서 옮겼다: 폭 0→글자 폭, 투명→글자색, 150ms에 8할쯤). 힌트가 열려 있는
+   동안(.on)은 선이 남는다 — 지금 열린 것이 이것이라고 말한다.
+   글자 폭만큼 긋는다(좌우 안쪽 여백 0). 선은 글줄 바로 아래(글줄 높이의 절반만큼
+   가운데에서 내려간 자리)에 선다. 움직임 줄이기에서는 전역 규칙이 시간을 0으로
+   만들어 바로 나타난다. */
+/* 평소의 옅은 선(::before) — 폰엔 호버가 없어서, 이게 없으면 가만히 있을 때
+   글자 수 표시와 생김새가 같아진다. 누를 수 있다는 단서만 남긴다(2026-09-26 (나)).
+   옛 밑줄(grey-400)보다 한 칸 옅다. 진한 선(::after)이 그 위로 자란다 */
+.hint-open::before,
+.hint-open::after{
+  content: ''; position: absolute; left: 0; right: 0; top: calc(50% + 0.5lh); height: 1px;
+  pointer-events: none;
+}
+.hint-open::before{ background: var(--grey-300); }
+.hint-open::after{
+  background: currentColor; transform: scaleX(0); transform-origin: center;
+  transition: transform var(--t-return) var(--ease-standard);
+  pointer-events: none;
+}
+.hint-open:active::after,
+.hint-open:focus-visible::after,
+.hint-open.on::after{ transform: scaleX(1); }
+@media (hover: hover){ .hint-open:hover::after{ transform: scaleX(1); } }
 .hint-open:active{ color: var(--ink); }
-.hint-open.on{ color: var(--ink); text-decoration-color: currentColor; }
+.hint-open.on{ color: var(--ink); }
 
 /* 이 화면만 높이를 못 박는다. .z-frame은 min-height라 내용이 길어지면
    틀이 같이 길어지는데, 그러면 힌트를 펼친 만큼 '다 썼어요'가 화면 밖으로

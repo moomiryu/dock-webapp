@@ -1,3 +1,5 @@
+import happyEyeRaw from '../../by_moomiryu/Renewal_v1/Character/eye/eye_happy.svg?raw';
+
 // 일러스트레이터에서 나온 SVG를 문서에 그대로 부어 넣기 전에 손보는 일.
 //
 // 그 도구는 파일마다 `.cls-1` `.cls-2` 같은 이름과 `id="_레이어_1"` 을 붙여 내보낸다.
@@ -1457,6 +1459,140 @@ function easeCut(base: Element, rest: Element[], t: ReturnType<typeof timeline>,
  */
 const SLIDE = { hold: 10, move: 1 };
 
+type SliderScene = { cuts: string[]; motion: 'sliders'; finalHold: number };
+type SlideScene = string | string[] | SliderScene;
+const sceneCuts = (scene: SlideScene) => typeof scene === 'string' ? [scene]
+  : Array.isArray(scene) ? scene : scene.cuts;
+
+/** 조율판도 첫 작성 장면의 캐릭터 원형을 쓴다. 머리·몸·손·그림자의 크기와 자리를 함께 맞춘다. */
+function matchSliderCharacter(root: Element, reference: Element) {
+  const template = reference.querySelector('#reference-character');
+  const head = Array.from(root.querySelectorAll('circle'))
+    .sort((a, b) => Number(b.getAttribute('r')) - Number(a.getAttribute('r')))[0];
+  const character = head?.parentElement;
+  if (!template || character?.tagName !== 'g') throw new Error('Tutorial character reference missing');
+  const copy = root.ownerDocument.importNode(template, true) as Element;
+  copy.setAttribute('data-slider-character', '');
+  character.replaceWith(copy);
+  /* 캐릭터가 맨 위에 선다(2026-09-26 사용자). 작가 파일(example_step1_4_*)은
+     캐릭터를 네 번째로 그리고 슬라이더 선·손잡이를 그 뒤에 그려서, SVG에서는
+     나중 것이 위라 슬라이더가 캐릭터를 덮었다. 같은 부모의 맨 끝으로 옮긴다.
+     묶음 안의 바닥 그림자(y 478)는 슬라이더(y 378까지)와 겹치지 않아 함께 옮겨도 된다. */
+  copy.parentElement?.appendChild(copy);
+}
+
+/** 작가의 웃는 눈을 현재 흰자의 크기에 맞춘다. 몸 색과 눈 깜빡임은 그대로 쓴다. */
+function smile(root: Element) {
+  const source = new DOMParser().parseFromString(happyEyeRaw, 'image/svg+xml').documentElement;
+  inlineFills(source);
+  const template = source.querySelector('circle')!;
+  const sx = Number(template.getAttribute('cx')), sy = Number(template.getAttribute('cy'));
+  const sr = Number(template.getAttribute('r'));
+  const curve = Array.from(source.querySelectorAll('path')).sort((a, b) => {
+    const A = boxOf(itemOf(a))!, B = boxOf(itemOf(b))!;
+    return Math.abs(A.x + A.w / 2 - sx) - Math.abs(B.x + B.w / 2 - sx);
+  })[0];
+  const circles = Array.from(root.querySelectorAll('circle.mf-eye'));
+  for (const white of circles.filter((el) => ['#fff', '#ffffff', 'white'].includes(el.getAttribute('fill') ?? ''))) {
+    const cx = Number(white.getAttribute('cx')), cy = Number(white.getAttribute('cy'));
+    const radius = Number(white.getAttribute('r'));
+    const pupil = circles.find((el) => el !== white && Number(el.getAttribute('r')) < radius
+      && Math.hypot(Number(el.getAttribute('cx')) - cx, Number(el.getAttribute('cy')) - cy) < radius);
+    if (!pupil) continue;
+    const group = root.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
+    group.setAttribute('data-slider-smile', '');
+    group.setAttribute('transform', 'translate(' + cx + ' ' + cy + ') scale(' + radius / sr + ') translate(' + -sx + ' ' + -sy + ')');
+    const path = root.ownerDocument.importNode(curve, true) as Element;
+    path.setAttribute('fill', pupil.getAttribute('fill')!);
+    path.setAttribute('class', 'mf-eye');
+    path.setAttribute('style', pupil.getAttribute('style') ?? '');
+    group.appendChild(path);
+    pupil.replaceWith(group);
+  }
+}
+
+/** 조율 삽화: 손잡이는 중심선 위를 이동하고, 견본 글자는 경로 자체를 보간한다. */
+function morphSliders(base: Element, rest: Element[], t: ReturnType<typeof timeline>, dur: number) {
+  const cuts = [base, ...rest];
+  const panel = (root: Element) => itemsOf(root).filter((it) => it.tag === 'rect')
+    .map((it) => boxOf(it)!).sort((a, b) => b.w - a.w)[0];
+  const glyphs = cuts.map((root) => {
+    const p = panel(root);
+    return itemsOf(root).find((it) => {
+      const b = boxOf(it);
+      return it.tag === 'path' && b && b.x >= p.x && b.y >= p.y
+        && b.x + b.w <= p.x + p.w && b.y + b.h <= p.y + p.h;
+    });
+  });
+  // 4번 원본의 판 밖 흰 글자는 대상이 아니다. 판 안의 견본만 짝짓는다.
+  if (glyphs.some((it) => !it?.d) || new Set(glyphs.map((it) => it!.shape)).size !== 1)
+    throw new Error('Slider glyph paths must share their contour structure');
+  const glyph = glyphs[0]!;
+  glyph.el.setAttribute('data-slider-glyph', '');
+  glyph.el.setAttribute('d', glyph.d!);
+  animateSeq(glyph.el, 'd', glyphs.map((it) => it!.d!), t, dur);
+
+  for (const line of Array.from(base.querySelectorAll('line'))) {
+    const x = Number(line.getAttribute('x1')), y = Number(line.getAttribute('y1'));
+    const dx = Number(line.getAttribute('x2')) - x, dy = Number(line.getAttribute('y2')) - y;
+    const length2 = dx * dx + dy * dy;
+    if (!length2) continue;
+    const axis = dx === 0 ? 'size' : dy === 0 ? 'speed' : 'weight';
+    line.setAttribute('data-slider-track', axis);
+    const knobs = cuts.map((root) => Array.from(root.querySelectorAll('g'))
+      .filter((group) => group.children.length === 2 && Array.from(group.children).every((el) => el.tagName === 'rect'))
+      .map((group) => {
+        // 두 조각은 같은 중심을 가진다. 원본의 회전은 그대로 두고 묶음만 평행 이동한다.
+        const rect = group.children[0];
+        const cx = Number(rect.getAttribute('x')) + Number(rect.getAttribute('width')) / 2;
+        const cy = Number(rect.getAttribute('y')) + Number(rect.getAttribute('height')) / 2;
+        const pos = Math.max(0, Math.min(1, ((cx - x) * dx + (cy - y) * dy) / length2));
+        const px = x + pos * dx, py = y + pos * dy;
+        return { group, cx, cy, px, py, distance: Math.hypot(cx - px, cy - py) };
+      }).sort((a, b) => a.distance - b.distance)[0]);
+    if (knobs.some((knob) => !knob || knob.distance > 1))
+      throw new Error('Slider handle must lie on its track');
+    const first = knobs[0];
+    first.group.setAttribute('data-slider-knob', axis);
+    put(first.group, 'animateTransform', {
+      attributeName: 'transform', type: 'translate',
+      values: doubled(knobs.map((knob) => [r2(knob.px - first.cx), r2(knob.py - first.cy)].join(' '))).join(';'),
+      keyTimes: t.keyTimes, keySplines: t.keySplines, calcMode: 'spline', dur: dur + 's'
+    });
+  }
+
+  // 키보드 장면과 같은 제자리 3px 상하 동작. 각 모프가 움직이는 동안만 눌렀다 돌아온다.
+  for (const hand of handsOf(itemsOf(base))) {
+    const cy = Number(hand.el.getAttribute('cy'));
+    const times = [0], positions = [String(cy)];
+    for (let i = 1; i < cuts.length; i++) {
+      const start = t.at[2 * i - 1], end = t.at[2 * i];
+      times.push(start, (start + end) / 2, end);
+      positions.push(String(cy), String(r2(cy + 3)), String(cy));
+    }
+    times.push(1); positions.push(String(cy));
+    hand.el.setAttribute('data-slider-hand', '');
+    put(hand.el, 'animate', {
+      attributeName: 'cy', values: positions.join(';'), keyTimes: times.join(';'),
+      keySplines: times.slice(1).map(() => '.3 0 .2 1').join(';'),
+      calcMode: 'spline', dur: dur + 's'
+    });
+  }
+}
+
+/** 빠른 조율 동작은 유지하고, 마지막 4_4 컷에서 1초 머문 뒤 옆으로 넘긴다. */
+export function step1Svg(rules: string[], sliders: string[], key: string): string {
+  const rulesEnd = 6.36;
+  const move = 8.18 / 27; // 기존 1~3 장면의 가로 전환 속도
+  const finalHold = 1;
+  const morphTime = 7 * move * 9 / 11; // 이전 타이밍에서 4_4에 도달하기까지의 시간
+  const duration = rulesEnd + morphTime + finalHold + 2 * move;
+  return slideSvg([...rules, { cuts: sliders, motion: 'sliders', finalHold }], key, duration, undefined, {
+    holds: [5 * move, 7 * move, rulesEnd - 14 * move, duration - rulesEnd - 2 * move, 0],
+    move
+  });
+}
+
 /**
  * @param pace 판마다 머무는 길이의 배율. 생략하면 전부 1. `[1, 0.7, 0.7]`이면
  *   둘째·셋째 판만 7할로 짧아지고 **나머지 판과 넘어가는 시간은 그대로**다 —
@@ -1464,12 +1600,13 @@ const SLIDE = { hold: 10, move: 1 };
  *   그대로 두면 짧아진 판의 시간이 다른 판에 도로 얹혀서, 줄인 것이 아니라
  *   옮긴 것이 된다.
  */
-export function slideSvg(scenes: Array<string | string[]>, key: string, dur = 14, pace?: number[]): string {
-  const heads = scenes.map((sc) => (Array.isArray(sc) ? sc[0] : sc));
+export function slideSvg(scenes: SlideScene[], key: string, dur = 14, pace?: number[],
+  timing?: { holds: number[]; move: number }): string {
+  const heads = scenes.map((sc) => sceneCuts(sc)[0]);
   if (typeof DOMParser === 'undefined' || scenes.length < 2) return scopeSvg(heads[0], key);
   try {
     const parse = (r: string) => new DOMParser().parseFromString(r, 'image/svg+xml').documentElement;
-    const every = scenes.flatMap((sc) => (Array.isArray(sc) ? sc : [sc]));
+    const every = scenes.flatMap(sceneCuts);
     const all = every.map(parse);
     const box = all[0].getAttribute('viewBox');
     /* 화판이 서로 다르면 옆으로 잇는 셈이 어긋난다 — 그럴 땐 첫 컷만 준다.
@@ -1483,17 +1620,25 @@ export function slideSvg(scenes: Array<string | string[]>, key: string, dur = 14
     /* 첫 판은 처음과 끝에 한 번씩 선다. 그 둘은 고리를 건너 **이어 붙는 한
        구간**이라 반씩 나눠 가져야 다른 판과 같아진다. */
     const holdOf = (i: number) => SLIDE.hold * (pace?.[i % n] ?? 1);
-    const holds = Array.from({ length: n + 1 }, (_, i) => (i === 0 || i === n ? holdOf(0) / 2 : holdOf(i)));
-    const t = timeline(holds, SLIDE.move);
+    const holds = timing?.holds ?? Array.from({ length: n + 1 }, (_, i) => (i === 0 || i === n ? holdOf(0) / 2 : holdOf(i)));
+    const t = timeline(holds, timing?.move ?? SLIDE.move);
     /* 배율로 줄어든 만큼 고리도 줄인다(위 pace 설명). */
     const plain = n * SLIDE.hold + n * SLIDE.move;
     const total = holds.reduce((a, b) => a + b, 0) + n * SLIDE.move;
-    dur = r2(dur * total / plain);
+    if (!timing) dur = r2(dur * total / plain);
 
     const base = all[0];
     const doc = base.ownerDocument;
     const NS = 'http://www.w3.org/2000/svg';
-    const frames = all.flatMap(itemsOf);
+    // 조율판은 첫 컷의 구도를 쓴다. 뒷 컷의 판 밖 여분 글자는 프레이밍에서 뺀다.
+    const frames = scenes.flatMap((scene) => {
+      if (typeof scene === 'object' && !Array.isArray(scene)) {
+        const frame = parse(scene.cuts[0]);
+        matchSliderCharacter(frame, all[0]);
+        return itemsOf(frame);
+      }
+      return sceneCuts(scene).flatMap((raw) => itemsOf(parse(raw)));
+    });
 
     /**
      * 판 하나 **안에서** 컷이 갈릴 때 쓸 시간표.
@@ -1512,7 +1657,7 @@ export function slideSvg(scenes: Array<string | string[]>, key: string, dur = 14
      * 끝날 때 값이 처음 값으로 돌아와 있어야 다음 바퀴가 이어진다.
      */
     const r4 = (x: number) => Number(x.toFixed(4));
-    const sub = (i: number, m: number) => {
+    const sub = (i: number, m: number, reset = true) => {
       const h0 = t.at[2 * i], h1 = t.at[2 * i + 1], out = t.at[2 * i + 2] ?? 1;
       const u = (h1 - h0) / (3 * m - 1);
       const at = [0, r4(h0 + 2 * u)];
@@ -1520,25 +1665,25 @@ export function slideSvg(scenes: Array<string | string[]>, key: string, dur = 14
         at.push(r4(h0 + 3 * k * u));
         at.push(k === m - 1 ? r4(out) : r4(h0 + (3 * k + 2) * u));
       }
-      at.push(r4(out + (1 - out) * 0.5), 1);
+      if (reset) at.push(r4(out + (1 - out) * 0.5), 1);
       return {
         at, keyTimes: at.join(';'),
         keySplines: at.slice(1).map((_, j) => (j % 2 ? '0.4 0 0.2 1' : '0 0 1 1')).join(';')
       };
     };
 
-    /* 판마다의 알맹이. 컷이 여럿인 장면은 chainSvg가 포개어 이어 준다 —
-       짝짓기는 그쪽이 다 들고 있고, 여기서는 **언제** 갈릴지만 준다. */
+    /* 장면별 보간은 각 모프 함수가 맡고, 가로 이동과 같은 시계를 쓴다. */
     let seen = 0;
     const bodies = scenes.map((sc, i) => {
-      const m = Array.isArray(sc) ? sc.length : 1;
+      const m = sceneCuts(sc).length;
       const head = all[seen];
       seen += m;
       inlineFills(head);
+      if (typeof sc === 'object' && !Array.isArray(sc)) matchSliderCharacter(head, all[0]);
       markEyes(head);
       markGround(head);
       if (m > 1) {
-        const rest = (sc as string[]).slice(1).map(parse);
+        const rest = sceneCuts(sc).slice(1).map(parse);
         /* 뒷 컷도 **앞 컷과 똑같이 손질한 뒤에** 짝을 짓는다.
            easeCut은 색깔별로 개수가 같을 때만 짝을 맺는데(아래 pair),
            markGround가 앞 컷의 바닥 그림자에서만 fill을 떼어 가면 그 색의
@@ -1549,7 +1694,20 @@ export function slideSvg(scenes: Array<string | string[]>, key: string, dur = 14
            갈라져 보였다(재서 확인: 작가의 뒤 컷에서 아랫단은 11.39px 위로
            올라가 있다 — 검은 면이 줄어드는 몫과 같다). */
         rest.forEach((c) => { inlineFills(c); markGround(c); });
-        easeCut(head, rest, sub(i, m), dur);
+        if (typeof sc === 'object' && !Array.isArray(sc)) {
+          const enter = t.at[2 * i], end = t.at[2 * i + 1] - sc.finalHold / dur;
+          const unit = (end - enter) / (3 * (m - 1));
+          const at = [0, r4(enter + 2 * unit)];
+          for (let cut = 1; cut < m; cut++) {
+            at.push(r4(enter + 3 * cut * unit));
+            at.push(cut === m - 1 ? 1 : r4(enter + (3 * cut + 2) * unit));
+          }
+          smile(head);
+          morphSliders(head, rest, {
+            at, keyTimes: at.join(';'),
+            keySplines: at.slice(1).map((_, j) => j % 2 ? '0.4 0 0.2 1' : '0 0 1 1').join(';')
+          }, dur);
+        } else easeCut(head, rest, sub(i, m), dur);
       }
       return head;
     });
@@ -1557,7 +1715,7 @@ export function slideSvg(scenes: Array<string | string[]>, key: string, dur = 14
     /* 타이핑은 **옮기기 전에** 건다. typeIn이 작가가 붙인 이름으로 찾는데
        (#typed-message · #keyboard), 판마다 같은 이름을 들고 있어서 한자리에
        모은 뒤에는 어느 판의 것인지 가릴 수 없다. */
-    if (!Array.isArray(scenes[0])) typeIn(bodies[0], t, dur);
+    if (typeof scenes[0] === 'string') typeIn(bodies[0], t, dur);
 
     const track = doc.createElementNS(NS, 'g');
     /**

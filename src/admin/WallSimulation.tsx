@@ -22,6 +22,7 @@ import {
   isFirebaseConfigured,
   submitMessage,
   subscribeMessages,
+  listMessagesSince,
   subscribeDock,
   waitIsFree,
   getMessage
@@ -30,6 +31,21 @@ import type { StoredMessage } from '../lib/firebase';
 
 // ─── Tunables ─────────────────────────────────────────────────────────
 const RECENT_N = 15;                            // fewer reads per poll (quota)
+/**
+ * 사흘 치 전부를 다시 받는 간격.
+ *
+ * 벽은 최신 15개만 받아 그것만 돌렸다 — 사흘이 안 됐어도 열여섯 번째부터는
+ * 벽에 한 번도 안 나왔다. 사흘 약속은 '떠 있는 동안이 곧 기록'이라는 뜻이라
+ * 이제 사흘 치를 전부 돌린다(2026-09-26).
+ *
+ * 다만 전부를 1분마다 받으면 읽기가 글 수 × 1440이 된다 — 서른다섯 개만
+ * 쌓여도 하루 무료 할당(5만)을 혼자 넘는다. 그래서 둘로 나눈다. 새 글과
+ * 지워진 테스트 글은 지금처럼 1분마다 최신 15개로 보고, 그보다 오래된
+ * 쪽은 한 시간에 한 번 받는다. 오래된 글은 새로 생기지 않고 지워지지도
+ * 않으니(규칙상 테스트 글만 지워진다) 한 시간 늦어도 달라질 것이 없다.
+ * 늘어나는 읽기는 글 수 × 24다.
+ */
+const POOL_REFRESH_MS = 60 * 60_000;
 // 체류 기간은 lib/wall.ts 한 곳에서 정한다 (아카이브가 따로 없으니 이게 수명 전부)
 const LOAD_TIMEOUT_MS = 20000;
 
@@ -71,15 +87,18 @@ function writeSeen(id: string): void {
 // 벽이 '지나가는 전광판'이 된다. 지금은 저마다 제 방향으로 떠다니다
 // 서로 닿거나 벽면에 닿으면 튕긴다 — 말들이 한 방에 같이 있는 것에 가깝다.
 
-/** 한 화면에 떠 있을 수 있는 잔상의 수. 이보다 쌓이면 갈아 끼운다 */
-const FLOAT_N = 10;
+/** 한 화면에 떠 있을 수 있는 잔상의 수. 이보다 쌓이면 갈아 끼운다.
+ *  10이었다 — 2026-09-26에 12로 */
+const FLOAT_N = 12;
 /** 떠다니는 속도 — 초당 화면 높이의 몇 배인가. 읽을 수 있을 만큼 느리게 */
 const SPEED_MIN = 0.012;
 const SPEED_MAX = 0.032;
-/** 열 개가 차 있을 때 한 칸을 갈아 끼우는 간격 */
+/** 화면이 다 차 있을 때 한 칸을 갈아 끼우는 간격 */
 const ROTATE_MS = 20_000;
 /**
- * 막 내려앉은 글을 붙잡아 두는 시간 — 벽의 한 바퀴(15개 × 20초 = 5분).
+ * 막 내려앉은 글을 붙잡아 두는 시간 — 5분. 최신 15개만 돌던 때의 한 바퀴
+ * (15개 × 20초)였다. 사흘 치를 다 돌리게 되면서 한 바퀴는 글 수에 따라
+ * 몇 시간이 될 수도 있어, 그 길이를 따라가지 않고 5분에 고정했다.
  *
  * 붙잡는 것이 착지(1.2초)까지뿐이었다(2026-09-25에 재서 알았다). 그 뒤로는
  * 다른 글과 똑같이 갈아 끼우는 차례를 타서, 열다섯 중 열 칸 창 밖이면 —
@@ -90,7 +109,7 @@ const ROTATE_MS = 20_000;
  * 한 바퀴를 붙잡아 두면 그동안 떠 있던 다른 글들이 한 번씩 다 갈려
  * 나가는 것을 제 글이 같이 본다. 그 뒤로는 다른 글과 같다.
  */
-const LINGER_MS = RECENT_N * ROTATE_MS;
+const LINGER_MS = 15 * ROTATE_MS;
 
 // ─── 파동 상자의 치수 ─────────────────────────────────────────────────
 // 발화하는 동안 서는 큰 상자와, 그 뒤 풍경에 남는 잔상. 둘의 글자 크기가
@@ -118,9 +137,12 @@ export const BIG_SIDE_MAX_VW = 88;
  * 잔상의 한 변. 22였다 — 강조와 같은 이유로 올린다.
  * 열 개가 다 떠 있어도 화면의 15%뿐이라(재서 확인: 22vh에서 7%) 자리는
  * 넉넉하다. 31vh에서 글자가 1.9~2.2cm가 되어 1.5m 앞에서 읽힌다.
+ *
+ * 2026-09-26 31 → 37.2(1.2배). 2.5 × 1.41m 실물을 두고 디자이너가 20%는
+ * 더 커도 된다고 봤다. 같은 날 칸이 열둘로 늘었다.
  */
-const ECHO_SIDE_VH = 31;
-/** 잔상도 숨 쉰다. 파이의 크로미움이 열 개의 번짐을 못 따라오면 여기서 끈다 — 강조만 숨 쉰다 */
+const ECHO_SIDE_VH = 37.2;
+/** 잔상도 숨 쉰다. 파이의 크로미움이 열두 개의 번짐을 못 따라오면 여기서 끈다 — 강조만 숨 쉰다 */
 const ECHO_MOTION = true;
 /** 큰 목소리가 잔상으로 내려앉는 시간 */
 const LAND_MS = 1200;
@@ -141,7 +163,7 @@ type Land = { dx: number; dy: number; scale: number };
 const SINK: Land = { dx: 0, dy: 0, scale: ECHO_SIDE_VH / BIG_SIDE_VH };
 
 /** 떠다니는 몸 하나. 자리와 속도는 여기 있고 React는 모른다 — 프레임마다
-    상태를 갱신하면 열 개 × 60프레임 = 초당 600번 다시 그리게 된다. */
+    상태를 갱신하면 열두 개 × 60프레임 = 초당 720번 다시 그리게 된다. */
 type Body = { x: number; y: number; vx: number; vy: number; r: number; held: boolean };
 
 /**
@@ -238,7 +260,7 @@ export default function WallSimulation() {
   useEffect(() => () => clearTimeout(lingerTimerRef.current), []);
 
   // 떠다니는 몸들과 그것을 그리는 요소. 둘 다 React 바깥에 둔다 —
-  // 프레임마다 상태를 갱신하면 열 개 × 60프레임을 다시 그리게 된다.
+  // 프레임마다 상태를 갱신하면 열두 개 × 60프레임을 다시 그리게 된다.
   const bodiesRef = useRef(new Map<string, Body>());
   const elsRef = useRef(new Map<string, HTMLElement>());
   const setBlockEl = useCallback((id: string, el: HTMLElement | null) => {
@@ -251,7 +273,7 @@ export default function WallSimulation() {
   // 벽면과 서로에게 제대로 튕긴다. 프레임 루프는 React 바깥이라 ref로 건넨다.
   const sizesRef = useRef(new Map<string, { w: number; h: number }>());
 
-  // 열 개가 차 있을 때 한 칸씩 갈아 끼우는 시계
+  // 화면이 다 차 있을 때 한 칸씩 갈아 끼우는 시계
   const [rotate, setRotate] = useState(0);
   useEffect(() => {
     const id = window.setInterval(() => setRotate((r) => r + 1), ROTATE_MS);
@@ -317,17 +339,42 @@ export default function WallSimulation() {
     };
   }, []);
 
+  // 사흘 치 전부 — 최신 15개보다 오래된 쪽을 채운다(POOL_REFRESH_MS).
+  // 못 받아도 벽을 비우지 않는다. 최신 15개는 위에서 따로 돌고 있다.
+  const [pool, setPool] = useState<StoredMessage[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    const load = () =>
+      listMessagesSince(Date.now() - STAY_MS).then(
+        (msgs) => {
+          if (!cancelled) setPool(msgs);
+        },
+        () => {}
+      );
+    void load();
+    const id = window.setInterval(load, POOL_REFRESH_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
   const visible = useMemo(() => {
     if (!messages) return [];
-    const list = messages
+    // 최신 15개가 다 찼으면 그보다 오래된 것은 사흘 치 목록에서 잇는다.
+    // 겹치는 구간은 최신 쪽을 믿는다 — 1분마다 새로 보니 지워진 테스트 글이
+    // 거기서 먼저 빠진다. 15개가 안 찼으면 그게 이미 전부다.
+    const edge =
+      messages.length < RECENT_N ? -Infinity : Math.min(...messages.map((m) => m.createdAt));
+    const list = [...messages, ...pool.filter((m) => m.createdAt < edge)]
       .filter((m) => now - m.createdAt < STAY_MS)
       .sort((a, b) => b.createdAt - a.createdAt);
     // 발화 중인 글이 목록에 아직 없으면(폴링 전) 끼워 넣는다 — 잔상 자리가
     // 있어야 내려앉을 곳이 있다. 폴링이 따라오면 같은 id라 그대로 합쳐진다.
     // 막 내려앉은 글도 같다 — 폴링이 아직 못 받았으면 착지하자마자 사라진다.
     for (const m of [linger, emphMsg]) if (m && !list.some((x) => x.id === m.id)) list.unshift(m);
-    return list.slice(0, RECENT_N);
-  }, [messages, now, emphMsg, linger]);
+    return list;
+  }, [messages, pool, now, emphMsg, linger]);
 
   // '최신 글'을 따로 들고 있지 않는다. 지목된 글을 못 가져왔을 때 그걸로
   // 대신 띄우던 길이 있었고, 그 길이 남의 글을 남의 발화로 만들었다.
@@ -459,7 +506,7 @@ export default function WallSimulation() {
     };
   }, []);
 
-  // 화면에 띄울 열 개. 더 쌓이면 갈아 끼우되, **발화 중인 글은 반드시 남긴다** —
+  // 화면에 띄울 열두 개. 더 쌓이면 갈아 끼우되, **발화 중인 글은 반드시 남긴다** —
   // 그 잔상이 큰 상자가 내려앉을 자리이므로 없으면 갈 곳이 사라진다.
   const shown = useMemo(() => {
     if (visible.length <= FLOAT_N) return visible;
@@ -637,8 +684,8 @@ const WallBlock = memo(function WallBlock({ msg, ghost, onEl }: { msg: StoredMes
       data-id={msg.id}
       ref={(el) => onEl(msg.id, el)}
     >
-      {/* 숨은 구름마다 시작점이 다르다(cloud.ts의 phase0) — 열 개가 같은 박자로 안 뛴다.
-          파이가 열 개의 번짐을 못 따라오면 ECHO_MOTION을 끈다. */}
+      {/* 숨은 구름마다 시작점이 다르다(cloud.ts의 phase0) — 열두 개가 같은 박자로 안 뛴다.
+          파이가 열두 개의 번짐을 못 따라오면 ECHO_MOTION을 끈다. */}
       <CloudBubble cloud={cloud} box={box} side="var(--echo-side)" color={bg} still={!ECHO_MOTION}>
         <VoiceBubble text={lines.join('\n')} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght}
           width={scaleX} slant={skew} align={msg.tone?.align} size={msg.tone?.size} manner={msg.tone?.manner}

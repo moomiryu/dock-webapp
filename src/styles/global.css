@@ -139,6 +139,13 @@ body {
   }
 }
 
+/* 다크모드 금지(2026-09-26, 사용자 결정) — index.html의 color-scheme 메타와
+   짝이다. 브라우저가 페이지를 멋대로 어둡게 칠하면 참여자가 고른 색이
+   바뀌어 보인다: 4/5·5/5의 색이 벽과 달라지면 형식을 고른 사람이 본 것과
+   벽에 뜬 것이 다르다(절대원칙). 어두운 판을 따로 만들지도 않는다 —
+   "이 앱의 밤은 벽이다"(design/references.md). */
+html{ color-scheme: only light; }
+
 html,
 body,
 #root {

@@ -932,12 +932,15 @@
   top: 0;
   height: 44px;
   display: flex; align-items: center;
-  font-family: var(--label-font);
+  font-family: var(--mark-font);   /* About · Step 1 — 영문·숫자는 Whois(2026-09-26) */
+  -webkit-text-stroke: var(--mark-stroke) currentColor; paint-order: stroke fill;
   font-size: var(--fs-body);
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--grey-800);
-  text-transform: none;
+  /* ABOUT · STEP 1 — 대문자로 적는다(2026-09-26 사용자). 원문은 'About'·'Step 1'
+     그대로 두고 보이는 것만 바꾼다 — 낭독기는 원문을 읽는다 */
+  text-transform: uppercase;
   white-space: nowrap;
 }
 

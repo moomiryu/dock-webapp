@@ -251,6 +251,9 @@
 .home-frame{
   position: relative;
   overflow: hidden;
+  /* 첫 화면의 영문·숫자는 Whois(2026-09-26). 워드마크는 자기 Lineal을 들고
+     있어서 이 줄에 영향받지 않는다 */
+  font-family: var(--mark-font);
   padding: 0;
   gap: 0;
   background: linear-gradient(to bottom, var(--grey-50) 0 50%, var(--grey-200) 60% 100%);
@@ -2107,7 +2110,9 @@
 /* 쓰는 글의 얼굴과 크기. 안내(.write-lead)가 같은 값을 같이 쓴다.
    얼굴은 Pretendard 하나다(2026-09-24) — UI 얼굴(--ui-font)은 라틴·숫자를
    Lineal로 그려서 한 줄 안에서 한글과 영문이 다른 서체로 섞였다. */
-.write-fit{ --write-font: var(--text-font);
+/* 숫자만 Whois(2026-09-26). 영문·한글은 그대로 Pretendard다 — 입력값을 쪼개지
+   않고 글꼴 목록의 문자 범위로만 가른다. 조합 중인 한글도 커서도 그대로다 */
+.write-fit{ --write-font: var(--digit-font);
   --write-size: min(8cqw, calc(96cqh / (var(--rows, 1) * 1.5))); }
 .write-screen.is-typing .write-fit{ --write-size: 8cqw; }
 .write-input{ width: 100%; height: 100%; border: 0; background: none;
@@ -3292,7 +3297,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   z-index: 0; }
 .voice{
   position: absolute; left: 0; top: 0; opacity: 0;
-  font-family: 'Lineal VF', 'Pretendard Variable', sans-serif;
+  font-family: 'Whois', 'Lineal VF', 'Pretendard Variable', sans-serif;   /* 첫 화면 — 영문·숫자는 Whois */
   font-weight: 700;
   /* 크기는 HomeVoices가 액자 폭에서 재어 인라인으로 준다 */
   font-size: 20px;
@@ -3437,7 +3442,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 }
 .z-ask.is-brief{ overflow: hidden; animation: askBriefCollapse 760ms var(--ease-emphasized) 3s forwards; }
 /* 검은 자리 위라 --muted(4.49:1)로는 AA에 한 끗 모자란다. 한 칸 밝게. */
-.compose-count{ position: absolute; right: var(--pad-x); bottom: var(--s6); font-family: var(--label-font); font-size: var(--fs-cap); letter-spacing: 0.02em; color: var(--grey-500); font-variant-numeric: tabular-nums; }
+.compose-count{ position: absolute; right: var(--pad-x); bottom: var(--s6); font-family: 'Whois Digits', var(--label-font);   /* 숫자만 Whois */ font-size: var(--fs-cap); letter-spacing: 0.02em; color: var(--grey-500); font-variant-numeric: tabular-nums; }
 /* 다 찼을 때. 흰색이었다 — 60자에서 배경이 검정으로 물러서던 옛 편집기의
    값이고, 그 편집기는 04 색으로 옮겨 가면서 여기 글자 수를 안 달고 갔다.
    흰 종이 위에 흰 글자만 남아 '60/60'의 앞 숫자가 통째로 사라져 있었다
@@ -4219,6 +4224,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .feedback-error{ font-size: var(--fs-body-s); color: var(--body-text); }
 .feedback-done{ margin-top: var(--space-group); font-size: var(--fs-body); line-height: 1.5; color: var(--ink); }
 .done-credits{ margin-top: var(--space-block); padding-bottom: var(--space-section);
+  font-family: var(--mark-font);   /* © 2026 WoongandRyu — 영문·숫자는 Whois */
   font-size: var(--fs-cap-s); line-height: 1.6; color: var(--muted); }
 
 /* 2/5 목록 아래 안내 한 줄(2026-09-25). 마지막 줄 → 선은 틀의 gap(섹션 24).

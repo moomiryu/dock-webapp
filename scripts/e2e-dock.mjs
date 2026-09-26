@@ -64,10 +64,10 @@ await settle(phone);
 console.log(`\n한 줄: ${STAMP}\n`);
 
 // 2026-09-19에 순서가 뒤집혔다 — 글이 먼저고, 형식이 그 뒤다.
-await phone.getByRole('button', { name: /써봤어요/ }).click();
+await phone.locator('.home-info-btn').click();   // 이름 대신 표식 — 영어 모드에서도 찾는다(2026-09-26)
 await phone.locator('.write-input').fill(STAMP);
 await phone.locator('.write-screen .primary-action').click();   // 다 썼어요 → 성격
-await phone.getByRole('radio', { name: '당당한' }).click();
+await phone.locator('.style-cards [role=radio]').first().click();   // 당당한 · Bold
 await phone.locator('.tone-choice .primary-action').click();      // 이 성격으로 → 조율
 await phone.locator('.tone-intro').click();                       // 설명 → 조작
 await phone.locator('.tone-work .primary-action').click();        // 다음 → 색
@@ -79,7 +79,7 @@ await phone.waitForSelector('.dock-guide', { timeout: 20000 });
 // 그걸로 정해진다. 등록되기 전에 꽂으면 그 꽂음은 아무의 것도 아니다.
 // 사람은 화면을 읽고 폰을 드느라 몇 초가 걸리지만 검사는 즉시 누른다.
 await phone.waitForTimeout(1500);
-await phone.getByRole('button', { name: '꽂았어요' }).click();
+await phone.locator('.dock-test-link').click();   // 꽂았어요
 
 // ── 1. 벽이 그 글을 띄우는가 ──────────────────────────────
 // '아무 글'이 아니라 방금 쓴 그 글이어야 한다. 신호는 몇 초면 닿는데
@@ -99,7 +99,7 @@ check(shown, '꽂으면 벽에 그 글이 크게 뜬다');
 // ── 2. 폰을 빼면 강조가 끝나는가 ──────────────────────────
 // 끝내는 것은 타이머가 아니라 사람이다. EMPHASIS_MS(30초)는 아무도 빼지
 // 않았을 때의 상한일 뿐이고, 여기서는 그보다 훨씬 빨리 접혀야 한다.
-await phone.getByRole('button', { name: '폰을 뺐어요' }).click();
+await phone.locator('.onwall-release').click();   // 폰을 뺐어요
 
 let closed = false;
 for (let i = 0; i < 14; i++) {

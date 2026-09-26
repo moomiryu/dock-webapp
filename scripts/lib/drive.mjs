@@ -94,7 +94,8 @@ export const SAMPLE_TEXT = '여기서 크게 말해본 적 없다';
  */
 export async function toCompose(page, text = SAMPLE_TEXT) {
   await toHome(page);
-  await page.getByRole('button', { name: /써봤어요/ }).click();
+  // 언어와 상관없이 찾는다(2026-09-26, 영문판) — '써봤어요'는 영어 모드에서 'Been here'가 된다
+  await page.locator('.home-info-btn').click();
   await page.waitForTimeout(300);
   if (text !== null) {
     await page.locator('.write-input').fill(text);
@@ -107,7 +108,17 @@ export async function toVoice(page, font = null, text = SAMPLE_TEXT) {
   await toCompose(page, text);
   await page.locator('.write-screen .primary-action').click();
   await page.waitForTimeout(300);
-  if (font) await page.getByRole('radio', { name: font }).click();   // 2026-09-25: 성격은 단일 선택(radio) 목록이다
+  // 성격은 단일 선택(radio) 목록이다(2026-09-25). 이름이 아니라 **자리**로 누른다 —
+  // 영어 모드에서는 이름이 Bold · Calm · Witty · Warm으로 바뀐다(2026-09-26).
+  if (font) await page.locator('.style-cards [role=radio]').nth(voiceIndex(font)).click();
+}
+
+/** 성격 이름(한국어·영어·내부 키 어느 것이든) → 목록의 자리. 순서는 src/lib/tone.ts의 STYLE_OPTIONS */
+const VOICES = [['당당한', 'bold', 'ttoryeot'], ['차분한', 'calm', 'chabun'], ['유머있는', 'witty', 'deulseok'], ['다정한', 'warm', 'doran']];
+export function voiceIndex(font) {
+  const i = VOICES.findIndex((names) => names.includes(String(font).toLowerCase()));
+  if (i < 0) throw new Error(`모르는 성격: ${font}`);
+  return i;
 }
 
 /** 03 조율 — 크기·빠르기·무게 */

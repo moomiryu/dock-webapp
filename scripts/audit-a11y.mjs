@@ -4,12 +4,21 @@
 // 거의 없지만 12px 회색 캡션과 32px 버튼이 늘 아슬아슬하다.
 //
 //   npm run dev
-//   node scripts/audit-a11y.mjs [baseUrl]
+//   node scripts/audit-a11y.mjs [baseUrl] [--en]
+//
+// --en: 영어 모드로 같은 화면들을 돈다(2026-09-26, 영문판). 개발 서버에서만 뜻이
+// 있다 — 배포본은 영문판 공개 스위치(lib/lang.ts)가 닫혀 있어 늘 한국어다.
+// 단추는 이름이 아니라 표식(클래스)으로 찾는다. 이름은 언어마다 바뀐다.
 
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 
-const BASE = process.argv[2] ?? 'http://localhost:5173';
+const ARGS = process.argv.slice(2);
+const EN = ARGS.includes('--en');
+const BASE = ARGS.find((a) => !a.startsWith('--')) ?? 'http://localhost:5173';
+// 입력칸에 넣는 시험 글. 영어 모드에서는 영어로 쓴다 — 조판(줄 수·글자 수)이 언어마다 다르다
+const SAMPLE = EN ? 'I have never spoken up here' : '여기서 크게 말해본 적 없다';
+const FULL = EN ? 'a'.repeat(60) : '가'.repeat(60);
 const AXE = 'https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.10.2/axe.min.js';
 
 const BROWSERS = [
@@ -64,39 +73,44 @@ async function audit(name) {
   dark += blind.reduce((n, x) => n + x.nodes.length, 0);
 }
 
-console.log(`\n접근성 감사 → ${BASE}\n`);
+console.log(`\n접근성 감사 → ${BASE}${EN ? ' (영어 모드)' : ''}\n`);
 
 await page.goto(`${BASE}/?mock=1`, { waitUntil: 'load' });
+if (EN) {
+  await page.evaluate(() => localStorage.setItem('megafont.lang', 'en'));
+  await page.reload({ waitUntil: 'load' });
+}
 await settle();
 await audit('01 홈');
+if (EN && (await page.evaluate(() => document.documentElement.lang)) !== 'en') throw new Error('--en인데 영어 모드가 아니다 — 배포본(공개 스위치 닫힘)이거나 저장이 막혔다');
 
-await page.getByRole('button', { name: '처음이에요' }).click();
+await page.locator('.home-cta').click();
 await page.waitForTimeout(500);
 await audit('01 소개');
-await page.getByRole('button', { name: '처음으로', exact: true }).click();
+await page.locator('.info-head .z-back:not(.z-home)').click();   // 첫 장의 뒤로 = 처음으로 (X는 .z-home)
 await page.waitForTimeout(400);
 
 // 2026-09-19에 순서가 뒤집혔다 — 글이 먼저다.
-await page.getByRole('button', { name: /써봤어요/ }).click();
+await page.locator('.home-info-btn').click();
 await page.waitForTimeout(400);
 await audit('01 한 줄 (빈 상태)');
-await page.locator('.write-input').fill('여기서 크게 말해본 적 없다');
+await page.locator('.write-input').fill(SAMPLE);
 await page.waitForTimeout(300);
 await audit('01 한 줄 (채운 뒤)');
 
 // 60자를 채운 상태도 본다. 그 자리에만 걸리는 규칙이 있어서다
 // (.compose-count.is-full). 2026-09-21까지 이 화면이 목록에 없었고,
 // 그동안 그 규칙은 흰 종이 위에 흰 글자였다 — 검사는 통과하고 있었다.
-await page.locator('.write-input').fill('가'.repeat(60));
+await page.locator('.write-input').fill(FULL);
 await page.waitForTimeout(300);
 await audit('01 한 줄 (60자)');
-await page.locator('.write-input').fill('여기서 크게 말해본 적 없다');
+await page.locator('.write-input').fill(SAMPLE);
 await page.waitForTimeout(300);
 
 await page.locator('.write-screen .primary-action').click();
 await page.waitForTimeout(400);
 await audit('02 성격 (빈 상태)');
-await page.getByRole('radio', { name: '당당한' }).click();
+await page.locator('.style-cards [role=radio]').first().click();   // 당당한 · Bold
 await audit('02 성격 (고른 뒤)');
 
 await page.locator('.tone-choice .primary-action').click();
@@ -116,11 +130,11 @@ await page.locator('.primary-action').click();
 await page.waitForSelector('.dock-guide', { timeout: 15000 });
 await audit('06 도킹');
 
-await page.getByRole('button', { name: '꽂았어요' }).click();
+await page.locator('.dock-test-link').click();   // 꽂았어요 · I've docked it
 await page.waitForTimeout(400);
 await audit('07 벽에 떠 있음');
 
-await page.getByRole('button', { name: '폰을 뺐어요' }).click();
+await page.locator('.onwall-release').click();   // 폰을 뺐어요
 await page.waitForSelector('.done', { timeout: 10000 });
 await audit('08 완료');
 

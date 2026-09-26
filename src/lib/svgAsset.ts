@@ -1474,6 +1474,11 @@ function matchSliderCharacter(root: Element, reference: Element) {
   const copy = root.ownerDocument.importNode(template, true) as Element;
   copy.setAttribute('data-slider-character', '');
   character.replaceWith(copy);
+  /* 캐릭터가 맨 위에 선다(2026-09-26 사용자). 작가 파일(example_step1_4_*)은
+     캐릭터를 네 번째로 그리고 슬라이더 선·손잡이를 그 뒤에 그려서, SVG에서는
+     나중 것이 위라 슬라이더가 캐릭터를 덮었다. 같은 부모의 맨 끝으로 옮긴다.
+     묶음 안의 바닥 그림자(y 478)는 슬라이더(y 378까지)와 겹치지 않아 함께 옮겨도 된다. */
+  copy.parentElement?.appendChild(copy);
 }
 
 /** 작가의 웃는 눈을 현재 흰자의 크기에 맞춘다. 몸 색과 눈 깜빡임은 그대로 쓴다. */

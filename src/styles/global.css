@@ -36,7 +36,7 @@
    덧댄 양은 tokens.css의 --mark-stroke-*(그 굵기의 Lineal 세로획 − Whois 세로획):
    0.01 · 0.0175 · 0.025 · 0.034 · 0.05em = 20 · 36 · 51 · 70 · 102/2048.
    만드는 법은 아래 'Whois Digits'와 같다(skia-pathops, 폭 W의 선을 그어 합침,
-   마이터 이음). 영문자·숫자 62자만 남겼다. 글자 폭(996)은 그대로다.
+   마이터 이음). 영문 자판 글자·부호 104자를 남겼다. 글자 폭(996)은 그대로다.
    브라우저가 자리의 굵기에 맞는 판을 고른다 — 800은 700이나 900으로 간다.
    원본 WhoisMono.ttf는 이 판들의 출처로 남겨 둔다. */
 @font-face { font-family: 'Whois'; src: url('/fonts/WhoisMono-400.ttf') format('truetype');
@@ -49,6 +49,23 @@
   font-weight: 700; font-style: normal; font-display: swap; unicode-range: U+0030-0039, U+0041-005A, U+0061-007A; }
 @font-face { font-family: 'Whois'; src: url('/fonts/WhoisMono-900.ttf') format('truetype');
   font-weight: 900; font-style: normal; font-display: swap; unicode-range: U+0030-0039, U+0041-005A, U+0061-007A; }
+/* 'Whois Text' — 같은 판을 **빈칸·부호까지** 가져가는 이름(2026-09-26, 영문판).
+   영어 화면은 온통 영어라, 영문자만 Whois고 빈칸이 Lineal이면 고정폭 글자
+   사이에 좁은 빈칸이 끼어 낱말이 붙어 보였다('This is how it will look').
+   영어 화면의 UI 글꼴(tokens.css :root:lang(en))이 이 이름으로 시작한다.
+   한국어 화면은 위의 'Whois'(영문자·숫자만)를 그대로 쓴다 — 한글 사이의
+   빈칸이 고정폭(0.49em)으로 벌어지면 안 된다. 판에는 영문 자판의 글자 전부와
+   ‘’ “” – — · © °가 있다(104자). … • →는 Whois에 없어 다음 서체로 넘어간다. */
+@font-face { font-family: 'Whois Text'; src: url('/fonts/WhoisMono-400.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap; unicode-range: U+0020-007E, U+00A9, U+00B0, U+00B7, U+2013-2014, U+2018-2019, U+201C-201D; }
+@font-face { font-family: 'Whois Text'; src: url('/fonts/WhoisMono-500.ttf') format('truetype');
+  font-weight: 500; font-style: normal; font-display: swap; unicode-range: U+0020-007E, U+00A9, U+00B0, U+00B7, U+2013-2014, U+2018-2019, U+201C-201D; }
+@font-face { font-family: 'Whois Text'; src: url('/fonts/WhoisMono-600.ttf') format('truetype');
+  font-weight: 600; font-style: normal; font-display: swap; unicode-range: U+0020-007E, U+00A9, U+00B0, U+00B7, U+2013-2014, U+2018-2019, U+201C-201D; }
+@font-face { font-family: 'Whois Text'; src: url('/fonts/WhoisMono-700.ttf') format('truetype');
+  font-weight: 700; font-style: normal; font-display: swap; unicode-range: U+0020-007E, U+00A9, U+00B0, U+00B7, U+2013-2014, U+2018-2019, U+201C-201D; }
+@font-face { font-family: 'Whois Text'; src: url('/fonts/WhoisMono-900.ttf') format('truetype');
+  font-weight: 900; font-style: normal; font-display: swap; unicode-range: U+0020-007E, U+00A9, U+00B0, U+00B7, U+2013-2014, U+2018-2019, U+201C-201D; }
 /* 'Whois Digits'는 원본이 아니라 **숫자 열 자에 획을 덧대 둔 판**이다
    (WhoisDigits.ttf, 2026-09-26). 1단계 입력칸에서 Pretendard 400 옆에 서면
    Whois가 얇았다 — 세로획 0.0625em 대 0.081em(영문)·0.075em(한글). 입력칸은

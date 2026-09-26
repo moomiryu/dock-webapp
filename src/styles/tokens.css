@@ -284,13 +284,14 @@
 
 /* ─── 영문판: 기본 영문은 모두 Whois (2026-09-26 사용자) ───────────────
    화면이 영어일 때(html lang="en", lib/lang.ts) UI 글꼴 목록의 맨 앞에 Whois를
-   둔다. Whois는 영문자·숫자만 가져가고(unicode-range), 빈칸·부호는 Lineal,
-   한글은 Pretendard로 넘어간다. 굵기는 굵기별 판이 맞춘다(global.css).
+   둔다. 영어 화면에서는 빈칸·부호까지 Whois다('Whois Text' — 영문자만 Whois면
+   고정폭 글자 사이에 좁은 빈칸이 끼어 낱말이 붙어 보였다). 한글은 Pretendard로
+   넘어간다. 굵기는 굵기별 판이 맞춘다(global.css).
    참여자가 고른 성격 서체(견본·미리보기·벽)는 자기 서체를 인라인으로 들고
    있어 이 규칙 밖이다. 1단계 입력칸도 참여자의 글이라 한국어판과 같다 —
    숫자만 Whois(--digit-font를 Pretendard 쪽으로 다시 묶는다). 워드마크는 Lineal. */
 :root:lang(en){
-  --ui-font: 'Whois', 'Lineal VF', 'Pretendard Variable', -apple-system, BlinkMacSystemFont, sans-serif;
-  --text-font: 'Whois', 'Pretendard Variable', sans-serif;
+  --ui-font: 'Whois Text', 'Lineal VF', 'Pretendard Variable', -apple-system, BlinkMacSystemFont, sans-serif;
+  --text-font: 'Whois Text', 'Pretendard Variable', sans-serif;
   --digit-font: 'Whois Digits', 'Pretendard Variable', sans-serif;
 }

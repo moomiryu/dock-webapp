@@ -28,16 +28,27 @@
 
    성격을 고른 뒤의 글(2/5 견본 · 3/5 · 미리보기 · 벽)은 자기 서체를 인라인으로
    들고 있고, 이 두 이름은 위 네 자리에만 건다 — 상속으로 번지지 않는다.
-   굵기는 500 하나뿐이라 그것만 적는다. 없는 굵기를 지어내지 않는다(body의
-   font-synthesis-weight: none). */
-@font-face {
-  font-family: 'Whois';
-  src: url('/fonts/WhoisMono.ttf') format('truetype');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-  unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
-}
+   **굵기는 파일로 나눈다(2026-09-26, 영문판).** 원본 Whois는 500 한 벌이다.
+   처음엔 모자란 굵기를 CSS 글자 테두리(-webkit-text-stroke)로 채웠는데, 그건
+   안쪽 글자에 물려 내려간다 — 영문판에서 UI 전체를 Whois로 바꾸면 참여자의
+   글(견본·미리보기)까지 두꺼워질 수 있었다. 그래서 같은 덧대기를 윤곽선에
+   구워 넣은 판을 굵기마다 둔다: WhoisMono-400 · 500 · 600 · 700 · 900.
+   덧댄 양은 tokens.css의 --mark-stroke-*(그 굵기의 Lineal 세로획 − Whois 세로획):
+   0.01 · 0.0175 · 0.025 · 0.034 · 0.05em = 20 · 36 · 51 · 70 · 102/2048.
+   만드는 법은 아래 'Whois Digits'와 같다(skia-pathops, 폭 W의 선을 그어 합침,
+   마이터 이음). 영문자·숫자 62자만 남겼다. 글자 폭(996)은 그대로다.
+   브라우저가 자리의 굵기에 맞는 판을 고른다 — 800은 700이나 900으로 간다.
+   원본 WhoisMono.ttf는 이 판들의 출처로 남겨 둔다. */
+@font-face { font-family: 'Whois'; src: url('/fonts/WhoisMono-400.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap; unicode-range: U+0030-0039, U+0041-005A, U+0061-007A; }
+@font-face { font-family: 'Whois'; src: url('/fonts/WhoisMono-500.ttf') format('truetype');
+  font-weight: 500; font-style: normal; font-display: swap; unicode-range: U+0030-0039, U+0041-005A, U+0061-007A; }
+@font-face { font-family: 'Whois'; src: url('/fonts/WhoisMono-600.ttf') format('truetype');
+  font-weight: 600; font-style: normal; font-display: swap; unicode-range: U+0030-0039, U+0041-005A, U+0061-007A; }
+@font-face { font-family: 'Whois'; src: url('/fonts/WhoisMono-700.ttf') format('truetype');
+  font-weight: 700; font-style: normal; font-display: swap; unicode-range: U+0030-0039, U+0041-005A, U+0061-007A; }
+@font-face { font-family: 'Whois'; src: url('/fonts/WhoisMono-900.ttf') format('truetype');
+  font-weight: 900; font-style: normal; font-display: swap; unicode-range: U+0030-0039, U+0041-005A, U+0061-007A; }
 /* 'Whois Digits'는 원본이 아니라 **숫자 열 자에 획을 덧대 둔 판**이다
    (WhoisDigits.ttf, 2026-09-26). 1단계 입력칸에서 Pretendard 400 옆에 서면
    Whois가 얇았다 — 세로획 0.0625em 대 0.081em(영문)·0.075em(한글). 입력칸은

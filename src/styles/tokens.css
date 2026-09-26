@@ -240,6 +240,8 @@
      --digit-font 숫자만    → 1단계 입력칸 · 글자 수 */
   --mark-font: 'Whois', var(--ui-font);
   --digit-font: 'Whois Digits', var(--text-font);
+  /* 아래 --mark-stroke*는 **CSS에서 쓰지 않는다**(2026-09-26). 굵기별 Whois 판에
+     구워 넣은 값의 출처로 남긴다 — 판을 다시 만들 때 이 값을 쓴다(global.css). */
   /* 튜토리얼 머리줄의 Whois 획 덧대기(2026-09-26). Whois는 굵기가 500 한 벌이라
      머리줄이 원래 쓰던 Lineal 700보다 세로획이 얇았다(0.0625em 대 0.097em,
      실측) — 옆 아이콘 선(2 · 2.6px)과 위계가 벌어졌다. 그 차이만큼 글자색으로
@@ -278,4 +280,17 @@
   --ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
   --z-content: 1;
   --z-elevated: 2;
+}
+
+/* ─── 영문판: 기본 영문은 모두 Whois (2026-09-26 사용자) ───────────────
+   화면이 영어일 때(html lang="en", lib/lang.ts) UI 글꼴 목록의 맨 앞에 Whois를
+   둔다. Whois는 영문자·숫자만 가져가고(unicode-range), 빈칸·부호는 Lineal,
+   한글은 Pretendard로 넘어간다. 굵기는 굵기별 판이 맞춘다(global.css).
+   참여자가 고른 성격 서체(견본·미리보기·벽)는 자기 서체를 인라인으로 들고
+   있어 이 규칙 밖이다. 1단계 입력칸도 참여자의 글이라 한국어판과 같다 —
+   숫자만 Whois(--digit-font를 Pretendard 쪽으로 다시 묶는다). 워드마크는 Lineal. */
+:root:lang(en){
+  --ui-font: 'Whois', 'Lineal VF', 'Pretendard Variable', -apple-system, BlinkMacSystemFont, sans-serif;
+  --text-font: 'Whois', 'Pretendard Variable', sans-serif;
+  --digit-font: 'Whois Digits', 'Pretendard Variable', sans-serif;
 }

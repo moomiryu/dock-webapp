@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import BackButton from './BackButton';
 import { HomeX } from './StepHeader';
-import { aboutSvg, chainSvg, scopeSvg, slideSvg, withGround } from '../lib/svgAsset';
+import { aboutSvg, scopeSvg, slideSvg, step1Svg } from '../lib/svgAsset';
 
 // 작가가 삽화를 컷으로 나눠 준다. 컷 사이를 이어 도는 일은 svgAsset이 한다.
 //
@@ -10,9 +10,7 @@ import { aboutSvg, chainSvg, scopeSvg, slideSvg, withGround } from '../lib/svgAs
 //           ① 불빛이 켜지고 ② '내 생각은…'이 뜨고 ③ 구경꾼이 걸어 들어온다.
 //           가운데 걸음은 그림에 없다 — 둘째 컷을 벽면 안팎으로 쪼개 만든다.
 //
-//   Step 2  네 컷을 1→2→3→4→3→2→1로 오간다. 되짚어 돌아오는 것이 중요하다:
-//           손잡이가 끝에서 처음으로 순간 이동하면 "손잡이를 움직이면 글자가
-//           따라 바뀐다"는 이 장의 내용이 그 순간 거짓이 된다.
+//   Step 1  마지막 네 컷은 앞으로만 재생한 뒤 작성 첫 장면으로 돌아간다.
 //
 //   Step 3  세 컷을 1→2→3→2→1로 오간다. 메가폰트만 서 있다가, 사람이
 //           걸어와 폰을 꽂고, 느낌표가 터진다. 되짚어 돌아오는 것이 거짓이
@@ -26,10 +24,10 @@ import artAboutFull from '../../by_moomiryu/Renewal_v1/Tutorial/example_about_2.
 import artRule1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_1_1.svg?raw';
 import artRule2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step_1_2.svg?raw';
 import artRule3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_3_1.svg?raw';
-import artGlyphs1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_1.svg?raw';
-import artGlyphs2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_2.svg?raw';
-import artGlyphs3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_3.svg?raw';
-import artGlyphs4 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step2_4.svg?raw';
+import artGlyphs1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_4_1.svg?raw';
+import artGlyphs2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_4_2.svg?raw';
+import artGlyphs3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_4_3.svg?raw';
+import artGlyphs4 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_4_4.svg?raw';
 import artDock2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_2.svg?raw';
 import artDock3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_3.svg?raw';
 import artDock4 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_4.svg?raw';
@@ -93,8 +91,7 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
           {/* 도입 두 장(Problem · Solution)에는 삽화가 없다. 빈 칸을 남기지
               않고 아예 안 세운다 — 테두리만 남은 상자는 '그림이 안 떴다'로
               읽힌다. 글의 자리는 그대로다(제목은 다른 장과 같은 높이). */}
-          {s.relay ? <Relay legs={s.relay} />
-            : s.art && <div className={'info-art ' + (s.artClass ?? '')} aria-hidden>{s.art}</div>}
+          {s.art && <div className={'info-art ' + (s.artClass ?? '')} aria-hidden>{s.art}</div>}
         </section>
       </div>
       <div className="info-nav">
@@ -131,27 +128,7 @@ function Built({ name, still, make }: { name: string; still: string; make: (key:
 }
 
 
-type Leg = { art: ReactNode; artClass: string; sec: number };
-
-/**
- * 삽화 둘을 차례로 돈다 — 한 그림이 제 바퀴(sec)를 마치면 다음 그림이 선다.
- * 새로 서는 그림은 제 시계를 0부터 탄다(SMIL은 svg가 문서에 들어온 순간
- * 시작한다). 모션을 끈 사람에게는 넘기지 않고 첫 그림의 멈춘 컷만 준다.
- */
-function Relay({ legs }: { legs: Leg[] }) {
-  const [i, setI] = useState(0);
-  const off = typeof matchMedia !== 'undefined'
-    && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  useEffect(() => {
-    if (off) return;
-    const t = setTimeout(() => setI((i + 1) % legs.length), legs[i].sec * 1000);
-    return () => clearTimeout(t);
-  }, [i, off, legs]);
-  const leg = legs[i];
-  return <div key={i} className={'info-art is-relay ' + leg.artClass} aria-hidden>{leg.art}</div>;
-}
-
-const SLIDES: Array<{ step: string; title: string; body: ReactNode; art?: ReactNode; artClass?: string; relay?: Leg[]; dark?: boolean }> = [
+const SLIDES: Array<{ step: string; title: string; body: ReactNode; art?: ReactNode; artClass?: string; dark?: boolean }> = [
   /* 사용법보다 **왜**가 먼저다(2026-09-22). 그때 문턱(Problem)과 그래서
      둔 것(Solution)을 두 장으로 나눴는데, 2026-09-24에 한 장으로 합쳤다.
      조작을 배우기 전에 읽을 장이 둘이면 '왜'가 설명의 절반을 먹는다.
@@ -179,8 +156,7 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art?: ReactN
   {
     /* 쓰기와 성격 정하기를 한 장으로(2026-09-24). 실제로도 한 자리에서
        이어지는 일이고, 둘 다 '폰 안에서 하는 일'이다 — 폰 밖(꽂기·벽)과
-       갈리는 선이 여기다. 삽화 둘은 그대로 두고 **차례로 잇는다**(Relay):
-       작성판 세 컷이 한 번 돌고, 이어서 캐릭터가 한 번 오간다. */
+       갈리는 선이 여기다. 작성판 세 컷 뒤에 같은 구도의 조율 네 컷을 하나의 가로 슬라이드로 잇는다. */
     step: 'Step 1',
     title: '메시지를 쓰고,\n성격을 정합니다.',
     body: (
@@ -190,31 +166,11 @@ const SLIDES: Array<{ step: string; title: string; body: ReactNode; art?: ReactN
         <b>비속어 및 타인을 해치는 표현은 사용할 수 없습니다.</b>
       </p>
     ),
-    relay: [
-      /* 세 컷은 한 동작의 앞뒤가 아니라 차례로 읽을 목록이라 옆으로 넘긴다
-         (slideSvg). 한 자리에서 갈아 끼우던 때는 건너가는 동안 두 판의
-         글이 반투명으로 겹쳤다. is-lowered: 이 그림만 작성판이 다른 삽화
-         보다 71~115px 위에 떠 있어 큰 화면에서 한 단 내린다(app.css).
-
-         6.36초 — 한 바퀴(8.18초) 중 셋째 판이 다 선 순간. 거기서 넘겨야
-         첫 판으로 돌아가는 1.8초를 건너뛰고 곧바로 다음 그림이 온다. */
-      {
-        art: <Built name="rules" still={artRule1}
-          make={(k) => slideSvg([artRule1, artRule2, artRule3], k, 10, [1, 0.7, 0.7])} />,
-        artClass: 'is-wide is-lowered', sec: 6.36
-      },
-      /* 네 컷을 1→2→3→4→3→2→1로 되짚는다. 손잡이가 끝에서 처음으로 순간
-         이동하면 '손잡이를 움직이면 글자가 따라 바뀐다'가 그 순간 거짓이
-         된다. 한 바퀴(11초)를 다 돌아 첫 컷에 선 채로 넘긴다.
-         그림자는 작가가 따로 준 example_step2_shadow.svg에서 잰 자리다.
-         is-fitted: 글 바로 밑에서 혼자 크게 올라와 보여 칸에 맞춰 줄인다. */
-      {
-        art: <Built name="glyphs" still={artGlyphs1}
-          make={(k) => withGround(chainSvg([artGlyphs1, artGlyphs2, artGlyphs3, artGlyphs4], k),
-            { cx: 202.2, cy: 626.45, rx: 68.5, ry: 12.05 })} />,
-        artClass: 'is-wide is-fitted', sec: 11
-      }
-    ]
+    // 1→2→3→조율판→1로 옆으로 넘기며, 조율판 안의 네 컷만 제자리에서 모프한다.
+    art: <Built name="step1" still={artRule1}
+      make={(k) => step1Svg([artRule1, artRule2, artRule3],
+        [artGlyphs1, artGlyphs2, artGlyphs3, artGlyphs4], k)} />,
+    artClass: 'is-wide is-lowered'
   },
   {
     step: 'Step 2',

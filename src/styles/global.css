@@ -17,6 +17,44 @@
   font-display: swap;
 }
 
+/* Whois (Raphaël Bastide, whois-mono.ttf · 굵기 500 한 벌 · 라틴 52자와 숫자
+   10자, 한글 없음 · fsType 0). 2026-09-26 사용자 지정.
+
+   **한 파일을 두 이름으로 건다.** 어느 글자를 가져갈지가 자리마다 달라서다.
+   - 'Whois'        — 영문자와 숫자(A–Z · a–z · 0–9). 튜토리얼 머리줄 · 첫 화면 · 푸터
+   - 'Whois Digits' — 숫자(0–9)만. 1단계 입력칸과 글자 수
+   빈칸과 문장부호는 어느 쪽에도 넣지 않는다 — 고정폭 빈칸(0.49em)이 한국어
+   띄어쓰기를 벌린다. 목록의 다음 서체로 넘어간다.
+
+   성격을 고른 뒤의 글(2/5 견본 · 3/5 · 미리보기 · 벽)은 자기 서체를 인라인으로
+   들고 있고, 이 두 이름은 위 네 자리에만 건다 — 상속으로 번지지 않는다.
+   굵기는 500 하나뿐이라 그것만 적는다. 없는 굵기를 지어내지 않는다(body의
+   font-synthesis-weight: none). */
+@font-face {
+  font-family: 'Whois';
+  src: url('/fonts/WhoisMono.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
+}
+/* 'Whois Digits'는 원본이 아니라 **숫자 열 자에 획을 덧대 둔 판**이다
+   (WhoisDigits.ttf, 2026-09-26). 1단계 입력칸에서 Pretendard 400 옆에 서면
+   Whois가 얇았다 — 세로획 0.0625em 대 0.081em(영문)·0.075em(한글). 입력칸은
+   textarea라 글자마다 CSS 테두리를 줄 수 없어서, 머리줄에 쓰는 것과 같은
+   '획 덧대기'를 윤곽선에 미리 입혔다: 0.0175em(36/2048)을 양쪽에 반씩 →
+   0.08em. 글자 폭(996)은 그대로다. 파일 안의 이름은 'MegaFont Whois
+   Digits'로 바꿔 원본 Whois와 섞이지 않게 했다. 원본에서 다시 만들려면
+   skia-pathops로 윤곽선에 폭 36의 선을 그어 합친다(마이터 이음). */
+@font-face {
+  font-family: 'Whois Digits';
+  src: url('/fonts/WhoisDigits.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0030-0039;
+}
+
 /* ── 우리가 들고 있는 발화 서체 둘 ──────────────────────────────────
    2026-09-20에 네 칸의 서체가 전부 갈렸다. 당당한·차분한은 Adobe 킷이
    주고(index.html), 유머있는·다정한은 여기 파일로 있다.

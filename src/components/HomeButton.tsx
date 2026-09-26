@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface Props {
   /** 스크린리더가 읽을 목적지 — "처음으로" */
@@ -27,19 +28,7 @@ interface Props {
  */
 export default function HomeButton({ label, onClick }: Props) {
   const [asking, setAsking] = useState(false);
-  const titleId = useId();
-  const yesRef = useRef<HTMLButtonElement>(null);
   const backRef = useRef<HTMLButtonElement>(null);
-
-  // 열리면 창 안으로 초점을 옮기고, 닫히면 누르던 버튼으로 돌려준다.
-  // ESC는 '아니오'와 같다 — 물음에서 빠져나오는 쪽이 늘 안전한 쪽이다.
-  useEffect(() => {
-    if (!asking) return;
-    yesRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); setAsking(false); } };
-    window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
-  }, [asking]);
 
   return (
     <>
@@ -55,18 +44,50 @@ export default function HomeButton({ label, onClick }: Props) {
         </svg>
       </button>
       {asking && (
-        <div className="ask-veil" role="dialog" aria-modal="true" aria-labelledby={titleId}>
-          <div className="ask-card">
-            <h2 id={titleId}>정말 종료하시겠어요?</h2>
-            <p>만든 발화 기록이 사라져요.</p>
-            <div className="ask-answers">
-              <button ref={yesRef} type="button" className="ask-yes" onClick={onClick}>네</button>
-              <button type="button" className="ask-no"
-                onClick={() => { setAsking(false); backRef.current?.focus(); }}>아니오</button>
-            </div>
-          </div>
-        </div>
+        <AskLeave desc="만든 발화 기록이 사라져요." onYes={onClick}
+          onNo={() => { setAsking(false); backRef.current?.focus(); }} />
       )}
     </>
+  );
+}
+
+/**
+ * 한 번 더 묻는 창 — "정말 종료하시겠어요?" + 한 줄 + 네 / 아니오.
+ *
+ * 도킹의 '처음으로'(쓰던 것이 사라진다)와 작성 1~5단계의 X(초기 화면으로,
+ * 쓰던 글은 남는다 — 2026-09-26 사용자 결정)가 같은 창을 쓴다. 물음은 같고
+ * 아래 한 줄만 그 자리에서 실제로 일어나는 일을 말한다.
+ *
+ * 창은 문서 맨 바깥(body)에 띄운다. 머리줄이 움직이는 상자(transform) 안에
+ * 들어 있으면, 화면을 덮어야 할 막이 그 상자 안에 갇힌다.
+ *
+ * 열리면 창 안(네)으로 초점을 옮긴다. ESC는 '아니오'와 같다 — 물음에서
+ * 빠져나오는 쪽이 늘 안전한 쪽이다. 초점을 누르던 버튼으로 돌려주는 것은
+ * onNo를 준 쪽이 한다.
+ */
+export function AskLeave({ desc, onYes, onNo }: { desc: string; onYes: () => void; onNo: () => void }) {
+  const titleId = useId();
+  const yesRef = useRef<HTMLButtonElement>(null);
+  /* 부모가 다시 그려질 때마다 초점을 '네'로 되돌리지 않도록, 여는 순간 한 번만 */
+  const no = useRef(onNo);
+  no.current = onNo;
+  useEffect(() => {
+    yesRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); no.current(); } };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, []);
+  return createPortal(
+    <div className="ask-veil" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <div className="ask-card">
+        <h2 id={titleId}>정말 종료하시겠어요?</h2>
+        <p>{desc}</p>
+        <div className="ask-answers">
+          <button ref={yesRef} type="button" className="ask-yes" onClick={onYes}>네</button>
+          <button type="button" className="ask-no" onClick={() => no.current()}>아니오</button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }

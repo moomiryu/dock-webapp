@@ -3720,7 +3720,8 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .onwall-release { border:0; background:none; color:var(--paper); font:inherit; font-size:var(--fs-cap); min-height:var(--btn-l); margin-top:var(--s7); }
 
 /* ─── 한 번 더 묻는 창 ─────────────────────────────────────────
-   되돌릴 수 없는 한 걸음 앞에서만 선다(지금은 도킹의 '처음으로' 하나).
+   나가는 한 걸음 앞에서 선다 — 도킹의 '처음으로'와 작성 1~5단계의 X
+   (2026-09-26). 창은 body에 뜬다(HomeButton · AskLeave).
    화면을 덮어 뒤를 잠그고, 물음과 두 답만 남긴다.
 
    덮개 색은 토큰에서 만든다 — 잉크를 절반쯤 푼 것이다. 새 색을 짓지 않는다. */

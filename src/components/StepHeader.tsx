@@ -1,4 +1,6 @@
+import { useRef, useState, type Ref } from 'react';
 import BackButton from './BackButton';
+import { AskLeave } from './HomeButton';
 import StepOf from './StepOf';
 
 interface Props {
@@ -21,13 +23,24 @@ interface Props {
  * X는 뒤로가기와 같은 상자(.z-back 44×44)·같은 획(2.6)·같은 색이다. 큰 원형
  * 바탕은 두지 않는다. **전송 기록을 지우지 않는다** — 그건 도킹 화면의 홈
  * 버튼(확인을 거친다)만 한다. 도킹 화면은 이 머리줄을 쓰지 않는다.
+ *
+ * **X는 한 번 묻는다**(2026-09-26, 사용자 요청). 도킹의 홈과 같은 창
+ * (HomeButton · AskLeave)이고, 아래 한 줄만 여기서 실제로 일어나는 일을
+ * 말한다 — 쓰던 글은 지우지 않는다(사용자 결정). 튜토리얼의 X는 묻지 않는다.
  */
 export default function StepHeader({ at, back, onHome, className = 'z-header' }: Props) {
+  const [asking, setAsking] = useState(false);
+  const x = useRef<HTMLButtonElement>(null);
   return (
     <div className={className + ' step-header'}>
       <BackButton label={back.label} onClick={back.onClick} />
       <StepOf at={at} />
-      <HomeX onClick={onHome} />
+      <HomeX buttonRef={x} onClick={() => setAsking(true)} />
+      {asking && (
+        /* 10분은 초안이 남는 시간이다(lib/draft.ts · STALE_MS) */
+        <AskLeave desc="10분 안에 돌아오면 이어서 쓸 수 있어요." onYes={onHome}
+          onNo={() => { setAsking(false); x.current?.focus(); }} />
+      )}
     </div>
   );
 }
@@ -37,9 +50,9 @@ export default function StepHeader({ at, back, onHome, className = 'z-header' }:
  * 상자·획·색은 그 자리의 뒤로가기(.z-back)를 따른다 — 튜토리얼에서는 뒤로가기가
  * 흐린 색·가는 획(app.css .info-head > .z-back)이라 X도 같이 그렇게 선다.
  */
-export function HomeX({ onClick }: { onClick: () => void }) {
+export function HomeX({ onClick, buttonRef }: { onClick: () => void; buttonRef?: Ref<HTMLButtonElement> }) {
   return (
-    <button type="button" className="z-back z-home" onClick={onClick} aria-label="초기 화면으로 돌아가기">
+    <button ref={buttonRef} type="button" className="z-back z-home" onClick={onClick} aria-label="초기 화면으로 돌아가기">
       <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden focusable="false">
         <path d="M7 7 L17 17 M17 7 L7 17" fill="none" stroke="currentColor"
           strokeWidth="2.6" strokeLinecap="round" />

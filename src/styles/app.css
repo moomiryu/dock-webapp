@@ -3793,6 +3793,39 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   .ask-veil, .ask-card{ animation: none; }
 }
 
+/* ─── 홈 캐릭터 → 언어 창 (2026-09-26, 영문판 · LangDialog) ─────────────
+   캐릭터를 짧게 누르면 뜬다. 틀은 위의 확인 창 그대로다(.ask-veil ·
+   .ask-card — 사용자 결정: 이 앱이 이미 쓰는 가운데 창으로).
+   · 홈의 층(캐릭터 500, 버튼 1000, 인사 1100)보다 위에 서야 해서 덮개만
+     1200으로 올린다. 작성 단계의 확인 창은 10 그대로다.
+   · 제목 `언어 · Language`, 그 아래 `한국어 [ | ] English`(.tswitch — 3/5
+     말투와 같은 부품 R12·같은 회색). 제목과 스위치 사이는 확인 창의 제목과
+     두 답 사이와 같다(--s4).
+   · ✕는 카드의 오른쪽 위 구석에 44×44 상자째 붙는다. */
+.home-char{ cursor: pointer; }
+.home-char:focus-visible{ outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--r-control); }
+.lang-veil{ z-index: 1200; }
+.lang-card{ position: relative; }
+.lang-card > .z-home{ position: absolute; top: 0; right: 0; }
+.lang-card > .tswitch{ margin-top: var(--s4); }
+.lang-card .tswitch-side{ font-family: inherit; }
+
+/* ─── 영문판의 Whois 획 덧대기 (2026-09-26, 사용자 결정) ───────────────
+   영어는 Whois로 쓰고, Whois가 한 벌(500)뿐이라 모자란 굵기를 획 덧대기로
+   채워 그 자리의 위계를 지킨다 — 튜토리얼 머리줄(--mark-stroke)과 같은 셈.
+   값은 tokens.css의 --mark-stroke-*(자리의 굵기별).
+   · 영어가 **실제로 있는 곳에만** 건다: 화면이 영어일 때의 홈 글자(:lang),
+     그리고 lang="en"을 단 조각(창의 English · Language, 인사의 영어 마디).
+     한국어 글자에 걸리면 한글이 두꺼워진다.
+   · Whois에는 영문자·숫자만 있다. 빈칸·문장부호는 Lineal이 그 자리 굵기로
+     그리는데 덧대기가 같이 걸려 조금 더 굵다 — 알고 둔다. */
+.home-subtitle:lang(en){ -webkit-text-stroke: var(--mark-stroke-500) currentColor; paint-order: stroke fill; }
+.home-actions > button:lang(en){ -webkit-text-stroke: var(--mark-stroke-600) currentColor; paint-order: stroke fill; }
+.home-char-say[lang='en']{ -webkit-text-stroke: var(--mark-stroke-900) currentColor; paint-order: stroke fill; }
+.lang-card [lang='en']{ font-family: var(--mark-font); }
+.lang-card h2 [lang='en']{ -webkit-text-stroke: var(--mark-stroke-600) currentColor; paint-order: stroke fill; }
+.lang-card .tswitch-side[lang='en'] .tswitch-word{ -webkit-text-stroke: var(--mark-stroke-400) currentColor; paint-order: stroke fill; }
+
 /* ─── 07 바닥 한 줄: 눈 · 남은 초 ──────────────────────────────
    숫자가 화면 아래 20%를 차지한다. 줄높이가 1이라 --count-size가 곧 그
    띠의 높이다.

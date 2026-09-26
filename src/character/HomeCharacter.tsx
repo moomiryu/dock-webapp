@@ -5,6 +5,7 @@ import {
   type Eyes, type Pose, type PoseGeo
 } from './morph';
 import { charPos } from './pos';
+import { getLang, type Pair } from '../lib/lang';
 
 /**
  * 캐릭터가 처음 서는 자리 — 화면 높이에 대한 비율. 가로는 늘 한가운데다.
@@ -89,11 +90,32 @@ const POSE_DWELL = 900;
  * 머무는 시간은 글자 수를 따라간다. 찍히는 데만 초당 22자로 0.8~1초가
  * 드니(TYPE_CPS), 다 찍힌 뒤 읽을 짬이 1.5초쯤 남게 잡았다.
  */
-const WELCOME: Array<{ text: string; ms: number }> = [
-  { text: '안녕하세요.', ms: 1400 },
-  { text: '메가폰트 웹앱에 오신 걸\n환영해요.', ms: 2600 },
-  { text: '아래 버튼을 눌러,\n발화를 시작해보세요.', ms: 2900 }
-];
+/*
+ * 둘째 마디는 **반대 언어로** 하는 안내다(2026-09-26, 영문판). 이 캐릭터를
+ * 누르면 언어 창이 뜬다는 것을, 지금 화면의 언어를 못 읽는 사람에게 말한다
+ * — 그 사람이 창을 찾아야 하는 사람이다. 첫인사 마디라 isLatin이 그 줄만
+ * Lineal 굵기로 바꿔 준다. 영어 마디들은 초안이다(3단계 문구에서 다시 본다).
+ * 영어 쪽 머무는 시간은 같은 자리의 한국어 마디 값을 그대로 썼다.
+ */
+const WELCOME: Pair<Array<{ text: string; ms: number }>> = {
+  ko: [
+    { text: '안녕하세요.', ms: 1400 },
+    { text: 'Tap me for English.', ms: 2600 },
+    { text: '메가폰트 웹앱에 오신 걸\n환영해요.', ms: 2600 },
+    { text: '아래 버튼을 눌러,\n발화를 시작해보세요.', ms: 2900 }
+  ],
+  en: [
+    { text: 'Hello.', ms: 1400 },
+    { text: '저를 누르면\n한국어로 바꿀 수 있어요.', ms: 2600 },
+    { text: 'Welcome to the\nMegaFont web app.', ms: 2600 },
+    { text: 'Tap a button below\nto start speaking.', ms: 2900 }
+  ]
+};
+/**
+ * 짧게 누르기의 상한(ms). 이보다 오래 누르고 있다 놓은 것은 누른 것이
+ * 아니다 — 들어 올리려다 만 손이다.
+ */
+const TAP_MS = 500;
 /** 다음 마디까지의 틈. 떠 있는 시간은 마디마다 다르다 — 길면 읽을 짬이 든다 */
 const WELCOME_GAP = 220;
 /**
@@ -144,8 +166,14 @@ const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n
 const random = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
-export default function HomeCharacter() {
+export default function HomeCharacter({ onTap }: {
+  /** 짧게 눌렀을 때 — 홈이 언어 창을 연다 */
+  onTap?: () => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
+  /* 손 이벤트는 한 번만 달리므로(아래 효과) 늘 최신 onTap을 부르게 */
+  const tapRef = useRef(onTap);
+  tapRef.current = onTap;
   const bodyRef = useRef<SVGPathElement>(null);
   const hatRef = useRef<SVGPathElement>(null);
   const dotRef = useRef<SVGCircleElement>(null);
@@ -490,7 +518,10 @@ export default function HomeCharacter() {
             intro = 'welcome'; welcomeNext = t + WELCOME_GAP;
           }
         } else if (!sayUntil && t > welcomeNext) {
-          if (welcomeIdx >= WELCOME.length) {
+          /* 마디마다 지금 언어를 다시 본다 — 인사 도중 창에서 언어를
+             바꾸면 다음 마디부터 그 언어로 이어진다 */
+          const welcome = WELCOME[getLang()];
+          if (welcomeIdx >= welcome.length) {
             intro = null;
             charPos.greeted = true;      // 이제 나팔에서 남의 말이 나온다
             try { sessionStorage.setItem('mf-greeted', '1'); } catch { /* 사파리 비공개 */ }
@@ -501,7 +532,7 @@ export default function HomeCharacter() {
           } else {
             // 양옆으로 번갈아. 두 마디가 같은 쪽에 서면 차례로 온 것이
             // 아니라 한 자리에서 글자만 바뀐 것으로 보인다.
-            const w = WELCOME[welcomeIdx];
+            const w = welcome[welcomeIdx];
             setSay({ text: w.text, ms: w.ms });
             typing = { text: w.text, from: t };
             sayUntil = t + w.ms;
@@ -605,10 +636,17 @@ export default function HomeCharacter() {
        누른 채 위로 끌면 손가락을 따라 뜬다. 좌우와 아래는 무시한다.
        첫인사 중에는 안 받는다 — 한 번에 두 가지가 일어나면 둘 다 흐려진다.
        손이 캐릭터 밖으로 나가도(setPointerCapture) 계속 들고 있고, 취소
-       되거나 놓으면 제자리로 돌아온다. 짧은 탭은 문턱(LIFT_SLOP)을 못
-       넘어 아무 일도 안 일어난다. */
+       되거나 놓으면 제자리로 돌아온다.
+
+       짧게 누르기 = 언어 창(2026-09-26). 문턱(LIFT_SLOP)만큼도 안 움직이고
+       TAP_MS 안에 놓으면 누른 것이다 — 들리지 않았으니 표정도 안 바뀐다.
+       누르기는 첫인사 중에도, 움직임을 끈 사람에게도 받는다: 인사 안에
+       '저를 누르면'이 있고, 창은 움직임과 상관없는 기능이다. */
+    let press: { id: number; x0: number; y0: number; t0: number; moved: boolean } | null = null;
     const onDown = (e: PointerEvent) => {
-      if (held || intro || reduced || !e.isPrimary) return;
+      if (!e.isPrimary) return;
+      press = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: false };
+      if (held || intro || reduced) return;
       held = { id: e.pointerId, y0: e.clientY };
       /* 표정은 문턱을 넘어 실제로 들릴 때 짓는다(onMove) — 누르기만 하고
          놓는 탭에 표정이 바뀌면 탭이 무언가 하는 것이 된다. */
@@ -618,6 +656,8 @@ export default function HomeCharacter() {
       e.preventDefault();
     };
     const onMove = (e: PointerEvent) => {
+      if (press && e.pointerId === press.id && !press.moved
+        && Math.hypot(e.clientX - press.x0, e.clientY - press.y0) > LIFT_SLOP) press.moved = true;
       if (!held || e.pointerId !== held.id) return;
       const raw = Math.max(0, held.y0 - e.clientY - LIFT_SLOP);
       const max = liftMax();
@@ -629,6 +669,11 @@ export default function HomeCharacter() {
       }
     };
     const onUp = (e: PointerEvent) => {
+      if (press && e.pointerId === press.id) {
+        const tapped = e.type === 'pointerup' && !press.moved && performance.now() - press.t0 < TAP_MS;
+        press = null;
+        if (tapped) tapRef.current?.();
+      }
       if (!held || e.pointerId !== held.id) return;
       held = null;
       lift = 0;
@@ -681,14 +726,27 @@ export default function HomeCharacter() {
       className="home-char"
       data-eyes={eyes}
       data-blind={blind ? 'true' : undefined}
-      role="img"
-      aria-label="메가폰트 캐릭터"
+      /* 누르면 언어 창이 뜨는 단추다(2026-09-26). 낭독기·자판으로도 누를 수
+         있어야 한다 — 움직임을 끈 사람에게는 인사도 안 나온다. 이름은 두
+         언어로: 이 단추를 찾는 사람은 지금 화면의 언어를 못 읽는 사람이다. */
+      role="button"
+      tabIndex={0}
+      aria-haspopup="dialog"
+      aria-label="언어 · Language"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTap?.(); }
+      }}
     >
       {frame && say && !matchMedia('(prefers-reduced-motion: reduce)').matches && createPortal(
         /* 글자는 비워 둔다 — 찍는 쪽(rAF)이 프레임마다 채운다. 여기에
            {say.text}를 적어 두면 React가 다시 그릴 때마다 다 찍힌 글로
            되돌아간다. */
+        /* lang="en"은 영문자가 있는 라틴 마디에만 — Whois 획 덧대기가 그
+           마디에만 걸린다(app.css). 화면 언어가 아니라 그 마디의 언어다:
+           영어 화면의 한국어 안내 마디에는 걸리면 안 된다. '!'는 Whois에
+           없는 글자라(Lineal이 그린다) 덧대지 않는다 */
         <span className="home-char-say" aria-hidden="true" ref={sayEl}
+          lang={isLatin(say.text) && /[A-Za-z]/.test(say.text) ? 'en' : undefined}
           data-latin={isLatin(say.text) ? 'true' : undefined}
           style={{ '--say-life': `${say.ms}ms` } as React.CSSProperties} />, frame)}
       {/* 떠 있다는 것은 그림자가 말한다. 몸보다 아래, 몸보다 작게. */}

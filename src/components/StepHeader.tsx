@@ -49,10 +49,13 @@ export default function StepHeader({ at, back, onHome, className = 'z-header' }:
  * 오른쪽 X — 초기 화면으로. 작성 단계 머리줄과 튜토리얼 머리줄이 같은 것을 쓴다.
  * 상자·획·색은 그 자리의 뒤로가기(.z-back)를 따른다 — 튜토리얼에서는 뒤로가기가
  * 흐린 색·가는 획(app.css .info-head > .z-back)이라 X도 같이 그렇게 선다.
+ * 홈의 언어 판(LangSheet)은 같은 ✕를 '닫기'로 쓴다 — 그때만 이름(label)을 준다.
  */
-export function HomeX({ onClick, buttonRef }: { onClick: () => void; buttonRef?: Ref<HTMLButtonElement> }) {
+export function HomeX({ onClick, buttonRef, label = '초기 화면으로 돌아가기' }: {
+  onClick: () => void; buttonRef?: Ref<HTMLButtonElement>; label?: string;
+}) {
   return (
-    <button ref={buttonRef} type="button" className="z-back z-home" onClick={onClick} aria-label="초기 화면으로 돌아가기">
+    <button ref={buttonRef} type="button" className="z-back z-home" onClick={onClick} aria-label={label}>
       <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden focusable="false">
         <path d="M7 7 L17 17 M17 7 L7 17" fill="none" stroke="currentColor"
           strokeWidth="2.6" strokeLinecap="round" />

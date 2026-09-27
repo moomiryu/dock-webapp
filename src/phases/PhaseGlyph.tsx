@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import StepHeader from '../components/StepHeader';
+import CloudBubble from '../components/CloudBubble';
+import { cloudForTone } from '../lib/cloud';
 import { fontMap, formFor, opticalFix } from '../lib/palettes';
 import { DEFAULT_TONE, STYLE_OPTIONS, type PartialTone } from '../lib/tone';
 import { pick, useLang, type Pair } from '../lib/lang';
@@ -40,9 +42,9 @@ interface Props {
  * 네 칸은 화면 끝에서 끝까지 간다(app.css · .tone-choice .style-cards).
  *
  * ── 고르기 ──────────────────────────────────────────────────────────
- * 칸 전체를 누른다. 고른 칸은 붉은 면에 **체크**가 붙는다 — 색만으로 고른
- * 것을 말하지 않는다. 체크 자리는 늘 비워 두어 고르기 전후로 글자가 움직이지
- * 않는다. 고르는 것만으로는 넘어가지 않고 아래 버튼이 정한다.
+ * 칸 전체를 누른다. 고른 칸에는 그 성격의 말풍선 모양이 선다(2026-09-28 —
+ * 아래 ChoiceShape). 붉은 면 + 체크였던 것을 바꿨다. 고르기 전후로 이름은 한
+ * 픽셀도 움직이지 않는다. 고르는 것만으로는 넘어가지 않고 아래 버튼이 정한다.
  */
 /** 3/5 기본형(막대 가운데 · 말투 첫째 칸)의 글자 모양 — palettes.ts · formFor */
 function faceOf(font: string): CSSProperties {
@@ -57,6 +59,58 @@ function faceOf(font: string): CSSProperties {
     '--optical-stroke': f.stroke,
     '--optical-shift': (opticalFix[font]?.shift ?? 0) + 'em'
   } as CSSProperties;
+}
+
+/** 고른 칸의 모양이 칸에서 차지하는 몫 — 박스를 넘지 않는다(2026-09-28 견본 ③의 한정) */
+const SHAPE_SHARE = 0.85;
+/** 모양을 그리는 기준 길이. CloudBubble은 이 길이 × 비율로 크기를 잡는다 */
+const SHAPE_SIDE = 1000;
+
+/**
+ * 고른 칸의 힌트 — **그 성격의 말풍선 모양**(2026-09-28, 사용자).
+ *
+ * 고른 칸을 빨간 면으로 통째로 칠하던 것을, 그 성격이 벽에서 입을 모양으로
+ * 칠한다(차분한 = 돌, 당당한 = 별 …). 무엇을 골랐는지와 함께 **그 태도가 어떤
+ * 꼴로 서는지**를 미리 보여 준다. 태도는 여전히 이름으로 고른다 — 모양으로
+ * 고르게 하지 않는다(절대원칙 · landscape.md).
+ *
+ * 모양은 따로 들고 있지 않다. 벽 · 4/5 · 5/5와 같은 cloudForTone과 CloudBubble을
+ * 그대로 부르므로, 형상이 바뀌면(다른 세션이 돌 · 별 · 꽃 · 나비를 다듬는 중)
+ * 이 힌트도 같이 바뀐다. 이름 글자로 지은 모양이라 같은 성격은 늘 같은 모양이다.
+ *
+ * 크기는 칸의 85% 안으로 한정한다 — 벽의 규칙 그대로 이름을 감싸면 별의 뿔이
+ * 칸을 넘었다(견본 ①). 이름 크기는 그대로 두고, 모양에 겹친 글자만 흰색이 된다
+ * (견본 (나)) — 모양 그림을 가림판(mask)으로 씌운 흰 이름을 검은 이름 위에 얹는다.
+ */
+function ChoiceShape({ font, name, cell, face }: { font: ToneState['font']; name: string; cell: { w: number; h: number }; face: CSSProperties }) {
+  const cloud = useMemo(() => cloudForTone([name], { font, speed: 0.5, weight: 0.5, manner: 0 }), [font, name]);
+  const u = Math.min((SHAPE_SHARE * cell.w) / cloud.w, (SHAPE_SHARE * cell.h) / cloud.h);
+  const W = cloud.w * u, H = cloud.h * u;
+  const box = { unit: u / SHAPE_SIDE, w: W / SHAPE_SIDE, h: H / SHAPE_SIDE, tail: 0 };
+  /* SVG의 칠은 CSS 변수를 못 읽는다 — 토큰의 값을 읽어 넘긴다 */
+  const color = useMemo(() => getComputedStyle(document.documentElement).getPropertyValue('--brand-strong').trim(), []);
+  const art = useRef<HTMLSpanElement>(null);
+  const [mask, setMask] = useState<string | null>(null);
+  /* 그려진 모양을 가림판으로 옮긴다. useEffect인 이유: 픽셀 구름은 CloudBubble이
+     제 useEffect에서 칸을 찍는다 — 그보다 뒤(자식 먼저)에 떠야 빈 가림판이 안 된다 */
+  useEffect(() => {
+    const svg = art.current?.querySelector('svg');
+    if (!svg) return;
+    const c = svg.cloneNode(true) as SVGSVGElement;
+    c.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    c.setAttribute('width', String(W));
+    c.setAttribute('height', String(H));
+    setMask(`url("data:image/svg+xml,${encodeURIComponent(new XMLSerializer().serializeToString(c))}")`);
+  }, [cloud, W, H]);
+  return <>
+    <span ref={art} className="choice-shape" aria-hidden>
+      <CloudBubble cloud={cloud} box={box} side={`${SHAPE_SIDE}px`} color={color} still />
+    </span>
+    {mask && <span className="choice-ink" aria-hidden
+      style={{ WebkitMaskImage: mask, maskImage: mask, WebkitMaskSize: `${W}px ${H}px`, maskSize: `${W}px ${H}px` }}>
+      <span className="style-card-name" style={face}>{name}</span>
+    </span>}
+  </>;
 }
 
 export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Props) {
@@ -91,6 +145,18 @@ export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Prop
     return () => { window.removeEventListener('scroll', check); window.removeEventListener('resize', check); };
   }, []);
 
+  /* 칸 하나의 크기 — 고른 칸의 모양을 그 안에 한정하려고 잰다. 네 칸은 같은 크기다 */
+  const [cell, setCell] = useState<{ w: number; h: number } | null>(null);
+  useEffect(() => {
+    const first = list.current?.firstElementChild as HTMLElement | null;
+    if (!first) return;
+    const measure = () => setCell({ w: first.clientWidth, h: first.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(first);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <div className="z-frame z1 tone-choice">
       <StepHeader at={2} back={{ label: pick(T.back, lang), onClick: onBack }} onHome={onHome} />
@@ -107,10 +173,9 @@ export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Prop
           <button key={s.val} type="button" role="radio" aria-checked={at === i}
             className={'style-card' + (at === i ? ' on' : '')}
             aria-label={name} onClick={() => setFont(s.val)}>
-            <svg className="style-card-check" viewBox="0 0 24 24" aria-hidden focusable="false">
-              <path d="M5.5 12.5 L10 17 L18.5 7.5" fill="none" stroke="currentColor"
-                strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            {/* 고른 칸에는 체크 대신 그 성격의 모양이 선다(2026-09-28) — 모양 자체가
+                '골랐다'를 색이 아닌 꼴로 말한다. 낭독기는 aria-checked로 안다 */}
+            {at === i && cell && <ChoiceShape font={s.val} name={name} cell={cell} face={faceOf(s.val)} />}
             {/* 서체마다 잉크가 차지하는 높이도 굵기도 달라 같은 크기·같은
                 굵기로 안 보인다. 잰 값은 palettes.ts에 있다. 이름은 낭독기가
                 버튼 이름(aria-label)으로 읽으므로 글자는 가린다.

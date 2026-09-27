@@ -136,6 +136,9 @@ export async function toColor(page, text = SAMPLE_TEXT, font = '당당한') {
   await page.waitForTimeout(600);
   await page.locator('.tone-work .primary-action').click();
   await page.waitForTimeout(400);
+  // 04도 두 장이다(2026-09-28) — 설명과 시연 장을 눌러야 색판이 올라온다
+  await page.locator('.color-intro').click();
+  await page.waitForTimeout(700);
 }
 
 /** 05 벽에서 보기 — 시뮬레이션이 한 바퀴 돌 때까지 기다린다 */

@@ -1,5 +1,6 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
+import SnapSwitch from '../components/SnapSwitch';
 import VoiceBubble from '../components/VoiceBubble';
 import CloudBubble from '../components/CloudBubble';
 import { cloudForTone, cloudShape } from '../lib/cloud';
@@ -13,12 +14,34 @@ import type { ToneState } from '../types';
 /* 이 화면의 말. 영어는 초안이다(2026-09-26, 영문판) */
 const T = {
     back: { ko: '조율 다시', en: 'Tune again' },
-    title: { ko: '발화의 색을 정해주세요', en: 'Choose a colour for your line' },
+    /* 색과 함께 정렬 방식도 고르게 되면서 '담기'로 묶었다(2026-09-28, 디자이너 문구).
+       '포장'은 "말을 포장한다(미화)"로 먼저 읽혀서 버렸다 */
+    title: { ko: '발화를 어떻게 담아볼까요?', en: 'How would you like to hold your line?' },
+    lead: { ko: <>발화가 지닌 태도를 떠올리며,<br />정렬 방식과 색을 골라 말을 담을 그릇을 그려봐요.</>,
+      en: <>Think of the attitude your line carries,<br />then pick an alignment and a colour to draw the vessel that holds it.</> },
     tray: { ko: '색 고르기', en: 'Choose a colour' },
     /* 칩 안의 견본 글자 — 바탕은 배경색, 이 글자는 글자색 */
     sample: { ko: '가', en: 'A' },
-    next: { ko: '이 색으로 할게요', en: 'Use this colour' }
+    next: { ko: '이렇게 담을게요', en: 'Hold it like this' },
+    /* 첫 장 — 3/5와 같은 말(2026-09-28) */
+    start: { ko: '화면을 누르면 시작해요', en: 'Tap the screen to start' },
+    backWork: { ko: '설명 다시 보기', en: 'See the explanation again' },
+    /* 조정판의 두 잣대 — 3/5의 [이름 | 잣대] 줄과 같은 꼴(2026-09-28) */
+    colour: { ko: '색', en: 'Colour' },
+    align: { ko: '정렬', en: 'Align' },
+    /* 정렬 스위치 칸의 말 — 3/5 말투 스위치처럼 칸 안에 짧은 말로 */
+    left: { ko: '왼쪽', en: 'Left' },
+    center: { ko: '가운데', en: 'Centre' },
+    right: { ko: '오른쪽', en: 'Right' }
 };
+
+/**
+ * 정렬 잣대의 선택지(2026-09-28). 지금은 모든 성격이 고전적인 셋 — 왼쪽 · 가운데 ·
+ * 오른쪽이다. 성격마다 정렬 방식이 따로 생기면(작업 중) 이 목록만 바꾼다.
+ * 값은 이미 저장되고 벽까지 가는 tone.align 그대로다.
+ */
+const ALIGNS = ['left', 'center', 'right'] as const;
+type Align = typeof ALIGNS[number];
 interface Props {
     text: string;
     tone: ToneState;
@@ -65,6 +88,39 @@ interface Props {
  */
 const AREA = 'min(96cqw, 96cqh)';
 
+/**
+ * 첫 장의 시연(2026-09-28, 사용자) — 3/5에서 다듬은 내 글이 위에서 굴러 떨어져
+ * 가운데 말풍선에 들어가고, 그 말풍선이 색 짝을 차례로 갈아입는다.
+ *
+ * 떨어져 들어가는 움직임은 CSS(app.css · colorDemoFall · colorDemoInk)가 하고(말풍선은
+ * 처음부터 서 있다), 색은 이 부품의 제 상태가 돈다 — 참여자가 고른 색(bg · fg)에는 닿지 않는다. 열 짝을
+ * 같은 시간씩 차례로 도므로 어느 색도 권하지 않는다(절대원칙). 시작은 지금 색이다.
+ * 움직임 줄이기를 켠 사람에게는 떨어지지도 돌지도 않는다.
+ */
+function ColorDemo({ lines, tone, cloud, box, from }: {
+    lines: string[]; tone: ToneState; cloud: ReturnType<typeof cloudForTone>; box: ReturnType<typeof bubbleAt>; from: number;
+}) {
+    const [i, setI] = useState(from);
+    useEffect(() => {
+        if (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        /* 박자는 토큰에서 읽는다 — 떨어져 자리 잡는 동안(--t-hold × 2.4)은 첫 색 그대로,
+           그 뒤 --t-hold × 1.5마다 한 짝씩 */
+        const hold = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--t-hold')) || 700;
+        let iv = 0;
+        const t = window.setTimeout(() => {
+            iv = window.setInterval(() => setI((k) => (k + 1) % moods.length), hold * 1.5);
+        }, hold * 2.4);
+        return () => { window.clearTimeout(t); window.clearInterval(iv); };
+    }, []);
+    const m = moods[i];
+    return <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={m.bg} still>
+     <VoiceBubble text={lines.join('\n')} bg={m.bg} color={m.text} fontFamily={fontMap[tone.font]} font={tone.font}
+       weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size} manner={tone.manner}
+       speed={tone.speed} weightPos={tone.weight}
+       fontSize={`calc(var(--color-area) * ${box.unit.toFixed(4)})`} />
+    </CloudBubble>;
+}
+
 export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props) {
     const initial = messageColors(tone);
     const lang = useLang();
@@ -74,36 +130,74 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
     const box = bubbleAt(lines, cloudShape(cloud), fillFromLegacySize(tone.size));
     const [bg, setBg] = useState(initial.bg);
     const [fg, setFg] = useState(initial.text);
-    const current = { ...tone, backgroundColor: bg, textColor: fg };
+    /* 정렬 — 조정판의 둘째 잣대(2026-09-28). 전에 고른 값이 있으면 그것, 없으면 가운데 */
+    const [align, setAlign] = useState<Align>((ALIGNS as readonly string[]).includes(tone.align ?? '') ? tone.align as Align : 'center');
+    const current = { ...tone, align, backgroundColor: bg, textColor: fg };
+    /* 두 장(2026-09-28, 3/5와 같은 흐름): 'intro' = 설명과 시연 · 'work' = 고르는 장.
+       moved는 한 번이라도 넘긴 뒤인지 — 처음 들어올 때는 둘째 장이 움직이지 않고 숨어 있다 */
+    const [step, setStep] = useState<'intro' | 'work'>('intro');
+    const [moved, setMoved] = useState(false);
+    const [visit, setVisit] = useState(0);
+    const go = (s: 'intro' | 'work') => { setMoved(true); if (s === 'intro') setVisit((v) => v + 1); setStep(s); };
+    const fromMood = Math.max(0, moods.findIndex((m) => m.bg.toUpperCase() === bg.toUpperCase() && m.text.toUpperCase() === fg.toUpperCase()));
     return <div className="z-frame compose-screen color-choice is-pulled"
+      data-step={step} data-moved={moved ? '' : undefined}
       style={{ '--pane-bg': bg, '--chrome-ink': fg } as CSSProperties}>
+ {/* ── 첫 장: 무엇을 하는 자리인지 + 시연 (2026-09-28) ──────────────────
+     3/5의 첫 장과 같은 흐름이다. 장 전체가 넘기는 손짓이되 버튼 위는 아니다
+     (머리줄의 뒤로가기를 누른 탭이 넘김까지 돌리면 안 된다). 아래의 고르는
+     장은 그대로 두고 이 장이 위를 덮는다 — 누르면 위로 빠지고 고르는 장이
+     아래에서 올라온다(app.css · .color-intro). */}
+ <section className="color-intro" onClick={e => { if (!(e.target as HTMLElement).closest('button')) go('work'); }}>
+  <StepHeader at={4} back={{ label: pick(T.back, lang), onClick: () => onBack(current) }} onHome={onHome} />
+  <div className="z-ask">
+   <h1>{pick(T.title, lang)}</h1>
+   <p>{pick(T.lead, lang)}</p>
+  </div>
+  <div className="color-stage color-demo" style={{ '--color-area': AREA } as CSSProperties}>
+   {/* 늘 달아 둔다 — 넘길 때 위로 빠지는 장에 시연이 그대로 실려 간다. 되돌아오면
+       key가 바뀌어 처음부터 다시 떨어진다 */}
+   <ColorDemo key={visit} lines={lines} tone={tone} cloud={cloud} box={box} from={fromMood} />
+  </div>
+  <button type="button" className="tone-more" onClick={() => go('work')}>{pick(T.start, lang)}</button>
+ </section>
  <div className="proj-stage is-bleed"><div className="proj-fit">
   <div className="proj-frame compose-editor is-pulled">
-   <StepHeader className="compose-chrome" at={4} back={{ label: pick(T.back, lang), onClick: () => onBack(current) }} onHome={onHome} />
-   {/* 03에서 자판을 내렸을 때 선 제목이 그 자리 그대로 글자만 바뀐다.
-       화면이 갈린 게 아니라 묻는 것이 바뀐 것으로 읽혀야 한다. */}
-   <div className="z-ask compose-ask">
-    <h1>{pick(T.title, lang)}</h1>
-   </div>
+   <StepHeader className="compose-chrome" at={4} back={{ label: pick(T.backWork, lang), onClick: () => go('intro') }} onHome={onHome} />
+   {/* 제목과 안내는 첫 장으로 옮겼다(2026-09-28) — 3/5처럼 고르는 장은 위가
+       미리보기, 아래가 조정판이다. 무엇을 하는 자리인지는 첫 장이 말한다 */}
    <div className="color-stage" style={{ '--color-area': AREA } as CSSProperties}>
     <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={bg}>
      <VoiceBubble text={lines.join('\n')} bg={bg} color={fg} fontFamily={fontMap[tone.font]} font={tone.font}
-       weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size} manner={tone.manner}
+       weight={tone.wght} width={tone.tone} slant={tone.slnt} align={align} size={tone.size} manner={tone.manner}
        speed={tone.speed} weightPos={tone.weight}
        fontSize={`calc(var(--color-area) * ${box.unit.toFixed(4)})`} />
     </CloudBubble>
    </div>
   </div>
  </div></div>
- {/* 열 조합. 배경과 글자가 한 짝이라 따로 고르지 않는다 — 네모 하나가
-     그 짝을 통째로 보여 준다(바탕은 배경색, 안의 '가'는 글자색). */}
- <div className="color-tray" role="group" aria-label={pick(T.tray, lang)}>
-  {moods.map(m => {
-      const on = m.bg.toUpperCase() === bg.toUpperCase() && m.text.toUpperCase() === fg.toUpperCase();
-      return <button key={m.id} type="button" className={'color-chip' + (on ? ' on' : '')}
-        style={{ background: m.bg, color: m.text }} aria-pressed={on} aria-label={pick(m.name, lang)}
-        onClick={() => { setBg(m.bg); setFg(m.text); }}>{pick(T.sample, lang)}</button>;
-  })}
- </div>
- <button className="primary-action" onClick={() => onNext(current)}>{pick(T.next, lang)}</button></div>;
+ {/* ── 조정판 (2026-09-28) — 3/5와 같은 회색 판, [이름 | 잣대] 두 줄 ──────── */}
+ <div className="tone-panel color-panel">
+  {/* 열 조합. 배경과 글자가 한 짝이라 따로 고르지 않는다 — 네모 하나가
+      그 짝을 통째로 보여 준다(바탕은 배경색, 안의 '가'는 글자색). */}
+  <div className="tslider">
+   <span className="tslider-name" id="color-name">{pick(T.colour, lang)}</span>
+   <div className="color-tray" role="group" aria-labelledby="color-name">
+    {moods.map(m => {
+        const on = m.bg.toUpperCase() === bg.toUpperCase() && m.text.toUpperCase() === fg.toUpperCase();
+        return <button key={m.id} type="button" className={'color-chip' + (on ? ' on' : '')}
+          style={{ background: m.bg, color: m.text }} aria-pressed={on} aria-label={pick(m.name, lang)}
+          onClick={() => { setBg(m.bg); setFg(m.text); }}>{pick(T.sample, lang)}</button>;
+    })}
+   </div>
+  </div>
+  <div className="tslider">
+   <span className="tslider-name" id="align-name">{pick(T.align, lang)}</span>
+   {/* 3/5 말투 스위치와 같은 부품이다(2026-09-28, 사용자 — "3단계 UI를 적극 활용",
+       같은 앱이니 같은 분위기) — 칸만 셋 */}
+   <SnapSwitch labels={ALIGNS.map((a) => pick(T[a], lang))} at={ALIGNS.indexOf(align)}
+     onPick={(i) => setAlign(ALIGNS[i])} labelledBy="align-name" />
+  </div>
+  <button className="primary-action" onClick={() => onNext(current)}>{pick(T.next, lang)}</button>
+ </div></div>;
 }

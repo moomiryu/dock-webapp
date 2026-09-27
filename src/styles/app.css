@@ -3775,11 +3775,92 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    입는다 — 누르기 전에 결과가 버튼 안에 있다. 경계는 글자색 1px: 짝은
    글자가 배경 위에서 읽히도록 고른 것이라 그 선도 같은 근거로 갈린다.
    검은 화면 위 검은 배경 짝이 와도 이 선이 버튼을 남긴다. */
-.color-choice > .primary-action{
+.color-choice > .primary-action,
+.color-panel > .primary-action{   /* 2026-09-28: 조정판 안으로 옮겼다 — 같은 모습 */
   background: var(--pane-bg); color: var(--chrome-ink);
   border: 1px solid var(--chrome-ink);
   transition: background 420ms var(--ease-emphasized), color 420ms var(--ease-emphasized), border-color 420ms var(--ease-emphasized);
 }
+
+/* ── 04 첫 장: 설명 + 시연 (2026-09-28, 사용자 — 3/5와 같은 흐름) ─────────────
+   3/5처럼 설명하는 장이 먼저 서고, 화면을 누르면 위로 빠지며 고르는 장(지금까지의
+   04 화면)이 아래에서 올라온다. 넘기는 시간·곡선은 3/5의 .tone-pane과 같은 값이다
+   (520ms · --ease-emphasized — 3/5가 쓰는 그 숫자, 아직 토큰이 없다).
+   고르는 장의 뼈대는 그대로 두고 이 장이 위를 덮는다 — 정렬 방식 작업 중인 04의
+   구조를 옮기지 않으려고. 안 보이는 장은 3/5처럼 visibility로 손 · 탭 · 낭독기에서
+   빠진다. */
+.color-choice{ position: relative; }
+.color-choice[data-step="intro"]{ overflow: hidden; }
+.color-intro{ position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; gap: var(--s5);
+  background: var(--ink); color: var(--paper);
+  padding: var(--top-safe) var(--pad-x) max(var(--s6), env(safe-area-inset-bottom, 0px));
+  visibility: hidden; transform: translateY(-100%);
+  transition: transform 520ms var(--ease-emphasized), visibility 0s linear 520ms; }
+.color-choice[data-step="intro"] > .color-intro{ visibility: visible; transform: none;
+  transition: transform 520ms var(--ease-emphasized), visibility 0s; }
+/* 머리줄 — 검은 무대의 값(4/5 · 5/5와 같다). 밑줄은 틀의 여백 밖까지 */
+.color-intro > .z-header{ margin-inline: calc(var(--pad-x) * -1); padding-inline: var(--pad-x);
+  --rule-color: color-mix(in srgb, var(--paper) var(--rule-mix), transparent); }
+.color-intro .z-back{ color: var(--grey-500); }
+.color-intro .z-ask h1{ color: var(--paper); }
+.color-intro .z-ask p{ color: var(--grey-400); }
+/* 시연 자리 — 남는 높이를 다 받는다. 기준 0으로 못 박는다(5/5와 같은 까닭:
+   flex: 1(= 1 1 0%)이면 첫 계산에서 cqh가 0으로 풀려 말풍선이 0으로 섰다) */
+.color-intro > .color-demo{ flex: 1 1 0; min-height: 0; width: auto; height: auto; }
+/* 시연: 글이 위에서 굴러 떨어져 서 있는 말풍선 안에 앉는다. 색이 도는 것은
+   PhaseColor의 ColorDemo가 한다(떨어져 앉는 --t-hold × 2.4 뒤부터) */
+.color-demo .cloud-text{ animation: colorDemoFall calc(var(--t-hold) * 2) var(--ease-emphasized) both; }
+@keyframes colorDemoFall{
+  0%   { translate: 0 -70cqh; rotate: -32deg; opacity: 0; }
+  12%  { opacity: 1; }
+  62%  { translate: 0 2cqh;   rotate: 7deg; }
+  80%  { translate: 0 -1.5cqh; rotate: -3deg; }
+  100% { translate: 0 0;      rotate: 0deg; opacity: 1; }
+}
+/* 말풍선은 처음부터 서 있다(2026-09-28, 사용자) — 피어나지 않고, 글만 그 안으로
+   날아 들어간다. */
+/* 떨어지는 동안 글은 흰색이다 — 3/5 첫 장에서 흰 글자로 보던 그 글이고, 짝의
+   글자색(검정 등)이면 검은 무대 위를 지나는 동안 묻혔다(재서 확인). 말풍선에
+   닿을 즈음 짝의 글자색으로 옮겨 간다 — 끝 마디를 비워 두어 VoiceBubble이
+   적은 제 색으로 돌아간다(애니메이션은 인라인 색보다 세다) */
+.color-demo .voice-bubble{ animation: colorDemoInk calc(var(--t-hold) * 1.2 + var(--t-slow)) linear both; }
+@keyframes colorDemoInk{ 0%, 68%{ color: var(--paper); } }
+/* 고르는 장 — 첫 장이 떠 있는 동안은 숨어 있다. 한 번이라도 넘긴 뒤에는 첫 장과
+   함께 움직인다: 첫 장이 위로 빠질 때 화면 높이만큼 아래에서 올라오고, 되돌아갈
+   때 그만큼 내려간다. transform이 아니라 animation으로 건다 — 04의 버튼·색판에
+   걸린 제 전환(색 바뀜 · colorTray)을 덮어쓰지 않으려고 */
+.color-choice[data-step="intro"] > :not(.color-intro){ visibility: hidden; }
+.color-choice[data-step="intro"][data-moved] > :not(.color-intro){ animation: colorWorkOut 520ms var(--ease-emphasized) both; }
+.color-choice[data-step="work"][data-moved] > :not(.color-intro){ animation: colorWorkIn 520ms var(--ease-emphasized) both; }
+@keyframes colorWorkIn{ from{ translate: 0 var(--vvh, 100dvh); } to{ translate: 0 0; } }
+@keyframes colorWorkOut{ from{ translate: 0 0; visibility: visible; } to{ translate: 0 var(--vvh, 100dvh); visibility: hidden; } }
+@media (prefers-reduced-motion: reduce){
+  .color-intro{ transition: none; }
+  .color-choice[data-moved] > :not(.color-intro){ animation: none; }
+  .color-demo .cloud-text, .color-demo .voice-bubble{ animation: none; }
+}
+/* '화면을 누르면 시작해요'는 가운데 — 3/5 첫 장과 같은 자리(재서 확인: 3/5는 x115~275) */
+.color-intro > .tone-more{ align-self: center; }
+
+/* ── 04 조정판 (2026-09-28, 사용자 — 3/5처럼 미리보기와 조정 창을 나눈다) ─────
+   3/5의 .tone-panel을 그대로 입고, 줄도 3/5의 [이름 | 잣대](.tslider)다. 잣대는 둘 —
+   색 · 정렬. "3단계 UI를 적극 활용 — 같은 앱이니 같은 분위기"(사용자): 정렬은 3/5
+   말투 스위치 그 부품(칸만 셋), 색은 3/5 게이지와 같은 둥근 트랙 안에 선다.
+   판은 미리보기 바로 밑에서 화면 바닥까지 — 3/5처럼 사이 · 아래에 검은 띠를 두지
+   않는다(틀의 섹션 간격 24와 아래 여백 24가 띠로 남아 있었다. 재서 확인). */
+.color-choice{ gap: 0; padding-bottom: 0; }
+/* 색 트랙 — 3/5 게이지의 틀(테두리 --grey-300 · 트랙 --grey-200 · 둥근 끝 · 안쪽
+   --s1). 칩은 판(.tseg-thumb)과 같은 높이 36(44 − 4 × 2)의 원이고, 트랙 안에서 옆으로
+   넘겨 가까운 칸에 붙는다(손맛은 그대로). 바닥에 떠 있게 하던 자리 · 올라오는
+   움직임(trayRise — 이제 판째 올라온다)은 끈다. */
+.color-panel .color-tray{ position: static; min-width: 0; z-index: auto; animation: none;
+  grid-auto-columns: calc(var(--btn-m) - var(--s1) * 2); gap: var(--s1);
+  padding: var(--s1); scroll-padding-inline: var(--s1);
+  border: 1px solid var(--grey-300); border-radius: var(--r-full); background: var(--grey-200); }
+.color-panel .color-chip{ border-radius: var(--r-full); border-color: var(--grey-300); }
+/* 고른 칩 — 3/5에서 고른 쪽을 채우는 판과 같은 --grey-800으로 두른다. 트랙 안쪽
+   여백(4) 안에 들어가게 선 2 + 띄움 1 */
+.color-panel .color-chip.on{ outline: 2px solid var(--grey-800); outline-offset: 1px; }
 .compose-input { cursor:text; caret-color:var(--paper); color:transparent; font-family:inherit; }
 .compose-input:focus-visible { outline:none; }
 .sim-mine { width:100%; display:grid; place-items:center; }
@@ -4341,7 +4422,8 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .tslider-fill.is-short .tslider-word{ right: auto; left: calc(100% + var(--s3)); color: var(--grey-700); }
 
 /* 두 칸 스위치 — 반으로 나눈 한 칸, 말은 칸 안에 (2026-09-27 되돌림,
-   components/SnapSwitch). 3/5 말투와 언어 창이 같이 쓴다. 2026-09-25의 R12
+   components/SnapSwitch). 3/5 말투와 언어 창이 같이 쓰고, 4/5 정렬은 세 칸으로 쓴다
+   (칸 수는 부품이 --n으로 준다. 없으면 둘). 2026-09-25의 R12
    모양(맞닿은 네모 두 칸 + 바깥 말, .tswitch)은 걷었다.
    고르지 않은 쪽의 말은 --grey-700까지만 옅어진다 — 그보다 옅으면 패널
    바탕(--grey-50) 위에서 4.5:1에 못 미친다(접근성 검사).
@@ -4354,9 +4436,9 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 /* 겉(.tseg)은 손을 받고, 안(.tseg-box)이 보이는 칸이다(2026-09-27에 나눴다 —
    3/5에서 안쪽 칸만 둥근 게이지 틀을 입히려고. 언어 창은 네모 그대로) */
 .tseg{ position: relative; touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
-.tseg-box{ position: relative; display: grid; grid-template-columns: 1fr 1fr;
+.tseg-box{ position: relative; display: grid; grid-template-columns: repeat(var(--n, 2), 1fr);
   min-height: var(--btn-m); border: 1px solid var(--grey-500); border-radius: var(--r-control); overflow: hidden; }
-.tseg-thumb{ position: absolute; top: 0; bottom: 0; left: 0; width: 50%; background: var(--grey-800);
+.tseg-thumb{ position: absolute; top: 0; bottom: 0; left: 0; width: calc(100% / var(--n, 2)); background: var(--grey-800);
   transform: translateX(calc(var(--pos, 0) * 100%));
   transition: transform var(--t-return) var(--ease-standard); pointer-events: none; }
 .tseg.is-moving .tseg-thumb{ transition: none; }
@@ -4371,13 +4453,14 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    둥근 끝 · 테두리 --grey-300 · 트랙 --grey-200 · 판은 테두리에서 --s1(4)
    띄운 둥근 판. 말은 14(--fs-cap) — 게이지 안의 말과 같은 크기.
    칸 안쪽 높이는 44로 게이지와 같다: 판 자리(44 − 4 × 2) + 위아래 4.
-   판의 폭은 (바깥 − 4 × 2) ÷ 2이고 칸도 같은 폭이라 말이 판 한가운데에 선다.
+   판의 폭은 (바깥 − 4 × 2) ÷ 칸 수이고 칸도 같은 폭이라 말이 판 한가운데에 선다.
+   4/5 정렬(세 칸)도 .tone-panel 안이라 이 틀을 입는다.
    언어 창의 스위치는 이 모양을 받지 않는다(영문판 보류 중 — 네모 그대로).
    (그전 하루는 보이는 칸 32 + 보이지 않는 누르는 자리로 44를 지켰다 — 44로
    돌아오며 그 장치는 걷었다.) */
 .tone-panel .tseg-box{ padding: var(--s1); border-color: var(--grey-300); border-radius: var(--r-full);
   background: var(--grey-200); }
-.tone-panel .tseg-thumb{ top: var(--s1); bottom: var(--s1); left: var(--s1); width: calc(50% - var(--s1));
+.tone-panel .tseg-thumb{ top: var(--s1); bottom: var(--s1); left: var(--s1); width: calc((100% - var(--s1) * 2) / var(--n, 2));
   border-radius: var(--r-full); }
 .tone-panel .tseg-side{ min-height: calc(var(--btn-m) - var(--s1) * 2); font-size: var(--fs-cap); }
 

@@ -134,7 +134,11 @@ await audit('03 조율 (조작)');
 
 await page.locator('.tone-work .primary-action').click();
 await page.waitForTimeout(600);
-await audit('04 색');
+// 04도 두 장이다(2026-09-28) — 설명과 시연 장, 누르면 고르는 장
+await audit('04 색 (설명)');
+await page.locator('.color-intro').click();
+await page.waitForTimeout(700);
+await audit('04 색 (고르기)');
 await page.locator('.color-choice .primary-action').click();
 await audit('05 벽에서 보기');
 

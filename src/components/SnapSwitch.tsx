@@ -32,7 +32,8 @@ export function tick() {
 
 /**
  * 두 칸 스위치 — 반으로 나눈 한 칸, 말은 칸 안에(2026-09-27).
- * 3/5 말투와 언어 창(`한국어 | English`)이 같이 쓴다. 켜고 끄기가 아니라
+ * 3/5 말투와 언어 창(`한국어 | English`)이 같이 쓴다. 4/5 정렬은 같은 부품을
+ * 세 칸으로 쓴다(2026-09-28) — 칸 수는 labels의 길이다. 켜고 끄기가 아니라
  * 대등한 둘이다(R12의 원리).
  *
  * 고른 쪽을 채운 판(.tseg-thumb)이 **자석처럼** 움직인다: 누르면 그쪽으로
@@ -47,24 +48,28 @@ export function tick() {
  * focusRef: 지금 고른 단추에 걸린다(창이 열리면 거기로 초점을 옮기려고).
  */
 export default function SnapSwitch({ labels, at, onPick, labelledBy, langs, focusRef }: {
-    labels: readonly [string, string];
-    at: 0 | 1;
-    onPick: (i: 0 | 1) => void;
+    labels: readonly string[];
+    at: number;
+    onPick: (i: number) => void;
     labelledBy: string;
-    langs?: readonly [string, string];
+    langs?: readonly string[];
     focusRef?: Ref<HTMLButtonElement>;
 }) {
     const box = useRef<HTMLDivElement>(null);
-    /** 끄는 동안 판의 자리(0 = 왼쪽 칸, 1 = 오른쪽 칸). 끌지 않을 때는 null */
+    /* 칸 수. 둘이 기본이고, 4/5 정렬은 셋이다(2026-09-28 — 3/5와 같은 부품을 쓰라는
+       사용자 지시). 판의 폭·그 칸 나눔은 CSS가 --n으로 받는다 */
+    const n = labels.length;
+    /** 끄는 동안 판의 자리(0 = 첫 칸 … n − 1 = 끝 칸). 끌지 않을 때는 null */
     const [drag, setDrag] = useState<number | null>(null);
     const press = useRef<{ id: number; x: number; moved: boolean } | null>(null);
     const radios = useRef<Array<HTMLButtonElement | null>>([]);
-    const side = (p: number): 0 | 1 => (p >= 0.5 ? 1 : 0);
-    const pickSide = (i: 0 | 1) => { if (i !== at) { tick(); onPick(i); } };
-    /* 판의 가운데는 왼쪽 칸 가운데(1/4)에서 오른쪽 칸 가운데(3/4)까지 오간다 */
+    const side = (p: number) => Math.round(p);
+    const pickSide = (i: number) => { if (i !== at) { tick(); onPick(i); } };
+    /* 판의 가운데는 첫 칸 가운데에서 끝 칸 가운데까지 오간다(두 칸이면 1/4 ~ 3/4) */
     const posAt = (x: number) => {
         const r = box.current!.getBoundingClientRect();
-        return Math.min(1, Math.max(0, (x - r.left - r.width / 4) / (r.width / 2)));
+        const cell = r.width / n;
+        return Math.min(n - 1, Math.max(0, (x - r.left - cell / 2) / cell));
     };
     const down = (e: React.PointerEvent) => {
         if (press.current) return;                                // 이미 한 손가락이 잡고 있다
@@ -87,11 +92,12 @@ export default function SnapSwitch({ labels, at, onPick, labelledBy, langs, focu
         if (p.moved) setDrag(null);                               // 놓으면 가까운 쪽에 붙는다
         else pickSide(side(posAt(e.clientX)));                    // 누르면 그쪽으로 미끄러진다
     };
-    /* 화살표: 왼쪽·위 → 첫째, 오른쪽·아래 → 둘째. 고르고 초점도 옮긴다 */
+    /* 화살표: 왼쪽·위 → 앞 칸, 오른쪽·아래 → 다음 칸(끝에서 멈춘다). 고르고 초점도 옮긴다 */
     const key = (e: React.KeyboardEvent) => {
-        const to = ({ ArrowLeft: 0, ArrowUp: 0, ArrowRight: 1, ArrowDown: 1 } as Record<string, 0 | 1>)[e.key];
-        if (to === undefined) return;
+        const step = ({ ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 } as Record<string, number>)[e.key];
+        if (step === undefined) return;
         e.preventDefault();
+        const to = Math.min(n - 1, Math.max(0, at + step));
         pickSide(to);
         radios.current[to]?.focus();
     };
@@ -105,10 +111,9 @@ export default function SnapSwitch({ labels, at, onPick, labelledBy, langs, focu
       /* 떼는 신호를 놓쳐도(붙잡기가 풀리면) '누르는 중'에 머물지 않게 */
       onLostPointerCapture={(e) => { if (press.current?.id === e.pointerId) { press.current = null; setDrag(null); } }}
       onKeyDown={key}>
-     <div className="tseg-box">
+     <div className="tseg-box" style={{ '--n': n } as CSSProperties}>
      <i className="tseg-thumb" style={{ '--pos': shown } as CSSProperties} aria-hidden />
-     {labels.map((label, n) => {
-         const i = n as 0 | 1;
+     {labels.map((label, i) => {
          return <button key={i} type="button" role="radio" aria-checked={at === i}
            tabIndex={at === i ? 0 : -1}
            lang={langs?.[i]}

@@ -331,8 +331,14 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }:
         if (!base) return;
         /* offsetWidth·offsetHeight는 배치 값이라 scaleX(빠르기)가 안 들어간다 —
            장평은 아래에서 따로 나눈다. */
+        /* 줄 상자에는 기운 획이 잘리지 않게 둔 양옆 여유가 있다(app.css · 2026-09-28) —
+           그것을 빼야 글의 폭이다 */
         let w = 0;
-        el.querySelectorAll<HTMLElement>('.z-glyph-char').forEach((b) => { w = Math.max(w, b.offsetWidth); });
+        el.querySelectorAll<HTMLElement>('.z-glyph-char').forEach((b) => {
+            const cs = getComputedStyle(b);
+            const pad = cs.boxSizing === 'border-box' ? parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) : 0;
+            w = Math.max(w, parseFloat(cs.width) - pad);   // 계산된 폭(소수) — 배치 값이라 장평·흔들림이 안 들어간다
+        });
         const next = { w: w / base, h: el.offsetHeight / base };
         const off = (a: number, b: number) => !b || Math.abs(a - b) / a > 0.01;
         if (next.w > 0 && (!run || off(next.w, run.w) || off(next.h, run.h))) setRun(next);

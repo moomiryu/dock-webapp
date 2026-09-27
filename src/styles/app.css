@@ -4094,6 +4094,17 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   70%      { transform: translateX(-1px) rotate(-0.5deg); }
 }
 .tone-adjust .z-glyph.is-gust .z-glyph-char{ animation: glyphGust 0.75s ease-in-out infinite; }
+/* ── 기운 글자가 사파리에서 잘리던 것 (2026-09-28, 사용자가 폰에서 찾았다) ──
+   빠른 쪽 칸의 기울기는 font-style: oblique다. 서체에 기운 글꼴이 없으면(당당한
+   Dunkelsans 등) 브라우저가 글자를 **합성해 기울이고**, 윗부분이 오른쪽으로
+   밀려 줄 상자 밖으로 나간다(18°에서 글자 높이 × tan 18° ≈ 0.28em). 줄마다 움직임
+   (glyphGust)이 걸려 있어 사파리는 줄 하나를 제 그림층으로 그리는데, 그 층을 **줄
+   상자 크기로** 잡아서 넘친 획을 잘랐다 — 'Hj'의 j가 줄 끝에서 세로로 뎅강 잘렸다.
+   크롬은 넘친 만큼 층을 넓혀서 데스크톱에서는 안 보였다.
+   줄 상자 양옆에 여유 0.35em을 넣어 기운 획까지 층 안에 들게 하고, 같은 양을
+   바깥 여백으로 도로 빼서 배치는 그대로 둔다. 견본 크기를 재는 쪽(PhaseTone의
+   run)은 이 여유를 빼고 잰다. */
+.tone-adjust .z-glyph-char{ padding-inline: 0.35em; margin-inline: -0.35em; }
 
 /* align-items: center였다 — 알약이 252px 고정폭이라 가운데 세웠다.
    눈금 줄은 화면 폭을 다 쓴다(다섯 칸을 나눠야 해서). stretch로 되돌린다. */

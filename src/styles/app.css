@@ -4410,3 +4410,8 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   padding: var(--space-group) var(--pad-x) 0; border-top: 1px solid var(--rule);
   font-size: var(--fs-body-s); line-height: 1.5; color: var(--muted);
   word-break: keep-all; }   /* 좁은 화면에서 둘째 문장이 꺾여도 낱말 안에서는 안 꺾인다 */
+/* 2×2가 된 뒤로는(2026-09-27) 네 칸과 이 선 사이의 틀 간격(섹션 24)이 빈 띠로 남아,
+   가운데 세로선이 이 선에 닿지 못하고 24px 위에서 끊겼다(사용자, 2026-09-28).
+   그 간격만큼 올려 붙여 **이 선이 곧 네 칸의 아래 끝선**이 되게 한다 — 십자의
+   세로선이 여기 닿아 ㅗ로 맺는다. 줄어든 자리는 네 칸이 나눠 받는다. */
+.tone-choice > .style-cards + .glyph-note{ margin-top: calc(var(--space-section) * -1); }

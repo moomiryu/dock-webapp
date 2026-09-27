@@ -63,7 +63,7 @@ allowed-tools: Read, Write, Edit, Bash(node *), Bash(python *), Bash(code *), Ba
 한 벌, `○○For` 함수, `Cloud`에 결과), 그리기는 `src/components/CloudBubble.tsx`.
 나머지 성격은 건드리지 않는다. 확인: `npx tsc --noEmit` · `npm run build` ·
 `node scripts/audit-a11y.mjs`(위반 0) · 폰 390의 4/5 · 5/5와 벽 1920×1080을 **열어서**
-본다(`peek`). `e2e-dock.mjs`는 **묻고** 돌린다 — 규칙 재배포 전엔 테스트 글이 벽에 남는다.
+본다(`peek`). `e2e-dock.mjs`는 **돌리지 않는다**(시킬 때만) — 테스트 글이 벽에 사흘 남는다.
 배포하면 벽에 이미 있는 그 성격의 글도 곧바로 바뀐다 — 미리 말한다
 
 **8. 벽의 몸짓 ⏸** — landscape.md의 행동을 `src/admin/WallSimulation.tsx`에. 먼저

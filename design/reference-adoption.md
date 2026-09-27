@@ -174,6 +174,6 @@ npx oh-my-design-cli@latest design-md validate DESIGN.md   # 계약
 node scripts/audit-a11y.mjs                                # 접근성 (npm run dev 먼저)
 node scripts/shoot-screens.mjs                             # 화면 캡처
 node scripts/shoot-faces.mjs                               # 말투 네 칸
-node scripts/e2e-dock.mjs                                  # 폰 ↔ 벽 왕복
+node scripts/e2e-dock.mjs                                  # 폰 ↔ 벽 왕복 — 시킬 때만(2026-09-28, CLAUDE.md)
 python scripts/measure-reference.py "reference capture"     # 참조 실측
 ```

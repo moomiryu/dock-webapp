@@ -94,15 +94,18 @@ npx oh-my-design-cli@latest design-md validate DESIGN.md
 ```bash
 npx tsc --noEmit && npm run build
 node scripts/audit-a11y.mjs     # 위반 0이 기준선. 한 건이라도 나오면 회귀다
-node scripts/e2e-dock.mjs       # 폰↔벽 왕복. 실제 Firestore에 쓰고 지운다
 ```
+
+**`e2e-dock.mjs`(폰↔벽 왕복)는 평소에 돌리지 않는다**(2026-09-28, 내가 정했다).
+실제 Firestore에 테스트 글을 쓰는데, 운영 규칙이 지우기를 막아 그 글이 사흘 동안
+벽에 뜬다. 코드를 바꿨을 때도 배포할 때도 돌리지 않는다 — 내가 시킬 때만 돌린다.
 
 CSS·토큰을 건드렸으면 `scripts/verify-tokens.mjs`로 전후 계산값을 대조한다.
 "보기엔 같은데"는 증명이 아니다.
 
 `.claude/settings.json`에서 **`.env` 읽기를 막지 않는다.** 쓰기만 막혀 있다.
 `e2e-dock.mjs`가 거기서 Firestore 키를 얻어 **테스트 글을 지우기** 때문이다 —
-읽기를 막으면 테스트가 남긴 글이 사흘 동안 벽에 떠 있게 된다.
+읽기를 막으면 테스트가 남긴 글이 사흘 동안 벽에 떠 있게 된다(시켜서 돌릴 때).
 
 ## 일하는 방식
 

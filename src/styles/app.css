@@ -3822,17 +3822,16 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    .ask-card — 사용자 결정: 이 앱이 이미 쓰는 가운데 창으로).
    · 홈의 층(캐릭터 500, 버튼 1000, 인사 1100)보다 위에 서야 해서 덮개만
      1200으로 올린다. 작성 단계의 확인 창은 10 그대로다.
-   · 제목 `언어 · Language`, 그 아래 `한국어 [ | ] English`(.tswitch — 3/5
-     말투와 같은 부품 R12·같은 회색). 제목과 스위치 사이는 확인 창의 제목과
-     두 답 사이와 같다(--s4).
+   · 제목 `언어 · Language`, 그 아래 `한국어 | English`(.tseg — 3/5 말투와
+     같은 부품 components/SnapSwitch, 2026-09-27). 제목과 스위치 사이는 확인
+     창의 제목과 두 답 사이와 같다(--s4).
    · ✕는 카드의 오른쪽 위 구석에 44×44 상자째 붙는다. */
 .home-char[role='button']{ cursor: pointer; }   /* 영문판이 닫혀 있으면 단추가 아니다(LANG_OPEN) */
 .home-char:focus-visible{ outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--r-control); }
 .lang-veil{ z-index: 1200; }
 .lang-card{ position: relative; }
 .lang-card > .z-home{ position: absolute; top: 0; right: 0; }
-.lang-card > .tswitch{ margin-top: var(--s4); }
-.lang-card .tswitch-side{ font-family: inherit; }
+.lang-card > .tseg{ margin-top: var(--s4); }
 
 /* ─── 영문판의 Whois (2026-09-26) ─────────────────────────────────────
    화면이 영어면 UI 글꼴 자체가 Whois로 시작한다(tokens.css :root:lang(en)).
@@ -4226,28 +4225,11 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .tslider-track input:active::-moz-range-thumb,
 .tslider-track.is-moving input::-moz-range-thumb{ background: var(--grey-50); }
 
-/* 말투 — 맞닿은 네모 두 칸, 말은 바깥 양옆(R12, 2026-09-25).
-   `온화한 [ | ] 예리한`. 버튼 하나 = 말 + 칸. 왼쪽 버튼은 칸이 오른쪽 끝에,
-   오른쪽 버튼은 칸이 왼쪽 끝에 붙어 두 칸이 가운데서 맞닿는다. 가운데 선은
-   왼쪽 칸의 오른쪽 선 하나뿐이다(두 겹이 되지 않게 오른쪽 칸은 왼쪽 선 없음).
+/* 두 칸 스위치 — 반으로 나눈 한 칸, 말은 칸 안에 (2026-09-27 되돌림,
+   components/SnapSwitch). 3/5 말투와 언어 창이 같이 쓴다. 2026-09-25의 R12
+   모양(맞닿은 네모 두 칸 + 바깥 말, .tswitch)은 걷었다.
    고르지 않은 쪽의 말은 --grey-700까지만 옅어진다 — 그보다 옅으면 패널
-   바탕(--grey-50) 위에서 4.5:1에 못 미친다(접근성 검사). 칸의 선은 더 옅다. */
-.tswitch{ display: grid; grid-template-columns: 1fr 1fr; }
-.tswitch-side{ display: flex; align-items: center; gap: var(--space-in-group);
-  min-height: var(--btn-m); padding: 0; border: 0; background: transparent; cursor: pointer;
-  color: var(--grey-700); font-size: var(--fs-body); }
-.tswitch-side:first-child{ justify-content: flex-end; }
-.tswitch-side:last-child{ flex-direction: row-reverse; justify-content: flex-end; }
-.tswitch-cell{ box-sizing: border-box; width: var(--btn-m); height: var(--btn-m); flex: none;
-  border: 1px solid var(--grey-400); }
-.tswitch-side:first-child .tswitch-cell{ border-radius: var(--r-control) 0 0 var(--r-control); }
-.tswitch-side:last-child .tswitch-cell{ border-left: 0; border-radius: 0 var(--r-control) var(--r-control) 0; }
-.tswitch-side.on{ color: var(--ink); }
-.tswitch-side.on .tswitch-cell{ background: var(--grey-800); border-color: var(--grey-800); }
-.tswitch-side:focus-visible{ outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--r-control); }
-
-/* 3/5 말투 — 반으로 나눈 한 칸, 말은 칸 안에 (2026-09-27 되돌림, PhaseTone ·
-   MannerSwitch). 위의 .tswitch는 이제 언어 창만 쓴다.
+   바탕(--grey-50) 위에서 4.5:1에 못 미친다(접근성 검사).
    고른 쪽을 채운 판(.tseg-thumb)이 칸 절반 폭으로 서 있다가 --pos(0 왼쪽 ·
    1 오른쪽)를 따라 옆으로 미끄러진다. 끄는 동안(.is-moving)은 손가락을 바로
    따라오도록 움직임을 끄고, 놓거나 누르면 --t-return으로 붙는다 — 막대의

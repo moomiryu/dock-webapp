@@ -18,12 +18,19 @@ export type Lang = 'ko' | 'en';
  * 영문판은 main에 들어 있지만 아직 다 되지 않았다. 설치물(배포본, vite
  * build)에서는 언어 창으로 가는 길을 닫고 늘 한국어로 그린다 — 폰에 예전에
  * 'en'이 저장돼 있어도 무시한다. 첫 화면 캐릭터도 영문판 이전처럼 그림일
- * 뿐 누르는 단추가 아니다. 개발 화면(npm run dev)에서만 열린다.
+ * 뿐 누르는 단추가 아니다.
  *
- * 영문판이 끝나면 ENGLISH_PUBLIC 하나를 true로 바꿔 공개한다.
+ * **2026-09-27부터 개발 화면(npm run dev)에서도 닫는다** — 사용자 결정: 영문판은
+ * 보류(킵). 전에는 개발 서버에서만 열렸는데, 사용자가 보는 화면(5174)이 바로
+ * 그 개발 서버라 영문판이 계속 보였다. 코드와 영어 문구는 그대로 둔다.
+ *
+ * 다시 열 때: 개발 화면에서만 보려면 ENGLISH_DEV를, 학생에게 공개하려면
+ * ENGLISH_PUBLIC을 true로. (영어 모드 접근성 검사 `audit-a11y --en`은 적어도
+ * ENGLISH_DEV가 켜져 있어야 돈다.)
  */
 const ENGLISH_PUBLIC = false;
-export const LANG_OPEN = ENGLISH_PUBLIC || import.meta.env.DEV;
+const ENGLISH_DEV = false;
+export const LANG_OPEN = ENGLISH_PUBLIC || (ENGLISH_DEV && import.meta.env.DEV);
 
 const KEY = 'megafont.lang';
 const subs = new Set<() => void>();

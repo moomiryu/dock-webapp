@@ -2,6 +2,7 @@ import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { setLang, useLang, type Lang } from '../lib/lang';
 import { HomeX } from './StepHeader';
+import SnapSwitch from './SnapSwitch';
 
 /**
  * 홈 캐릭터를 누르면 뜨는 창 (2026-09-26, 사용자 결정).
@@ -11,7 +12,9 @@ import { HomeX } from './StepHeader';
  * 창으로 맞췄다(사용자 결정).
  *
  * 지금은 한 가지 — 화면 언어를 고르는 두 칸 스위치(3/5 말투와 같은 부품,
- * .tswitch · R12). 고르면 그 자리에서 바로 바뀌고 창은 열린 채 남는다.
+ * components/SnapSwitch — 반으로 나눈 한 칸, 판이 자석처럼 붙는다. 2026-09-27에
+ * 말투와 함께 R12의 네모 두 칸에서 바꿨다). 고르면 그 자리에서 바로 바뀌고
+ * 창은 열린 채 남는다.
  * 닫기는 ✕ · 창 바깥 · ESC.
  *
  * 언어 이름은 늘 **그 언어로** 적고(한국어 · English), 제목도 두 언어를 함께
@@ -19,10 +22,8 @@ import { HomeX } from './StepHeader';
  * 조각에는 lang="en"을 붙인다: 낭독기가 영어 목소리로 읽고, Whois 획 덧대기가
  * 그 조각에만 걸린다(app.css).
  */
-const LANGS: Array<{ val: Lang; label: string }> = [
-  { val: 'ko', label: '한국어' },
-  { val: 'en', label: 'English' }
-];
+const LANGS: readonly [Lang, Lang] = ['ko', 'en'];
+const LABELS = ['한국어', 'English'] as const;
 
 export default function LangDialog({ onClose }: { onClose: () => void }) {
   const lang = useLang();
@@ -49,20 +50,9 @@ export default function LangDialog({ onClose }: { onClose: () => void }) {
       <div className="ask-card lang-card" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <HomeX onClick={() => close.current()} label="닫기 · Close" />
         <h2 id={titleId}><span lang="ko">언어</span> · <span lang="en">Language</span></h2>
-        {/* `한국어 [ | ] English` — 맞닿은 네모 두 칸, 말은 바깥 양옆,
-            고른 쪽 칸이 채워진다 */}
-        <div className="tswitch" role="radiogroup" aria-labelledby={titleId}>
-          {LANGS.map((l) => (
-            <button key={l.val} type="button" role="radio" lang={l.val}
-              ref={lang === l.val ? chosen : undefined}
-              aria-checked={lang === l.val}
-              className={'tswitch-side' + (lang === l.val ? ' on' : '')}
-              onClick={() => setLang(l.val)}>
-              <span className="tswitch-word">{l.label}</span>
-              <i className="tswitch-cell" aria-hidden />
-            </button>
-          ))}
-        </div>
+        {/* `한국어 | English` — 반으로 나눈 한 칸, 고른 쪽을 판이 채운다 */}
+        <SnapSwitch labels={LABELS} langs={LANGS} at={lang === 'en' ? 1 : 0}
+          onPick={(i) => setLang(LANGS[i])} labelledBy={titleId} focusRef={chosen} />
       </div>
     </div>,
     document.body

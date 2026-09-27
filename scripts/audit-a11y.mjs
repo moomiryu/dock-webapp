@@ -6,8 +6,9 @@
 //   npm run dev
 //   node scripts/audit-a11y.mjs [baseUrl] [--en]
 //
-// --en: 영어 모드로 같은 화면들을 돈다(2026-09-26, 영문판). 개발 서버에서만 뜻이
-// 있다 — 배포본은 영문판 공개 스위치(lib/lang.ts)가 닫혀 있어 늘 한국어다.
+// --en: 영어 모드로 같은 화면들을 돈다(2026-09-26, 영문판). 영문판 스위치
+// (lib/lang.ts ENGLISH_DEV 또는 ENGLISH_PUBLIC)가 켜져 있을 때만 돈다 — 2026-09-27
+// 부터 영문판은 보류라 둘 다 꺼져 있고, 그 상태에서 --en은 멈추며 그렇게 말한다.
 // 단추는 이름이 아니라 표식(클래스)으로 찾는다. 이름은 언어마다 바뀐다.
 
 import { chromium } from 'playwright-core';
@@ -82,11 +83,22 @@ if (EN) {
 }
 await settle();
 await audit('01 홈');
-if (EN && (await page.evaluate(() => document.documentElement.lang)) !== 'en') throw new Error('--en인데 영어 모드가 아니다 — 배포본(공개 스위치 닫힘)이거나 저장이 막혔다');
+if (EN && (await page.evaluate(() => document.documentElement.lang)) !== 'en') {
+  console.log('--en인데 영어 모드가 아니다 — 영문판 스위치(lib/lang.ts ENGLISH_DEV · ENGLISH_PUBLIC)가 꺼져 있거나 저장이 막혔다. 검사하지 않고 멈춘다.');
+  await browser.close();
+  process.exit(2);
+}
+
+// 2026-09-27: About은 홈의 'Info'가 따로 연다. 뒤로가기 없이 X 하나로 닫는다
+await page.locator('.home-about').click();
+await page.waitForTimeout(500);
+await audit('01 About');
+await page.locator('.info-head .z-home').click();
+await page.waitForTimeout(400);
 
 await page.locator('.home-cta').click();
 await page.waitForTimeout(500);
-await audit('01 소개');
+await audit('01 사용 안내');
 await page.locator('.info-head .z-back:not(.z-home)').click();   // 첫 장의 뒤로 = 처음으로 (X는 .z-home)
 await page.waitForTimeout(400);
 

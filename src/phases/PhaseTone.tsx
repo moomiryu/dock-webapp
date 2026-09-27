@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
+import SnapSwitch, { tick } from '../components/SnapSwitch';
 import { MANNER, SIZE_WORDS, SPEED_WORDS, STOPS, WEIGHT_WORDS, fontMap, formFor, hasWeightAxis, legacyFields, opticalFix, sizeAt, sizePos, snap, stopAt } from '../lib/palettes';
 import { DEFAULT_TONE, type PartialTone } from '../lib/tone';
 import { foldLines } from '../lib/fit';
@@ -113,34 +114,7 @@ const STAGE_LH = 1.4;
 /** 견본이 제 자리에서 쓰는 몫 — 가로·세로(%). 나머지는 숨 쉴 여백이다 */
 const USE = { w: 86, h: 88 };
 
-/**
- * 칸을 지날 때의 짧은 진동. 브라우저의 진동 기능이 있으면(안드로이드) 그걸 쓴다.
- *
- * 아이폰 사파리는 그 기능을 주지 않아 우회한다(사용자 결정, 2026-09-25).
- * iOS 18부터 사파리는 켜기/끄기 스위치(checkbox switch)가 바뀔 때 짧게
- * 진동하므로, 화면에 안 보이는 스위치 하나를 두고 칸을 지날 때마다 대신
- * 누른다. 정식 기능이 아니다 — 애플이 막거나 그 전 iOS면 조용히 안 울리고,
- * 조작은 그대로 된다. 스위치는 머리(head)에 두어 앱의 어떤 칸에도 닿지 않는다.
- */
-let hiddenSwitch: HTMLLabelElement | null = null;
-function tick() {
-    if (typeof navigator === 'undefined') return;
-    if ('vibrate' in navigator) { navigator.vibrate(8); return; }
-    try {
-        if (!hiddenSwitch) {
-            hiddenSwitch = document.createElement('label');
-            hiddenSwitch.setAttribute('aria-hidden', 'true');
-            hiddenSwitch.style.display = 'none';
-            const input = document.createElement('input');
-            input.type = 'checkbox';
-            input.setAttribute('switch', '');
-            input.tabIndex = -1;
-            hiddenSwitch.appendChild(input);
-            document.head.appendChild(hiddenSwitch);
-        }
-        hiddenSwitch.click();
-    } catch { /* 못 울려도 조작은 그대로 */ }
-}
+/* 칸을 지날 때의 짧은 진동(tick)은 두 칸 스위치와 같이 쓴다 — components/SnapSwitch */
 
 /**
  * 막대 하나 — 끊김 없이 흐른다(2026-09-25, 작업 지침 8번).
@@ -217,69 +191,20 @@ function Slider({ name, words, value, onChange }: {
 /**
  * 말투 — 두 칸 스위치. 켜고 끄기가 아니라 대등한 둘이다(R12의 원리는 그대로).
  * 2026-09-25에 맞닿은 네모 두 칸 + 바깥 말(R12)로 바꿨다가, 2026-09-27에
- * 사용자가 반으로 나눈 한 칸 + 칸 안의 말로 되돌렸다. 언어 창의 스위치
- * (LangDialog, .tswitch)는 R12 모양 그대로다.
+ * 사용자가 반으로 나눈 한 칸 + 칸 안의 말로 되돌렸다. 언어 창도 같은 스위치다
+ * (components/SnapSwitch).
  */
 function MannerSwitch({ font, at, onPick }: { font: string; at: number; onPick: (i: number) => void }) {
     /* 2026-09-27 되돌림: 폭 전체를 반으로 나눈 한 칸, 말은 칸 안에(Pretendard).
-       오른쪽 위의 보조 말은 뺐다 — 두 말이 늘 칸 안에 보인다.
-       고른 쪽을 채운 판(tseg-thumb)이 **자석처럼** 움직인다: 누르면 그쪽으로
-       미끄러져 붙고, 끌면 손가락을 따라오다 가운데를 넘는 순간 진동(tick)과
-       함께 말투가 바뀌고, 놓으면 가까운 쪽에 붙는다 — 위 막대들과 같은 손맛.
-       자판·낭독기는 두 radio 단추로 그대로 고른다. */
-    const m = MANNER[font];
+       오른쪽 위의 보조 말은 뺐다 — 두 말이 늘 칸 안에 보인다. 판이 자석처럼
+       붙는 손맛은 공용 스위치(components/SnapSwitch)가 맡는다 — 언어 창과 같다. */
     const lang = useLang();
-    const labels = pick(m.labels, lang);
-    const cur = at ? 1 : 0;
-    const box = useRef<HTMLDivElement>(null);
-    /** 끄는 동안 판의 자리(0 = 왼쪽 칸, 1 = 오른쪽 칸). 끌지 않을 때는 null */
-    const [drag, setDrag] = useState<number | null>(null);
-    const press = useRef<{ x: number; moved: boolean } | null>(null);
-    const side = (p: number) => (p >= 0.5 ? 1 : 0);
-    const pickSide = (i: number) => { if (i !== cur) { tick(); onPick(i); } };
-    /* 판의 가운데는 왼쪽 칸 가운데(1/4)에서 오른쪽 칸 가운데(3/4)까지 오간다 */
-    const posAt = (x: number) => {
-        const r = box.current!.getBoundingClientRect();
-        return Math.min(1, Math.max(0, (x - r.left - r.width / 4) / (r.width / 2)));
-    };
-    const down = (e: React.PointerEvent) => {
-        press.current = { x: e.clientX, moved: false };
-        box.current?.setPointerCapture(e.pointerId);
-    };
-    const moveTo = (e: React.PointerEvent) => {
-        const p = press.current;
-        if (!p) return;
-        if (!p.moved && Math.abs(e.clientX - p.x) < 6) return;   // 누르기와 끌기를 가른다
-        p.moved = true;
-        const at = posAt(e.clientX);
-        setDrag(at);
-        pickSide(side(at));
-    };
-    const up = (e: React.PointerEvent) => {
-        const p = press.current;
-        press.current = null;
-        if (!p) return;
-        if (p.moved) setDrag(null);                               // 놓으면 가까운 쪽에 붙는다
-        else pickSide(side(posAt(e.clientX)));                    // 누르면 그쪽으로 미끄러진다
-    };
-    const shown = drag ?? cur;
+    const labels = pick(MANNER[font].labels, lang) as unknown as readonly [string, string];
     return <div className="tslider">
      <div className="tslider-lab">
       <span className="tslider-name" id="tswitch-name">{pick(T.manner, lang)}</span>
      </div>
-     <div ref={box} className={'tseg' + (drag !== null ? ' is-moving' : '')}
-       role="radiogroup" aria-labelledby="tswitch-name"
-       onPointerDown={down} onPointerMove={moveTo} onPointerUp={up}
-       onPointerCancel={() => { press.current = null; setDrag(null); }}>
-      <i className="tseg-thumb" style={{ '--pos': shown } as CSSProperties} aria-hidden />
-      {labels.map((label, i) =>
-        <button key={i} type="button" role="radio" aria-checked={cur === i}
-          className={'tseg-side' + (side(shown) === i ? ' on' : '')}
-          /* 자판(Enter·Space)과 낭독기로 고를 때. 손가락은 위 pointer가 맡는다 */
-          onClick={(e) => { if (e.detail === 0) pickSide(i); }}>
-          {label}
-        </button>)}
-     </div>
+     <SnapSwitch labels={labels} at={at ? 1 : 0} onPick={onPick} labelledBy="tswitch-name" />
     </div>;
 }
 

@@ -20,6 +20,11 @@ import type { Boxed } from '../lib/fit';
  * 세 어휘(뾰족·매끈·뭉게)는 SMIL이 원을 부풀리고, 갈래는 제 덩이 중심 기준
  * 배율로 따라간다. 픽셀 구름은 프레임마다 다시 찍는다 — 격자에 찍힌 것은
  * 부풀릴 수 없어서, 부푼 원을 다시 격자에 놓는다.
+ *
+ * ── 돌 (차분한, 2026-09-27) ───────────────────────────────────────────
+ * 원이 아니라 다각형 하나(cloud.ts · stoneFor). 번지지도 숨 쉬지도 않는다.
+ * 오른쪽 아래 빗금은 칠하지 않고 **오려 낸다**(mask) — 뒤에 있는 것이 그대로
+ * 비쳐 벽에서도 폰에서도 '틈'이 된다. 시스템이 새 색을 만들지 않는다.
  */
 const K = 100;
 /** 픽셀 구름을 다시 찍는 간격. 12fps면 계단이 옮겨 가는 것이 보이되 파이에 짐이 안 된다 */
@@ -80,6 +85,23 @@ function pixelRects(cloud: Cloud, sec: number | null): string {
   return out;
 }
 
+/** 돌의 윤곽 — 곧은 변, 모서리만 r만큼 굴린다. 변을 따라 물러난 두 점을 꼭짓점을 조절점으로 잇는다 */
+function stonePath(pts: readonly (readonly [number, number])[], r: number): string {
+  const f = (v: number) => (v * K).toFixed(1);
+  const seg = pts.map((C, i) => {
+    const P = pts[(i - 1 + pts.length) % pts.length], N = pts[(i + 1) % pts.length];
+    const l1 = Math.hypot(P[0] - C[0], P[1] - C[1]), l2 = Math.hypot(N[0] - C[0], N[1] - C[1]);
+    const d = Math.min(r, l1 * 0.45, l2 * 0.45);
+    return [[C[0] + ((P[0] - C[0]) / l1) * d, C[1] + ((P[1] - C[1]) / l1) * d], C, [C[0] + ((N[0] - C[0]) / l2) * d, C[1] + ((N[1] - C[1]) / l2) * d]] as const;
+  });
+  let d = `M${f(seg[0][2][0])},${f(seg[0][2][1])}`;
+  for (let i = 1; i <= seg.length; i++) {
+    const [A, C, B] = seg[i % seg.length];
+    d += `L${f(A[0])},${f(A[1])}Q${f(C[0])},${f(C[1])} ${f(B[0])},${f(B[1])}`;
+  }
+  return d + 'Z';
+}
+
 function prefersStill(): boolean {
   return typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
@@ -107,7 +129,7 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   }, [cloud, quiet]);
 
   const art = useMemo(() => {
-    if (pr.edge === 'pixel') return null;
+    if (pr.edge === 'pixel' || cloud.stone) return null;
     return (
       <>
         {cloud.circles.map((c, i) => (
@@ -140,24 +162,48 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
 
   const blur = pr.edge === 'pixel' ? (pr.cell ?? 0.5) * K * 0.08 : pr.blur * K;
   const t = cloud.text;
+  const stone = cloud.stone, hatch = pr.stone?.hatch;
+  const stoneD = useMemo(() => (stone ? stonePath(stone.pts, pr.stone?.round ?? 0) : ''), [stone, pr.stone?.round]);
   return (
     <div
       className={'cloud-bubble' + (className ? ' ' + className : '')}
       style={{ width: `calc(${side} * ${box.w.toFixed(4)})`, height: `calc(${side} * ${box.h.toFixed(4)})`, ...style }}
     >
       <svg className="cloud-art" viewBox={`0 0 ${W.toFixed(1)} ${H.toFixed(1)}`} aria-hidden="true" focusable="false">
-        <defs>
-          {/* 번지고(feGaussianBlur) 알파를 문턱으로 자른다(feColorMatrix) — 겹친 자리는
-              채우고 나머지는 지운다. 2026-09-09의 메타볼 필터 그대로다. 번진 만큼
-              바깥으로 자리를 내준다 — 기본 10%로는 살찐 원이 상자 밖에서 잘린다. */}
-          <filter id={filterId} x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
-            <feGaussianBlur in="SourceGraphic" stdDeviation={blur.toFixed(2)} result="b" />
-            <feColorMatrix in="b" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -11" />
-          </filter>
-        </defs>
-        <g filter={`url(#${filterId})`} fill={color}>
-          {pr.edge === 'pixel' ? <g ref={pixelRef} /> : art}
-        </g>
+        {stone && hatch ? (
+          <>
+            <defs>
+              {/* 빗금 — 세로 줄 하나를 45° 돌려 ／. 마스크 안에서 검정은 '지운다'는 뜻이다 */}
+              <pattern id={filterId + 'h'} patternUnits="userSpaceOnUse" width={hatch.gap * K} height={hatch.gap * K} patternTransform="rotate(45)">
+                <rect width={hatch.width * K} height={hatch.gap * K} fill="black" />
+              </pattern>
+              <mask id={filterId + 'm'} maskUnits="userSpaceOnUse" x="0" y="0" width={W.toFixed(1)} height={H.toFixed(1)}>
+                <rect width={W.toFixed(1)} height={H.toFixed(1)} fill="white" />
+                <g fill={`url(#${filterId}h)`}>
+                  {stone.hatch.map((q, i) => (
+                    <polygon key={i} points={q.map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join(' ')} />
+                  ))}
+                </g>
+              </mask>
+            </defs>
+            <path d={stoneD} fill={color} mask={`url(#${filterId}m)`} />
+          </>
+        ) : (
+          <>
+            <defs>
+              {/* 번지고(feGaussianBlur) 알파를 문턱으로 자른다(feColorMatrix) — 겹친 자리는
+                  채우고 나머지는 지운다. 2026-09-09의 메타볼 필터 그대로다. 번진 만큼
+                  바깥으로 자리를 내준다 — 기본 10%로는 살찐 원이 상자 밖에서 잘린다. */}
+              <filter id={filterId} x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
+                <feGaussianBlur in="SourceGraphic" stdDeviation={blur.toFixed(2)} result="b" />
+                <feColorMatrix in="b" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -11" />
+              </filter>
+            </defs>
+            <g filter={`url(#${filterId})`} fill={color}>
+              {pr.edge === 'pixel' ? <g ref={pixelRef} /> : art}
+            </g>
+          </>
+        )}
       </svg>
       {/* 글은 제 자리에 앉는다 — 구름이 비대칭이라 한가운데가 아니다 */}
       <div className="cloud-text" style={{

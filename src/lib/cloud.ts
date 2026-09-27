@@ -47,7 +47,7 @@ export const LAMBDA = 8;
 /** 조각이 옮겨 다니는 거리 (u). 조각만 자리를 옮긴다 */
 export const DRIFT = 0.6;
 
-export type Edge = 'spike' | 'smooth' | 'cumulus' | 'pixel';
+export type Edge = 'spike' | 'smooth' | 'cumulus' | 'pixel' | 'stone';
 
 export interface Persona {
   key: string;
@@ -68,6 +68,22 @@ export interface Persona {
   spike?: { depth: readonly [number, number]; base: number; gap: number };
   /** 유머있는 — 격자 한 칸 (u) */
   cell?: number;
+  /** 차분한 — 날 선 돌. 원을 안 쓰고 다각형 하나다(stoneFor) */
+  stone?: {
+    /** 꼭짓점 수 범위 */
+    corners: readonly [number, number];
+    /** 꼭짓점 자리 흔들림(한 칸에 대한 비율) · 거리 흔들림(비율) */
+    slot: number;
+    reach: number;
+    /** 모서리 굴림 (u) — 그리는 쪽(CloudBubble)이 쓴다 */
+    round: number;
+    /** 기울기 범위(도). 방향은 글마다 */
+    tilt: readonly [number, number];
+    /** 깨는 모서리 수 · 깨는 각도 범위(도) · 글 + 여백에서 비켜 지나는 거리(u) */
+    crack: { count: number; angle: readonly [number, number]; clear: number };
+    /** 빗금 — 바깥 법선 각도 범위(도, 0 = 오른쪽 · 90 = 아래) · 깊이 · 간격 · 굵기 (u) */
+    hatch: { from: number; to: number; depth: number; gap: number; width: number };
+  };
 }
 
 /**
@@ -79,8 +95,14 @@ export const PERSONAS: Record<string, Persona> = {
   // 33개였을 땐 해님이었다 — 줄이고 키웠다.
   ttoryeot: { key: 'ttoryeot', edge: 'spike', lobe: [1.25, 1.85], fill: [0.6, 0.8], gap: 1.9, spread: [0.2, 0.9], sat: 1, blur: 0.12,
     spike: { depth: [0.7, 1.3], base: 0.55, gap: 1.7 } },
-  // 매끈한 덩이. 덩이 고르고 번짐 두 배라 굴곡이 눕는다. 조각 없음.
-  chabun: { key: 'chabun', edge: 'smooth', lobe: [1.15, 1.35], fill: [0.75, 0.9], gap: 2.2, spread: [0, 0.3], sat: 0, blur: 0.24 },
+  // 날 선 돌 (2026-09-27). 매끈한 덩이였다 — 성격의 짝이 돌·별·꽃·나비로 바뀌면서
+  // 차분한이 먼저 돌이 됐다. 원을 안 써서 아래 lobe·fill·gap·spread는 쓰이지 않는다.
+  // 값은 격자에서 골랐다 — 뭉툭 · 굴린 각 · 깎은 돌 중 날 선 각, 긴 글이 네모로 끌리던
+  // 것은 기울이고 두 모서리를 깨서, 빗금은 둘레의 약 45%가 되게(design/landscape.md '돌').
+  chabun: { key: 'chabun', edge: 'stone', lobe: [1.15, 1.35], fill: [0.75, 0.9], gap: 2.2, spread: [0, 0.3], sat: 0, blur: 0,
+    stone: { corners: [6, 8], slot: 0.45, reach: 0.15, round: 0.12, tilt: [5, 10],
+      crack: { count: 2, angle: [25, 65], clear: 0.3 },
+      hatch: { from: -35, to: 125, depth: 0.6, gap: 0.2, width: 0.055 } } },
   // 뭉게구름 — 기준형.
   doran: { key: 'doran', edge: 'cumulus', lobe: [1.1, 1.6], fill: [0.5, 0.75], gap: 1.6, spread: [0, 0.9], sat: 3, blur: 0.12 },
   // 픽셀 구름. 같은 합집합을 0.5u 격자에 찍는다. 번짐은 모서리만 아주 살짝 —
@@ -135,6 +157,15 @@ export interface Circle {
 }
 type Pt = readonly [number, number];
 export interface Spike { lobe: number; pts: readonly [Pt, Pt, Pt] }
+/** 한 변의 안쪽 띠 — 빗금이 들어갈 자리. 변의 두 끝과 안쪽으로 물러난 두 점 */
+export type Quad = readonly [Pt, Pt, Pt, Pt];
+/** 차분한의 돌. 원점 = 구름 상자 왼쪽 위, u 단위 */
+export interface Stone {
+  /** 꼭짓점 — 곧은 변으로 잇는다. 모서리 굴림은 그리는 쪽이 */
+  pts: Pt[];
+  /** 오른쪽 아래 안쪽 빗금의 띠들 */
+  hatch: Quad[];
+}
 
 export interface Cloud {
   persona: Persona;
@@ -143,6 +174,8 @@ export interface Cloud {
   circles: Circle[];
   /** 당당한의 갈래. 점은 제 덩이 중심 기준 — 덩이가 부풀면 같이 부푼다 */
   spikes: Spike[];
+  /** 차분한의 돌. 있으면 circles · spikes는 비어 있다 */
+  stone?: Stone;
   /** 구름 상자 (u) */
   w: number; h: number;
   /** 글 덩어리가 앉는 자리 (상자 안, u) */
@@ -231,6 +264,7 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
   const TW = Math.max(0.5, ...widths), TH = Math.max(1, lines.length) * LH;
   const boxes = widths.map((w, i) => ({ x0: (TW - w) / 2, x1: (TW + w) / 2, yc: (i + 0.5) * LH }));
   const rule: 'B' | 'C' = boxes.length <= 2 ? 'B' : 'C';
+  if (pr.edge === 'stone' && pr.stone) return stoneFor(pr, rule, TW, TH, R);
 
   const circles: Circle[] = [];
   const put = (x: number, y: number, r: number, kind: Circle['kind']) =>
@@ -342,6 +376,126 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
   return {
     persona: pr, rule, circles, spikes,
     w: maxX - minX, h: maxY - minY,
+    text: { x: -minX, y: -minY, w: TW, h: TH }
+  };
+}
+
+// ─── 차분한 — 날 선 돌 (2026-09-27) ──────────────────────────────────
+// 고른 과정과 잰 결과는 design/landscape.md '돌'. 값은 PERSONAS.chabun.stone.
+
+/** 다각형 안인가 (짝수-홀수 규칙) */
+function inPolygon(x: number, y: number, P: readonly Pt[]): boolean {
+  let inside = false;
+  for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+    const [xi, yi] = P[i], [xj, yj] = P[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/** 반평면으로 자른다 — n·p ≤ c 쪽을 남긴다 (Sutherland–Hodgman) */
+function clipHalf(P: readonly Pt[], nx: number, ny: number, c: number): Pt[] {
+  const out: Pt[] = [];
+  const side = (p: Pt) => nx * p[0] + ny * p[1] - c;
+  for (let i = 0; i < P.length; i++) {
+    const A = P[i], B = P[(i + 1) % P.length], da = side(A), db = side(B);
+    if (da <= 0) out.push(A);
+    if ((da <= 0) !== (db <= 0)) { const t = da / (da - db); out.push([A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t]); }
+  }
+  return out;
+}
+
+/** 네모의 둘레 위 점들 — 돌이 품어야 할 자리를 잰다 */
+function rimOf(x0: number, y0: number, x1: number, y1: number, n = 12): Pt[] {
+  const p: Pt[] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    p.push([x0 + (x1 - x0) * t, y0], [x0 + (x1 - x0) * t, y1], [x0, y0 + (y1 - y0) * t], [x1, y0 + (y1 - y0) * t]);
+  }
+  return p;
+}
+
+/**
+ * 빗금 자리 — 바깥 법선이 from~to를 향한 변들의 한 줄기를 끝까지, 변마다 안쪽 depth의 띠.
+ *
+ * 줄기가 없으면 오른쪽 아래(45°)에 가장 가까운 변 하나로 — 글 200개로 재 보니 그런
+ * 돌은 없었지만(2026-09-27), '늘 있다'는 약속을 운에 맡기지 않는다.
+ */
+function hatchBands(P: readonly Pt[], cx: number, cy: number, h: { from: number; to: number; depth: number }): Quad[] {
+  const n = P.length;
+  const edges = P.map((A, i) => {
+    const B = P[(i + 1) % n], L = Math.hypot(B[0] - A[0], B[1] - A[1]) || 1e-9;
+    let nx = (B[1] - A[1]) / L, ny = -(B[0] - A[0]) / L;
+    if (nx * ((A[0] + B[0]) / 2 - cx) + ny * ((A[1] + B[1]) / 2 - cy) < 0) { nx = -nx; ny = -ny; }
+    const ang = (Math.atan2(ny, nx) * 180) / Math.PI;
+    return { A, B, nx, ny, ang, ok: ang >= h.from && ang <= h.to };
+  });
+  const start = edges.findIndex((e, i) => e.ok && !edges[(i - 1 + n) % n].ok);
+  let run: typeof edges = [];
+  if (start >= 0) for (let j = 0; j < n && edges[(start + j) % n].ok; j++) run.push(edges[(start + j) % n]);
+  if (!run.length) run = [edges.reduce((m, e) => (Math.abs(e.ang - 45) < Math.abs(m.ang - 45) ? e : m))];
+  return run.map(({ A, B, nx, ny }): Quad => [A, B, [B[0] - nx * h.depth, B[1] - ny * h.depth], [A[0] - nx * h.depth, A[1] - ny * h.depth]]);
+}
+
+/**
+ * 차분한의 돌.
+ *
+ * 초타원(지수 3) 둘레에 꼭짓점을 흔들어 놓고 곧은 변으로 잇는다. 돌 전체를 기울이고,
+ * 글 + 사방 여백을 다 품을 때까지 가운데에서 키운 뒤, 오른쪽 아래를 뺀 세 모서리 중
+ * 둘을 깬다. 깨진 면은 글 + 여백에서 clear만큼 바깥을 지나 글을 다치지 않는다.
+ *
+ * 기울이고 깨는 것은 긴 글 때문이다 — 네다섯 줄의 글 덩어리는 네모라, 그걸 품는
+ * 꼭짓점 여섯 개짜리 돌도 네모로 끌려갔다. 줄 수에 비례해 흔들기는 돌을 34%까지
+ * 키웠고, 줄 따라 깎기는 네모를 더 잘 없앴지만 '깨진 돌'의 인상이 없었다.
+ *
+ * 원은 하나도 안 쓴다. 번지지도 숨 쉬지도 않는다 — 돌은 가만히 있다.
+ */
+function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number): Cloud {
+  const s = pr.stone!;
+  const cx = TW / 2, cy = TH / 2, a = TW / 2 + PAD, b = TH / 2 + PAD;
+  const pick = (range: readonly [number, number]) => range[0] + (range[1] - range[0]) * R();
+  const k = s.corners[0] + Math.floor(R() * (s.corners[1] - s.corners[0] + 1));
+  const tilt = ((R() < 0.5 ? -1 : 1) * pick(s.tilt) * Math.PI) / 180;
+  const off = R() * Math.PI * 2;
+  const sup = (v: number) => Math.sign(v) * Math.abs(v) ** (2 / 3);
+
+  // 꼭짓점 — 초타원을 12% 넉넉히 잡고 자리와 거리를 흔든다
+  let pts: Pt[] = [];
+  for (let i = 0; i < k; i++) {
+    const t = off + ((i + (R() - 0.5) * 2 * s.slot) / k) * Math.PI * 2;
+    const m = 1 + (R() - 0.5) * 2 * s.reach;
+    const x = a * 1.12 * sup(Math.cos(t)) * m, y = b * 1.12 * sup(Math.sin(t)) * m;
+    pts.push([cx + x * Math.cos(tilt) - y * Math.sin(tilt), cy + x * Math.sin(tilt) + y * Math.cos(tilt)]);
+  }
+  pts.sort((p, q) => Math.atan2(p[1] - cy, p[0] - cx) - Math.atan2(q[1] - cy, q[0] - cx));
+
+  // 글 + 사방 여백을 다 품을 때까지 키운다
+  const need = rimOf(-PAD, -PAD, TW + PAD, TH + PAD);
+  for (let g = 0; g < 120 && !need.every(([x, y]) => inPolygon(x, y, pts)); g++) {
+    pts = pts.map(([x, y]): Pt => [cx + (x - cx) * 1.02, cy + (y - cy) * 1.02]);
+  }
+
+  // 깨기 — 오른쪽 아래(빗금 자리)는 두고 나머지 셋 중 count곳, 사분면 안의 각도로
+  const quads: Pt[] = [[-1, -1], [1, -1], [-1, 1]];
+  for (let i = quads.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [quads[i], quads[j]] = [quads[j], quads[i]]; }
+  for (const [sx, sy] of quads.slice(0, s.crack.count)) {
+    const th = (pick(s.crack.angle) * Math.PI) / 180, ux = sx * Math.cos(th), uy = sy * Math.sin(th);
+    pts = clipHalf(pts, ux, uy, Math.max(...need.map(([x, y]) => ux * x + uy * y)) + s.crack.clear);
+  }
+  // 자른 자리에 겹친 점이 남으면 길이 0인 변이 생긴다
+  pts = pts.filter((p, i) => { const q = pts[(i + 1) % pts.length]; return Math.hypot(q[0] - p[0], q[1] - p[1]) > 1e-4; });
+
+  const hatch = hatchBands(pts, cx, cy, s.hatch);
+
+  // 상자 — 원점을 왼쪽 위로. 가장자리가 잘리지 않게 조금 넉넉히
+  const e = 0.05;
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+  const minX = Math.min(...xs) - e, minY = Math.min(...ys) - e;
+  const mv = ([x, y]: Pt): Pt => [x - minX, y - minY];
+  return {
+    persona: pr, rule, circles: [], spikes: [],
+    stone: { pts: pts.map(mv), hatch: hatch.map((q): Quad => [mv(q[0]), mv(q[1]), mv(q[2]), mv(q[3])]) },
+    w: Math.max(...xs) + e - minX, h: Math.max(...ys) + e - minY,
     text: { x: -minX, y: -minY, w: TW, h: TH }
   };
 }

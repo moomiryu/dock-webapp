@@ -163,8 +163,42 @@ type Land = { dx: number; dy: number; scale: number };
 const SINK: Land = { dx: 0, dy: 0, scale: ECHO_SIDE_VH / BIG_SIDE_VH };
 
 /** 떠다니는 몸 하나. 자리와 속도는 여기 있고 React는 모른다 — 프레임마다
-    상태를 갱신하면 열두 개 × 60프레임 = 초당 720번 다시 그리게 된다. */
-type Body = { x: number; y: number; vx: number; vy: number; r: number; held: boolean };
+    상태를 갱신하면 열두 개 × 60프레임 = 초당 720번 다시 그리게 된다.
+    hw · hh = 상자의 반폭 · 반높이. heavy = 차분한의 돌, a · va = 돌의 흔들림(rad).
+    poly = 돌의 실제 윤곽(볼록 다각형, 가운데 기준 px). 말은 없다 — 상자로 친다 */
+type Body = {
+  x: number; y: number; vx: number; vy: number; r: number; hw: number; hh: number;
+  held: boolean; heavy: boolean; a: number; va: number; poly: Pt2[] | null;
+};
+type Pt2 = [number, number];
+
+// ─── 돌 (차분한) — 떠다니지 않고 바닥에 내려앉는다 (2026-09-27) ──────────
+// design/landscape.md '돌': 위에서 쿵 떨어져 아래에 간격을 두고 쌓인다. 가만히 있다가
+// 주변의 충격에 조금 흔들리고 밀리고, 밀려서 받침을 잃으면 굴러떨어진다.
+/** 무게 — 초당 화면 높이의 몇 배씩 빨라지나. 1.6이면 벽 높이를 1초 남짓에 떨어진다 */
+const STONE_G = 1.6;
+/** 떠다니는 말보다 몇 배 무거운가. 부딪힌 말은 튕겨 나가고 돌은 조금만 밀린다 */
+const STONE_MASS = 8;
+/** 바닥에 떨어질 때 되튀는 비율 — 쿵 하고 한 번 들썩일 만큼. 이보다 느리면 그냥 앉는다 */
+const STONE_BOUNCE = 0.18;
+const STONE_THUD = 0.08;
+/** 바닥 · 받침 위에서 미끄러지다 멈추는 빠르기(초당 감쇠) */
+const STONE_FRICTION = 3;
+/** 돌끼리 두는 틈 — 화면 높이의 비율. 0.025(27px)였다 — 상자로 치던 때라 빈 모서리까지
+    더해져 '보이지 않는 경계'가 있어 보였다. 윤곽으로 치면서 거의 맞닿게(3px 안팎) */
+const STONE_GAP = 0.003;
+/** 받침 돌의 반폭 중 이만큼 바깥에 무게중심이 있으면 받침을 잃고 미끄러진다 */
+const STONE_TIP = 0.55;
+/** 흔들림 — 되돌아오는 힘 · 잦아드는 힘 · 최대 기울기(rad, 약 5°) · 충격이 기울기로 옮는 비율 */
+const WOBBLE_K = 55;
+const WOBBLE_DAMP = 5;
+const WOBBLE_MAX = 0.09;
+const WOBBLE_GAIN = 1.5;
+/** 부딪혀 밀린 속도가 흔들림으로 옮는 비율 — 떠다니는 말에 한 번 맞으면 2° 안팎 */
+const WOBBLE_HIT = 30;
+/** 받침을 잃은 돌이 옆으로 빨라지는 비율(무게에 대해) · 그쪽으로 기우는 빠르기(rad/s) */
+const TIP_SLIDE = 0.6;
+const TIP_LEAN = 1.2;
 
 /**
  * 이 글이 쓰는 틀 — 최대 영역 한 변에 대한 **비율**로.
@@ -183,8 +217,18 @@ function boxSide(): number {
   return (window.innerHeight * ECHO_SIDE_VH) / 100;
 }
 
-/** 새 몸을 아무 자리에 놓는다. 이미 있는 것들과 겹치지 않는 자리를 찾아본다 */
-function spawn(r: number, w: number, h: number, taken: Body[]): Body {
+/** 새 몸을 아무 자리에 놓는다. 이미 있는 것들과 겹치지 않는 자리를 찾아본다.
+ *  돌은 위쪽 3분의 1 어딘가에서 멈춘 채 나타나 떨어진다 — 다른 돌과 가로로 안 겹치는 자리를 찾아본다 */
+function spawn(r: number, hw: number, hh: number, heavy: boolean, w: number, h: number, taken: Body[]): Body {
+  const still = { held: false, heavy, a: 0, va: 0, r, hw, hh, poly: null };
+  if (heavy) {
+    let x = 0;
+    for (let t = 0; t < 30; t++) {
+      x = hw + Math.random() * Math.max(1, w - hw * 2);
+      if (taken.every((b) => !b.heavy || Math.abs(b.x - x) >= b.hw + hw)) break;
+    }
+    return { ...still, x, y: hh + Math.random() * Math.max(1, h / 3 - hh), vx: 0, vy: 0 };
+  }
   const speed = SPEED_MIN + Math.random() * (SPEED_MAX - SPEED_MIN);
   const angle = Math.random() * Math.PI * 2;
   let x = 0, y = 0;
@@ -193,7 +237,7 @@ function spawn(r: number, w: number, h: number, taken: Body[]): Body {
     y = r + Math.random() * Math.max(1, h - r * 2);
     if (taken.every((b) => Math.hypot(b.x - x, b.y - y) >= b.r + r)) break;
   }
-  return { x, y, vx: Math.cos(angle) * speed * h, vy: Math.sin(angle) * speed * h, r, held: false };
+  return { ...still, x, y, vx: Math.cos(angle) * speed * h, vy: Math.sin(angle) * speed * h };
 }
 
 /**
@@ -206,10 +250,38 @@ function spawn(r: number, w: number, h: number, taken: Body[]): Body {
  * 질량이 같으므로 탄성 충돌은 **법선 방향 속도를 맞바꾸는 것**으로 끝난다.
  * 접선 방향은 건드리지 않는다(스치듯 지나가는 것이 스치듯 보여야 한다).
  * 멀어지는 중인 쌍은 건너뛴다 — 안 그러면 겹친 채 붙어 떨리게 된다.
+ *
+ * 돌이 낀 쌍은 원이 아니라 **돌의 실제 윤곽**으로 친다(말은 상자). 납작한 돌을 긴 쪽
+ * 반지름의 원으로 치면 바닥에서 한참 떠 보이고, 상자로 쳐도 기울고 깨진 돌의 빈
+ * 모서리끼리 먼저 닿아 '보이지 않는 경계'가 생겼다. 돌은 무거워서 부딪힌 말은 튕겨
+ * 나가고 돌은 조금만 밀린다(STONE_MASS).
  */
 function step(bodies: Body[], w: number, h: number, dt: number) {
+  const ground = new Set<Body>();
   for (const b of bodies) {
     if (b.held) continue;
+    if (b.heavy) {
+      // 흔들림은 늘 제자리(0)로 돌아온다
+      b.va += (-WOBBLE_K * b.a - WOBBLE_DAMP * b.va) * dt;
+      b.a = Math.max(-WOBBLE_MAX, Math.min(WOBBLE_MAX, b.a + b.va * dt));
+      b.vy += STONE_G * h * dt;
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      // 바닥에 닿는 것은 상자의 바닥이 아니라 돌의 가장 낮은 점이다
+      const P = b.poly, low = P ? Math.max(...P.map((p) => p[1])) : b.hh;
+      const left = P ? -Math.min(...P.map((p) => p[0])) : b.hw, right = P ? Math.max(...P.map((p) => p[0])) : b.hw;
+      if (b.y > h - low) {
+        const hit = b.vy;
+        b.y = h - low;
+        // 쿵 — 빨리 떨어졌으면 한 번 들썩이고, 떨어진 쪽으로 조금 기운다
+        if (hit > STONE_THUD * h) { b.vy = -hit * STONE_BOUNCE; b.va += (hit / h) * WOBBLE_GAIN * (b.x < w / 2 ? -1 : 1); }
+        else b.vy = 0;
+        ground.add(b);
+      }
+      if (b.x < left) { b.x = left; b.vx = Math.abs(b.vx) * 0.3; }
+      else if (b.x > w - right) { b.x = w - right; b.vx = -Math.abs(b.vx) * 0.3; }
+      continue;
+    }
     b.x += b.vx * dt;
     b.y += b.vy * dt;
     if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx); }
@@ -220,6 +292,7 @@ function step(bodies: Body[], w: number, h: number, dt: number) {
   for (let i = 0; i < bodies.length; i++) {
     for (let j = i + 1; j < bodies.length; j++) {
       const a = bodies[i], b = bodies[j];
+      if (a.heavy || b.heavy) { collideStones(a, b, h, dt, ground); continue; }
       const dx = b.x - a.x, dy = b.y - a.y;
       const d = Math.hypot(dx, dy) || 1e-6;
       const min = a.r + b.r;
@@ -237,6 +310,126 @@ function step(bodies: Body[], w: number, h: number, dt: number) {
       if (!b.held) { b.vx += diff * nx; b.vy += diff * ny; }
     }
   }
+  // 바닥이나 받침 위에 앉은 돌은 미끄러지다 멈춘다
+  for (const b of ground) b.vx *= Math.exp(-STONE_FRICTION * dt);
+}
+
+/** 몸의 윤곽 — 가운데 기준 px. 돌은 제 다각형, 말은 상자 */
+function outline(b: Body): Pt2[] {
+  return b.poly ?? [[-b.hw, -b.hh], [b.hw, -b.hh], [b.hw, b.hh], [-b.hw, b.hh]];
+}
+
+/**
+ * 두 볼록 윤곽이 겹쳤나 — 두 도형의 모든 변의 법선에 비춰 본다(분리축). 한 축에서라도
+ * 떨어져 있으면 안 겹친 것이다. 겹쳤으면 가장 덜 겹친 축이 밀어낼 방향(a → b)과 깊이다.
+ * gap만큼 떨어져 있어도 닿은 것으로 친다.
+ */
+function overlap(a: Body, b: Body, gap: number): { nx: number; ny: number; pen: number } | null {
+  const A = outline(a), B = outline(b);
+  let best = Infinity, bx = 0, by = 0;
+  for (const P of [A, B]) {
+    for (let i = 0; i < P.length; i++) {
+      const p = P[i], q = P[(i + 1) % P.length];
+      let nx = p[1] - q[1], ny = q[0] - p[0];
+      const L = Math.hypot(nx, ny);
+      if (L < 1e-9) continue;
+      nx /= L; ny /= L;
+      let amin = Infinity, amax = -Infinity, bmin = Infinity, bmax = -Infinity;
+      for (const v of A) { const d = (v[0] + a.x) * nx + (v[1] + a.y) * ny; if (d < amin) amin = d; if (d > amax) amax = d; }
+      for (const v of B) { const d = (v[0] + b.x) * nx + (v[1] + b.y) * ny; if (d < bmin) bmin = d; if (d > bmax) bmax = d; }
+      const o = Math.min(amax, bmax) - Math.max(amin, bmin) + gap;
+      if (o <= 0) return null;
+      if (o < best) { best = o; bx = nx; by = ny; }
+    }
+  }
+  if ((b.x - a.x) * bx + (b.y - a.y) * by < 0) { bx = -bx; by = -by; }
+  return { nx: bx, ny: by, pen: best };
+}
+
+/**
+ * 돌이 낀 한 쌍. 윤곽이 겹친 만큼 덜 겹친 방향으로 밀어내고, 무게에 반비례해 나눠
+ * 움직인다. 붙잡힌 몸(held)은 무한히 무겁다.
+ *
+ * - 돌과 말: 말은 그대로 튕겨 나가고(되튐 1), 돌은 받은 만큼 조금 밀리며 흔들린다.
+ *   **말은 돌을 떠받치지 못한다** — 자리는 말만 비킨다. 돌 밑에 낀 말은 옆으로
+ *   빠져나간다(2026-09-27, 가벼운 말 위에 돌이 올라타 떠 있던 것을 고쳤다)
+ * - 돌과 돌: 거의 맞닿게(STONE_GAP) 앉는다. 거의 안 튄다(0.1). 흔들림은 쿵 부딪힐
+ *   때만 — 얹혀 누르는 힘까지 충격으로 치면 받침 돌이 내내 기운 채로 있었다
+ * - 위에 앉은 돌의 무게중심이 받침 돌 가장자리 바깥(STONE_TIP)이면 그쪽으로
+ *   미끄러지며 기운다 — 굴러떨어진다
+ */
+function collideStones(a: Body, b: Body, h: number, dt: number, ground: Set<Body>) {
+  if (a.heavy !== b.heavy) return stoneAndFloater(a.heavy ? a : b, a.heavy ? b : a, h, dt);
+  const hit = overlap(a, b, STONE_GAP * h);
+  if (!hit) return;
+  const ia = a.held ? 0 : 1 / STONE_MASS, ib = b.held ? 0 : 1 / STONE_MASS;
+  if (ia + ib === 0) return;
+  const { nx, ny, pen } = hit;
+  a.x -= (nx * pen * ia) / (ia + ib); a.y -= (ny * pen * ia) / (ia + ib);
+  b.x += (nx * pen * ib) / (ia + ib); b.y += (ny * pen * ib) / (ia + ib);
+
+  // 위아래로 닿았나 — 위의 돌이 받침을 잃었는지 본다
+  const stacked = Math.abs(ny) > 0.6;
+  if (stacked) {
+    const top = ny > 0 ? a : b, base = top === a ? b : a;
+    ground.add(top);
+    const off = top.x - base.x;
+    if (!top.held && Math.abs(off) > base.hw * STONE_TIP) {
+      const dir = Math.sign(off);
+      top.vx += dir * STONE_G * h * TIP_SLIDE * dt;
+      top.va += dir * TIP_LEAN * dt;
+    }
+  }
+
+  const vn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+  if (vn >= 0) return;                    // 이미 멀어지는 중
+  const j = (-(1 + 0.1) * vn) / (ia + ib);
+  a.vx -= j * ia * nx; a.vy -= j * ia * ny;
+  b.vx += j * ib * nx; b.vy += j * ib * ny;
+  // 쿵 부딪혔을 때만 흔들린다. 옆에서 맞으면 민 쪽으로, 위아래로 맞으면 맞은 자리가
+  // 가운데에서 비낀 쪽으로 기운다
+  if (-vn < STONE_THUD * h) return;
+  for (const [s2, o, inv, sgn] of [[a, b, ia, -1], [b, a, ib, 1]] as const) {
+    if (s2.held) continue;
+    const dir = stacked ? Math.sign(o.x - s2.x) || 1 : sgn * Math.sign(nx);
+    s2.va += ((j * inv) / h) * WOBBLE_HIT * dir;
+  }
+}
+
+/** 말이 돌 밑에서 빠져나가는 빠르기 — 초당 화면 높이의 비율. 한 번에 옮기면 순간이동으로 보인다 */
+const SLIP_OUT = 0.6;
+
+/**
+ * 돌과 떠다니는 말. 자리는 말만 비킨다 — 말은 돌을 떠받치지 못한다.
+ * 말이 돌 위에 있으면 위로, 옆이면 옆으로 튕긴다. 돌 밑에 끼었으면 옆으로 빠져나간다.
+ * 속도는 말이 그대로 튕기고(되튐 1), 돌은 무게에 반비례해 조금 밀리며 흔들린다.
+ */
+function stoneAndFloater(s: Body, f: Body, h: number, dt: number) {
+  if (f.held) return;
+  const hit = overlap(s, f, 0);
+  if (!hit) return;
+  let { nx, ny, pen } = hit;
+  if (ny > 0.6) { nx = Math.sign(f.x - s.x) || 1; ny = 0; pen = SLIP_OUT * h * dt; }
+  f.x += nx * pen; f.y += ny * pen;
+  const vn = (f.vx - s.vx) * nx + (f.vy - s.vy) * ny;
+  if (vn >= 0) return;
+  const is = s.held ? 0 : 1 / STONE_MASS;
+  const j = (-2 * vn) / (1 + is);
+  f.vx += j * nx; f.vy += j * ny;
+  if (s.held) return;
+  s.vx -= j * is * nx; s.vy -= j * is * ny;
+  const dir = Math.abs(nx) > Math.abs(ny) ? -Math.sign(nx) : Math.sign(f.x - s.x) || 1;
+  s.va += ((j * is) / h) * WOBBLE_HIT * dir;
+}
+
+/** 볼록 껍질 — 물리는 볼록한 윤곽으로 친다. 깨진 면 때문에 아주 조금 오목한 자리가 생길 수 있다 */
+function convexHull(P: readonly (readonly [number, number])[]): Pt2[] {
+  const p = P.map(([x, y]): Pt2 => [x, y]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o: Pt2, a: Pt2, b: Pt2) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo: Pt2[] = [], up: Pt2[] = [];
+  for (const q of p) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  for (const q of [...p].reverse()) { while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+  return [...lo.slice(0, -1), ...up.slice(0, -1)];
 }
 
 // ─── Component ────────────────────────────────────────────────────────
@@ -271,7 +464,7 @@ export default function WallSimulation() {
   // 잔상의 크기는 글마다 다르다 — 정사각이던 시절엔 한 변 하나로 끝났지만,
   // 이제 납작한 것과 정방형인 것이 섞여 있다. 물리 계산이 그 값을 알아야
   // 벽면과 서로에게 제대로 튕긴다. 프레임 루프는 React 바깥이라 ref로 건넨다.
-  const sizesRef = useRef(new Map<string, { w: number; h: number }>());
+  const sizesRef = useRef(new Map<string, { w: number; h: number; heavy?: boolean; poly?: Pt2[] }>());
 
   // 화면이 다 차 있을 때 한 칸씩 갈아 끼우는 시계
   const [rotate, setRotate] = useState(0);
@@ -528,10 +721,13 @@ export default function WallSimulation() {
   const shownKey = shown.map((m) => m.id).join(',');
   // 물리 계산이 볼 수 있게 크기를 옮겨 둔다. 글·모양·크기가 그대로면 값도 같다.
   useEffect(() => {
-    const m = new Map<string, { w: number; h: number }>();
+    const m = new Map<string, { w: number; h: number; heavy?: boolean; poly?: Pt2[] }>();
     for (const msg of shown) {
-      const { box } = cloudOf(msg);
-      m.set(msg.id, { w: box.w, h: box.h + box.tail });
+      const { box, cloud } = cloudOf(msg);
+      // 돌(차분한)은 떠다니지 않고 바닥에 앉는다 — 물리 계산이 알아야 한다. 윤곽은
+      // 상자에 대한 비율(0~1)로 넘긴다 — 한 변(side)이 창과 함께 바뀌기 때문이다
+      const poly = cloud.stone ? convexHull(cloud.stone.pts).map(([x, y]): Pt2 => [x / cloud.w, y / cloud.h]) : undefined;
+      m.set(msg.id, { w: box.w, h: box.h + box.tail, heavy: !!cloud.stone, poly });
     }
     sizesRef.current = m;
   }, [shown]);
@@ -556,9 +752,13 @@ export default function WallSimulation() {
       const map = bodiesRef.current;
       for (const id of [...map.keys()]) if (!ids.includes(id)) map.delete(id);
       for (const id of ids) {
-        const b = map.get(id);
-        if (!b) map.set(id, spawn(rOf(id), w, h, [...map.values()]));
-        else b.r = rOf(id);                // 창 크기가 바뀌면 같이 바뀐다
+        const f = sizesRef.current.get(id);
+        const hw = (side * (f?.w ?? 1)) / 2, hh = (side * (f?.h ?? 1)) / 2, heavy = !!f?.heavy;
+        const poly = f?.poly ? f.poly.map(([u, v]): Pt2 => [(u - 0.5) * 2 * hw, (v - 0.5) * 2 * hh]) : null;
+        let b = map.get(id);
+        if (!b) map.set(id, (b = spawn(rOf(id), hw, hh, heavy, w, h, [...map.values()])));
+        else { b.r = rOf(id); b.hw = hw; b.hh = hh; b.heavy = heavy; }   // 창 크기가 바뀌면 같이 바뀐다
+        b.poly = poly;
       }
       step([...map.values()], w, h, dt);
       for (const [id, b] of map) {
@@ -566,7 +766,8 @@ export default function WallSimulation() {
         if (!el) continue;
         // 몸은 가운데를 들고 있고 요소는 왼쪽 위로 놓인다
         const f = sizesRef.current.get(id) ?? { w: 1, h: 1 };
-        el.style.transform = `translate3d(${(b.x - (side * f.w) / 2).toFixed(1)}px, ${(b.y - (side * f.h) / 2).toFixed(1)}px, 0)`;
+        // 돌은 흔들린 만큼 제 가운데를 축으로 기운다
+        el.style.transform = `translate3d(${(b.x - (side * f.w) / 2).toFixed(1)}px, ${(b.y - (side * f.h) / 2).toFixed(1)}px, 0)` + (b.a ? ` rotate(${b.a.toFixed(4)}rad)` : '');
       }
       raf = requestAnimationFrame(loop);
     };

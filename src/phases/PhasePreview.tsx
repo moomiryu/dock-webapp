@@ -7,7 +7,7 @@ import type { ToneState } from '../types';
 
 /* 이 화면의 말. 영어는 초안이다(2026-09-26, 영문판) */
 const T = {
-    back: { ko: '색 다시 고르기', en: 'Choose the colour again' },
+    back: { ko: '다시 담기', en: 'Hold it again' },
     title: { ko: '이렇게 보여요', en: 'This is how it will look' },
     lock: { ko: '보낸 뒤에는 수정할 수 없어요.', en: "You can't edit it after sending." },
     frame: { ko: '벽에 뜨는 모습', en: 'How it will appear on the wall' },
@@ -63,7 +63,7 @@ export default function PhasePreview({ text, tone, onConfirm, onBack, onHome, bu
 
      버튼이 '준비됐어요'였다. **진짜 잠기는 순간이 여기인데** 그 라벨은
      무슨 일이 일어나는지 말하지 않는다 — 다른 확정 버튼은 전부 대상을
-     말한다('다 썼어요' · '이 색으로 할게요'). '이대로'가 방금 본 미리보기를
+     말한다('다 썼어요' · '이렇게 담을게요'). '이대로'가 방금 본 미리보기를
      가리켜서 무엇이 보내지는지가 버튼 안에서 끝나고, 실패했을 때의
      '다시 보낼게요'와도 말이 이어진다. */}
  <div className="z-ask is-brief"><h1>{pick(T.title, lang)}</h1><p>{pick(T.lock, lang)}</p></div>

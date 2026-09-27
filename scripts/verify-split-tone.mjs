@@ -59,7 +59,7 @@ try {
   await page.keyboard.press('ArrowRight');
   await page.waitForFunction(() => getComputedStyle(document.querySelector('.color-preview .voice-bubble')).backgroundColor === 'rgb(228, 0, 43)');
   await next(); await check('preview',5);
-  await page.getByRole('button',{name:'색 다시 고르기',exact:true}).click();
+  await page.getByRole('button',{name:'다시 담기',exact:true}).click();
   assert.equal(await page.getByRole('radio',{name:'적기 색 조합',exact:true}).isChecked(),true);
   await next();
   const draft=await page.evaluate(()=>JSON.parse(localStorage.getItem('megafont.draft.v1')));

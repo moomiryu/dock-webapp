@@ -3771,7 +3771,9 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .compose-screen{ background: var(--pane-bg, var(--ink)); transition: background 420ms var(--ease-emphasized); }
 .compose-screen.is-pulled{ background: var(--ink); }
 .color-choice .z-step-of{ color: var(--chrome-ink, var(--paper)); }
-/* '이 색으로 할게요'가 **그 색**이다. 고른 짝(배경·글자)을 버튼이 그대로
+/* 04의 안내 문장(2026-09-28). 검은 자리 위라 기본 --muted로는 AA에 모자란다 — 05와 같은 값 */
+.color-choice .compose-ask p{ color: var(--grey-400); }
+/* '이렇게 담을게요'가 **그 색**이다. 고른 짝(배경·글자)을 버튼이 그대로
    입는다 — 누르기 전에 결과가 버튼 안에 있다. 경계는 글자색 1px: 짝은
    글자가 배경 위에서 읽히도록 고른 것이라 그 선도 같은 근거로 갈린다.
    검은 화면 위 검은 배경 짝이 와도 이 선이 버튼을 남긴다. */

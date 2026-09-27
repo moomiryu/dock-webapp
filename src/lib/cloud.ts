@@ -47,7 +47,7 @@ export const LAMBDA = 8;
 /** 조각이 옮겨 다니는 거리 (u). 조각만 자리를 옮긴다 */
 export const DRIFT = 0.6;
 
-export type Edge = 'spike' | 'smooth' | 'cumulus' | 'pixel' | 'stone';
+export type Edge = 'spike' | 'smooth' | 'cumulus' | 'pixel' | 'stone' | 'star';
 
 export interface Persona {
   key: string;
@@ -84,6 +84,22 @@ export interface Persona {
     /** 빗금 — 바깥 법선 각도 범위(도, 0 = 오른쪽 · 90 = 아래) · 깊이 · 간격 · 굵기 (u) */
     hatch: { from: number; to: number; depth: number; gap: number; width: number };
   };
+  /** 당당한 — 끝이 적고 골이 깊은 별(starFor). 끝 수 · 길이는 크기에 비례한다 */
+  star?: {
+    /** 기준 크기 — 두 줄 견본의 √(반폭 · 반높이), u. 여기서 끝 corners개 · 길이 len */
+    base: number;
+    corners: number;
+    /** 끝 수의 범위 · 끝 길이 배율의 범위 */
+    cornerRange: readonly [number, number];
+    len: number;
+    lenScale: readonly [number, number];
+    /** 끝 방향 흔들림(한 칸에 대한 ±비율) · 끝 길이 흔들림(±비율) */
+    jit: number;
+    lenJit: number;
+    /** 끝의 연장선 — 향하는 방향(도) · 쓰는 끝의 방향 범위 · 수 · 끝에서 떨어진 거리 · 가운데 선 길이 ·
+        나머지 선 길이 비 · 굵기 (u) */
+    rays: { toward: number; from: number; to: number; count: number; gap: number; len: number; side: number; width: number };
+  };
 }
 
 /**
@@ -93,8 +109,13 @@ export interface Persona {
 export const PERSONAS: Record<string, Persona> = {
   // 뾰족 구름. 덩이 크고 대비 세게, 윤곽 위 둘레에만 갈래. 깊이 0.9·간격 1.2로
   // 33개였을 땐 해님이었다 — 줄이고 키웠다.
-  ttoryeot: { key: 'ttoryeot', edge: 'spike', lobe: [1.25, 1.85], fill: [0.6, 0.8], gap: 1.9, spread: [0.2, 0.9], sat: 1, blur: 0.12,
-    spike: { depth: [0.7, 1.3], base: 0.55, gap: 1.7 } },
+  // 별 (2026-09-27). 뾰족 구름이었다 — 성격의 짝이 바뀌며 당당한이 별이 됐다. 원을 안 써서
+  // lobe · fill · gap · spread는 쓰이지 않는다. 끝을 레퍼런스처럼 길게 뽑으면 별이 커져 벽의
+  // 글이 71~81%로 작아졌다 — 끝은 짧게, 수와 길이를 크기에 비례시켜 한 줄부터 다섯 줄까지
+  // 글이 방사 별의 88~93%로 고르다. 고른 과정은 design/landscape.md '별'.
+  ttoryeot: { key: 'ttoryeot', edge: 'star', lobe: [1.25, 1.85], fill: [0.6, 0.8], gap: 1.9, spread: [0.2, 0.9], sat: 0, blur: 0,
+    star: { base: 2.91, corners: 7, cornerRange: [5, 10], len: 3.0, lenScale: [0.55, 1.6], jit: 0.08, lenJit: 0.12,
+      rays: { toward: 45, from: -30, to: 120, count: 3, gap: 0.5, len: 2.1, side: 0.4, width: 0.07 } } },
   // 날 선 돌 (2026-09-27). 매끈한 덩이였다 — 성격의 짝이 돌·별·꽃·나비로 바뀌면서
   // 차분한이 먼저 돌이 됐다. 원을 안 써서 아래 lobe·fill·gap·spread는 쓰이지 않는다.
   // 값은 격자에서 골랐다 — 뭉툭 · 굴린 각 · 깎은 돌 중 날 선 각, 긴 글이 네모로 끌리던
@@ -166,6 +187,13 @@ export interface Stone {
   /** 오른쪽 아래 안쪽 빗금의 띠들 */
   hatch: Quad[];
 }
+/** 당당한의 별. 원점 = 구름 상자 왼쪽 위, u 단위 */
+export interface Star {
+  /** 끝 · 골이 번갈아 — 곧은 변으로 잇는다. 굴리지 않는다 */
+  pts: Pt[];
+  /** 끝의 연장선 — 시작 · 끝 두 점씩. 그리는 쪽이 켜졌다 꺼졌다 하게 한다 */
+  rays: [Pt, Pt][];
+}
 
 export interface Cloud {
   persona: Persona;
@@ -176,6 +204,8 @@ export interface Cloud {
   spikes: Spike[];
   /** 차분한의 돌. 있으면 circles · spikes는 비어 있다 */
   stone?: Stone;
+  /** 당당한의 별. 있으면 circles · spikes는 비어 있다 */
+  star?: Star;
   /** 구름 상자 (u) */
   w: number; h: number;
   /** 글 덩어리가 앉는 자리 (상자 안, u) */
@@ -265,6 +295,7 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
   const boxes = widths.map((w, i) => ({ x0: (TW - w) / 2, x1: (TW + w) / 2, yc: (i + 0.5) * LH }));
   const rule: 'B' | 'C' = boxes.length <= 2 ? 'B' : 'C';
   if (pr.edge === 'stone' && pr.stone) return stoneFor(pr, rule, TW, TH, R);
+  if (pr.edge === 'star' && pr.star) return starFor(pr, rule, TW, TH, R);
 
   const circles: Circle[] = [];
   const put = (x: number, y: number, r: number, kind: Circle['kind']) =>
@@ -495,6 +526,79 @@ function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () =>
   return {
     persona: pr, rule, circles: [], spikes: [],
     stone: { pts: pts.map(mv), hatch: hatch.map((q): Quad => [mv(q[0]), mv(q[1]), mv(q[2]), mv(q[3])]) },
+    w: Math.max(...xs) + e - minX, h: Math.max(...ys) + e - minY,
+    text: { x: -minX, y: -minY, w: TW, h: TH }
+  };
+}
+
+// ─── 당당한 — 별 (2026-09-27) ────────────────────────────────────────
+// 고른 과정과 잰 결과는 design/landscape.md '별'. 값은 PERSONAS.ttoryeot.star.
+
+/**
+ * 당당한의 별.
+ *
+ * 골은 글 + 여백을 품는 타원 위, 끝은 그 타원 위의 뿌리에서 바깥으로 len. 끝의 방향 ·
+ * 길이만 조금 흔든다. 끝 수와 길이는 별의 크기(√반폭·반높이)를 따른다 — 고정해 두면 짧은
+ * 한 마디에서 끝이 작은 별을 압도해 벽의 글이 68%로 작아졌다(두 줄 견본에서 끝 7개 · 3u,
+ * 한 마디는 5개 · 짧게, 다섯 줄은 8~9개 · 길게).
+ *
+ * 흔들림은 키우기 전에 한 번만 뽑는다 — 글 + 여백을 품을 때까지 키우는 동안 모양이
+ * 바뀌면 안 된다.
+ *
+ * 끝의 연장선: toward(오른쪽 아래)를 향한 끝 가운데 가까운 count개를, 끝에서 gap 떨어진
+ * 곳부터 같은 방향으로. 가운데(toward에 가장 가까운) 선이 len, 나머지는 그 side배, 모두
+ * 크기에 비례. **자리를 지킨다** — from~to 밖의 끝은 쓰지 않는다. 작은 별은 두 줄이 되기도
+ * 한다(수를 지키면 한 줄이 반대쪽 끝까지 끌려갔다, 200개 중 14%).
+ */
+function starFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number): Cloud {
+  const s = pr.star!, r = s.rays;
+  const cx = TW / 2, cy = TH / 2, a = TW / 2 + PAD, b = TH / 2 + PAD;
+  const clamp = (v: number, [lo, hi]: readonly [number, number]) => Math.max(lo, Math.min(hi, v));
+  const ratio = Math.sqrt(a * b) / s.base;
+  const n = clamp(Math.round(s.corners * Math.sqrt(ratio)), s.cornerRange);
+  const len = s.len * clamp(ratio, s.lenScale);
+
+  const off = -Math.PI / 2 + (R() - 0.5) * (Math.PI / n);
+  const jitTip = Array.from({ length: n }, () => (R() - 0.5) * 2 * s.jit);
+  const jitVal = Array.from({ length: n }, () => (R() - 0.5) * s.jit);
+  const jitLen = Array.from({ length: n }, () => Math.max(0.35, 1 + (R() - 0.5) * 2 * s.lenJit));
+  const make = (k: number): Pt[] => {
+    const P: Pt[] = [];
+    for (let i = 0; i < n; i++) {
+      const ta = off + ((i + jitTip[i]) / n) * Math.PI * 2, tv = off + ((i + 0.5 + jitVal[i]) / n) * Math.PI * 2;
+      const bx = cx + a * k * Math.cos(ta), by = cy + b * k * Math.sin(ta), l = Math.hypot(bx - cx, by - cy);
+      const L = len * jitLen[i];
+      P.push([bx + ((bx - cx) / l) * L, by + ((by - cy) / l) * L], [cx + a * k * Math.cos(tv), cy + b * k * Math.sin(tv)]);
+    }
+    return P;
+  };
+  const need = rimOf(-PAD, -PAD, TW + PAD, TH + PAD);
+  let k = 1, pts = make(k);
+  for (let g = 0; g < 90 && !need.every(([x, y]) => inPolygon(x, y, pts)); g++) pts = make((k *= 1.03));
+
+  // 끝의 연장선 — 오른쪽 아래를 향한 끝만, 가까운 순으로 count개
+  const deg = (p: Pt) => (Math.atan2(p[1] - cy, p[0] - cx) * 180) / Math.PI;
+  const off45 = (p: Pt) => Math.abs(((deg(p) - r.toward + 540) % 360) - 180);
+  const tips = pts.filter((_, i) => i % 2 === 0);
+  let pick = tips.filter((p) => deg(p) >= r.from && deg(p) <= r.to).sort((p, q) => off45(p) - off45(q)).slice(0, r.count);
+  if (!pick.length) pick = [...tips].sort((p, q) => off45(p) - off45(q)).slice(0, 1);   // 운에 맡기지 않는다
+  const lead = pick[0];
+  const scale = clamp(ratio, s.lenScale);
+  const rays: [Pt, Pt][] = pick.sort((p, q) => deg(p) - deg(q)).map((p) => {
+    const l = Math.hypot(p[0] - cx, p[1] - cy), ux = (p[0] - cx) / l, uy = (p[1] - cy) / l;
+    const L = r.len * scale * (p === lead ? 1 : r.side);
+    const s0: Pt = [p[0] + ux * r.gap, p[1] + uy * r.gap];
+    return [s0, [s0[0] + ux * L, s0[1] + uy * L]];
+  });
+
+  // 상자 — 끝과 연장선까지 다 들게
+  const e = 0.05 + r.width;
+  const all = [...pts, ...rays.flat()], xs = all.map((p) => p[0]), ys = all.map((p) => p[1]);
+  const minX = Math.min(...xs) - e, minY = Math.min(...ys) - e;
+  const mv = ([x, y]: Pt): Pt => [x - minX, y - minY];
+  return {
+    persona: pr, rule, circles: [], spikes: [],
+    star: { pts: pts.map(mv), rays: rays.map(([p, q]): [Pt, Pt] => [mv(p), mv(q)]) },
     w: Math.max(...xs) + e - minX, h: Math.max(...ys) + e - minY,
     text: { x: -minX, y: -minY, w: TW, h: TH }
   };

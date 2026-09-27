@@ -3611,6 +3611,17 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    여백은 0 — 위아래 0.34em도 여백 0.7u를 먹는다. */
 .cloud-bubble .line-bubble{ width: max-content; max-width: none; padding: 0; }
 .cloud-bubble .line-bubble-text, .cloud-bubble .message-line{ white-space: pre; }
+/* 별(당당한)의 끝의 연장선 — 켜졌다 꺼졌다, 번지지 않고 딱 끊긴다. 선마다 주기가 달라
+   박자가 안 맞고 반짝인다(design/landscape.md '별', 2026-09-27). 주기는 토큰의 합이고,
+   켜진 몫(63.6%)은 --t-hold ÷ (--t-hold + --t-slow)다. 별마다 시작을 --ray-shift만큼
+   어긋낸다(CloudBubble — 글에서 나온 값, 벽의 별들이 한 박자로 깜빡이지 않게). 숨을 멈춘 구름(.is-still)과
+   움직임 줄이기에서는 켜진 채 선다. */
+.cloud-ray{ animation: cloud-ray-blink calc(var(--t-hold) + var(--t-slow)) steps(1, end) infinite; animation-delay: calc(-1 * var(--ray-shift, 0ms)); }
+.cloud-ray.r1{ animation-duration: calc(var(--t-hold) + var(--t-return)); animation-delay: calc(-1 * var(--t-return) - var(--ray-shift, 0ms)); }
+.cloud-ray.r2{ animation-duration: calc(var(--t-slow) + var(--t-return)); animation-delay: calc(-2 * var(--t-return) - var(--ray-shift, 0ms)); }
+.cloud-rays.is-still .cloud-ray{ animation: none; }
+@keyframes cloud-ray-blink{ 0%{ opacity: 1; } 63.6%{ opacity: 0; } 100%{ opacity: 0; } }
+@media (prefers-reduced-motion: reduce){ .cloud-ray{ animation: none; } }
 
 .compose-count{ transition: opacity 240ms; }
 @media (prefers-reduced-motion: reduce) {

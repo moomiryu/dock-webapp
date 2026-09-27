@@ -25,6 +25,11 @@ import type { Boxed } from '../lib/fit';
  * 원이 아니라 다각형 하나(cloud.ts · stoneFor). 번지지도 숨 쉬지도 않는다.
  * 오른쪽 아래 빗금은 칠하지 않고 **오려 낸다**(mask) — 뒤에 있는 것이 그대로
  * 비쳐 벽에서도 폰에서도 '틈'이 된다. 시스템이 새 색을 만들지 않는다.
+ *
+ * ── 별 (당당한, 2026-09-27) ───────────────────────────────────────────
+ * 다각형 하나(cloud.ts · starFor), 곧은 변 그대로. 오른쪽 아래 끝의 연장선은 칠과
+ * 같은 색이고, 켜졌다 꺼졌다 한다 — 선마다 주기가 달라 박자가 안 맞는다(app.css
+ * .cloud-ray, 주기는 토큰의 합). 숨을 멈추면(still) 켜진 채 선다.
  */
 const K = 100;
 /** 픽셀 구름을 다시 찍는 간격. 12fps면 계단이 옮겨 가는 것이 보이되 파이에 짐이 안 된다 */
@@ -129,7 +134,7 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   }, [cloud, quiet]);
 
   const art = useMemo(() => {
-    if (pr.edge === 'pixel' || cloud.stone) return null;
+    if (pr.edge === 'pixel' || cloud.stone || cloud.star) return null;
     return (
       <>
         {cloud.circles.map((c, i) => (
@@ -164,6 +169,11 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   const t = cloud.text;
   const stone = cloud.stone, hatch = pr.stone?.hatch;
   const stoneD = useMemo(() => (stone ? stonePath(stone.pts, pr.stone?.round ?? 0) : ''), [stone, pr.stone?.round]);
+  const star = cloud.star, rayW = (pr.star?.rays.width ?? 0.07) * K;
+  const starPts = useMemo(() => (star ? star.pts.map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join(' ') : ''), [star]);
+  // 별마다 깜빡임의 시작을 어긋낸다 — 안 그러면 벽의 별들이 한 박자로 깜빡인다.
+  // 어긋남은 별의 모양(=글)에서 나온다: 같은 글이면 같은 박자
+  const rayShift = star ? `${Math.round(((star.pts[0][0] * 7919 + star.pts[0][1] * 104729) % 1) * 1000)}ms` : '0ms';
   return (
     <div
       className={'cloud-bubble' + (className ? ' ' + className : '')}
@@ -187,6 +197,15 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
               </mask>
             </defs>
             <path d={stoneD} fill={color} mask={`url(#${filterId}m)`} />
+          </>
+        ) : star ? (
+          <>
+            <polygon points={starPts} fill={color} />
+            <g className={'cloud-rays' + (quiet ? ' is-still' : '')} stroke={color} strokeWidth={rayW.toFixed(1)} style={{ '--ray-shift': rayShift } as CSSProperties}>
+              {star.rays.map(([p, q], i) => (
+                <line key={i} className={`cloud-ray r${i}`} x1={(p[0] * K).toFixed(1)} y1={(p[1] * K).toFixed(1)} x2={(q[0] * K).toFixed(1)} y2={(q[1] * K).toFixed(1)} />
+              ))}
+            </g>
           </>
         ) : (
           <>

@@ -4088,6 +4088,32 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .sim-frame.is-wall .wall-show{ position: absolute; }
 .sim-legend{ justify-content: flex-end; }
 
+/* ── 5/5는 화면 전체가 벽이다 (2026-09-27, 사용자) ──────────────────────
+   16:9 액자(벽 2.5 × 1.4m의 비율)를 흰 화면 가운데 두던 것을 걷었다. 액자는
+   폰 폭의 절반 높이(201px)라 발화가 작게 떴고, 흰 여백 속의 검은 띠가 '벽'보다
+   '화면 속 화면'으로 읽혔다. 이제 화면째 검정이고, 머리줄과 보내기 버튼
+   사이가 통째로 벽이다 — 벽의 비율이 아니라 **이 폰에서** 어떻게 뜨는지를
+   보여 준다. 크기는 벽 부품이 폰으로 /wall을 열었을 때 쓰는 규칙 그대로다
+   (PhasePreview의 --big-side: 높이 95% · 폭 88% 중 작은 쪽 — 이 칸에 대고 잰다).
+   검은 무대의 머리줄·글자·선은 4/5와 같은 값이다. */
+.preview-screen{ background: var(--ink); }
+.preview-screen .step-header{ --step-ink: var(--paper);
+  --rule-color: color-mix(in srgb, var(--paper) var(--rule-mix), transparent); }
+.preview-screen .z-back{ color: var(--grey-500); }
+.preview-screen .z-ask h1{ color: var(--paper); }
+.preview-screen .z-ask p{ color: var(--grey-400); }
+/* 무대가 남은 높이를 다 받고, 칸(벽)은 화면 끝에서 끝까지 — 테두리·비율 없이 */
+.preview-screen .proj-stage{ justify-content: stretch; min-height: 0; }
+.preview-screen .sim{ flex: 1; min-height: 0; }
+/* flex-basis는 0%가 아니라 **0**이다. flex: 1(= 1 1 0%)이면 첫 계산에서 이 칸의
+   높이 기준(cqh)이 0으로 풀려 발화가 크기 0으로 섰다(재서 확인 — 스타일을 한 번
+   더 계산시키면 풀려서 잘못이 숨는다). 0으로 못 박으면 처음부터 풀린다. */
+.preview-screen .sim-frame.is-wall{ flex: 1 1 0; min-height: 0; aspect-ratio: auto; border: 0;
+  margin-inline: calc(var(--pad-x) * -1); width: auto; }
+.preview-screen .sim-replay{ border-color: color-mix(in srgb, var(--paper) var(--rule-mix), transparent); color: var(--grey-400); }
+.preview-screen .error-banner{ border-color: var(--grey-500); color: var(--paper); }
+@media (hover: hover){ .preview-screen .sim-replay:hover{ color: var(--paper); border-color: var(--paper); } }
+
 
 /* ─── 머리줄 밑 구분선 — 한 규칙 (2026-09-25) ─────────────────────
    내비게이션과 본문 사이에 선 하나. 튜토리얼 머리줄의 선(1px · --line ·

@@ -971,7 +971,15 @@
   gap: var(--s5);
 }
 
-.info-said p + p{ margin-top: var(--s3); }   /* 소개 한 장 안의 문단 사이(About은 넷) */
+.info-said p + p{ margin-top: var(--s3); }   /* 소개 한 장 안의 문단 사이 */
+/* About의 부제목(2026-09-28, 작가) — 대제목 아래 위계가 하나 더 생겼다. 덩어리마다
+   부제목 + 문단. 부제목은 새 크기를 만들지 않고 이 판에 이미 있는 '굵은 본문'
+   (.info-said b — 본문 크기 · 600 · 검정)과 같게 두었다: 크기는 디자이너가 정한다.
+   부제목과 문단 사이는 '제목과 짧은 설명 사이'(4), 덩어리 사이는 문단 사이와 같은
+   24(틀의 gap 16 + 8) */
+.info-said > section{ display: grid; gap: var(--space-title-desc); }
+.info-said > section + *{ margin-top: var(--s3); }
+.info-said h3{ font-size: var(--fs-body); font-weight: 600; line-height: 1.5; color: var(--ink); }
 .info-said p{
   font-size: var(--fs-body);
   line-height: 1.5;

@@ -123,7 +123,7 @@ export const PERSONAS: Record<string, Persona> = {
   chabun: { key: 'chabun', edge: 'stone', lobe: [1.15, 1.35], fill: [0.75, 0.9], gap: 2.2, spread: [0, 0.3], sat: 0, blur: 0,
     stone: { corners: [6, 8], slot: 0.45, reach: 0.15, round: 0.12, tilt: [5, 10],
       crack: { count: 2, angle: [25, 65], clear: 0.3 },
-      hatch: { from: -35, to: 125, depth: 0.6, gap: 0.2, width: 0.055 } } },
+      hatch: { from: -35, to: 125, depth: 0.3, gap: 0.2, width: 0.055 } } },
   // 뭉게구름 — 기준형.
   doran: { key: 'doran', edge: 'cumulus', lobe: [1.1, 1.6], fill: [0.5, 0.75], gap: 1.6, spread: [0, 0.9], sat: 3, blur: 0.12 },
   // 픽셀 구름. 같은 합집합을 0.5u 격자에 찍는다. 번짐은 모서리만 아주 살짝 —

@@ -96,6 +96,8 @@ export default function SnapSwitch({ labels, at, onPick, labelledBy, langs, focu
         radios.current[to]?.focus();
     };
     const shown = drag ?? at;
+    /* 겉(.tseg)은 손을 받고, 안(.tseg-box)은 보이는 칸이다(2026-09-27). 3/5에서는
+       안쪽 칸만 게이지와 같은 둥근 틀을 입는다 — 언어 창은 네모 그대로(app.css) */
     return <div ref={box} className={'tseg' + (drag !== null ? ' is-moving' : '')}
       role="radiogroup" aria-labelledby={labelledBy}
       onPointerDown={down} onPointerMove={moveTo} onPointerUp={up}
@@ -103,6 +105,7 @@ export default function SnapSwitch({ labels, at, onPick, labelledBy, langs, focu
       /* 떼는 신호를 놓쳐도(붙잡기가 풀리면) '누르는 중'에 머물지 않게 */
       onLostPointerCapture={(e) => { if (press.current?.id === e.pointerId) { press.current = null; setDrag(null); } }}
       onKeyDown={key}>
+     <div className="tseg-box">
      <i className="tseg-thumb" style={{ '--pos': shown } as CSSProperties} aria-hidden />
      {labels.map((label, n) => {
          const i = n as 0 | 1;
@@ -122,5 +125,6 @@ export default function SnapSwitch({ labels, at, onPick, labelledBy, langs, focu
            {label}
          </button>;
      })}
+     </div>
     </div>;
 }

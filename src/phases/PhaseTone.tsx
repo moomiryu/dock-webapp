@@ -117,43 +117,66 @@ const USE = { w: 86, h: 88 };
 /* 칸을 지날 때의 짧은 진동(tick)은 두 칸 스위치와 같이 쓴다 — components/SnapSwitch */
 
 /**
- * 막대 하나 — 끊김 없이 흐른다(2026-09-25, 작업 지침 8번).
+ * 막대 하나 — **다섯 칸 상자**(2026-09-27, 사용자).
  *
- * 5칸 버튼 줄이던 것을 연속 막대로 바꿨다. 모든 값이 세 지점 사이를
- * 이어서 변하고(palettes.ts · formFor), 오른쪽 위의 말만 가장 가까운 지점의
- * 것을 따른다. 숫자는 보이지 않는다.
+ * 브라우저의 range 입력에 모양만 입힌 1px 선 + 16px 손잡이였다(2026-09-25).
+ * 폰에서 버벅였다 — 아이폰 사파리의 range는 막대를 눌러도 그 자리로 가지
+ * 않고 손잡이를 정확히 집어야만 움직이는데, 그 손잡이가 지름 16이었다.
  *
- * 브라우저의 range 입력을 그대로 쓰고 모양만 바꾼다 — 끌기·누른 자리로
- * 옮기기·자판의 화살표·낭독기가 전부 따라온다. 막대는 1px 선, 세 지점에
- * 짧은 눈금, 손잡이는 16px 원: 가만히 있을 때 채워져 있고 누르는 동안에는
- * 테두리만 남는다(반전). 누르는 자리는 막대 전체 높이 44px이다.
+ * 이제 게이지 하나를 다섯 칸으로 보고 왼쪽부터 지금 칸까지 채운다 — 얼마나
+ * 찼는지가 곧 세기다(음량 막대처럼). **누른 칸이 곧 값**이다. 모양은 견본
+ * 격자로 골랐다(2026-09-27): 양 끝이 둥근 게이지(I4 — 테두리 안에서 채움이 4
+ * 띄워 선다), 칸 나눔 선과 점은 없고 지금 칸의 말이 채움 끝에 선다(7a). 끌면 채움이
+ * 손가락을 따라오고(값도 칸 사이를 이어서 변한다 — palettes.ts · formFor),
+ * 놓으면 가까운 칸에 붙는다. 칸을 지날 때 짧게 진동한다(tick). 말투 스위치와
+ * 같은 손맛이다. 숫자는 보이지 않고, 오른쪽 위의 말이 지금 칸을 말한다.
+ *
+ * 칸 한가운데가 그 칸의 자리다 — 손가락이 칸 가운데 있으면 그 칸까지 찬다.
+ * 누를 때와 끌 때 같은 자리에서 같은 칸이 찬다.
+ *
+ * 자판·낭독기: 상자 자신이 slider다(Tab 한 번). 화살표 한 번에 한 칸, Home·End.
+ * 손가락은 처음 닿은 하나만 따른다(SnapSwitch와 같은 이유).
  */
 function Slider({ name, words, value, onChange }: {
     name: string; words: readonly string[]; value: number; onChange: (v: number) => void;
 }) {
-    /* 다섯 칸(2026-09-25, 작업 지침 13번). 끄는 동안은 부드럽게 흐르고, 손을
-       떼면 가장 가까운 칸에 붙는다. 오른쪽 위의 말은 늘 손잡이가 있는 칸의
-       말이다. 칸을 지날 때마다 짧게 진동한다(tick — 아이폰은 우회).
-
-       옮기는 동안 손잡이는 속이 빈 원이다. 폰에서는 손가락으로 끄는 동안
-       :active가 유지되지 않는 브라우저가 있어 '옮기는 중'을 직접 적는다. */
+    const box = useRef<HTMLDivElement>(null);
+    /** 채움이 오가는 안쪽 — 칸의 자리는 여기서 잰다(테두리와 4 띄운 몫을 뺀 폭) */
+    const inner = useRef<HTMLDivElement>(null);
+    const press = useRef<{ id: number; x: number; moved: boolean } | null>(null);
+    /* 끄는 동안은 채움이 손가락을 바로 따라온다(움직임 끔). 놓거나 누르면 미끄러져 붙는다 */
     const [moving, setMoving] = useState(false);
     const live = useRef(value);
     live.current = value;
     const lastStop = useRef(stopAt(value));
-    const move = (v: number) => {
-        const i = stopAt(v);
-        if (i !== lastStop.current) {
-            lastStop.current = i;
-            tick();
-        }
-        onChange(v);
+    /** 손가락 자리 → 막대 자리(0~1) */
+    const posAt = (x: number) => {
+        const r = (inner.current ?? box.current)!.getBoundingClientRect();
+        return Math.min(1, Math.max(0, (((x - r.left) / r.width) * STOPS - 0.5) / (STOPS - 1)));
     };
-    const release = () => {
+    const go = (v: number) => {
+        const i = stopAt(v);
+        if (i !== lastStop.current) { lastStop.current = i; tick(); }
+        if (v !== live.current) { live.current = v; onChange(v); }
+    };
+    const down = (e: React.PointerEvent) => {
+        if (press.current) return;                                // 이미 한 손가락이 잡고 있다
+        press.current = { id: e.pointerId, x: e.clientX, moved: false };
+        box.current?.setPointerCapture(e.pointerId);
+        go(snap(posAt(e.clientX)));                               // 누른 칸까지 바로 찬다
+    };
+    const drag = (e: React.PointerEvent) => {
+        const p = press.current;
+        if (!p || e.pointerId !== p.id) return;
+        if (!p.moved && Math.abs(e.clientX - p.x) < 6) return;   // 누르기와 끌기를 가른다
+        if (!p.moved) { p.moved = true; setMoving(true); }
+        go(posAt(e.clientX));
+    };
+    const release = (e: React.PointerEvent) => {
+        if (press.current?.id !== e.pointerId) return;
+        press.current = null;
         setMoving(false);
-        const snapped = snap(live.current);
-        lastStop.current = stopAt(snapped);
-        if (snapped !== live.current) onChange(snapped);
+        go(snap(live.current));                                   // 놓으면 가까운 칸에 붙는다
     };
     /* 자판은 칸 단위로 — 화살표 한 번에 한 칸 */
     const key = (e: React.KeyboardEvent) => {
@@ -162,28 +185,29 @@ function Slider({ name, words, value, onChange }: {
         if (step === undefined && edge === null) return;
         e.preventDefault();
         const i = edge ?? Math.min(STOPS - 1, Math.max(0, stopAt(live.current) + step!));
-        lastStop.current = i;
-        onChange(i / (STOPS - 1));
+        go(i / (STOPS - 1));
     };
-    const word = words[stopAt(value)];
+    const at = stopAt(value);
+    /* 한 줄: 왼쪽에 이름, 오른쪽에 게이지(2026-09-27, 견본 7a). 지금 칸의 말은
+       위 줄 오른쪽에 있다가 채움 끝 안으로 들어왔다 — 위 줄이 없어진 만큼
+       견본 칸이 커진다. 첫 칸('매우 ~')은 채움이 말보다 짧아 채움 바로 뒤에 선다. */
     return <div className="tslider">
-     <div className="tslider-lab">
-      <span className="tslider-name">{name}</span>
-      <span className="tslider-word" aria-hidden>{word}</span>
-     </div>
-     <div className={'tslider-track' + (moving ? ' is-moving' : '')}>
-      {/* 막대 선은 첫 눈금에서 시작해 끝 눈금에서 끝난다 — 옆으로 삐져나오지
-          않고 끝은 직각이다. 손잡이 가운데가 그 두 끝 사이를 오간다.
-          --at까지가 지나온 막대, 그 뒤가 남은 막대(색은 app.css) */}
-      <i className="tslider-line" style={{ '--at': value } as CSSProperties} aria-hidden />
-      {Array.from({ length: STOPS }, (_, i) =>
-        <i key={i} className="tslider-tick" style={{ '--p': i / (STOPS - 1) } as CSSProperties} aria-hidden />)}
-      <input type="range" min={0} max={1000} step={1} value={Math.round(value * 1000)}
-        aria-label={name} aria-valuetext={word}
-        onPointerDown={() => setMoving(true)} onPointerUp={release} onPointerCancel={release}
-        onTouchStart={() => setMoving(true)} onTouchEnd={release} onTouchCancel={release}
-        onKeyDown={key} onBlur={() => setMoving(false)}
-        onChange={e => move(Number(e.target.value) / 1000)} />
+     <span className="tslider-name">{name}</span>
+     <div ref={box} className={'tslider-cells' + (moving ? ' is-moving' : '')}
+       role="slider" tabIndex={0} aria-label={name}
+       aria-valuemin={0} aria-valuemax={STOPS - 1} aria-valuenow={at} aria-valuetext={words[at]}
+       onPointerDown={down} onPointerMove={drag} onPointerUp={release}
+       onPointerCancel={release} onLostPointerCapture={release} onKeyDown={key}>
+      {/* 겉은 손을 받고, 안은 보이는 게이지 — 테두리 안쪽(.tslider-in)에서 채움이 4 띄워 선다 */}
+      <div className="tslider-box">
+       <div ref={inner} className="tslider-in">
+        {/* 채움 — 첫 칸(자리 0)부터 지금 칸(자리 1이면 다섯째)까지. 말은 채움에 붙어 같이 움직인다 */}
+        <i className={'tslider-fill' + (at === 0 ? ' is-short' : '')}
+          style={{ '--fill': (value * (STOPS - 1) + 1) / STOPS } as CSSProperties} aria-hidden>
+         <span className="tslider-word">{words[at]}</span>
+        </i>
+       </div>
+      </div>
      </div>
     </div>;
 }
@@ -201,9 +225,7 @@ function MannerSwitch({ font, at, onPick }: { font: string; at: number; onPick: 
     const lang = useLang();
     const labels = pick(MANNER[font].labels, lang) as unknown as readonly [string, string];
     return <div className="tslider">
-     <div className="tslider-lab">
-      <span className="tslider-name" id="tswitch-name">{pick(T.manner, lang)}</span>
-     </div>
+     <span className="tslider-name" id="tswitch-name">{pick(T.manner, lang)}</span>
      <SnapSwitch labels={labels} at={at ? 1 : 0} onPick={onPick} labelledBy="tswitch-name" />
     </div>;
 }

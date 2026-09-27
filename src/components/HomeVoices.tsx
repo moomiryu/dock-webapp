@@ -159,8 +159,7 @@ export default function HomeVoices() {
     let keep = { top: 0, bottom: 0 };
     const measure = () => {
       const f = frame.getBoundingClientRect();
-      /* 제목 밑 'Info'(2026-09-27에 부제 자리를 받았다). 눌리는 칸의 아래 끝까지 비운다 */
-      const sub = frame.querySelector('.home-about')?.getBoundingClientRect();
+      const sub = frame.querySelector('.home-subtitle')?.getBoundingClientRect();
       const gate = frame.querySelector('.home-gate')?.getBoundingClientRect();
       const top = (sub ? sub.bottom - f.top : f.height * 0.24) + f.height * GAP;
       const bottom = (gate ? gate.top - f.top : f.height * 0.82) - f.height * GAP;

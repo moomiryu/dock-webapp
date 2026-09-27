@@ -33,7 +33,7 @@ import artDock2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_2.svg?
 import artDock3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_3.svg?raw';
 import artDock4 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_4.svg?raw';
 
-/* 두 가지로 연다(2026-09-27). 홈의 'Info'는 About 한 장만(about), '처음이에요'는
+/* 두 가지로 연다(2026-09-27). 홈의 물음표는 About 한 장만(about), '처음이에요'는
    Step 1·2·3 세 장을 넘기는 사용 안내다. About이 안내의 첫 장이던 때는 '처음이에요'를
    누른 사람이 쓰는 법보다 긴 글을 먼저 읽어야 했다 — 이제 안내는 쓰는 법만 한다. */
 interface Props { onClose: () => void; onStart?: () => void; about?: boolean; }
@@ -155,7 +155,7 @@ type Slide = { step: string; title: Pair; body: Pair<ReactNode>; art?: ReactNode
 
 /* **왜**를 말하는 장. 2026-09-22부터 사용 안내의 첫 장이었다가(그때 문턱과
    그래서 둔 것을 두 장으로 나눴고, 09-24에 한 장으로 합쳤다) 2026-09-27에
-   작가가 쓴 네 문단으로 바뀌면서 홈의 'Info'로 따로 나왔다. 장당 40자 규칙의
+   작가가 쓴 네 문단으로 바뀌면서 홈으로 따로 나왔다(지금은 홈의 물음표가 연다). 장당 40자 규칙의
    예외다 — 짧은 화면에서는 이 장만 밀어 읽는다(app.css · is-about).
    손으로 끊은 줄은 없다. 삽화는 없다 —
    있는 그림을 빌려 오면 이 장의 말이 아닌 것이 선다. */

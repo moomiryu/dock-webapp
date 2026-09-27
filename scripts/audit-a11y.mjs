@@ -89,8 +89,8 @@ if (EN && (await page.evaluate(() => document.documentElement.lang)) !== 'en') {
   process.exit(2);
 }
 
-// 2026-09-27: About은 홈의 'Info'가 따로 연다. 뒤로가기 없이 X 하나로 닫는다
-await page.locator('.home-about').click();
+// 2026-09-27: About은 홈의 물음표가 따로 연다. 뒤로가기 없이 X 하나로 닫는다
+await page.locator('.home-help').click();
 await page.waitForTimeout(500);
 await audit('01 About');
 await page.locator('.info-head .z-home').click();

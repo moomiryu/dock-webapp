@@ -81,8 +81,9 @@ export interface Persona {
     tilt: readonly [number, number];
     /** 깨는 모서리 수 · 깨는 각도 범위(도) · 글 + 여백에서 비켜 지나는 거리(u) */
     crack: { count: number; angle: readonly [number, number]; clear: number };
-    /** 빗금 — 바깥 법선 각도 범위(도, 0 = 오른쪽 · 90 = 아래) · 깊이 · 간격 · 굵기 (u) */
-    hatch: { from: number; to: number; depth: number; gap: number; width: number };
+    /** 빗금 — 켜짐 · 바깥 법선 각도 범위(도, 0 = 오른쪽 · 90 = 아래) · 깊이 · 간격 · 굵기 (u).
+        on이 false면 빗금을 만들지도 그리지도 않는다 — 값은 그대로 두어 on만 되돌리면 산다 */
+    hatch: { on: boolean; from: number; to: number; depth: number; gap: number; width: number };
   };
   /** 당당한 — 끝이 적고 골이 깊은 별(starFor). 끝 수 · 길이는 크기에 비례한다 */
   star?: {
@@ -123,7 +124,9 @@ export const PERSONAS: Record<string, Persona> = {
   chabun: { key: 'chabun', edge: 'stone', lobe: [1.15, 1.35], fill: [0.75, 0.9], gap: 2.2, spread: [0, 0.3], sat: 0, blur: 0,
     stone: { corners: [6, 8], slot: 0.45, reach: 0.15, round: 0.12, tilt: [5, 10],
       crack: { count: 2, angle: [25, 65], clear: 0.3 },
-      hatch: { from: -35, to: 125, depth: 0.3, gap: 0.2, width: 0.055 } } },
+      // 빗금은 꺼 두었다(2026-09-28, 사용자 — "일단 없애 보자, 나중에 되살릴 수 있게").
+      // 되살리려면 on: true. 나머지 값은 09-28 새벽에 깊이를 0.6 → 0.3u로 줄인 그대로다
+      hatch: { on: false, from: -35, to: 125, depth: 0.3, gap: 0.2, width: 0.055 } } },
   // 뭉게구름 — 기준형.
   doran: { key: 'doran', edge: 'cumulus', lobe: [1.1, 1.6], fill: [0.5, 0.75], gap: 1.6, spread: [0, 0.9], sat: 3, blur: 0.12 },
   // 픽셀 구름. 같은 합집합을 0.5u 격자에 찍는다. 번짐은 모서리만 아주 살짝 —
@@ -516,7 +519,7 @@ function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () =>
   // 자른 자리에 겹친 점이 남으면 길이 0인 변이 생긴다
   pts = pts.filter((p, i) => { const q = pts[(i + 1) % pts.length]; return Math.hypot(q[0] - p[0], q[1] - p[1]) > 1e-4; });
 
-  const hatch = hatchBands(pts, cx, cy, s.hatch);
+  const hatch = s.hatch.on ? hatchBands(pts, cx, cy, s.hatch) : [];
 
   // 상자 — 원점을 왼쪽 위로. 가장자리가 잘리지 않게 조금 넉넉히
   const e = 0.05;

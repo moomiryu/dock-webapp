@@ -180,7 +180,10 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
       style={{ width: `calc(${side} * ${box.w.toFixed(4)})`, height: `calc(${side} * ${box.h.toFixed(4)})`, ...style }}
     >
       <svg className="cloud-art" viewBox={`0 0 ${W.toFixed(1)} ${H.toFixed(1)}`} aria-hidden="true" focusable="false">
-        {stone && hatch ? (
+        {stone && !(hatch?.on && stone.hatch.length) ? (
+          /* 빗금이 꺼진 돌(cloud.ts · hatch.on) — 오려 낼 것 없이 면 하나 */
+          <path d={stoneD} fill={color} />
+        ) : stone && hatch ? (
           <>
             <defs>
               {/* 빗금 — 세로 줄 하나를 45° 돌려 ／. 마스크 안에서 검정은 '지운다'는 뜻이다 */}

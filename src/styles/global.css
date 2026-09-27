@@ -210,6 +210,13 @@ body.themed {
   background: var(--bg-outer, #ffffff);
 }
 
+/* 폰의 상태줄 · 주소창이 화면 끝의 색을 따라가게(2026-09-28, viewport.ts의 trackEdgeTint).
+   문서 바탕의 위 절반은 화면 위 끝의 색, 아래 절반은 아래 끝의 색 — 화면 틀 밖으로
+   드러나는 띠(주소창 뒤)가 제 쪽 끝의 색을 갖는다. 틀이 덮는 안쪽은 달라지지 않는다.
+   벽 · 관리에는 data-edge가 없다 */
+html[data-edge]{ background: linear-gradient(to bottom, var(--edge-top) 50%, var(--edge-bottom) 50%) var(--edge-top); }
+html[data-edge] body{ background: transparent; }
+
 #root {
   width: 100%;
   display: flex;

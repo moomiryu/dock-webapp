@@ -53,3 +53,80 @@ export function trackViewport(): () => void {
     window.removeEventListener('orientationchange', write);
   };
 }
+
+// ─── 화면 끝의 색을 브라우저 테두리로 (2026-09-28) ─────────────────────
+// 사파리는 위 상태줄(시간 · 와이파이)과 아래 주소창을 페이지 바탕색과
+// theme-color로 물들인다. 우리 문서 바탕은 늘 하양이라 3/5의 붉은 면 ·
+// 4/5 · 5/5의 검은 화면 위아래에 흰 띠가 남아 산만했다(사용자, 폰에서 봄).
+//
+// 색을 정해 두지 않고 **지금 화면 끝에 실제로 칠해진 색을 읽는다.** 단계가
+// 늘어도, 소개처럼 위를 덮는 층이 떠도 따라간다 — 인스타그램에서 회색 막이
+// 뜨면 테두리도 회색이 되는 것과 같다. 새 색을 만들지 않는다: 읽은 색을
+// 그대로 옮길 뿐이다. 위 끝 색은 문서 바탕 위쪽과 theme-color에, 아래 끝
+// 색은 문서 바탕 아래쪽에 간다(global.css의 html[data-edge]).
+
+/** 문서의 원래 바탕(tokens.css의 --paper)을 [r, g, b]로 */
+function paperRGB(): [number, number, number] {
+  const hex = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim().replace('#', '');
+  const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
+  const n = parseInt(full, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** 한 점에 쌓인 층들의 바탕을 위에서부터 겹쳐 본 색. 문서(html · body)는 뺀다 — 여기서 칠하는 곳이다 */
+function colorAt(x: number, y: number): string {
+  let r = 0, g = 0, b = 0, a = 0;
+  for (const el of document.elementsFromPoint(x, y)) {
+    if (el === document.documentElement || el === document.body) continue;
+    const m = getComputedStyle(el).backgroundColor.match(/[\d.]+/g);
+    if (!m) continue;
+    const al = m.length > 3 ? parseFloat(m[3]) : 1;
+    if (al <= 0) continue;
+    const w = (1 - a) * al;
+    r += w * +m[0]; g += w * +m[1]; b += w * +m[2]; a += w;
+    if (a >= 0.99) break;
+  }
+  // 끝까지 투명한 자리가 남으면 원래 문서 바탕 위에 놓인 것으로 본다
+  const rest = Math.max(0, 1 - a), [pr, pg, pb] = paperRGB();
+  return `rgb(${Math.round(r + rest * pr)}, ${Math.round(g + rest * pg)}, ${Math.round(b + rest * pb)})`;
+}
+
+export function trackEdgeTint(): () => void {
+  const root = document.documentElement;
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  let timer = 0, last = '';
+  const read = () => {
+    timer = 0;
+    const x = window.innerWidth / 2;
+    const top = colorAt(x, 1), bottom = colorAt(x, window.innerHeight - 1);
+    if (top + bottom === last) return;
+    last = top + bottom;
+    root.style.setProperty('--edge-top', top);
+    root.style.setProperty('--edge-bottom', bottom);
+    if (meta) meta.content = top;
+  };
+  /* 화면이 바뀌는 신호는 많고 잦다(홈 캐릭터는 매 프레임 style을 바꾼다) —
+     120ms에 한 번만 읽는다. 바탕이 번지며 바뀌는 화면(03 · 04, 420ms)은
+     전환이 끝날 때 한 번 더 읽는다.
+     신호만으로는 모자랐다: 움직임 줄이기에서 3/5 조율판이 올라온 뒤에도
+     아래 끝이 빨강으로 남았다(재 봄 — 판이 서는 순간에 오는 신호가 없다).
+     그래서 0.5초마다 한 번 더 본다. 점 두 개를 읽는 일이라 폰에 짐이 안 된다. */
+  const soon = () => { if (!timer) timer = window.setTimeout(read, 120); };
+  const mo = new MutationObserver(soon);
+  mo.observe(document.body, { subtree: true, childList: true, attributes: true });
+  document.addEventListener('transitionend', soon, true);
+  document.addEventListener('animationend', soon, true);
+  window.addEventListener('resize', soon);
+  const beat = window.setInterval(() => { if (!document.hidden) soon(); }, 500);
+  root.dataset.edge = '';
+  soon();
+  return () => {
+    clearTimeout(timer);
+    clearInterval(beat);
+    mo.disconnect();
+    document.removeEventListener('transitionend', soon, true);
+    document.removeEventListener('animationend', soon, true);
+    window.removeEventListener('resize', soon);
+    delete root.dataset.edge;
+  };
+}

@@ -939,7 +939,9 @@
   font-size: var(--fs-body);
   font-weight: 700;
   letter-spacing: 0.02em;
-  color: var(--grey-800);
+  /* 2026-09-27: grey-800 → 뒤로가기·X와 같은 회색(사용자). 머리줄 셋이 한 색이 되고,
+     단계명은 자리(가운데)와 무게(700)로 선다. 흰 바탕 대비 4.6:1 */
+  color: var(--muted);
   /* ABOUT · STEP 1 — 대문자로 적는다(2026-09-26 사용자). 원문은 'About'·'Step 1'
      그대로 두고 보이는 것만 바꾼다 — 낭독기는 원문을 읽는다 */
   text-transform: uppercase;
@@ -969,7 +971,7 @@
   gap: var(--s5);
 }
 
-.info-said p + p{ margin-top: var(--s3); }   /* 소개 한 장 안의 두 문단(문턱 · 그래서 둔 것) */
+.info-said p + p{ margin-top: var(--s3); }   /* 소개 한 장 안의 문단 사이(About은 넷) */
 .info-said p{
   font-size: var(--fs-body);
   line-height: 1.5;
@@ -1686,6 +1688,12 @@
 .info-slide h2[data-break]{ white-space: pre-line; text-wrap: initial; }
 .info-step-label{ font-size: var(--fs-body); font-weight: 600; letter-spacing: 0; }
 .info-said{ width: 100%; }
+/* 글은 작성 단계처럼 왼쪽에 선다(2026-09-27 사용자). 가운데 정렬이던 때는 작성
+   화면으로 넘어가며 제목의 자리가 바뀌었다. 장의 좌우 여백(--pad-x + --s1)은
+   삽화가 기대고 있어(아래 .info-art.is-wide) 그대로 두고, 글만 --s1만큼 밖으로
+   내어 작성 단계의 제목과 같은 선(--pad-x)에 세운다. 삽화와 머리줄의 장 이름은 가운데 그대로 */
+.info-slide{ text-align: start; }
+.info-slide h2, .info-said{ align-self: stretch; width: auto; margin-inline: calc(var(--s1) * -1); }
 .info-art{ border: 0; padding: var(--s5); width: min(100%, 320px); margin-block: auto; }
 
 /* 작가가 그린 삽화 셋(About · Step 2 · Step 3). 선 그림과 달리 제 화판을
@@ -1751,8 +1759,9 @@
 .info-overlay.is-dark::after{ display: none; }
 /* 어두운 화면의 위계: 제목은 흰색, 보조 설명과 단계 정보는 읽히는 회색.
    밝은 화면과 같은 차례이고 밝기만 뒤집힌다. */
-/* 검정 화면에서도 같은 차례를 지킨다 — 단계명이 가장 밝고(grey-300),
-   뒤로가기는 한 단 내려간다(grey-500, --night 대비 6.64:1 — 아이콘 3:1 위).
+/* 검정 화면에서도 같은 차례를 지킨다 — 뒤로가기는 grey-500(--night 대비
+   6.64:1 — 아이콘 3:1 위). 단계명은 grey-300으로 한 단 밝았는데, 2026-09-27에
+   밝은 쪽과 함께 뒤로가기와 같은 색으로 맞췄다(아래 .info-where).
 
    밝은 화면의 사다리를 그대로 옮겨 온 값이다. grey-200/grey-400으로
    두었더니 제목(--paper)과 단계명이 1.23:1, 단계명과 뒤로가기가 1.37:1로
@@ -1775,7 +1784,7 @@
 .info-overlay.is-dark .info-slide h2{ color: var(--paper); }
 .info-overlay.is-dark .info-slide p,
 .info-overlay.is-dark .info-said{ color: var(--grey-400); }
-.info-overlay.is-dark .info-where{ color: var(--grey-300); }
+.info-overlay.is-dark .info-where{ color: var(--grey-500); }   /* 2026-09-27: 뒤로가기·X와 같은 회색(밝은 쪽과 같이) */
 @media (max-height: 700px){
   /* 짧은 화면에서는 장의 위아래 여백이 한 칸 좁다(--s5) */
   .info-overlay.is-dark::before{
@@ -1817,8 +1826,15 @@
      같은 비율로 따라 줄어든다. */
   translate: 0 calc(var(--focus, 50%) * -1 + var(--drop, 0%));
 }
-/* ── 1번은 **내려 앉힌다** (2026-09-22) ───────────────────────────────
-   다섯 장에서 **눈이 가야 할 것**이 지금 어디 서는지 쟀다(화면 844 기준):
+/* ── 1번을 내려 앉히던 것을 걷었다 (2026-09-27) ──────────────────────
+   튜토리얼이 세 장(Step 1·2·3)이 되자 거꾸로 1번만 가라앉아 보였다(사용자).
+   세 장의 그린 것이 끝나는 자리를 움직이는 동안 16번씩 찍어 쟀다(844):
+   버튼까지 남는 몫이 1번 73 · 2번 138 · 3번 140px. 내리지 않으면 1번이
+   634에서 끝나 138px — 2번(634)·3번(632)과 한 바닥선에 선다. 글 아래 여백도
+   119로 2번(118)과 같다. 낮은 화면은 원래 0%였으므로 모든 크기가 같은 규칙이
+   된다. 아래는 그때의 기록이다.
+
+   (2026-09-22) 다섯 장에서 **눈이 가야 할 것**이 지금 어디 서는지 쟀다(화면 844 기준):
    1번 작성판 371 · 2번 '가' 판 446 · 3번 홈 486 · 4번 벽 442 · 5번 도식 542.
    2·3·4는 442~486, 44px 안에 이미 모여 있다. **1번만 71~115px 위로 떠
    있다** — 넘길 때 시선이 한 번 튀어 올랐다 내려온다.
@@ -1844,10 +1860,8 @@
    (칸높이 − 332) ÷ 2다. 그것이 내리는 몫 65px보다 커야 하니 칸이
    462px보다 높아야 한다. 480으로 잡는다 — 재서 확인: 이 문턱에 걸리는
    화면 중 가장 낮은 812에서 아래가 11px 남고, 844에서 27px, 932에서
-   71px 남는다. 736 이하는 안 걸려 0%로 선다. */
-@container (min-height: 480px){
-  .info-art.is-lowered > span > svg{ --drop: 10.8%; }
-}
+   71px 남는다. 736 이하는 안 걸려 0%로 선다.
+   걷은 규칙: @container (min-height: 480px){ .info-art.is-lowered > span > svg{ --drop: 10.8%; } } */
 /* ── 낮은 화면에서는 **자르지 말고 줄인다** (2026-09-21) ────────────────
    삽화는 칸 폭을 다 쓰고 넘치는 높이를 칸이 잘랐다. 844에서는 97%가 보여
    괜찮았는데, 낮은 화면에서 잘리는 몫이 커진다 — 재서 확인: 750에서 79%,
@@ -3016,7 +3030,16 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    위계를 올리는 대신 굵기만 한 칸 —— 400에서 500으로. 500은 이 프로젝트가
    '보조 라벨'에 쓰는 굵기고(typography-revision-2026-09-07), 크기를 건드리지
    않으므로 본문 칸에 그대로 머문다. */
-.home-subtitle{ margin-top: var(--s4); font-size: var(--fs-body); font-weight: 500; line-height: 1.5; color: var(--body-text); }
+/* 2026-09-27: 부제 자리에 'Info' 한 단어가 선다(사용자). 누르면 About 판이 뜬다.
+   꼴은 1/5 힌트(.hint-open)를 그대로 받는다 — 같은 크기·색·옅은 밑줄·닿으면
+   가운데서 자라는 선. 여기서 바꾸는 것은 둘뿐이다: 첫 화면의 영문이라 Whois
+   (--mark-font), 그리고 위 여백. 힌트는 44px 손 닿는 칸을 음수 여백으로 도로
+   빼므로, 부제가 갖던 --s4 간격은 그 칸의 위 안쪽 여백(--s4)이 대신 든다. */
+.home-about{ margin-top: 0; font-family: var(--mark-font); pointer-events: auto; }   /* 윗층(.home-layer)은 손을 통과시킨다 — 이것만 받는다 */
+/* 네 글자라 글자 폭이 28px뿐이었다(재서 확인). 손 닿는 폭만 양옆 --s3씩 벌려
+   44로 만들고, 밑줄은 그만큼 도로 들여 글자 폭에 머문다 */
+.home-about{ padding-inline: var(--s3); }
+.home-about::before, .home-about::after{ left: var(--s3); right: var(--s3); }
 .color-options{ border: 0; min-width: 0; }
 .color-swatches{ display: flex; gap: var(--s4); overflow-x: auto; padding: var(--s3); scrollbar-width: thin; scroll-padding-inline: var(--s3); }
 .color-option{ position: relative; flex: 0 0 56px; width: 56px; height: 56px; display: grid; place-items: center; cursor: pointer; }
@@ -4143,7 +4166,16 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 /* 튜토리얼 머리줄의 X(2026-09-25). 뒤로가기의 거울 — 상자를 오른쪽으로 16
    내보내 획이 오른쪽 글자 줄에 선다. 색·획은 이 머리줄의 뒤로가기 규칙
    (.info-head > .z-back)을 같이 받는다. */
-.info-head > .z-home{ margin-left: 0; margin-right: calc(var(--s5) * -1); }
+.info-head > .z-home{ margin-left: auto; margin-right: calc(var(--s5) * -1); }   /* auto: 뒤로가기가 없는 About 판에서도 오른쪽에 선다 */
+
+/* Info에서 여는 About 판(2026-09-27). 넘길 장이 없어 발치 줄(다음 버튼)이 없다.
+   글이 바닥까지 쓰고, 짧은 화면에서는 이 칸 안에서 밀어 읽는다 — 네 문단이
+   SE를 사파리로 연 높이(548)에서 102px 넘쳤다. 글자 크기는 그대로 둔다.
+   바닥의 붉은 기운은 버튼을 받치는 자리라(위 .info-overlay::after) 버튼과 함께 뺀다 —
+   두면 밀어 올린 글이 그 위를 지나며 흐려진다. */
+.info-overlay.is-about::after{ display: none; }
+.info-overlay.is-about > .info-track{ overflow-y: auto; overscroll-behavior: contain; }
+.info-overlay.is-about .info-slide{ height: auto; }
 
 /* ─── 뒤로가기 · X의 회색 — 튜토리얼 값으로 통일 (2026-09-25) ────────
    모든 머리줄의 뒤로가기·X(.z-back)가 튜토리얼 머리줄과 같은 회색을 쓴다:

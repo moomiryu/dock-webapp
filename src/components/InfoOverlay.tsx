@@ -33,12 +33,16 @@ import artDock2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_2.svg?
 import artDock3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_3.svg?raw';
 import artDock4 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_4.svg?raw';
 
-interface Props { onClose: () => void; onStart: () => void; }
+/* 두 가지로 연다(2026-09-27). 홈의 'Info'는 About 한 장만(about), '처음이에요'는
+   Step 1·2·3 세 장을 넘기는 사용 안내다. About이 안내의 첫 장이던 때는 '처음이에요'를
+   누른 사람이 쓰는 법보다 긴 글을 먼저 읽어야 했다 — 이제 안내는 쓰는 법만 한다. */
+interface Props { onClose: () => void; onStart?: () => void; about?: boolean; }
 
-/* 틀의 말. 장마다의 말은 아래 SLIDES에 있다. 영어는 초안이다(2026-09-26) */
+/* 틀의 말. 장마다의 말은 아래 ABOUT · GUIDE에 있다. 영어는 초안이다(2026-09-26) */
 const T = {
   about: { ko: '메가폰트 소개', en: 'About MegaFont' },
   home: { ko: '처음으로', en: 'Back to start' },
+  close: { ko: '닫기', en: 'Close' },
   prev: { ko: '이전 설명', en: 'Previous page' },
   guide: { ko: '메가폰트 사용 안내', en: 'How to use MegaFont' },
   start: { ko: '시작하기', en: 'Start' },
@@ -53,11 +57,12 @@ const T = {
  * 길어지면 다음 장이 위로 비어져 들어와 **두 생각이 한 화면에 겹쳤다.**
  * 이제 한 번에 한 장만 서고 '다음'이 넘긴다 — 읽을 것이 언제나 하나다.
  */
-export default function InfoOverlay({ onClose, onStart }: Props) {
+export default function InfoOverlay({ onClose, onStart, about }: Props) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
   const lang = useLang();
-  const last = idx === SLIDES.length - 1;
+  const slides = about ? [ABOUT] : GUIDE;
+  const last = idx === slides.length - 1;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -69,19 +74,20 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
   // 좌상단은 한 걸음씩 되돌린다. 첫 장에서만 이 화면을 닫는다 — 여러 장을
   // 읽고 나서 한 장 앞을 다시 보려면 되돌아갈 데가 있어야 한다.
   const back = () => (idx === 0 ? onClose() : setIdx(idx - 1));
-  const s = SLIDES[idx];
+  const s = slides[idx];
   const title = pick(s.title, lang);
   return (
     /* 밤 장면은 화면이 통째로 검정이다. 어느 장이 그런지는 삽화가 아니라
-       **그 장 자신**이 정한다 — 도입 두 장은 삽화가 없고 검정도 아니다
+       **그 장 자신**이 정한다 — About은 삽화가 없고 검정도 아니다
        (app.css · is-dark) */
-    <div className={'info-overlay' + (s.dark ? ' is-dark' : '')}
-      aria-label={pick(T.about, lang)}>
+    <div className={'info-overlay' + (about ? ' is-about' : '') + (s.dark ? ' is-dark' : '')}
+      aria-label={pick(about ? T.about : T.guide, lang)}>
       {/* 단계명은 머리줄에 둔다. 제목 위에 제 줄을 차지하던 때는 제목이
           작성 화면보다 27px 아래에 섰다(84 대 111, 390×844 실측). 그 줄이
           올라오면서 제목이 작성 화면과 같은 높이에 선다. */}
       <div className="info-head">
-        <BackButton label={pick(idx === 0 ? T.home : T.prev, lang)} onClick={back} />
+        {/* About은 한 장뿐이라 되짚을 곳이 없다 — X 하나가 닫는다 */}
+        {!about && <BackButton label={pick(idx === 0 ? T.home : T.prev, lang)} onClick={back} />}
         {/* '1/7' 같은 전체 진행 숫자는 뺐다(2026-09-22). 남은 장을 세게
             만드는 정보였고, 단계명이 하려는 말과도 겹쳤다. 이름 하나만
             남기고 그 이름을 **이 장이 무엇인가**를 말하는 섹션 제목으로
@@ -91,10 +97,10 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
         <span className="info-where">{s.step}</span>
         {/* 오른쪽 X — 어느 장에서든 곧장 첫 화면으로(2026-09-25). 뒤로가기는
             한 장씩 되짚고, X는 소개를 통째로 닫는다. 네 장 모두 같은 자리다. */}
-        <HomeX onClick={onClose} />
+        <HomeX onClick={onClose} label={about ? pick(T.close, lang) : undefined} />
       </div>
       <div className="info-track" ref={trackRef} tabIndex={-1} role="region"
-        aria-live="polite" aria-label={pick(T.guide, lang)}>
+        aria-live="polite" aria-label={pick(about ? T.about : T.guide, lang)}>
         {/* key가 바뀌면 장이 새로 서고, 그때 들어오는 결(infoSlideIn)이 돈다 */}
         <section className="info-slide" key={idx} aria-label={title}>
           {/* 줄바꿈이 적힌 제목은 그 자리를 지킨다(data-break). 나머지는
@@ -107,12 +113,13 @@ export default function InfoOverlay({ onClose, onStart }: Props) {
           {s.art && <div className={'info-art ' + (s.artClass ?? '')} aria-hidden>{s.art}</div>}
         </section>
       </div>
-      <div className="info-nav">
+      {/* About에는 넘길 장도 시작할 일도 없다 — 발치 줄을 안 세운다 */}
+      {!about && <div className="info-nav">
         <button type="button" className="primary-action"
           onClick={last ? onStart : () => setIdx(idx + 1)}>
           {pick(last ? T.start : T.next, lang)}
         </button>
-      </div>
+      </div>}
     </div>
   );
 }
@@ -144,62 +151,77 @@ function Built({ name, still, make }: { name: string; still: string; make: (key:
 /* 제목과 본문은 두 언어로 든다(2026-09-26, 영문판 — 영어는 초안). 영어에는 손으로
    끊은 줄을 넣지 않는다. 한국어가 문장과 문장 사이에서 끊은 자리만 한 번 끊는다.
    한국 캠퍼스에 묶인 예(대자보·에브리타임·공청회)는 뜻을 살려 옮겼다. */
-const SLIDES: Array<{ step: string; title: Pair; body: Pair<ReactNode>; art?: ReactNode; artClass?: string; dark?: boolean }> = [
-  /* 사용법보다 **왜**가 먼저다(2026-09-22). 그때 문턱(Problem)과 그래서
-     둔 것(Solution)을 두 장으로 나눴는데, 2026-09-24에 한 장으로 합쳤다.
-     조작을 배우기 전에 읽을 장이 둘이면 '왜'가 설명의 절반을 먹는다.
-     문장은 두 장에 있던 것을 그대로 잇고 새로 쓰지 않았다(초안). 삽화는 없다 —
-     있는 그림을 빌려 오면 이 장의 말이 아닌 것이 선다. */
-  {
-    step: 'About',
-    title: { ko: '말을 꺼내는 또 하나의 방식', en: 'Another way to speak up' },
-    body: {
-      ko: (
-        <>
-          <p>
-            대자보, 에브리타임, 공청회.<br />
-            말을 전할 통로는 있지만,<br />
-            형식과 절차, 주변의 시선은<br />
-            자유롭게 말하기를 어렵게 합니다.
-          </p>
-          <p>
-            메가폰트는 글을 빛으로 띄우는 카트입니다.<br />
-            내가 다듬은 한 줄을 밤의 벽에 펼치고,<br />
-            그 말을 본 사람도 한마디를 보탤 수 있습니다.
-          </p>
-        </>
-      ),
-      en: (
-        <>
-          <p>
-            Protest posters, anonymous student forums, town hall meetings.<br />
-            There are ways to be heard, but formats, procedures and the eyes of others make it hard to speak freely.
-          </p>
-          <p>
-            MegaFont is a cart that casts words in light.<br />
-            You spread a line you have shaped across the night wall, and anyone who sees it can add a word of their own.
-          </p>
-        </>
-      )
-    }
-  },
+type Slide = { step: string; title: Pair; body: Pair<ReactNode>; art?: ReactNode; artClass?: string; dark?: boolean };
+
+/* **왜**를 말하는 장. 2026-09-22부터 사용 안내의 첫 장이었다가(그때 문턱과
+   그래서 둔 것을 두 장으로 나눴고, 09-24에 한 장으로 합쳤다) 2026-09-27에
+   작가가 쓴 네 문단으로 바뀌면서 홈의 'Info'로 따로 나왔다. 장당 40자 규칙의
+   예외다 — 짧은 화면에서는 이 장만 밀어 읽는다(app.css · is-about).
+   손으로 끊은 줄은 없다. 삽화는 없다 —
+   있는 그림을 빌려 오면 이 장의 말이 아닌 것이 선다. */
+const ABOUT: Slide = {
+  step: 'About',
+  title: { ko: '말을 꺼내는 또 하나의 방식', en: 'Another way to speak up' },
+  body: {
+    ko: (
+      <>
+        <p>
+          대자보, 공청회, 에브리타임. 대학 안에는 생각을 전할 다양한 통로가 있습니다.
+          그러나 형식과 절차, 관계의 위계는 자유로운 발화를 어렵게 만들기도 합니다.
+          익명성은 말할 부담을 덜어주지만, 때로는 말에 담긴 진심과 맥락을 흐리기도 합니다.
+        </p>
+        <p>
+          메가폰트는 이러한 통로가 충분히 담아내지 못한 목소리를 위한 공공발화 카트입니다.
+          소리 대신 빛으로, 밤의 벽에 글을 띄웁니다. 사용자는 자신의 생각을 쓰고,
+          글자의 성격과 형태를 다듬어 사람들 앞에 펼칠 수 있습니다.
+        </p>
+        <p>
+          정제된 문장이나 복잡한 행정 절차는 필요하지 않습니다. 다만 자신의 말이
+          펼쳐지는 자리에 직접 서는 일은 필요합니다. 메가폰트는 그 자리에 함께하는
+          것을 발화의 책임으로 봅니다.
+        </p>
+        <p>
+          잠시 이곳에 머물러, 여러분의 생각을 밤의 벽에 띄워보세요.
+        </p>
+      </>
+    ),
+    /* 영어는 옛 글(2026-09-26)의 번역 그대로다. 영문판을 다시 열 때 새 글로 옮긴다 */
+    en: (
+      <>
+        <p>
+          Protest posters, anonymous student forums, town hall meetings.<br />
+          There are ways to be heard, but formats, procedures and the eyes of others make it hard to speak freely.
+        </p>
+        <p>
+          MegaFont is a cart that casts words in light.<br />
+          You spread a line you have shaped across the night wall, and anyone who sees it can add a word of their own.
+        </p>
+      </>
+    )
+  }
+};
+
+/* 사용 안내 — 쓰는 법만 세 장 */
+const GUIDE: Slide[] = [
   {
     /* 쓰기와 성격 정하기를 한 장으로(2026-09-24). 실제로도 한 자리에서
        이어지는 일이고, 둘 다 '폰 안에서 하는 일'이다 — 폰 밖(꽂기·벽)과
        갈리는 선이 여기다. 작성판 세 컷 뒤에 같은 구도의 조율 네 컷을 하나의 가로 슬라이드로 잇는다. */
     step: 'Step 1',
-    title: { ko: '메시지를 쓰고,\n성격을 정합니다.', en: 'Write a message and choose its character.' },
+    /* 2026-09-27: 제목을 한 줄로, 설명은 작가가 다시 쓴 두 문장(사용자). 요소를
+       크기·빠르기·무게로 나열하지 않는다 — 성격마다 셋째 축이 무게이기도 말투이기도 하다 */
+    title: { ko: '메시지를 쓰고 성격을 정합니다.', en: 'Write a message and choose its character.' },
     body: {
       ko: (
         <p>
-          최대 60자까지 쓰고, 크기와 빠르기, 무게로<br />
+          최대 60자까지 쓴 후, 여러 요소를 조정하며<br />
           나만의 목소리를 만들어보세요.<br />
           <b>비속어 및 타인을 해치는 표현은 사용할 수 없습니다.</b>
         </p>
       ),
       en: (
         <p>
-          Write up to 60 characters, then make your own voice with size, pace and weight.<br />
+          Write up to 60 characters, then adjust its elements to make your own voice.<br />
           <b>Slurs and words that harm others are not allowed.</b>
         </p>
       )
@@ -208,7 +230,7 @@ const SLIDES: Array<{ step: string; title: Pair; body: Pair<ReactNode>; art?: Re
     art: <Built name="step1" still={artRule1}
       make={(k) => step1Svg([artRule1, artRule2, artRule3],
         [artGlyphs1, artGlyphs2, artGlyphs3, artGlyphs4], k)} />,
-    artClass: 'is-wide is-lowered'
+    artClass: 'is-wide'   /* is-lowered(10.8% 내려 앉힘)는 2026-09-27에 걷었다 — app.css */
   },
   {
     step: 'Step 2',

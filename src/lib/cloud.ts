@@ -122,8 +122,10 @@ export interface Persona {
     /** 글 덩어리와 윤곽 사이 — 옆 · 위아래 (u). 봉우리는 그 바깥으로 솟는다 */
     side: number;
     top: number;
-    /** 곁의 작은 구름 — 구름마다 줄별 알 수(아래 줄부터) · 본 구름에서 떨어진 거리 범위 (u) · 오르내리는 폭 (u) */
-    lets: readonly (readonly number[])[];
+    /** 곁의 작은 구름 — 수(뽑는 주머니: 글이 씨앗으로 하나 집는다) · 차례마다 알 수 범위(첫째가 가장 크다) ·
+        붙는 방향의 범위(도, 0 = 앞(오른쪽) · 90 = 위 · 180 = 뒤, 밑은 뺀다) · 둘 사이의 최소 각도(도) ·
+        본 구름에서 떨어진 거리 범위 (u) · 오르내리는 폭 (u) */
+    lets: { count: readonly number[]; sizes: readonly (readonly [number, number])[]; angle: readonly [number, number]; apart: number };
     gap: readonly [number, number];
     bob: number;
     /** 휜 배치(아치 · 부채꼴 · 미소) — 아치 · 미소의 가장 긴 줄의 반지름(줄 길이의 배수) · 부채꼴이 두르는 각(도) ·
@@ -170,7 +172,7 @@ export const PERSONAS: Record<string, Persona> = {
   // 원을 부풀리지 않아 lobe · fill · gap · spread는 쓰이지 않는다. 행간 1.1은 나무와 같다.
   // 고른 과정과 버린 것은 design/landscape.md '구름'.
   doran: { key: 'doran', edge: 'bead', lobe: [1.1, 1.6], fill: [0.5, 0.75], gap: 1.6, spread: [0, 0.9], sat: 0, blur: 0, lh: 1.1,
-    bead: { step: 0.6, r: 0.36, side: 0.55, top: 0.35, lets: [[2, 1], [2]], gap: [0.3, 0.7], bob: 0.3, arc: { bow: 1.3, fan: 130, band: 0.45 } } },
+    bead: { step: 0.6, r: 0.36, side: 0.55, top: 0.35, lets: { count: [1, 2, 2, 2, 3, 3], sizes: [[3, 5], [1, 3], [1, 2]], angle: [-20, 200], apart: 50 }, gap: [0.3, 0.8], bob: 0.3, arc: { bow: 1.3, fan: 130, band: 0.45 } } },
   // 픽셀 구름. 같은 합집합을 0.5u 격자에 찍는다. 번짐은 모서리만 아주 살짝 —
   // 0.16칸에서는 계단이 흐려져 둥근 덩이에 잔털이 난 것이 됐다.
   deulseok: { key: 'deulseok', edge: 'pixel', lobe: [1.1, 1.6], fill: [0.55, 0.75], gap: 1.7, spread: [0, 0.8], sat: 2, blur: 0.04, cell: 0.5 }
@@ -941,26 +943,58 @@ function beadGrid(inside: (x: number, y: number) => boolean, x0: number, y0: num
   return out;
 }
 
+/** 작은 구름 한 덩이의 알 수 → 쌓는 꼴(아래 줄부터). 꼴이 여럿이면 글이 씨앗으로 하나 */
+const LET_ROWS: Record<number, readonly (readonly number[])[]> = { 1: [[1]], 2: [[2]], 3: [[2, 1]], 4: [[3, 1], [2, 2]], 5: [[3, 2]] };
+/** 작은 구름 한 덩이 — k알을 아래 줄부터 쌓는다. 윗줄은 아랫줄 틈에 반 칸 어긋나 얹히고, 어느 틈인지는 씨앗. 가운데가 원점 */
+function letPts(k: number, S: number, R: () => number): Pt[] {
+  const opts = LET_ROWS[k] ?? LET_ROWS[3], rows = opts[Math.floor(R() * opts.length)], rh = (S * Math.sqrt(3)) / 2, pts: Pt[] = [];
+  let base = 0;
+  rows.forEach((n, r) => {
+    if (r) base += n < rows[r - 1] ? S / 2 + S * Math.floor(R() * (rows[r - 1] - n)) : R() < 0.5 ? -S / 2 : S / 2;
+    for (let q = 0; q < n; q++) pts.push([base + q * S, -r * rh]);
+  });
+  const mx = pts.reduce((a, p) => a + p[0], 0) / pts.length, my = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+  return pts.map(([x, y]): Pt => [x - mx, y - my]);
+}
+
 /** 구슬 구름 마무리 — 곁의 작은 구름을 붙이고 상자를 잡는다. tb = 글 상자(u, 구슬과 같은 원점) */
 function finishBeads(pr: Persona, rule: 'B' | 'C', body: Pt[], tb: { x0: number; y0: number; x1: number; y1: number }, chars: Pt[], R: () => number, layout?: TextLayout): Cloud {
-  const b = pr.bead!, S = b.step, rb = b.r, rh = (S * Math.sqrt(3)) / 2;
-  // 곁의 작은 구름 — 알 피라미드(아래 줄부터, 윗줄은 반 칸 밀려 얹힌다). 자리는 본 구름 구슬의 바깥 상자 테두리
-  const x0 = Math.min(...body.map((p) => p[0])) - rb, x1 = Math.max(...body.map((p) => p[0])) + rb;
-  const y0 = Math.min(...body.map((p) => p[1])) - rb, y1 = Math.max(...body.map((p) => p[1])) + rb;
-  const hh = (y1 - y0) * 0.75, ww = x1 - x0, per = 2 * hh + ww;
-  let t = R();
-  const lets = b.lets.map((rows, i) => {
-    if (i) t = (t + 0.35 + 0.3 * R()) % 1;
-    const gap = b.gap[0] + (b.gap[1] - b.gap[0]) * R();
-    const w = (rows[0] - 1) * S + 2 * rb, h = (rows.length - 1) * rh + 2 * rb;
-    let d = t * per, ox: number, oy: number;                                   // (ox, oy) = 맨 아래 줄 첫 알의 중심
-    if (d < hh) { ox = x0 - gap - w + rb; oy = y0 + hh - d + (y1 - y0) * 0.25 - rb; }       // 뒤 — 아래에서 위로
-    else if ((d -= hh) < ww) { ox = x0 + d - w / 2 + rb; oy = y0 - gap - rb; }                // 위 — 뒤에서 앞으로
-    else { d -= ww; ox = x1 + gap + rb; oy = y0 + d + h - rb; }                               // 앞 — 위에서 아래로
-    const pts: Pt[] = [];
-    rows.forEach((k, r) => { for (let q = 0; q < k; q++) pts.push([ox + q * S + (r * S) / 2, oy - r * rh]); });
-    return pts;
-  });
+  const b = pr.bead!, S = b.step, rb = b.r, L = b.lets;
+  /* 곁의 작은 구름 — 수 · 크기 · 자리 모두 글이 씨앗(2026-09-29, 격자 D). 늘 3알 + 2알을 본 구름의 네모 테두리 옆 · 위에
+     반듯하게 붙이던 때는 "랜덤성이 부족해 어눌해 보였다"(디자이너). 수는 1~3, 첫째가 가장 크다(3~5알 · 1~3알 · 1~2알 —
+     본 구름(40~200알)과 급은 그대로 갈린다). 자리는 **실제 윤곽**을 따른다: 가운데(조금 아래)에서 아무 방향으로 나가다
+     구슬에서 간격만큼 떨어진 첫 곳 — 봉우리 사이 · 비스듬한 어깨 · 옆 아래에도 앉는다. 밑은 뺀다(본 구름의 맨 아랫줄보다
+     내려가지 않는다 — 처음엔 200개 중 33개가 밑으로 처졌다).
+     알 수의 상한은 본 구름 알 12개에 하나(2~5) — 한 줄 짧은 글(40알 안팎)에 5알이 붙으면 급이 흐리고, 옆으로 뻗어
+     벽에서 글이 67%까지 작아졌다(200개 재서). 그래서 짧은 글은 3알까지 */
+  const n = L.count[Math.floor(R() * L.count.length)], cap = Math.min(5, Math.max(2, Math.floor(body.length / 12)));
+  const shapes = L.sizes.map(([lo, hi]) => lo + Math.floor(R() * (hi - lo + 1))).slice(0, n).map((k) => letPts(Math.min(k, cap), S, R));
+  const bxs = body.map((p) => p[0]), bys = body.map((p) => p[1]);
+  const cx = (Math.min(...bxs) + Math.max(...bxs)) / 2, cy = (Math.min(...bys) + Math.max(...bys)) / 2 + 0.15 * (Math.max(...bys) - Math.min(...bys));
+  const floor = Math.max(...bys);
+  const clear = (pts: Pt[], gap: number) => pts.every(([x, y]) => body.every(([u, v]) => Math.hypot(x - u, y - v) >= 2 * rb + gap));
+  /** 가운데에서 deg 방향으로 나가 본 구름과 gap만큼 떨어지는 첫 자리 — 성기게 나가다 잘게 되짚는다 */
+  const reach = (sh: Pt[], deg: number, gap: number): Pt[] => {
+    const dx = Math.cos((deg * Math.PI) / 180), dy = -Math.sin((deg * Math.PI) / 180);
+    const at = (t: number) => sh.map(([x, y]): Pt => [cx + dx * t + x, cy + dy * t + y]);
+    let t = 0;
+    while (!clear(at(t), gap)) t += 0.25;
+    while (t > 0.05 && clear(at(t - 0.05), gap)) t -= 0.05;
+    return at(t);
+  };
+  const lets: Pt[][] = [], angs: number[] = [];
+  for (const sh of shapes) {
+    for (let tries = 0; tries < 40; tries++) {
+      const deg = L.angle[0] + (L.angle[1] - L.angle[0]) * R();
+      if (angs.some((a) => Math.abs(a - deg) < L.apart)) continue;
+      const pts = reach(sh, deg, b.gap[0] + (b.gap[1] - b.gap[0]) * R());
+      if (pts.some((p) => p[1] > floor)) continue;
+      if (lets.some((o) => o.some(([x, y]) => pts.some(([u, v]) => Math.hypot(x - u, y - v) < 2 * rb + 0.4)))) continue;
+      lets.push(pts); angs.push(deg); break;
+    }
+  }
+  // 늘 하나는 있다 — 자리를 끝내 못 찾았으면(재 보니 없었다) 첫째를 바로 위에
+  if (!lets.length) lets.push(reach(shapes[0], 90, b.gap[0]));
 
   // 상자 — 구슬 · 작은 구름(오르내리는 폭까지) · 글이 다 들게
   const e = 0.02;

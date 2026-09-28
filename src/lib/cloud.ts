@@ -47,7 +47,7 @@ export const LAMBDA = 8;
 /** 조각이 옮겨 다니는 거리 (u). 조각만 자리를 옮긴다 */
 export const DRIFT = 0.6;
 
-export type Edge = 'spike' | 'smooth' | 'cumulus' | 'pixel' | 'stone' | 'tree';
+export type Edge = 'spike' | 'smooth' | 'cumulus' | 'pixel' | 'stone' | 'tree' | 'bead';
 
 export interface Persona {
   key: string;
@@ -103,6 +103,19 @@ export interface Persona {
     /** 기둥 — 굵기 · 머리 밑으로 보이는 길이 (u) · 세로 줄 수(홀수, 짝수 번째를 오린다) */
     trunk: { width: number; length: number; stripes: number };
   };
+  /** 다정한 — 구슬 구름(beadFor). 뭉게구름 윤곽을 한 크기 구슬로 찍는다. 값의 근거는 design/landscape.md '구름' */
+  bead?: {
+    /** 육각 격자 간격 · 구슬 반지름 (u) */
+    step: number;
+    r: number;
+    /** 글 덩어리와 윤곽 사이 — 옆 · 위아래 (u). 봉우리는 그 바깥으로 솟는다 */
+    side: number;
+    top: number;
+    /** 곁의 작은 구름 — 구름마다 줄별 알 수(아래 줄부터) · 본 구름에서 떨어진 거리 범위 (u) · 오르내리는 폭 (u) */
+    lets: readonly (readonly number[])[];
+    gap: readonly [number, number];
+    bob: number;
+  };
 }
 
 /**
@@ -127,8 +140,12 @@ export const PERSONAS: Record<string, Persona> = {
       // 빗금은 꺼 두었다(2026-09-28, 사용자 — "일단 없애 보자, 나중에 되살릴 수 있게").
       // 되살리려면 on: true. 나머지 값은 09-28 새벽에 깊이를 0.6 → 0.3u로 줄인 그대로다
       hatch: { on: false, from: -35, to: 125, depth: 0.3, gap: 0.2, width: 0.055 } } },
-  // 뭉게구름 — 기준형.
-  doran: { key: 'doran', edge: 'cumulus', lobe: [1.1, 1.6], fill: [0.5, 0.75], gap: 1.6, spread: [0, 0.9], sat: 3, blur: 0.12 },
+  // 구슬 구름 (2026-09-28). 꽃 → 옛 뭉게구름(부풀던 원 + 번짐)을 거쳐, 당당한 박스의 틀(글에 붙는 덩어리)을
+  // 구름으로 옮겼다 — 밑은 평평하고 위와 양옆에 봉우리, 사방 여백을 고르게, 굵은 구슬 한 크기로 찍는다.
+  // 원을 부풀리지 않아 lobe · fill · gap · spread는 쓰이지 않는다. 행간 1.1은 나무와 같다.
+  // 고른 과정과 버린 것은 design/landscape.md '구름'.
+  doran: { key: 'doran', edge: 'bead', lobe: [1.1, 1.6], fill: [0.5, 0.75], gap: 1.6, spread: [0, 0.9], sat: 0, blur: 0, lh: 1.1,
+    bead: { step: 0.6, r: 0.36, side: 0.55, top: 0.35, lets: [[2, 1], [2]], gap: [0.3, 0.7], bob: 0.3 } },
   // 픽셀 구름. 같은 합집합을 0.5u 격자에 찍는다. 번짐은 모서리만 아주 살짝 —
   // 0.16칸에서는 계단이 흐려져 둥근 덩이에 잔털이 난 것이 됐다.
   deulseok: { key: 'deulseok', edge: 'pixel', lobe: [1.1, 1.6], fill: [0.55, 0.75], gap: 1.7, spread: [0, 0.8], sat: 2, blur: 0.04, cell: 0.5 }
@@ -207,6 +224,16 @@ export interface Tree {
   trunk: { x: number; y: number; w: number; h: number; stripes: number };
 }
 
+/** 다정한의 구슬 구름. 원점 = 구름 상자 왼쪽 위, u 단위 */
+export interface Beads {
+  /** 구슬 반지름 — 모두 한 크기 */
+  r: number;
+  /** 본 구름의 구슬 중심 */
+  body: Pt[];
+  /** 곁의 작은 구름들 — 구름마다 구슬 중심. 벽에서 저마다 오르내린다(상자에 그 폭까지 넣었다) */
+  lets: Pt[][];
+}
+
 export interface Cloud {
   persona: Persona;
   rule: 'B' | 'C';
@@ -218,6 +245,8 @@ export interface Cloud {
   stone?: Stone;
   /** 당당한의 나무. 있으면 circles · spikes는 비어 있다 */
   tree?: Tree;
+  /** 다정한의 구슬 구름. 있으면 circles · spikes는 비어 있다 */
+  beads?: Beads;
   /** 구름 상자 (u) */
   w: number; h: number;
   /** 글 덩어리가 앉는 자리 (상자 안, u) */
@@ -310,6 +339,7 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
   const rule: 'B' | 'C' = boxes.length <= 2 ? 'B' : 'C';
   if (pr.edge === 'stone' && pr.stone) return stoneFor(pr, rule, TW, TH, R);
   if (pr.edge === 'tree' && pr.tree) return treeFor(pr, rule, widths, TW, LH, !!o.manner);
+  if (pr.edge === 'bead' && pr.bead) return beadFor(pr, rule, TW, TH, R);
 
   const circles: Circle[] = [];
   const put = (x: number, y: number, r: number, kind: Circle['kind']) =>
@@ -615,6 +645,74 @@ function treeFor(pr: Persona, rule: 'B' | 'C', widths: readonly number[], TW: nu
       trunk: { ...trunk, x: trunk.x - minX, y: trunk.y - minY }
     },
     w: Math.max(...xs) + e - minX, h: Math.max(...yAll) + e - minY,
+    text: { x: -minX, y: -minY, w: TW, h: TH }
+  };
+}
+
+// ─── 다정한 — 구슬 구름 (2026-09-28) ─────────────────────────────────
+// 고른 과정과 견본은 design/landscape.md '구름'. 값은 PERSONAS.doran.bead.
+
+/** 둥근 모서리 네모 안인가 */
+function inRound(x: number, y: number, x0: number, y0: number, x1: number, y1: number, r: number): boolean {
+  const cx = Math.min(Math.max(x, x0 + r), x1 - r), cy = Math.min(Math.max(y, y0 + r), y1 - r);
+  return Math.hypot(x - cx, y - cy) <= r;
+}
+
+/**
+ * 다정한의 구슬 구름 — 기본 정렬(가운데)의 뭉게구름.
+ *
+ * 글 덩어리에 옆 side · 위아래 top만큼 둘러 둥근 네모를 잡고, 양옆 아래에 봉우리 하나씩, 위에 봉우리를
+ * 줄지어(2.6u에 하나, 반지름은 폭의 20%를 1.2~1.7u로 묶고 조금씩 다르게) 솟게 한다. 밑은 평평하다.
+ * 그 윤곽(+ 알 반지름의 1/3)에 든 육각 격자 자리마다 한 크기 구슬을 놓는다 — 알끼리 조금씩 겹쳐
+ * 윤곽이 구슬 줄로 읽힌다. 봉우리가 글 폭에 비례하면 위만 2u 가까이 휑했다(첫 판, 디자이너 지적).
+ *
+ * 곁의 작은 구름(알 3 · 2개)은 본 구름 테두리 — 뒤(아래 1/4은 빼고) · 위 · 앞 — 위의 한 자리에 붙는다.
+ * 자리는 글이 씨앗인 무작위라 같은 글은 같은 자리이고, 둘은 테두리의 35~65%만큼 떨어진다. 밑에는
+ * 안 붙는다. 본 구름(알 40~200개)과 급이 확실히 갈리는 크기다.
+ */
+function beadFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number): Cloud {
+  const b = pr.bead!, S = b.step, rb = b.r, rh = (S * Math.sqrt(3)) / 2, mm = rb / 3;
+  // 글 덩어리 — 글자 끝에서 0.06u, 줄 상자 위아래로 0.12u 더 잡는다(견본과 같다)
+  const X = -0.06 - b.side, Y = -0.12 - b.top, W = TW + 0.12 + 2 * b.side, floor = TH + 0.12 + b.top, Hh = floor - Y;
+  const domes: [number, number, number][] = [];
+  const Rs = Math.min(Math.max(Hh * 0.42, 0.9), 1.5);                          // 옆 봉우리 — 바깥으로 Rs × 0.4
+  domes.push([X + Rs * 0.6, floor - Rs * 0.95, Rs], [X + W - Rs * 0.6, floor - Rs * 0.95, Rs]);
+  const n = Math.max(2, Math.round(W / 2.6)), Rt = Math.min(Math.max(0.2 * W, 1.2), 1.7), pat = [0.85, 1.1, 1.0, 0.9, 1.05, 0.95];
+  for (let i = 0; i < n; i++) { const r = Rt * pat[i % pat.length]; domes.push([X + (W * (i + 0.5)) / n, Y + 0.45 * r, r]); }   // 위 봉우리 — 위로 r × 0.55
+  const inside = (x: number, y: number) => y <= floor + mm &&
+    (inRound(x, y, X - mm, Y - mm, X + W + mm, floor + mm, Math.min(0.8, Hh / 2) + mm) || domes.some(([cx, cy, r]) => Math.hypot(x - cx, y - cy) <= r + mm));
+  const body: Pt[] = [];
+  for (let j = 0, y = Y - 3; y <= floor + S; j++, y += rh)
+    for (let x = X - 1.5 + (j % 2 ? S / 2 : 0); x <= X + W + 1.5; x += S) if (inside(x, y)) body.push([x, y]);
+
+  // 곁의 작은 구름 — 알 피라미드(아래 줄부터, 윗줄은 반 칸 밀려 얹힌다). 자리는 본 구름 구슬의 바깥 상자 테두리
+  const x0 = Math.min(...body.map((p) => p[0])) - rb, x1 = Math.max(...body.map((p) => p[0])) + rb;
+  const y0 = Math.min(...body.map((p) => p[1])) - rb, y1 = Math.max(...body.map((p) => p[1])) + rb;
+  const hh = (y1 - y0) * 0.75, ww = x1 - x0, per = 2 * hh + ww;
+  let t = R();
+  const lets = b.lets.map((rows, i) => {
+    if (i) t = (t + 0.35 + 0.3 * R()) % 1;
+    const gap = b.gap[0] + (b.gap[1] - b.gap[0]) * R();
+    const w = (rows[0] - 1) * S + 2 * rb, h = (rows.length - 1) * rh + 2 * rb;
+    let d = t * per, ox: number, oy: number;                                   // (ox, oy) = 맨 아래 줄 첫 알의 중심
+    if (d < hh) { ox = x0 - gap - w + rb; oy = y0 + hh - d + (y1 - y0) * 0.25 - rb; }       // 뒤 — 아래에서 위로
+    else if ((d -= hh) < ww) { ox = x0 + d - w / 2 + rb; oy = y0 - gap - rb; }                // 위 — 뒤에서 앞으로
+    else { d -= ww; ox = x1 + gap + rb; oy = y0 + d + h - rb; }                               // 앞 — 위에서 아래로
+    const pts: Pt[] = [];
+    rows.forEach((k, r) => { for (let q = 0; q < k; q++) pts.push([ox + q * S + (r * S) / 2, oy - r * rh]); });
+    return pts;
+  });
+
+  // 상자 — 구슬 · 작은 구름(오르내리는 폭까지) · 글이 다 들게
+  const e = 0.02;
+  const xs = [0, TW, ...body.map((p) => p[0] - rb), ...body.map((p) => p[0] + rb), ...lets.flat().flatMap((p) => [p[0] - rb, p[0] + rb])];
+  const ys = [0, TH, ...body.map((p) => p[1] - rb), ...body.map((p) => p[1] + rb), ...lets.flat().flatMap((p) => [p[1] - rb - b.bob, p[1] + rb + b.bob])];
+  const minX = Math.min(...xs) - e, minY = Math.min(...ys) - e;
+  const mv = ([x, y]: Pt): Pt => [x - minX, y - minY];
+  return {
+    persona: pr, rule, circles: [], spikes: [],
+    beads: { r: rb, body: body.map(mv), lets: lets.map((l) => l.map(mv)) },
+    w: Math.max(...xs) + e - minX, h: Math.max(...ys) + e - minY,
     text: { x: -minX, y: -minY, w: TW, h: TH }
   };
 }

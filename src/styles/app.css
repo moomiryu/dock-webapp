@@ -3636,11 +3636,11 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 /* 형상이 줄 높이를 내려 줄 수 있다(CloudBubble의 --cloud-lh). 나무(당당한)는 1.1 — 글에 바짝 붙는
    층이 줄을 품도록 행간을 좁혔다(2026-09-28, design/landscape.md '나무'). 없으면 1.5 그대로 */
 .cloud-bubble .line-bubble-text{ line-height: var(--cloud-lh, 1.5); }
-/* 나무는 머리가 글에 바짝 붙어 글 자리가 어긋나면 층 밖으로 나간다. 세로로 누른 글(당당한은
+/* 나무 · 구슬 구름은 형상이 글에 바짝 붙어 글 자리가 어긋나면 칠 밖으로 나간다. 세로로 누른 글(당당한은
    scaleY 0.75)은 누르기 전 높이로 자리를 잡아, 칸이 그만큼 아래로 자라고 눌린 글은 그 가운데 —
    곧 글 자리보다 (1 − scaleY) × 높이 ÷ 2 아래 — 에 섰다(네 줄에서 11px). 칸을 글 자리 크기에
    묶으면 넘친 몫이 위아래로 고르게 나가 눌린 글이 글 자리 한가운데 선다. */
-.cloud-bubble.is-tree .cloud-text{ grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
+.cloud-bubble.is-tree .cloud-text, .cloud-bubble.is-bead .cloud-text{ grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
 
 .compose-count{ transition: opacity 240ms; }
 @media (prefers-reduced-motion: reduce) {

@@ -58,7 +58,7 @@ service cloud.firestore {
         // 같은 날 콘솔에서 게시했다 — 폰이 덜어 내던 거름(firebase.ts · toneForWall)도 걷었다.
         // 이어서 차분한(돌)의 제 정렬(올려 걸기 · 내려 걸기 …, R17~R20)을 더하는 중 — 게시 전까지 폰이 가운데로 보낸다
         && (!('align' in t) || t.align in ['left', 'center', 'right', 'distribute', 'trapezoid', 'arch', 'fan', 'smile',
-             'hang-up', 'hang-down', 'contour'])
+             'hang-up', 'hang-mid', 'hang-down'])
         && (!('manner' in t) || (t.manner is number && t.manner >= 0 && t.manner <= 1))
         && (!('speed' in t) || (t.speed is number && t.speed >= 0 && t.speed <= 1))
         && (!('weight' in t) || (t.weight is number && t.weight >= 0 && t.weight <= 1))

@@ -3,7 +3,7 @@ import StepHeader from '../components/StepHeader';
 import SnapSwitch from '../components/SnapSwitch';
 import VoiceBubble from '../components/VoiceBubble';
 import CloudBubble from '../components/CloudBubble';
-import { arrangementsFor, cloudForTone, cloudShape } from '../lib/cloud';
+import { arrangementsFor, cloudForTone, cloudShape, defaultAlign } from '../lib/cloud';
 import { bubbleAt, fillFromLegacySize, foldLines } from '../lib/fit';
 import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
@@ -41,7 +41,9 @@ const T = {
     smile: { ko: '미소', en: 'Smile' },
     /* 차분한(돌) — 포스터 넷(R17~R20). 이름은 일단 원론적인 이름으로(2026-09-28, 디자이너) */
     'hang-up': { ko: '올려 걸기', en: 'Hang up' },
+    'hang-mid': { ko: '중간 걸기', en: 'Hang level' },
     'hang-down': { ko: '내려 걸기', en: 'Hang down' },
+    /* 칸에서 뺐다(2026-09-28) — 되살리면 이 말을 쓴다 */
     contour: { ko: '윤곽 따라', en: 'Contour' }
 };
 
@@ -136,10 +138,10 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
     const lines = foldLines(text);
     const [bg, setBg] = useState(initial.bg);
     const [fg, setFg] = useState(initial.text);
-    /* 정렬 — 조정판의 둘째 잣대(2026-09-28). 전에 고른 값이 이 성격의 것이면 그것, 아니면 가운데
-       (다른 성격에서 고른 '아치'를 들고 돌에 오면 가운데로 선다) */
+    /* 정렬 — 조정판의 둘째 잣대(2026-09-28). 전에 고른 값이 이 성격의 것이면 그것, 아니면 그 성격의 기본
+       (가운데, 차분한은 중간 걸기 — 다른 성격에서 고른 '아치'를 들고 돌에 오면 중간 걸기로 선다) */
     const ALIGNS = arrangementsFor(tone.font);
-    const [align, setAlign] = useState<Align>(tone.align && ALIGNS.includes(tone.align) ? tone.align : 'center');
+    const [align, setAlign] = useState<Align>(tone.align && ALIGNS.includes(tone.align) ? tone.align : defaultAlign(tone.font));
     const current = { ...tone, align, backgroundColor: bg, textColor: fg };
     // 벽과 같은 구름이어야 미리보기가 거짓말이 아니다 — 씨앗은 글 자체(cloud.ts). 정렬이 형상을 바꾸므로 고른 정렬로 짓는다
     const cloud = cloudForTone(lines, current);

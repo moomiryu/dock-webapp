@@ -85,8 +85,8 @@ export interface Persona {
     /** 빗금 — 켜짐 · 바깥 법선 각도 범위(도, 0 = 오른쪽 · 90 = 아래) · 깊이 · 간격 · 굵기 (u).
         on이 false면 빗금을 만들지도 그리지도 않는다 — 값은 그대로 두어 on만 되돌리면 산다 */
     hatch: { on: boolean; from: number; to: number; depth: number; gap: number; width: number };
-    /** 걸기(R17) — 돌과 글이 같이 기우는 각도(도, + = 시계 방향: 올려 걸기 · 내려 걸기) · 돌의 몸이 글 아래로 처지는 깊이(글 높이의 배수) */
-    hang: { up: number; down: number; drop: number };
+    /** 걸기(R17) — 돌과 글이 같이 기우는 각도(도, + = 시계 방향: 올려 걸기 · 중간 걸기 · 내려 걸기) · 돌의 몸이 글 아래로 처지는 깊이(글 높이의 배수) */
+    hang: { up: number; mid: number; down: number; drop: number };
     /** 넘치기(R18) — 가운데 돌의 기본. 넘치는 깨짐의 각도 범위(도, 작을수록 가파르다) · 가장 바깥 줄 끝을 파고드는 깊이 범위 (u) */
     overflow: { angle: readonly [number, number]; depth: readonly [number, number] };
     /** 윤곽 따라(R20) — 윤곽에서 첫 줄 글자 가장자리까지 (u) · 줄 사이에 비우는 줄 수 · 글을 얹는 비탈의 한도(도) ·
@@ -155,8 +155,9 @@ export const PERSONAS: Record<string, Persona> = {
       // 되살리려면 on: true. 나머지 값은 09-28 새벽에 깊이를 0.6 → 0.3u로 줄인 그대로다
       hatch: { on: false, from: -35, to: 125, depth: 0.3, gap: 0.2, width: 0.055 },
       // 걸기의 각도 — 여섯 안(0 · 6 · 12 · 18° 올림, 6 · 12° 내림)을 4/5 격자로 보고 둘을 골라 두 칸으로 나눴다
-      // (2026-09-28, 디자이너): 올려 걸기 = 오른쪽이 12° 올라감, 내려 걸기 = 오른쪽이 6° 내려감
-      hang: { up: -12, down: 6, drop: 1 },
+      // (2026-09-28, 디자이너): 올려 걸기 = 오른쪽이 12° 올라감, 내려 걸기 = 오른쪽이 6° 내려감.
+      // 같은 날 차분한의 칸을 걸기 셋으로 한정하며 기울지 않은 중간 걸기(0°)가 더해졌다
+      hang: { up: -12, mid: 0, down: 6, drop: 1 },
       // 넘치기 — 카드 R18의 값 그대로(격자에서 0.2 · 0.35 · 0.5u를 보고 0.5는 너무 많이 먹어 뺐다).
       // 처음엔 고르는 칸이었다가 같은 날 가운데 돌의 기본이 됐다(디자이너 — "넘치기는 기본 기능으로")
       overflow: { angle: [15, 35], depth: [0.2, 0.35] },
@@ -357,13 +358,19 @@ interface Options {
  */
 const ARRANGEMENTS: Record<string, readonly Align[]> = {
   ttoryeot: ['center', 'distribute', 'trapezoid'],
-  // 차분한 — 포스터 넷(R17~R20, 2026-09-28): 걸기(두 칸) · 윤곽 따라.
-  // 넘치기(R18)는 칸이 아니라 가운데 돌의 기본이다. 세로쓰기(R19)는 차분한에서 안 쓴다 — 다른 태도용으로 남겨 둔다
-  chabun: ['center', 'hang-up', 'hang-down', 'contour'],
+  // 차분한 — 걸기 셋으로 한정했다(2026-09-28, 디자이너 — "올려 걸기, 중간 걸기, 내려 걸기만"). 가운데 칸은 없다 —
+  // 가운데 돌(늘 넘침, R18)은 칸이 생기기 전의 옛 글에만 선다. 윤곽 따라(R20, contourText)는 칸에서 뺐지만 되살릴 수
+  // 있게 코드를 둔다(빗금처럼). 세로쓰기(R19)는 다른 태도용으로 남겨 둔다
+  chabun: ['hang-up', 'hang-mid', 'hang-down'],
   doran: ['center', 'arch', 'fan', 'smile']
 };
 export function arrangementsFor(font: string | undefined): readonly Align[] {
   return ARRANGEMENTS[BY_FONT[font ?? ''] ?? ''] ?? ['left', 'center', 'right'];
+}
+/** 4/5에 처음 들어왔을 때 골라져 있는 칸 — 가운데가 있으면 가운데, 차분한은 중간 걸기 */
+export function defaultAlign(font: string | undefined): Align {
+  const list = arrangementsFor(font);
+  return list.includes('center') ? 'center' : list.includes('hang-mid') ? 'hang-mid' : list[0];
 }
 
 /**
@@ -401,7 +408,7 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
   const TW = Math.max(0.5, ...widths), TH = Math.max(1, lines.length) * LH;
   const boxes = widths.map((w, i) => ({ x0: (TW - w) / 2, x1: (TW + w) / 2, yc: (i + 0.5) * LH }));
   const rule: 'B' | 'C' = boxes.length <= 2 ? 'B' : 'C';
-  if (pr.edge === 'stone' && pr.stone) return stoneFor(pr, rule, TW, TH, R, o.align === 'hang-up' || o.align === 'hang-down' || o.align === 'contour' ? o.align : 'center', widths, LH, o.align,
+  if (pr.edge === 'stone' && pr.stone) return stoneFor(pr, rule, TW, TH, R, o.align === 'hang-up' || o.align === 'hang-mid' || o.align === 'hang-down' || o.align === 'contour' ? o.align : 'center', widths, LH, o.align,
       o.align === 'contour' ? { lines, font, optic, scaleX, wdth: o.wdth, track: o.track ?? 0 } : undefined);
   if (pr.edge === 'tree' && pr.tree) return treeLayout(pr, rule, lines, font, optic, scaleX, slant, o, LH);
   if (pr.edge === 'bead' && pr.bead) {
@@ -593,13 +600,13 @@ function hatchBands(P: readonly Pt[], cx: number, cy: number, h: { from: number;
  *
  * 원은 하나도 안 쓴다. 번지지도 숨 쉬지도 않는다 — 돌은 가만히 있다.
  */
-function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number, mode: 'center' | 'hang-up' | 'hang-down' | 'contour' = 'center', widths: readonly number[] = [TW], LH = TH, align?: Align,
+function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number, mode: 'center' | 'hang-up' | 'hang-mid' | 'hang-down' | 'contour' = 'center', widths: readonly number[] = [TW], LH = TH, align?: Align,
   text?: { lines: readonly string[]; font: string | undefined; optic: number; scaleX: number; wdth?: number; track: number }): Cloud {
   const s = pr.stone!;
   /* 걸기(R17, 2026-09-28): 돌의 몸을 글 아래로 글 높이 × drop만큼 더 잡고 짓는다. 무작위 기울기는 쓰지 않는다 —
      차분한은 칸마다 같은 각도로 기운다(디자이너 — 올려 걸기 · 내려 걸기 두 칸). 윗변은 아래에서 곧게 자르고,
      다 지은 뒤 돌과 글을 그 각도만큼 돌린다 */
-  const hang = mode === 'hang-up' || mode === 'hang-down', drop = hang ? TH * s.hang.drop : 0;
+  const hang = mode === 'hang-up' || mode === 'hang-mid' || mode === 'hang-down', drop = hang ? TH * s.hang.drop : 0;
   const cx = TW / 2, cy = (TH + drop) / 2, a = TW / 2 + PAD, b = (TH + drop) / 2 + PAD;
   const pick = (range: readonly [number, number]) => range[0] + (range[1] - range[0]) * R();
   const k = s.corners[0] + Math.floor(R() * (s.corners[1] - s.corners[0] + 1));
@@ -654,7 +661,7 @@ function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () =>
   if (flow) pts = flow.pts;
 
   // 걸기 — 돌과 글을 글 윗줄 왼끝을 축으로 같이 돌린다. 글 상자는 돌리지 않은 크기 그대로, 가운데만 옮긴다
-  const ang = hang ? ((mode === 'hang-up' ? s.hang.up : s.hang.down) * Math.PI) / 180 : 0, ca = Math.cos(ang), sa = Math.sin(ang);
+  const ang = hang ? ((mode === 'hang-up' ? s.hang.up : mode === 'hang-mid' ? s.hang.mid : s.hang.down) * Math.PI) / 180 : 0, ca = Math.cos(ang), sa = Math.sin(ang);
   const rot = ([x, y]: Pt): Pt => [x * ca - y * sa, x * sa + y * ca];
   if (hang) pts = pts.map(rot);
   const [tcx, tcy] = rot([TW / 2, TH / 2]);

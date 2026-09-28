@@ -87,7 +87,7 @@ export interface Persona {
     hatch: { on: boolean; from: number; to: number; depth: number; gap: number; width: number };
     /** 걸기(R17) — 돌과 글이 같이 기우는 각도(도, + = 시계 방향: 올려 걸기 · 내려 걸기) · 돌의 몸이 글 아래로 처지는 깊이(글 높이의 배수) */
     hang: { up: number; down: number; drop: number };
-    /** 넘치기(R18) — 넘치는 깨짐의 각도 범위(도, 작을수록 가파르다) · 가장 바깥 줄 끝을 파고드는 깊이 범위 (u) */
+    /** 넘치기(R18) — 가운데 돌의 기본. 넘치는 깨짐의 각도 범위(도, 작을수록 가파르다) · 가장 바깥 줄 끝을 파고드는 깊이 범위 (u) */
     overflow: { angle: readonly [number, number]; depth: readonly [number, number] };
   };
   /** 줄 높이(글자 크기의 배수). 없으면 LINE_HEIGHT(1.5). 글에 바짝 붙는 형상(나무)이 좁힌다 */
@@ -153,7 +153,8 @@ export const PERSONAS: Record<string, Persona> = {
       // 걸기의 각도 — 여섯 안(0 · 6 · 12 · 18° 올림, 6 · 12° 내림)을 4/5 격자로 보고 둘을 골라 두 칸으로 나눴다
       // (2026-09-28, 디자이너): 올려 걸기 = 오른쪽이 12° 올라감, 내려 걸기 = 오른쪽이 6° 내려감
       hang: { up: -12, down: 6, drop: 1 },
-      // 넘치기 — 카드 R18의 값 그대로(격자에서 0.2 · 0.35 · 0.5u를 보고 0.5는 너무 많이 먹어 뺐다)
+      // 넘치기 — 카드 R18의 값 그대로(격자에서 0.2 · 0.35 · 0.5u를 보고 0.5는 너무 많이 먹어 뺐다).
+      // 처음엔 고르는 칸이었다가 같은 날 가운데 돌의 기본이 됐다(디자이너 — "넘치기는 기본 기능으로")
       overflow: { angle: [15, 35], depth: [0.2, 0.35] } } },
   // 구슬 구름 (2026-09-28). 꽃 → 옛 뭉게구름(부풀던 원 + 번짐)을 거쳐, 당당한 박스의 틀(글에 붙는 덩어리)을
   // 구름으로 옮겼다 — 밑은 평평하고 위와 양옆에 봉우리, 사방 여백을 고르게, 굵은 구슬 한 크기로 찍는다.
@@ -348,8 +349,9 @@ interface Options {
  */
 const ARRANGEMENTS: Record<string, readonly Align[]> = {
   ttoryeot: ['center', 'distribute', 'trapezoid'],
-  // 차분한 — 포스터 넷(R17~R20)을 하나씩 넣는 중(2026-09-28): 걸기 · 넘치기 · 세로쓰기 · 윤곽 따라
-  chabun: ['center', 'hang-up', 'hang-down', 'overflow'],
+  // 차분한 — 포스터 넷(R17~R20)을 하나씩 넣는 중(2026-09-28): 걸기(두 칸) · 세로쓰기 · 윤곽 따라.
+  // 넘치기(R18)는 칸이 아니라 가운데 돌의 기본이다
+  chabun: ['center', 'hang-up', 'hang-down'],
   doran: ['center', 'arch', 'fan', 'smile']
 };
 export function arrangementsFor(font: string | undefined): readonly Align[] {
@@ -391,7 +393,7 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
   const TW = Math.max(0.5, ...widths), TH = Math.max(1, lines.length) * LH;
   const boxes = widths.map((w, i) => ({ x0: (TW - w) / 2, x1: (TW + w) / 2, yc: (i + 0.5) * LH }));
   const rule: 'B' | 'C' = boxes.length <= 2 ? 'B' : 'C';
-  if (pr.edge === 'stone' && pr.stone) return stoneFor(pr, rule, TW, TH, R, o.align === 'hang-up' || o.align === 'hang-down' || o.align === 'overflow' ? o.align : 'center', widths, LH);
+  if (pr.edge === 'stone' && pr.stone) return stoneFor(pr, rule, TW, TH, R, o.align === 'hang-up' || o.align === 'hang-down' ? o.align : 'center', widths, LH, o.align);
   if (pr.edge === 'tree' && pr.tree) return treeLayout(pr, rule, lines, font, optic, scaleX, slant, o, LH);
   if (pr.edge === 'bead' && pr.bead) {
     if (o.align === 'arch' || o.align === 'fan' || o.align === 'smile') return beadArcFor(pr, rule, lines, font, optic, scaleX, o, LH, R, o.align);
@@ -582,7 +584,7 @@ function hatchBands(P: readonly Pt[], cx: number, cy: number, h: { from: number;
  *
  * 원은 하나도 안 쓴다. 번지지도 숨 쉬지도 않는다 — 돌은 가만히 있다.
  */
-function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number, mode: 'center' | 'hang-up' | 'hang-down' | 'overflow' = 'center', widths: readonly number[] = [TW], LH = TH): Cloud {
+function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number, mode: 'center' | 'hang-up' | 'hang-down' = 'center', widths: readonly number[] = [TW], LH = TH, align?: Align): Cloud {
   const s = pr.stone!;
   /* 걸기(R17, 2026-09-28): 돌의 몸을 글 아래로 글 높이 × drop만큼 더 잡고 짓는다. 무작위 기울기는 쓰지 않는다 —
      차분한은 칸마다 같은 각도로 기운다(디자이너 — 올려 걸기 · 내려 걸기 두 칸). 윗변은 아래에서 곧게 자르고,
@@ -614,15 +616,17 @@ function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () =>
   // 깨기 — 오른쪽 아래(빗금 자리)는 두고 나머지 셋 중 count곳, 사분면 안의 각도로
   const quads: Pt[] = [[-1, -1], [1, -1], [-1, 1]];
   for (let i = quads.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [quads[i], quads[j]] = [quads[j], quads[i]]; }
-  /* 넘치기(R18, 2026-09-28): 깨진 모서리 하나를 가파르게(overflow.angle) 깨서 그 면이 가장 바깥 줄 끝을
-     overflow.depth만큼 파고들게 한다 — 형상이 글을 다 품지 않는다. 파고드는 쪽은 빗금 자리(오른쪽 아래)의 반대편,
-     왼쪽이다(위 · 아래 모서리 중 글이 씨앗으로 하나). 넘친 글자의 색은 뒤집지 않는다(디자이너) — 검은 바탕에 묻히면
-     묻힌 대로. 다른 깨짐 하나는 그대로 글 + 여백 바깥을 지난다. '끝의 기준' 2번의 예외다(landscape.md) */
+  /* 넘치기(R18, 2026-09-28) — 가운데 돌의 기본(디자이너). 깨진 모서리 하나를 가파르게(overflow.angle) 깨서 그 면이
+     가장 바깥 줄 끝을 overflow.depth만큼 파고들게 한다 — 형상이 글을 다 품지 않는다. 파고드는 쪽은 빗금 자리(오른쪽
+     아래)의 반대편, 왼쪽이다(위 · 아래 모서리 중 글이 씨앗으로 하나). 넘친 글자의 색은 뒤집지 않는다(디자이너) — 검은
+     바탕에 묻히면 묻힌 대로. 다른 깨짐 하나는 그대로 글 + 여백 바깥을 지난다. '끝의 기준' 2번의 예외다(landscape.md).
+     줄 끝은 실제 줄 맞춤으로 잡는다 — 벽에는 왼쪽 · 오른쪽으로 맞춘 옛 글도 떠 있다 */
   let cracks = quads.slice(0, s.crack.count);
-  if (mode === 'overflow') {
+  if (mode === 'center') {
     const sy = R() < 0.5 ? -1 : 1, th = (pick(s.overflow.angle) * Math.PI) / 180, d = pick(s.overflow.depth);
     const ux = -Math.cos(th), uy = sy * Math.sin(th);
-    const ends = widths.flatMap((w, i): Pt[] => { const x0 = (TW - w) / 2, x1 = (TW + w) / 2; return [[x0, i * LH], [x1, i * LH], [x0, (i + 1) * LH], [x1, (i + 1) * LH]]; });
+    const x0Of = (w: number) => (align === 'left' ? 0 : align === 'right' ? TW - w : (TW - w) / 2);
+    const ends = widths.flatMap((w, i): Pt[] => { const x0 = x0Of(w), x1 = x0 + w; return [[x0, i * LH], [x1, i * LH], [x0, (i + 1) * LH], [x1, (i + 1) * LH]]; });
     pts = clipHalf(pts, ux, uy, Math.max(...ends.map(([x, y]) => ux * x + uy * y)) - d);
     cracks = quads.filter(([qx, qy]) => !(qx === -1 && qy === sy)).slice(0, s.crack.count - 1);
   }
@@ -653,7 +657,7 @@ function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () =>
     stone: { pts: pts.map(mv), hatch: hatch.map((q): Quad => [mv(q[0]), mv(q[1]), mv(q[2]), mv(q[3])]) },
     w: Math.max(...xs) + e - minX, h: Math.max(...ys) + e - minY,
     text: { x: tcx - TW / 2 - minX, y: tcy - TH / 2 - minY, w: TW, h: TH },
-    ...(hang ? { layout: { align: 'left' as const, rotate: ang } } : mode === 'overflow' ? { layout: { align: 'center' as const } } : {})
+    ...(hang ? { layout: { align: 'left' as const, rotate: ang } } : {})
   };
 }
 

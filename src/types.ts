@@ -15,7 +15,7 @@ export type FontFamily = 'doran' | 'chabun' | 'botong' | 'ttoryeot' | 'deulseok'
  * 다정한(구름) = 가운데 · 아치 · 부채꼴 · 미소, 차분한(돌) = 가운데 · 걸기 · 넘치기 · 세로쓰기 · 윤곽 따라
  * (포스터 넷 R17~R20, 넣는 중). 목록은 cloud.ts의 arrangementsFor
  */
-export type Align = 'left' | 'center' | 'right' | 'distribute' | 'trapezoid' | 'arch' | 'fan' | 'smile' | 'hang-up' | 'hang-down' | 'overflow';
+export type Align = 'left' | 'center' | 'right' | 'distribute' | 'trapezoid' | 'arch' | 'fan' | 'smile' | 'hang-up' | 'hang-down';
 
 export interface ToneState {
   align?: Align;

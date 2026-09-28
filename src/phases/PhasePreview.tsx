@@ -1,7 +1,8 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
 import { BIG_SIDE_MAX_VW, BIG_SIDE_VH, WallShowMessage } from '../admin/WallSimulation';
 import type { StoredMessage } from '../lib/firebase';
+import { fillFromLegacySize, phoneSide } from '../lib/fit';
 import { pick, useLang } from '../lib/lang';
 import type { ToneState } from '../types';
 
@@ -42,6 +43,7 @@ interface Props {
  * 그 칸은 2026-09-27부터 16:9 액자가 아니라 **화면 전체**다(사용자) — 화면째
  * 검정이고 머리줄과 보내기 버튼 사이가 통째로 벽이다. 벽의 비율이 아니라
  * 이 폰에서 어떻게 뜨는지를 보여 준다(app.css · '5/5는 화면 전체가 벽이다').
+ * 2026-09-29부터는 크기도 벽의 비율을 따르지 않는다 — 폰에서 잘 보이게 늘린다(아래 frame).
  *
  * '꽂혀 있는 동안 · 그 뒤 3일' 표시와 흘러가는 샘플 글은 걷었다. 시간의
  * 이야기는 발화 종료 화면이 한다. 여기 남는 보조 조작은 '다시 보기' 하나다 —
@@ -52,7 +54,30 @@ export default function PhasePreview({ text, tone, onConfirm, onBack, onHome, bu
     const lang = useLang();
     // 벽 부품이 받는 꼴. 아직 저장 전이라 id·시각은 이 화면의 자리표다
     const msg = useMemo<StoredMessage>(() => ({ id: 'preview', text, tone, createdAt: 0 }), [text, tone]);
-    const frame = { '--big-side': `min(${BIG_SIDE_VH}cqh, ${BIG_SIDE_MAX_VW}cqw)` } as CSSProperties;
+    /* 한 변 — 벽 부품이 쓰는 벽 비율(높이 95% · 폭 88% 중 작은 쪽)을 폰에서 잘 보이게 늘린다
+       (2026-09-29, 사용자 — 폰에서 너무 작았다. fit.ts · phoneSide). 말풍선의 비례(폭 · 높이가
+       한 변의 몇 배인가)는 **그려진 말풍선을 재서** 얻는다: 벽 부품이 글을 어떻게 접고 어떤
+       모양을 짓는지를 여기서 다시 계산하지 않으려고(둘이 어긋나면 크기가 틀린다). 자(side)는
+       같은 한 변을 폭으로 가진 보이지 않는 막대다 — 말풍선도 자도 같은 한 변에 비례하니 둘의
+       비는 한 변을 늘려도 같다. 칠하기 전에 잰다. */
+    const base = `min(${BIG_SIDE_VH}cqh, ${BIG_SIDE_MAX_VW}cqw)`;
+    const [shape, setShape] = useState<{ w: number; h: number } | null>(null);
+    const frameRef = useRef<HTMLDivElement>(null);
+    const side = useRef<HTMLElement>(null);
+    useLayoutEffect(() => {
+        const measure = () => {
+            const bubble = frameRef.current?.querySelector<HTMLElement>('.wall-show-box > *');
+            const unit = side.current?.offsetWidth;
+            if (!bubble || !unit) return;
+            const w = bubble.offsetWidth / unit, h = bubble.offsetHeight / unit;
+            setShape((s) => (s && Math.abs(s.w - w) < 0.001 && Math.abs(s.h - h) < 0.001 ? s : { w, h }));
+        };
+        measure();
+        const ro = new ResizeObserver(measure);
+        if (frameRef.current) ro.observe(frameRef.current);
+        return () => ro.disconnect();
+    }, [msg]);
+    const frame = { '--big-side': shape ? phoneSide(base, shape.w, shape.h, fillFromLegacySize(tone.size)) : base } as CSSProperties;
     return <div className="z-frame preview-screen"><StepHeader at={5} back={{ label: pick(T.back, lang), onClick: () => { if (!busy) onBack(); } }}
       onHome={() => { if (!busy) onHome(); }} />
  {/* 여기가 마지막이라는 것을 말로 해 둔다. 이 뒤(도킹)에는 '이전'이 없다 —
@@ -68,7 +93,8 @@ export default function PhasePreview({ text, tone, onConfirm, onBack, onHome, bu
      '다시 보낼게요'와도 말이 이어진다. */}
  <div className="z-ask is-brief"><h1>{pick(T.title, lang)}</h1><p>{pick(T.lock, lang)}</p></div>
  <div className="proj-stage"><div className="sim">
-  <div className="sim-frame is-wall" style={frame} aria-label={pick(T.frame, lang)}>
+  <div ref={frameRef} className="sim-frame is-wall" style={frame} aria-label={pick(T.frame, lang)}>
+   <i ref={side} className="preview-side" aria-hidden />
    <WallShowMessage key={run} msg={msg} land={null} startedAt={0} />
   </div>
   {/* 보조 조작은 이것 하나. 테두리만 있는 작은 버튼이라 아래의 채움

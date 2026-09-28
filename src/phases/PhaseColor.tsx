@@ -10,6 +10,7 @@ import { moods } from '../lib/palettes-v2';
 import { messageColors } from '../lib/messageStyle';
 import { pick, useLang } from '../lib/lang';
 import type { Align, ToneState } from '../types';
+import { phoneSide } from '../lib/fit';   // 폰 미리보기 한 변(2026-09-29) — 아래 area
 import { tick } from '../components/SnapSwitch';   // 룰렛이 한 칸 멈출 때의 진동(2026-09-29)
 
 /* 이 화면의 말. 영어는 초안이다(2026-09-26, 영문판) */
@@ -291,6 +292,9 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
     // 벽과 같은 구름이어야 미리보기가 거짓말이 아니다 — 씨앗은 글 자체(cloud.ts). 정렬이 형상을 바꾸므로 고른 정렬로 짓는다
     const cloud = cloudForTone(lines, current);
     const box = bubbleAt(lines, cloudShape(cloud), fillFromLegacySize(tone.size));
+    /* 무대 한 변 — 벽 비율 그대로면 폰에서 너무 작아, 말풍선이 무대 폭 · 높이에 3/5와 같은
+       크기감으로 들어차게 늘린다(fit.ts · phoneSide, 2026-09-29). 첫 장 시연과 고르는 장이 같이 쓴다 */
+    const area = phoneSide(AREA, box.w, box.h, fillFromLegacySize(tone.size));
     /* 두 장(2026-09-28, 3/5와 같은 흐름): 'intro' = 설명과 시연 · 'work' = 고르는 장.
        moved는 한 번이라도 넘긴 뒤인지 — 처음 들어올 때는 둘째 장이 움직이지 않고 숨어 있다 */
     const [step, setStep] = useState<'intro' | 'work'>('intro');
@@ -311,7 +315,7 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
    <h1>{pick(T.title, lang)}</h1>
    <p>{pick(T.lead, lang)}</p>
   </div>
-  <div className="color-stage color-demo" style={{ '--color-area': AREA } as CSSProperties}>
+  <div className="color-stage color-demo" style={{ '--color-area': area } as CSSProperties}>
    {/* 늘 달아 둔다 — 넘길 때 위로 빠지는 장에 시연이 그대로 실려 간다. 되돌아오면
        key가 바뀌어 처음부터 다시 떨어진다 */}
    <ColorDemo key={visit} lines={lines} tone={tone} cloud={cloud} box={box} from={at} />
@@ -323,7 +327,7 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
    <StepHeader className="compose-chrome" at={4} back={{ label: pick(T.backWork, lang), onClick: () => go('intro') }} onHome={onHome} />
    {/* 제목과 안내는 첫 장으로 옮겼다(2026-09-28) — 3/5처럼 고르는 장은 위가
        미리보기, 아래가 조정판이다. 무엇을 하는 자리인지는 첫 장이 말한다 */}
-   <div className="color-stage" style={{ '--color-area': AREA } as CSSProperties}>
+   <div className="color-stage" style={{ '--color-area': area } as CSSProperties}>
     <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={bg}>
      <VoiceBubble text={lines.join('\n')} bg={bg} color={fg} fontFamily={fontMap[tone.font]} font={tone.font}
        weight={tone.wght} width={tone.tone} slant={tone.slnt} align={align} size={tone.size} manner={tone.manner}

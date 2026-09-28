@@ -4262,6 +4262,10 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    벽과 같은 비율을 액자 단위(cqh·cqw)로 준다. 나머지 — 검정, 구름, 들어오는
    결 — 는 global.css의 벽 규칙을 그대로 탄다. */
 .sim-frame.is-wall .wall-show{ position: absolute; }
+/* 5/5의 자 — 한 변(--big-side)을 폭으로 가진 보이지 않는 막대. PhasePreview가 이걸로
+   말풍선의 크기를 한 변에 대어 폰 배율을 정한다(2026-09-29) */
+.preview-side{ position: absolute; left: 0; top: 0; width: var(--big-side); height: 0;
+  visibility: hidden; pointer-events: none; }
 .sim-legend{ justify-content: flex-end; }
 
 /* ── 5/5는 화면 전체가 벽이다 (2026-09-27, 사용자) ──────────────────────

@@ -4398,8 +4398,13 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .tslider-box{ position: relative; height: var(--btn-m); box-sizing: content-box;
   border: 1px solid var(--grey-300); border-radius: var(--r-full); background: var(--grey-200); }
 .tslider-in{ position: absolute; inset: var(--s1); border-radius: var(--r-full); overflow: hidden; }
+/* 채움과 스위치 판(.tseg-thumb)은 --grey-600(2026-09-29, 사용자 · 견본 넷 중 2번).
+   --grey-800이던 때는 고른 값을 표시하는 판이 주 버튼만큼 무거웠다 — 4/5에서 흰 짝의
+   '이렇게 담을게요'(--grey-800)와 정렬 판이 같은 무게로 섰다. 한 단계 물려 버튼이 앞에
+   서게 한다. 트랙(--grey-200)과 3.8, 흰 글자와 4.6(AA 턱걸이). --grey-400(트랙과 1.6 —
+   어디까지 찼는지 흐렸다) · 흰 판 + 선(게이지가 '찬다'는 느낌이 약했다)은 버렸다. */
 .tslider-fill{ position: absolute; top: 0; bottom: 0; left: 0; width: calc(var(--fill) * 100%);
-  border-radius: var(--r-full); background: var(--grey-800); pointer-events: none;
+  border-radius: var(--r-full); background: var(--grey-600); pointer-events: none;
   transition: width var(--t-return) var(--ease-standard); }
 .tslider-cells.is-moving .tslider-fill{ transition: none; }
 /* 지금 칸의 말 — 채움 끝에서 --s4 안쪽, 흰 글자. 채움에 붙어 있어 같이 움직인다.
@@ -4428,7 +4433,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .tseg{ position: relative; touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
 .tseg-box{ position: relative; display: grid; grid-template-columns: repeat(var(--n, 2), 1fr);
   min-height: var(--btn-m); border: 1px solid var(--grey-500); border-radius: var(--r-control); overflow: hidden; }
-.tseg-thumb{ position: absolute; top: 0; bottom: 0; left: 0; width: calc(100% / var(--n, 2)); background: var(--grey-800);
+.tseg-thumb{ position: absolute; top: 0; bottom: 0; left: 0; width: calc(100% / var(--n, 2)); background: var(--grey-600);   /* 위 .tslider-fill 주석(2026-09-29) */
   transform: translateX(calc(var(--pos, 0) * 100%));
   transition: transform var(--t-return) var(--ease-standard); pointer-events: none; }
 .tseg.is-moving .tseg-thumb{ transition: none; }

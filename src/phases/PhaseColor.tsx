@@ -41,7 +41,8 @@ const T = {
     smile: { ko: '미소', en: 'Smile' },
     /* 차분한(돌) — 포스터 넷(R17~R20). 이름은 일단 원론적인 이름으로(2026-09-28, 디자이너) */
     'hang-up': { ko: '올려 걸기', en: 'Hang up' },
-    'hang-down': { ko: '내려 걸기', en: 'Hang down' }
+    'hang-down': { ko: '내려 걸기', en: 'Hang down' },
+    contour: { ko: '윤곽 따라', en: 'Contour' }
 };
 
 /*

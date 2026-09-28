@@ -89,6 +89,10 @@ export interface Persona {
     hang: { up: number; down: number; drop: number };
     /** 넘치기(R18) — 가운데 돌의 기본. 넘치는 깨짐의 각도 범위(도, 작을수록 가파르다) · 가장 바깥 줄 끝을 파고드는 깊이 범위 (u) */
     overflow: { angle: readonly [number, number]; depth: readonly [number, number] };
+    /** 윤곽 따라(R20) — 윤곽에서 첫 줄 글자 가장자리까지 (u) · 줄 사이에 비우는 줄 수 · 글을 얹는 비탈의 한도(도) ·
+        돌을 처음 잡는 크기(가운데 돌에 대한 비율) · 글이 다 안 얹힐 때 한 번에 키우는 비율 ·
+        한 줄에 얹는 길이의 한도(가장 긴 줄 폭의 배수 — 이것이 없으면 긴 윗 윤곽 하나에 글이 다 얹혀 줄이 안 생긴다) */
+    contour: { inset: number; gap: number; slope: number; start: number; grow: number; fill: number };
   };
   /** 줄 높이(글자 크기의 배수). 없으면 LINE_HEIGHT(1.5). 글에 바짝 붙는 형상(나무)이 좁힌다 */
   lh?: number;
@@ -155,7 +159,11 @@ export const PERSONAS: Record<string, Persona> = {
       hang: { up: -12, down: 6, drop: 1 },
       // 넘치기 — 카드 R18의 값 그대로(격자에서 0.2 · 0.35 · 0.5u를 보고 0.5는 너무 많이 먹어 뺐다).
       // 처음엔 고르는 칸이었다가 같은 날 가운데 돌의 기본이 됐다(디자이너 — "넘치기는 기본 기능으로")
-      overflow: { angle: [15, 35], depth: [0.2, 0.35] } } },
+      overflow: { angle: [15, 35], depth: [0.2, 0.35] },
+      // 윤곽 따라 — 카드 R20: 줄 사이 한 줄 비우기(ㄷ), 비탈 ±35° 안. 윤곽에서 더 떼기(ㄱ)는 안 골랐다
+      // 돌은 가운데 돌의 절반에서 시작해 글이 다 얹힐 때까지만 키우고, 한 줄은 가장 긴 줄의 1.1배까지만 얹는다 —
+      // 둘 다 없이는 윗 윤곽이 길어 글이 한두 줄로 위에만 얹히고 몸 아래가 비었다(4/5에서 글 여섯으로 봄)
+      contour: { inset: 0.45, gap: 1, slope: 35, start: 0.5, grow: 1.04, fill: 1.1 } } },
   // 구슬 구름 (2026-09-28). 꽃 → 옛 뭉게구름(부풀던 원 + 번짐)을 거쳐, 당당한 박스의 틀(글에 붙는 덩어리)을
   // 구름으로 옮겼다 — 밑은 평평하고 위와 양옆에 봉우리, 사방 여백을 고르게, 굵은 구슬 한 크기로 찍는다.
   // 원을 부풀리지 않아 lobe · fill · gap · spread는 쓰이지 않는다. 행간 1.1은 나무와 같다.
@@ -349,9 +357,9 @@ interface Options {
  */
 const ARRANGEMENTS: Record<string, readonly Align[]> = {
   ttoryeot: ['center', 'distribute', 'trapezoid'],
-  // 차분한 — 포스터 넷(R17~R20)을 하나씩 넣는 중(2026-09-28): 걸기(두 칸) · 윤곽 따라.
+  // 차분한 — 포스터 넷(R17~R20, 2026-09-28): 걸기(두 칸) · 윤곽 따라.
   // 넘치기(R18)는 칸이 아니라 가운데 돌의 기본이다. 세로쓰기(R19)는 차분한에서 안 쓴다 — 다른 태도용으로 남겨 둔다
-  chabun: ['center', 'hang-up', 'hang-down'],
+  chabun: ['center', 'hang-up', 'hang-down', 'contour'],
   doran: ['center', 'arch', 'fan', 'smile']
 };
 export function arrangementsFor(font: string | undefined): readonly Align[] {
@@ -393,7 +401,8 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
   const TW = Math.max(0.5, ...widths), TH = Math.max(1, lines.length) * LH;
   const boxes = widths.map((w, i) => ({ x0: (TW - w) / 2, x1: (TW + w) / 2, yc: (i + 0.5) * LH }));
   const rule: 'B' | 'C' = boxes.length <= 2 ? 'B' : 'C';
-  if (pr.edge === 'stone' && pr.stone) return stoneFor(pr, rule, TW, TH, R, o.align === 'hang-up' || o.align === 'hang-down' ? o.align : 'center', widths, LH, o.align);
+  if (pr.edge === 'stone' && pr.stone) return stoneFor(pr, rule, TW, TH, R, o.align === 'hang-up' || o.align === 'hang-down' || o.align === 'contour' ? o.align : 'center', widths, LH, o.align,
+      o.align === 'contour' ? { lines, font, optic, scaleX, wdth: o.wdth, track: o.track ?? 0 } : undefined);
   if (pr.edge === 'tree' && pr.tree) return treeLayout(pr, rule, lines, font, optic, scaleX, slant, o, LH);
   if (pr.edge === 'bead' && pr.bead) {
     if (o.align === 'arch' || o.align === 'fan' || o.align === 'smile') return beadArcFor(pr, rule, lines, font, optic, scaleX, o, LH, R, o.align);
@@ -584,7 +593,8 @@ function hatchBands(P: readonly Pt[], cx: number, cy: number, h: { from: number;
  *
  * 원은 하나도 안 쓴다. 번지지도 숨 쉬지도 않는다 — 돌은 가만히 있다.
  */
-function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number, mode: 'center' | 'hang-up' | 'hang-down' = 'center', widths: readonly number[] = [TW], LH = TH, align?: Align): Cloud {
+function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number, mode: 'center' | 'hang-up' | 'hang-down' | 'contour' = 'center', widths: readonly number[] = [TW], LH = TH, align?: Align,
+  text?: { lines: readonly string[]; font: string | undefined; optic: number; scaleX: number; wdth?: number; track: number }): Cloud {
   const s = pr.stone!;
   /* 걸기(R17, 2026-09-28): 돌의 몸을 글 아래로 글 높이 × drop만큼 더 잡고 짓는다. 무작위 기울기는 쓰지 않는다 —
      차분한은 칸마다 같은 각도로 기운다(디자이너 — 올려 걸기 · 내려 걸기 두 칸). 윗변은 아래에서 곧게 자르고,
@@ -639,6 +649,10 @@ function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () =>
   // 자른 자리에 겹친 점이 남으면 길이 0인 변이 생긴다
   pts = pts.filter((p, i) => { const q = pts[(i + 1) % pts.length]; return Math.hypot(q[0] - p[0], q[1] - p[1]) > 1e-4; });
 
+  // 윤곽 따라 — 글을 윤곽 위에 한 자씩. 다 안 얹히면 돌을 키운다(contourText)
+  const flow = mode === 'contour' && text ? contourText(pts, text, LH, s.contour, Math.max(...widths)) : null;
+  if (flow) pts = flow.pts;
+
   // 걸기 — 돌과 글을 글 윗줄 왼끝을 축으로 같이 돌린다. 글 상자는 돌리지 않은 크기 그대로, 가운데만 옮긴다
   const ang = hang ? ((mode === 'hang-up' ? s.hang.up : s.hang.down) * Math.PI) / 180 : 0, ca = Math.cos(ang), sa = Math.sin(ang);
   const rot = ([x, y]: Pt): Pt => [x * ca - y * sa, x * sa + y * ca];
@@ -652,6 +666,19 @@ function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () =>
   const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
   const minX = Math.min(...xs) - e, minY = Math.min(...ys) - e;
   const mv = ([x, y]: Pt): Pt => [x - minX, y - minY];
+  if (flow) {
+    const { glyphs, box } = flow, optic = text!.optic;
+    return {
+      persona: pr, rule, circles: [], spikes: [],
+      stone: { pts: pts.map(mv), hatch: hatch.map((q): Quad => [mv(q[0]), mv(q[1]), mv(q[2]), mv(q[3])]) },
+      w: Math.max(...xs) + e - minX, h: Math.max(...ys) + e - minY,
+      text: { x: box.x0 - minX, y: box.y0 - minY, w: box.x1 - box.x0, h: box.y1 - box.y0 },
+      layout: {
+        glyphs: glyphs.map((g) => ({ c: g.c, x: (g.x - box.x0) / optic, y: (g.y - box.y0) / optic, a: g.a })),
+        box: { w: (box.x1 - box.x0) / optic, h: (box.y1 - box.y0) / optic }
+      }
+    };
+  }
   return {
     persona: pr, rule, circles: [], spikes: [],
     stone: { pts: pts.map(mv), hatch: hatch.map((q): Quad => [mv(q[0]), mv(q[1]), mv(q[2]), mv(q[3])]) },
@@ -659,6 +686,121 @@ function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () =>
     text: { x: tcx - TW / 2 - minX, y: tcy - TH / 2 - minY, w: TW, h: TH },
     ...(hang ? { layout: { align: 'left' as const, rotate: ang } } : {})
   };
+}
+
+/**
+ * 윤곽 따라(R20, 2026-09-28) — 글이 돌의 윗 윤곽을 따라 휜다.
+ *
+ * 돌(볼록 껍질)을 안쪽으로 물린 선을 줄마다 하나씩 긋는다 — 첫 줄은 윤곽에서 inset + 반 줄, 다음 줄부터는
+ * (1 + gap)줄씩 더 안으로(줄 사이를 한 줄 비운다, 카드의 ㄷ). 그 선의 윗 사슬(왼 끝 → 꼭대기 → 오른 끝) 가운데
+ * 비탈이 ±slope° 안인 구간에만 글을 얹는다 — 왼쪽에서 오른쪽으로만 읽히게. 낱말은 쪼개지 않고, 한 줄에 들어갈
+ * 만큼 넣고 남으면 다음 줄로. 줄마다 그 구간의 가운데에 놓고, 글자는 제 가운데가 선 위에 서서 선을 따라 기운다.
+ * 한 줄에는 가장 긴 줄 폭의 fill배까지만 얹는다. 돌은 가운데 돌의 start배에서 시작해 다 얹힐 때까지 grow배씩
+ * 키운다 — 글이 제 줄 수만큼 내려가며 윤곽의 메아리가 되고, 돌은 그 줄들을 품을 만큼 커진다. 발화자가 넣은 줄바꿈도 윤곽에 맡긴다(윤곽을 고른 것이 곧 그것이다).
+ */
+function contourText(P0: Pt[], t: { lines: readonly string[]; font: string | undefined; optic: number; scaleX: number; wdth?: number; track: number },
+  LH: number, c: { inset: number; gap: number; slope: number; start: number; grow: number; fill: number }, lineW: number): { pts: Pt[]; glyphs: { c: string; x: number; y: number; a: number }[]; box: { x0: number; y0: number; x1: number; y1: number } } {
+  const adv = advanceFor(BY_FONT[t.font ?? ''] ?? t.font ?? '', t.wdth);
+  const aOf = (ch: string) => ((ch === ' ' ? adv.space : /[A-Za-z0-9.,!?'"-]/.test(ch) ? LATIN : adv.hangul) + t.track) * t.optic * t.scaleX;
+  const words = t.lines.join(' ').split(/\s+/).filter(Boolean).map((w) => ({ w, cs: Array.from(w), len: Array.from(w).reduce((s, ch) => s + aOf(ch), 0) }));
+  const sp = aOf(' '), maxTan = Math.tan((c.slope * Math.PI) / 180);
+  const cx0 = P0.reduce((s, p) => s + p[0], 0) / P0.length, cy0 = P0.reduce((s, p) => s + p[1], 0) / P0.length;
+  let P = P0.map(([x, y]): Pt => [cx0 + (x - cx0) * c.start, cy0 + (y - cy0) * c.start]);
+  for (let tries = 0; tries < 120; tries++, P = P.map(([x, y]): Pt => [cx0 + (x - cx0) * c.grow, cy0 + (y - cy0) * c.grow])) {
+    const hull = convexHull(P);
+    const rows: Pt[][] = [];
+    for (let k = 0; ; k++) {
+      const d = c.inset + LH / 2 + k * (1 + c.gap) * LH, Q = insetPolygon(hull, d);
+      if (Q.length < 3) break;
+      const run = upperRun(Q, maxTan);
+      if (run.length < 2) break;
+      rows.push(run);
+    }
+    // 낱말을 줄에 채운다
+    const placed: { c: string; x: number; y: number; a: number }[] = [];
+    let wi = 0;
+    for (const run of rows) {
+      if (wi >= words.length) break;
+      const RL = runLength(run), L = Math.min(RL, lineW * c.fill);
+      let used = 0;
+      const take: typeof words = [];
+      while (wi < words.length) {
+        const need = (take.length ? sp : 0) + words[wi].len;
+        if (used + need > L) break;
+        take.push(words[wi]); used += need; wi++;
+      }
+      let s = (RL - used) / 2;
+      take.forEach((w, j) => {
+        if (j) s += sp;
+        for (const ch of w.cs) { const a = aOf(ch), [x, y, ang] = pointOnRun(run, s + a / 2); placed.push({ c: ch, x, y, a: ang }); s += a; }
+      });
+    }
+    if (wi < words.length) continue;                     // 다 안 얹혔다 — 돌을 키운다
+    const corners = placed.flatMap((g) => { const ca = Math.cos(g.a), sa = Math.sin(g.a), hw = aOf(g.c) / 2, hh = LH / 2;
+      return [[-hw, -hh], [hw, -hh], [-hw, hh], [hw, hh]].map(([dx, dy]): Pt => [g.x + dx * ca - dy * sa, g.y + dx * sa + dy * ca]); });
+    const xs = corners.map((p) => p[0]), ys = corners.map((p) => p[1]);
+    return { pts: P, glyphs: placed, box: { x0: Math.min(...xs) - 0.06, y0: Math.min(...ys) - 0.06, x1: Math.max(...xs) + 0.06, y1: Math.max(...ys) + 0.06 } };
+  }
+  return { pts: P, glyphs: [], box: { x0: 0, y0: 0, x1: 1, y1: 1 } };
+}
+
+/** 볼록 껍질 — 벽의 물리가 돌을 볼록한 윤곽으로 치고(WallSimulation), 윤곽 따라가 글을 얹을 선을 이것에서 긋는다.
+ *  깨진 면 때문에 아주 조금 오목한 자리가 생길 수 있다 */
+export function convexHull(P: readonly Pt[]): [number, number][] {
+  const p = P.map(([x, y]): [number, number] => [x, y]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o: Pt, a: Pt, b: Pt) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo: [number, number][] = [], up: [number, number][] = [];
+  for (const q of p) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  for (const q of [...p].reverse()) { while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+  return [...lo.slice(0, -1), ...up.slice(0, -1)];
+}
+
+/** 볼록 다각형을 d만큼 안으로 — 변마다 안쪽 반평면을 d 물려 자른다(볼록이면 곧 안쪽 평행선들의 교집합) */
+function insetPolygon(H: readonly Pt[], d: number): Pt[] {
+  let area = 0;
+  for (let i = 0; i < H.length; i++) { const p = H[i], q = H[(i + 1) % H.length]; area += p[0] * q[1] - q[0] * p[1]; }
+  const sgn = area > 0 ? 1 : -1;                          // 화면 좌표(y 아래)에서의 감는 방향
+  let Q: Pt[] = [...H];
+  for (let i = 0; i < H.length && Q.length >= 3; i++) {
+    const p = H[i], q = H[(i + 1) % H.length], ex = q[0] - p[0], ey = q[1] - p[1], L = Math.hypot(ex, ey);
+    if (L < 1e-9) continue;
+    const nx = (-ey / L) * sgn, ny = (ex / L) * sgn;      // 안쪽 법선
+    Q = clipHalf(Q, -nx, -ny, -(nx * p[0] + ny * p[1] + d));
+  }
+  return Q;
+}
+
+/** 볼록 다각형의 윗 사슬(가장 왼쪽 → 가장 오른쪽, 위로 도는 쪽)에서 비탈 |tan| ≤ maxTan인 이어진 구간 */
+function upperRun(Q: readonly Pt[], maxTan: number): Pt[] {
+  const n = Q.length;
+  let li = 0, ri = 0;
+  for (let i = 1; i < n; i++) { if (Q[i][0] < Q[li][0]) li = i; if (Q[i][0] > Q[ri][0]) ri = i; }
+  const chain = (step: number) => { const out: Pt[] = [Q[li]]; for (let i = li; i !== ri; ) { i = (i + step + n) % n; out.push(Q[i]); } return out; };
+  const a = chain(1), b = chain(-1), avg = (c: Pt[]) => c.reduce((s, p) => s + p[1], 0) / c.length;
+  const top = avg(a) < avg(b) ? a : b;
+  const run: Pt[] = [];
+  for (let i = 0; i + 1 < top.length; i++) {
+    const [x0, y0] = top[i], [x1, y1] = top[i + 1], dx = x1 - x0;
+    if (dx > 1e-6 && Math.abs((y1 - y0) / dx) <= maxTan) { if (!run.length) run.push(top[i]); run.push(top[i + 1]); }
+    else if (run.length) break;
+  }
+  return run;
+}
+
+function runLength(run: readonly Pt[]): number {
+  let L = 0;
+  for (let i = 0; i + 1 < run.length; i++) L += Math.hypot(run[i + 1][0] - run[i][0], run[i + 1][1] - run[i][1]);
+  return L;
+}
+
+/** 구간의 처음에서 s만큼 간 자리와 그곳의 기울기(rad) */
+function pointOnRun(run: readonly Pt[], s: number): [number, number, number] {
+  for (let i = 0; i + 1 < run.length; i++) {
+    const [x0, y0] = run[i], [x1, y1] = run[i + 1], L = Math.hypot(x1 - x0, y1 - y0);
+    if (s <= L || i + 2 === run.length) { const t = Math.min(1, Math.max(0, s / L)); return [x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, Math.atan2(y1 - y0, x1 - x0)]; }
+    s -= L;
+  }
+  return [run[0][0], run[0][1], 0];
 }
 
 // ─── 당당한 — 나무 (2026-09-28) ──────────────────────────────────────

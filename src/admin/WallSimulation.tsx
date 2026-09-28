@@ -10,7 +10,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import CloudBubble from '../components/CloudBubble';
-import { cloudForTone, cloudShape, type Cloud } from '../lib/cloud';
+import { cloudForTone, cloudShape, convexHull, type Cloud } from '../lib/cloud';
 import { bubbleAt, fillFromLegacySize, foldLines, type Boxed } from '../lib/fit';
 import { fontMap } from '../lib/palettes';
 import { palettes as legacyPalettes } from '../lib/palettes';
@@ -566,16 +566,6 @@ function stoneAndFloater(s: Body, f: Body, h: number, dt: number) {
   s.vx -= j * is * nx; s.vy -= j * is * ny;
   const dir = Math.abs(nx) > Math.abs(ny) ? -Math.sign(nx) : Math.sign(f.x - s.x) || 1;
   s.va += ((j * is) / h) * WOBBLE_HIT * dir;
-}
-
-/** 볼록 껍질 — 물리는 볼록한 윤곽으로 친다. 깨진 면 때문에 아주 조금 오목한 자리가 생길 수 있다 */
-function convexHull(P: readonly (readonly [number, number])[]): Pt2[] {
-  const p = P.map(([x, y]): Pt2 => [x, y]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  const cross = (o: Pt2, a: Pt2, b: Pt2) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-  const lo: Pt2[] = [], up: Pt2[] = [];
-  for (const q of p) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
-  for (const q of [...p].reverse()) { while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
-  return [...lo.slice(0, -1), ...up.slice(0, -1)];
 }
 
 // ─── 구름의 움직임 — 요소를 직접 (React 바깥) ────────────────────────────

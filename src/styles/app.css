@@ -2059,19 +2059,9 @@
 .tone-choice .style-card{ grid-template-columns: minmax(0, 1fr); }
 /* 줄 안의 견본 칸(.style-card-sample)과 이름표(.style-card-label)는 이름이
    다시 큰 글자가 되면서 없어졌다(2026-09-25). */
-/* 고른 칸은 빨강이 칸 전체를 먹었다(흰 글자 대비 때문에 --brand-strong, 4.64:1).
-   2026-09-28부터는 칸은 종이 그대로이고 **그 성격의 모양**이 빨강을 입는다
-   (PhaseGlyph · ChoiceShape — 칸의 85% 안, 모양에 겹친 글자만 흰색). 빨강은
-   그대로 --brand-strong이라 모양 위의 흰 글자 대비도 4.64:1 그대로다. */
-.tone-choice .style-card.on{ background: var(--paper); color: var(--ink); }
-.tone-choice .style-card > .style-card-name{ position: relative; z-index: 1; }
-/* 모양(아래)과 흰 이름(위) — 칸 전체를 덮고 가운데 세운다. 칸의 안쪽 여백은
-   좌우·위아래가 같아 가운데가 이름의 가운데와 겹친다. 흰 이름은 모양 그림을
-   가림판으로 써서 모양 안에서만 보인다 */
-.choice-shape, .choice-ink{ position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
-.choice-shape{ z-index: 0; }
-.choice-ink{ z-index: 2; color: var(--paper);
-  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; }
+/* 고른 칸은 빨강이 칸 전체를 먹는다. 스케치는 #CF5B4C이지만 그 위의 흰
+   글자는 4.00:1 — AA(4.5)에 못 미친다. 채움 버튼과 같은 --brand-strong(4.64:1). */
+.tone-choice .style-card.on{ background: var(--brand-strong); color: var(--paper); }
 /* 01 한 줄 — 상자가 없다. 자판을 내리면 글이 정사각 상자에 담기던 연출을
    걷어냈다(그 상자가 발화자의 줄바꿈을 다시 접었다). 여기서는 자판의
    줄바꿈이 그대로 남는다. */
@@ -4141,10 +4131,8 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    누르고 떼야 색이 바뀌면 고른 것이 한 박자 늦게 온다. 닿는 순간
    고른 모습을 미리 보여 준다 — 어차피 떼면 그게 선택이다.
    줄무늬(:nth-child)가 .style-card:active보다 특정성이 높아 공용 누름
-   규칙이 먹지 않았다. 그래서 여기서 같은 무게로 다시 쓴다.
-   2026-09-28: 고른 모습이 칸 칠이 아니라 모양이 되면서 미리 보여 줄 수 없게
-   됐다 — 누르는 동안은 마우스를 올렸을 때와 같은 옅은 빨강만 깐다. */
-.tone-choice .style-card:active{ background: var(--brand-soft); }
+   규칙이 먹지 않았다. 그래서 여기서 같은 무게로 다시 쓴다. */
+.tone-choice .style-card:active{ background: var(--brand-strong); color: var(--paper); }
 /* ── 마우스가 있는 기기에서만 ────────────────────────────────────────
    폰에서 hover를 켜면 **누른 뒤에도 색이 남는다.** 손가락은 떼도 마지막에
    닿은 것을 계속 가리키기 때문이다. 이 규칙은 원래 성격 카드 하나에만
@@ -4332,9 +4320,13 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .z-glyph-stage.has-face .step-header{ --step-ink: var(--paper); }
 .color-choice .step-header{ --step-ink: var(--paper); }
 
-/* ─── 02 성격: 확정 띠 (2026-09-25) ───────────────────────────────────
-   고른 줄의 체크(색만으로 말하지 않으려던 것)는 2026-09-28에 걷었다 — 고른 칸에
-   그 성격의 모양이 서서, 골랐다는 것을 색이 아니라 꼴로 말한다. */
+/* ─── 02 성격: 고른 줄 · 확정 띠 (2026-09-25) ───────────────────────
+   고른 줄은 원래 쓰던 붉은 면에 **체크**를 더한다(색만으로 말하지 않는다).
+   체크는 늘 제 자리에 있고 고르지 않은 줄에서는 보이지만 않는다 — 고르기
+   전후로 글자가 한 픽셀도 움직이지 않는다. */
+.tone-choice .style-card-check{ position: absolute; top: var(--pad-box); right: var(--pad-x);
+  width: var(--s5); height: var(--s5); visibility: hidden; }
+.tone-choice .style-card.on .style-card-check{ visibility: visible; }
 /* 확정 버튼은 화면 아래에 붙는다. 제 바탕(흰 종이)을 가진 띠라서 스크롤되는
    견본이 그 밑으로 지나가도 글자와 겹쳐 보이지 않는다. 띠가 화면 여백 밖까지
    가고 기기 아래 안전 영역을 비운다. 화면이 커서 다 들어가면 버튼은 그냥

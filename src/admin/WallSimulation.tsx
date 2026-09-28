@@ -169,13 +169,13 @@ type Kind = 'float' | 'stone' | 'tree' | 'cloud';
     상태를 갱신하면 열두 개 × 60프레임 = 초당 720번 다시 그리게 된다.
     hw · hh = 상자의 반폭 · 반높이. heavy = 차분한의 돌, a · va = 돌의 흔들림(rad).
     poly = 돌의 실제 윤곽(볼록 다각형, 가운데 기준 px). 말은 없다 — 상자로 친다.
-    나무: tall = 키(벽 높이의 비율). 구름: cruise = 지나가는 빠르기(px/s), sway · flutter = 엇걸음 ·
-    펄럭임의 위상, u = 글자 한 칸(px), beads · chars = 구슬 · 글자 가운데(가운데 기준 px), beadR = 구슬 반지름(px),
-    side = 그 값들을 잰 한 변(창이 바뀌면 다시 잰다) */
+    나무: tall = 키(벽 높이의 비율). 구름: home = 제 자리(벽에 대한 비율), sway · flutter = 엇걸음 ·
+    펄럭임의 위상(헤맴의 가로 · 세로 위상도 겸한다), u = 글자 한 칸(px), beads · chars = 구슬 · 글자 가운데(가운데 기준 px),
+    beadR = 구슬 반지름(px), side = 그 값들을 잰 한 변(창이 바뀌면 다시 잰다) */
 type Body = {
   x: number; y: number; vx: number; vy: number; r: number; hw: number; hh: number;
   held: boolean; heavy: boolean; a: number; va: number; poly: Pt2[] | null;
-  kind: Kind; tall: number; cruise: number; sway: number; flutter: number;
+  kind: Kind; tall: number; home: Pt2 | null; sway: number; flutter: number;
   u: number; beadR: number; beads: Pt2[]; chars: Pt2[]; side: number;
 };
 type Pt2 = [number, number];
@@ -197,14 +197,27 @@ const TREE_TALL: readonly [number, number] = [0.15, 0.35];
 /** 나무끼리 겹쳐 서도 된다(키 큰 나무가 뒤) — 다만 한자리에 포개지지 않게 가로로 이만큼(반폭 합의 비율)은 떼어 본다 */
 const TREE_SPREAD = 0.6;
 
-// ─── 구름 (다정한) — 지나간다 (2026-09-28, design/landscape.md '구름') ─────────────
+// ─── 구름 (다정한) — 제자리에서 부유한다 (2026-09-29, design/landscape.md '구름') ─────
 // 벽의 느린 박자는 모두 --t-hold의 배수다(아래 hold()).
 /** 구름이 다니는 곳 — 벽 위 끝(여백)에서 이 비율까지. 아래 30%는 돌 · 나무 자리 */
 const CLOUD_ZONE = 0.7;
 const CLOUD_MARGIN = 0.02;
-/** 벽을 가로지르는 시간(--t-hold 배수) · 구름마다 ±25% */
-const CLOUD_CROSS = 30;
-const CLOUD_JITTER = 0.25;
+/** 부유 — 구름마다 제 자리(home)를 하나 받아 그 둘레만 헤맨다. 가운데가 다니는 가로 반지름(u) · 세로는 그 비율 ·
+    가로 한 바퀴(--t-hold 배수) · 세로 박자는 가로보다 이만큼 느리게(같은 동그라미를 되풀이하지 않는다).
+    움직이는 견본에서 ±50px · 21초(평균 11px/초, 1920×1080)의 빠르기를 골랐고 "영역은 134px까지 가도 된다"고 해서
+    반지름을 넓히고 한 바퀴를 같은 빠르기가 되게 늘렸다(134/50 × 21 ≈ 56초 = × 80). 2026-09-29.
+    견본의 칸 이름은 '±3u · ±8u'였는데 그 u는 **보이는 글자 크기**였다 — 여기 u(b.u)는 다카포의 크기 보정(× 0.77)
+    전 값이라 8을 그대로 넣으니 영역 · 빠르기가 30% 컸다(한 바퀴 재서 가로 334px). 픽셀로 맞춰 6(130px) */
+const FLOAT_U = 6;
+const FLOAT_RY = 0.6;
+const FLOAT_LOOP = 80;
+const FLOAT_Y_RATIO = 1.37;
+/** 헤매는 자리를 따라가는 느슨함(--t-hold 배수) — 밀렸다가 돌아올 때도, 처음 자리를 잡을 때도 이 박자로 스르르 */
+const FLOAT_FOLLOW = 4;
+/** 엇걸음 · 펄럭임은 평소엔 끈다 — 제자리에서 조용히 부유하는 동안은 작은 구름 오르내림만 한다(디자이너, 2026-09-29).
+    값과 코드는 둔다: 새 글이 크게 등장할 때 구름이 화면 밖으로 휭 날아가는 장면(계획)에서 더 세게 쓴다 */
+const SWAY_ON = false;
+const FLUTTER_ON = false;
 /** 엇걸음 — 몸 전체를 앞뒤로 기울여 위 · 아래가 번갈아 앞선다. 한 번(--t-hold 배수) · 위아래 끝이 앞서는 거리(u) */
 const SWAY = 4;
 const SWAY_U = 0.25;
@@ -221,8 +234,6 @@ const LETTER_CLEAR = 0.7;
 /** 파고든 만큼을 이 시간(초)에 걸쳐 떼어 놓는다. 0.06초(견본 값)에서는 다가오는 빠르기를 못 따라가 구슬이 둘레를 0.32u까지
     파고들었다(벽에서 20초 재서) — 두어 프레임에 뗀다. 파고듦이 조금씩 자라므로 한 번에 미는 양은 여전히 작다 */
 const LETTER_PUSH_S = 0.02;
-/** 처음 뜬 뒤 이만큼(ms) 지나 들어오는 구름은 왼쪽 밖에서 들어온다. 그 전(벽이 막 켜졌을 때)은 벽 곳곳에 놓는다 */
-const CLOUD_ENTER_AFTER = 1500;
 
 /** --t-hold(초). 토큰을 한 번 읽어 둔다 — 못 읽는 곳(토큰이 없는 문서)에서만 0.7초.
     단위를 보고 읽는다: 빌드가 CSS를 줄이며 700ms를 .7s로 고쳐 적는다. ms로만 읽었더니 라이브에서만
@@ -251,10 +262,37 @@ function kindOf(cloud: Cloud): Kind {
 function treeHeight(b: Body, h: number): number {
   return Math.max(b.tall * h, 2 * b.hh);
 }
-/** 구름이 설 수 있는 높이에서 아무 데나 */
-function cloudY(b: Body, h: number): number {
-  const top = b.hh + CLOUD_MARGIN * h, bottom = CLOUD_ZONE * h - b.hh;
-  return bottom < top ? (top + bottom) / 2 : top + Math.random() * (bottom - top);
+/**
+ * 구름의 제 자리 — 벽 위 70% 안에서, 헤매도 그 밖으로 안 나가는 곳 중 **다른 구름의 자리에서 가장 먼 곳**(빈자리).
+ * 서른 번 뽑아 가장 먼 것을 고른다. 처음엔 '안 겹치는 첫 자리'였는데 열 개를 띄우니 가운데로 몰리고 오른쪽이
+ * 비었다(2026-09-29) — 빈 곳부터 채운다. 자리가 모자라면 겹친다(오버프린트라 조금은 겹쳐도 된다, 디자이너).
+ * 자리는 벽에 대한 비율로 둔다 — 창이 바뀌어도 같은 곳이다
+ */
+function cloudHome(b: Body, w: number, h: number, taken: Body[]): Pt2 {
+  const [rx, ry] = floatR(b, w, h);
+  const x0 = b.hw + rx, x1 = w - b.hw - rx;
+  const y0 = b.hh + ry + CLOUD_MARGIN * h, y1 = CLOUD_ZONE * h - b.hh - ry;
+  const others = taken.filter((o) => o !== b && o.kind === 'cloud' && o.home);
+  let best: Pt2 = [0.5, 0.5], most = -1;
+  for (let t = 0; t < 30; t++) {
+    const x = x1 < x0 ? w / 2 : x0 + Math.random() * (x1 - x0);
+    const y = y1 < y0 ? (y0 + y1) / 2 : y0 + Math.random() * (y1 - y0);
+    // 두 상자가 얼마나 떨어졌나 — 1이면 가장자리가 맞닿는다
+    const apart = Math.min(Infinity, ...others.map((o) => Math.max(Math.abs(o.home![0] * w - x) / (o.hw + b.hw), Math.abs(o.home![1] * h - y) / (o.hh + b.hh))));
+    if (apart > most) { most = apart; best = [x / w, y / h]; }
+  }
+  return best;
+}
+/** 헤매는 가로 · 세로 반지름(px). 좁은 창(폰으로 연 벽)에서는 구름이 벽 밖으로 안 나가게 들어갈 만큼만 */
+function floatR(b: Body, w: number, h: number): Pt2 {
+  const rx = Math.min(FLOAT_U * b.u, Math.max(0, w / 2 - b.hw));
+  return [rx, Math.min(FLOAT_RY * rx, Math.max(0, ((CLOUD_ZONE - CLOUD_MARGIN) * h) / 2 - b.hh))];
+}
+/** 지금 이 구름이 가 있을 곳(px) — 제 자리 둘레의 느린 헤맴 */
+function floatAt(b: Body, w: number, h: number, sec: number): Pt2 {
+  const [hx, hy] = b.home ?? [0.5, 0.5], [rx, ry] = floatR(b, w, h), P = FLOAT_LOOP * hold();
+  return [hx * w + rx * Math.sin((2 * Math.PI * sec) / P + b.sway),
+          hy * h + ry * Math.sin((2 * Math.PI * sec) / (P * FLOAT_Y_RATIO) + b.flutter * 2 * Math.PI)];
 }
 
 // ─── 돌 (차분한) — 떠다니지 않고 바닥에 내려앉는다 (2026-09-27) ──────────
@@ -305,10 +343,11 @@ function boxSide(): number {
 /** 새 몸을 아무 자리에 놓는다. 이미 있는 것들과 겹치지 않는 자리를 찾아본다.
  *  돌은 위쪽 3분의 1 어딘가에서 멈춘 채 나타나 떨어진다 — 다른 돌과 가로로 안 겹치는 자리를 찾아본다.
  *  나무는 바닥에 선다 — 다른 나무와 한자리에 포개지지 않는 가로 자리를 찾아본다.
- *  구름은 벽이 막 켜졌으면 곳곳에, 그 뒤로는 왼쪽 밖에서 들어온다(late) */
-function spawn(r: number, hw: number, hh: number, kind: Kind, w: number, h: number, taken: Body[], tall: number, late: boolean): Body {
+ *  구름은 제 자리(cloudHome)를 받아 그 헤맴의 지금 자리에 나타난다 — 벽을 가로지르며 들어오지 않는다.
+ *  u = 구름의 글자 한 칸(px) — 헤매는 영역의 크기가 거기 걸려 있다 */
+function spawn(r: number, hw: number, hh: number, kind: Kind, w: number, h: number, taken: Body[], tall: number, u: number): Body {
   const heavy = kind === 'stone';
-  const still = { held: false, heavy, a: 0, va: 0, r, hw, hh, poly: null, kind, tall, cruise: 0,
+  const still = { held: false, heavy, a: 0, va: 0, r, hw, hh, poly: null, kind, tall, home: null,
     sway: Math.random() * Math.PI * 2, flutter: Math.random(), u: 0, beadR: 0, beads: [], chars: [], side: 0 };
   if (kind === 'tree') {
     let x = 0;
@@ -319,9 +358,9 @@ function spawn(r: number, hw: number, hh: number, kind: Kind, w: number, h: numb
     return { ...still, x, y: h - Math.max(tall * h, 2 * hh) + hh, vx: 0, vy: 0 };
   }
   if (kind === 'cloud') {
-    const cruise = ((w + 2 * hw) / (CLOUD_CROSS * hold())) * (1 + CLOUD_JITTER * (2 * Math.random() - 1));
-    const b: Body = { ...still, cruise, x: late ? -hw - Math.random() * 0.25 * w : -hw + Math.random() * (w + hw), y: 0, vx: cruise, vy: 0 };
-    b.y = cloudY(b, h);
+    const b: Body = { ...still, u, x: 0, y: 0, vx: 0, vy: 0 };
+    b.home = cloudHome(b, w, h, taken);
+    [b.x, b.y] = floatAt(b, w, h, performance.now() / 1000);
     return b;
   }
   if (heavy) {
@@ -359,13 +398,13 @@ function spawn(r: number, hw: number, hh: number, kind: Kind, w: number, h: numb
  * 모서리끼리 먼저 닿아 '보이지 않는 경계'가 생겼다. 돌은 무거워서 부딪힌 말은 튕겨
  * 나가고 돌은 조금만 밀린다(STONE_MASS).
  */
-function step(bodies: Body[], w: number, h: number, dt: number) {
+function step(bodies: Body[], w: number, h: number, dt: number, sec: number) {
   const ground = new Set<Body>();
   for (const b of bodies) {
     if (b.held) continue;
     // 나무는 가만히 선다 — 바닥에서 제 키만큼. 창이 바뀌면 같이 바뀐다
     if (b.kind === 'tree') { b.y = h - treeHeight(b, h) + b.hh; continue; }
-    if (b.kind === 'cloud') { drift(b, w, h, dt); continue; }
+    if (b.kind === 'cloud') { drift(b, w, h, dt, sec); continue; }
     if (b.heavy) {
       // 흔들림은 늘 제자리(0)로 돌아온다
       b.va += (-WOBBLE_K * b.a - WOBBLE_DAMP * b.va) * dt;
@@ -427,13 +466,15 @@ function step(bodies: Body[], w: number, h: number, dt: number) {
 }
 
 /**
- * 구름 한 걸음 — 제 빠르기로 오른쪽으로. 밀려서 늦거나 빨라졌으면 천천히 제 빠르기로 돌아온다.
- * 오른쪽으로 다 나가면 왼쪽 밖에서 다시 들어온다(높이는 새로). 벽 위 70% 안에서만 다닌다.
+ * 구름 한 걸음 — 제 자리 둘레를 헤매는 지금 자리(floatAt)를 느슨하게(FLOAT_FOLLOW) 따라간다. 남의 글자에서
+ * 밀려났으면 같은 박자로 스르르 돌아온다. 크게 보였다 내려앉은 글도 붙잡혔던 자리에서 이 길로 이어 간다.
+ * 벽 위 70% 안에서만 다닌다(창이 줄었을 때를 위해 한 번 더 막는다).
  */
-function drift(b: Body, w: number, h: number, dt: number) {
-  b.vx += (b.cruise - b.vx) * (1 - Math.exp(-dt / 0.8));
-  b.x += b.vx * dt;
-  if (b.x - b.hw > w) { b.x = -b.hw - Math.random() * 0.25 * w; b.y = cloudY(b, h); b.vx = b.cruise; }
+function drift(b: Body, w: number, h: number, dt: number, sec: number) {
+  if (!b.home) b.home = cloudHome(b, w, h, []);
+  const [tx, ty] = floatAt(b, w, h, sec), k = 1 - Math.exp(-dt / (FLOAT_FOLLOW * hold()));
+  b.x += (tx - b.x) * k;
+  b.y += (ty - b.y) * k;
   const top = b.hh + CLOUD_MARGIN * h, bottom = CLOUD_ZONE * h - b.hh;
   b.y = bottom < top ? (top + bottom) / 2 : Math.min(bottom, Math.max(top, b.y));
 }
@@ -600,11 +641,11 @@ function cloudDomOf(cache: Map<string, CloudDom>, id: string, el: HTMLElement, f
  * 펄럭임 · 작은 구름의 오르내림 한 프레임.
  * 펄럭임은 FLUTTER_EVERY마다 한 번, 봉우리 하나가 왼쪽 밖에서 오른쪽 밖으로 FLUTTER_PASS에 지나가며
  * 그 자리의 글자와 구슬을 FLUTTER_U 올렸다 내린다. 지나가는 동안만 요소를 건드린다.
- * 작은 구름은 저마다 BOB 주기로 오르내린다(서로 위상이 다르다).
+ * 작은 구름은 저마다 BOB 주기로 오르내린다(서로 위상이 다르다). 펄럭임은 평소엔 꺼 둔다(FLUTTER_ON).
  */
 function cloudFrame(d: CloudDom, b: Body, f: Size, sec: number) {
   const H = hold(), every = FLUTTER_EVERY * H, pass = FLUTTER_PASS * H, cw = f.cw ?? 0;
-  const tt = (((sec + b.flutter * every) % every) + every) % every, on = tt <= pass;
+  const tt = (((sec + b.flutter * every) % every) + every) % every, on = FLUTTER_ON && tt <= pass;
   if (on || d.on) {
     const c = -1.5 + (cw + 3) * (tt / pass);
     const wave = (x: number) => (on ? -FLUTTER_U * Math.exp(-(((x - c) / FLUTTER_WIDTH) ** 2)) : 0);
@@ -653,8 +694,6 @@ export default function WallSimulation() {
   const sizesRef = useRef(new Map<string, Size>());
   /** 구름의 펄럭임 · 작은 구름이 움직일 요소들(글마다). 요소가 바뀌면 다시 찾는다 */
   const cloudDomRef = useRef(new Map<string, CloudDom>());
-  /** 벽이 켜진 때 — 그 직후의 구름은 벽 곳곳에, 그 뒤로는 왼쪽 밖에서 들어온다 */
-  const bornRef = useRef(performance.now());
 
   // 화면이 다 차 있을 때 한 칸씩 갈아 끼우는 시계
   const [rotate, setRotate] = useState(0);
@@ -947,22 +986,28 @@ export default function WallSimulation() {
       };
       const map = bodiesRef.current;
       for (const id of [...map.keys()]) if (!ids.includes(id)) { map.delete(id); cloudDomRef.current.delete(id); }
-      const late = t - bornRef.current > CLOUD_ENTER_AFTER;
       for (const id of ids) {
         const f = sizesRef.current.get(id);
         const hw = (side * (f?.w ?? 1)) / 2, hh = (side * (f?.h ?? 1)) / 2, kind = f?.kind ?? 'float';
         const off = ([u, v]: Pt2): Pt2 => [(u - 0.5) * 2 * hw, (v - 0.5) * 2 * hh];
         const poly = f?.poly ? f.poly.map(off) : null;
         let b = map.get(id);
-        if (!b) map.set(id, (b = spawn(rOf(id), hw, hh, kind, w, h, [...map.values()], f?.tall ?? 0, late)));
+        if (!b) map.set(id, (b = spawn(rOf(id), hw, hh, kind, w, h, [...map.values()], f?.tall ?? 0, side * (f?.unit ?? 0))));
         else { b.r = rOf(id); b.hw = hw; b.hh = hh; b.heavy = kind === 'stone'; b.kind = kind; b.tall = f?.tall ?? 0; }   // 창 크기가 바뀌면 같이 바뀐다
         b.poly = poly;
         if (kind === 'cloud' && f?.beads && b.side !== side) {
           b.side = side; b.u = side * (f.unit ?? 0); b.beadR = b.u * (f.beadR ?? 0);
           b.beads = f.beads.map(off); b.chars = (f.chars ?? []).map(off);
         }
+        // 크기를 몰라 떠다니는 말로 먼저 놓였던 구름(벽이 막 켜진 첫 프레임들) — 자리를 여기서 받는다. 다른 구름의
+        // 자리를 보고 고른다: 모르고 고르면 한데 포개져 서로 글자를 비키느라 밀치며 두 배로 빨라졌다(2026-09-29, 재서 알았다)
+        if (kind === 'cloud' && !b.home) {
+          b.home = cloudHome(b, w, h, [...map.values()]);
+          [b.x, b.y] = floatAt(b, w, h, t / 1000);
+          b.vx = b.vy = 0;
+        }
       }
-      step([...map.values()], w, h, dt);
+      step([...map.values()], w, h, dt, t / 1000);
       const moving = !prefersReducedMotion();
       for (const [id, b] of map) {
         const el = elsRef.current.get(id);
@@ -979,9 +1024,11 @@ export default function WallSimulation() {
           if (!el.dataset.placed) el.dataset.placed = '1';
         }
         if (b.kind === 'cloud' && moving && ECHO_MOTION) {
-          // 엇걸음 — 가운데 높이를 축으로 몸 전체를 기울여 위아래 끝이 ±SWAY_U씩 번갈아 앞선다
-          const lean = (SWAY_U * b.u * Math.sin((t / 1000 / (SWAY * hold())) * Math.PI * 2 + b.sway)) / Math.max(1, b.hh);
-          tf += ` skewX(${(-Math.atan(lean)).toFixed(4)}rad)`;
+          // 엇걸음 — 가운데 높이를 축으로 몸 전체를 기울여 위아래 끝이 ±SWAY_U씩 번갈아 앞선다. 평소엔 꺼 둔다(SWAY_ON)
+          if (SWAY_ON) {
+            const lean = (SWAY_U * b.u * Math.sin((t / 1000 / (SWAY * hold())) * Math.PI * 2 + b.sway)) / Math.max(1, b.hh);
+            tf += ` skewX(${(-Math.atan(lean)).toFixed(4)}rad)`;
+          }
           cloudFrame(cloudDomOf(cloudDomRef.current, id, el, f), b, f, t / 1000);
         }
         el.style.transform = tf;

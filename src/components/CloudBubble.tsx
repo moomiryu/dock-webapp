@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, type CSSProperties, type ReactNode } from 'react';
+import { cloneElement, isValidElement, useEffect, useId, useMemo, useRef, type CSSProperties, type ReactElement, type ReactNode } from 'react';
 import { AMP, DRIFT, T1, T2, type Circle, type Cloud } from '../lib/cloud';
 import type { Boxed } from '../lib/fit';
 
@@ -26,10 +26,11 @@ import type { Boxed } from '../lib/fit';
  * 오른쪽 아래 빗금은 칠하지 않고 **오려 낸다**(mask) — 뒤에 있는 것이 그대로
  * 비쳐 벽에서도 폰에서도 '틈'이 된다. 시스템이 새 색을 만들지 않는다.
  *
- * ── 별 (당당한, 2026-09-27) ───────────────────────────────────────────
- * 다각형 하나(cloud.ts · starFor), 곧은 변 그대로. 오른쪽 아래 끝의 연장선은 칠과
- * 같은 색이고, 켜졌다 꺼졌다 한다 — 선마다 주기가 달라 박자가 안 맞는다(app.css
- * .cloud-ray, 주기는 토큰의 합). 숨을 멈추면(still) 켜진 채 선다.
+ * ── 나무 (당당한, 2026-09-28) ─────────────────────────────────────────
+ * 층(사다리꼴 또는 양 끝이 둥근 층) · 작은 머리 · 기둥(cloud.ts · treeFor). 번지지도 숨 쉬지도
+ * 않는다. 기둥의 세로 줄무늬는 칠하지 않고 **오려 낸다**(mask) — 돌의 빗금과 같은 방법이라 새 색이
+ * 없다. 기둥을 먼저 그리고 머리를 위에 얹어, 머리 밑에 물린 기둥 끝이 안 보인다. 행간은 1.1이라
+ * 글 상자에 --cloud-lh로 내려 준다(app.css). 정렬 고르기가 아직이라 글은 가운데로 세운다.
  */
 const K = 100;
 /** 픽셀 구름을 다시 찍는 간격. 12fps면 계단이 옮겨 가는 것이 보이되 파이에 짐이 안 된다 */
@@ -134,7 +135,7 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   }, [cloud, quiet]);
 
   const art = useMemo(() => {
-    if (pr.edge === 'pixel' || cloud.stone || cloud.star) return null;
+    if (pr.edge === 'pixel' || cloud.stone || cloud.tree) return null;
     return (
       <>
         {cloud.circles.map((c, i) => (
@@ -169,15 +170,14 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   const t = cloud.text;
   const stone = cloud.stone, hatch = pr.stone?.hatch;
   const stoneD = useMemo(() => (stone ? stonePath(stone.pts, pr.stone?.round ?? 0) : ''), [stone, pr.stone?.round]);
-  const star = cloud.star, rayW = (pr.star?.rays.width ?? 0.07) * K;
-  const starPts = useMemo(() => (star ? star.pts.map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join(' ') : ''), [star]);
-  // 별마다 깜빡임의 시작을 어긋낸다 — 안 그러면 벽의 별들이 한 박자로 깜빡인다.
-  // 어긋남은 별의 모양(=글)에서 나온다: 같은 글이면 같은 박자
-  const rayShift = star ? `${Math.round(((star.pts[0][0] * 7919 + star.pts[0][1] * 104729) % 1) * 1000)}ms` : '0ms';
+  const tree = cloud.tree;
+  const pt = (p: readonly [number, number]) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`;
+  // 정렬 고르기가 들기 전까지 나무의 글은 가운데 — 머리가 가운데 맞춘 줄을 품게 지어졌다
+  const kids = tree && isValidElement(children) ? cloneElement(children as ReactElement<{ align?: string }>, { align: 'center' }) : children;
   return (
     <div
-      className={'cloud-bubble' + (className ? ' ' + className : '')}
-      style={{ width: `calc(${side} * ${box.w.toFixed(4)})`, height: `calc(${side} * ${box.h.toFixed(4)})`, ...style }}
+      className={'cloud-bubble' + (tree ? ' is-tree' : '') + (className ? ' ' + className : '')}
+      style={{ width: `calc(${side} * ${box.w.toFixed(4)})`, height: `calc(${side} * ${box.h.toFixed(4)})`, ...(pr.lh ? { '--cloud-lh': pr.lh } : {}), ...style } as CSSProperties}
     >
       <svg className="cloud-art" viewBox={`0 0 ${W.toFixed(1)} ${H.toFixed(1)}`} aria-hidden="true" focusable="false">
         {stone && !(hatch?.on && stone.hatch.length) ? (
@@ -201,13 +201,26 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
             </defs>
             <path d={stoneD} fill={color} mask={`url(#${filterId}m)`} />
           </>
-        ) : star ? (
+        ) : tree ? (
           <>
-            <polygon points={starPts} fill={color} />
-            <g className={'cloud-rays' + (quiet ? ' is-still' : '')} stroke={color} strokeWidth={rayW.toFixed(1)} style={{ '--ray-shift': rayShift } as CSSProperties}>
-              {star.rays.map(([p, q], i) => (
-                <line key={i} className={`cloud-ray r${i}`} x1={(p[0] * K).toFixed(1)} y1={(p[1] * K).toFixed(1)} x2={(q[0] * K).toFixed(1)} y2={(q[1] * K).toFixed(1)} />
-              ))}
+            <defs>
+              {/* 기둥의 세로 줄무늬 — 짝수 번째 줄을 검정으로 = 오린다. 벽 바탕이 그대로 비친다 */}
+              <mask id={filterId + 't'} maskUnits="userSpaceOnUse" x="0" y="0" width={W.toFixed(1)} height={H.toFixed(1)}>
+                <rect width={W.toFixed(1)} height={H.toFixed(1)} fill="white" />
+                {Array.from({ length: Math.floor(tree.trunk.stripes / 2) }, (_, i) => {
+                  const sw = tree.trunk.w / tree.trunk.stripes;
+                  return <rect key={i} x={((tree.trunk.x + (2 * i + 1) * sw) * K).toFixed(1)} y={(tree.trunk.y * K).toFixed(1)} width={(sw * K).toFixed(1)} height={(tree.trunk.h * K).toFixed(1)} fill="black" />;
+                })}
+              </mask>
+            </defs>
+            <g fill={color}>
+              <rect x={(tree.trunk.x * K).toFixed(1)} y={(tree.trunk.y * K).toFixed(1)} width={(tree.trunk.w * K).toFixed(1)} height={(tree.trunk.h * K).toFixed(1)} mask={`url(#${filterId}t)`} />
+              {tree.tiers.map((q, i) => q.kind === 'trap'
+                ? <polygon key={i} points={q.pts.map(pt).join(' ')} />
+                : <rect key={i} x={(q.x * K).toFixed(1)} y={(q.y * K).toFixed(1)} width={(q.w * K).toFixed(1)} height={(q.h * K).toFixed(1)} rx={(q.r * K).toFixed(1)} />)}
+              {tree.cap.kind === 'spire'
+                ? <polygon points={tree.cap.pts.map(pt).join(' ')} />
+                : <ellipse cx={(tree.cap.cx * K).toFixed(1)} cy={(tree.cap.cy * K).toFixed(1)} rx={(tree.cap.rx * K).toFixed(1)} ry={(tree.cap.ry * K).toFixed(1)} />}
             </g>
           </>
         ) : (
@@ -231,7 +244,7 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
       <div className="cloud-text" style={{
         left: `${((t.x / cloud.w) * 100).toFixed(3)}%`, top: `${((t.y / cloud.h) * 100).toFixed(3)}%`,
         width: `${((t.w / cloud.w) * 100).toFixed(3)}%`, height: `${((t.h / cloud.h) * 100).toFixed(3)}%`
-      }}>{children}</div>
+      }}>{kids}</div>
     </div>
   );
 }

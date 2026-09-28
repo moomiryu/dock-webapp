@@ -47,7 +47,7 @@ export const LAMBDA = 8;
 /** 조각이 옮겨 다니는 거리 (u). 조각만 자리를 옮긴다 */
 export const DRIFT = 0.6;
 
-export type Edge = 'spike' | 'smooth' | 'cumulus' | 'pixel' | 'stone' | 'star';
+export type Edge = 'spike' | 'smooth' | 'cumulus' | 'pixel' | 'stone' | 'tree';
 
 export interface Persona {
   key: string;
@@ -85,21 +85,23 @@ export interface Persona {
         on이 false면 빗금을 만들지도 그리지도 않는다 — 값은 그대로 두어 on만 되돌리면 산다 */
     hatch: { on: boolean; from: number; to: number; depth: number; gap: number; width: number };
   };
-  /** 당당한 — 끝이 적고 골이 깊은 별(starFor). 끝 수 · 길이는 크기에 비례한다 */
-  star?: {
-    /** 기준 크기 — 두 줄 견본의 √(반폭 · 반높이), u. 여기서 끝 corners개 · 길이 len */
-    base: number;
-    corners: number;
-    /** 끝 수의 범위 · 끝 길이 배율의 범위 */
-    cornerRange: readonly [number, number];
-    len: number;
-    lenScale: readonly [number, number];
-    /** 끝 방향 흔들림(한 칸에 대한 ±비율) · 끝 길이 흔들림(±비율) */
-    jit: number;
-    lenJit: number;
-    /** 끝의 연장선 — 향하는 방향(도) · 쓰는 끝의 방향 범위 · 수 · 끝에서 떨어진 거리 · 가운데 선 길이 ·
-        나머지 선 길이 비 · 굵기 (u) */
-    rays: { toward: number; from: number; to: number; count: number; gap: number; len: number; side: number; width: number };
+  /** 줄 높이(글자 크기의 배수). 없으면 LINE_HEIGHT(1.5). 글에 바짝 붙는 형상(나무)이 좁힌다 */
+  lh?: number;
+  /** 당당한 — 나무(treeFor). 머리(층)에 글이 들고 기둥은 막대. 값의 근거는 design/landscape.md '나무' */
+  tree?: {
+    /** 줄과 층 사이 여백 (u) */
+    margin: number;
+    /** 예리한 층의 옆 기울기(높이 ÷ 반폭) · 층이 윗 층 밑으로 물리는 깊이 (u) */
+    slope: number;
+    tuck: number;
+    /** 예리한의 뾰족 머리 — 밑 반폭 상한 · 높이 상한 (u) */
+    spire: { half: number; height: number };
+    /** 온화한의 작은 타원 머리 — 가로 반지름 상한 · 세로 반지름 · 맨 윗층 위로 뜬 거리 (u) */
+    cap: { rx: number; ry: number; lift: number };
+    /** 달걀 윤곽 — 아래가 넓어지는 정도 · 줄이 들어갈 가운데 몫 */
+    egg: { lean: number; span: number };
+    /** 기둥 — 굵기 · 머리 밑으로 보이는 길이 (u) · 세로 줄 수(홀수, 짝수 번째를 오린다) */
+    trunk: { width: number; length: number; stripes: number };
   };
 }
 
@@ -108,15 +110,13 @@ export interface Persona {
  * 값은 design/cloud-personality.png 격자에서 골랐다 — 고친 이유는 cloud-rules.md.
  */
 export const PERSONAS: Record<string, Persona> = {
-  // 뾰족 구름. 덩이 크고 대비 세게, 윤곽 위 둘레에만 갈래. 깊이 0.9·간격 1.2로
-  // 33개였을 땐 해님이었다 — 줄이고 키웠다.
-  // 별 (2026-09-27). 뾰족 구름이었다 — 성격의 짝이 바뀌며 당당한이 별이 됐다. 원을 안 써서
-  // lobe · fill · gap · spread는 쓰이지 않는다. 끝을 레퍼런스처럼 길게 뽑으면 별이 커져 벽의
-  // 글이 71~81%로 작아졌다 — 끝은 짧게, 수와 길이를 크기에 비례시켜 한 줄부터 다섯 줄까지
-  // 글이 방사 별의 88~93%로 고르다. 고른 과정은 design/landscape.md '별'.
-  ttoryeot: { key: 'ttoryeot', edge: 'star', lobe: [1.25, 1.85], fill: [0.6, 0.8], gap: 1.9, spread: [0.2, 0.9], sat: 0, blur: 0,
-    star: { base: 2.91, corners: 7, cornerRange: [5, 10], len: 3.0, lenScale: [0.55, 1.6], jit: 0.08, lenJit: 0.12,
-      rays: { toward: 45, from: -30, to: 120, count: 3, gap: 0.5, len: 2.1, side: 0.4, width: 0.07 } } },
+  // 나무 (2026-09-28). 뾰족 구름 → 별(09-27) → 박스를 거쳐 나무가 됐다 — 머리(층)에 글이 들고, 기둥은 막대.
+  // 원을 안 써서 lobe · fill · gap · spread는 쓰이지 않는다. 3/5 말투가 머리를 고른다: 예리한 = 사다리꼴 층의 반복,
+  // 온화한 = 양 끝이 둥근 층. 기본 정렬(가운데)의 실루엣은 달걀. 행간 1.1은 박스에서 고른 값 그대로.
+  // 고른 과정과 버린 것은 design/landscape.md '나무'.
+  ttoryeot: { key: 'ttoryeot', edge: 'tree', lobe: [1.25, 1.85], fill: [0.6, 0.8], gap: 1.9, spread: [0.2, 0.9], sat: 0, blur: 0, lh: 1.1,
+    tree: { margin: 0.3, slope: 2.45, tuck: 0.3, spire: { half: 1.1, height: 2.4 }, cap: { rx: 1.6, ry: 0.75, lift: 0.3 },
+      egg: { lean: 0.18, span: 0.8 }, trunk: { width: 0.9, length: 2.2, stripes: 5 } } },
   // 날 선 돌 (2026-09-27). 매끈한 덩이였다 — 성격의 짝이 돌·별·꽃·나비로 바뀌면서
   // 차분한이 먼저 돌이 됐다. 원을 안 써서 아래 lobe·fill·gap·spread는 쓰이지 않는다.
   // 값은 격자에서 골랐다 — 뭉툭 · 굴린 각 · 깎은 돌 중 날 선 각, 긴 글이 네모로 끌리던
@@ -153,16 +153,20 @@ export function personaFor(font?: string): Persona {
    표와 달랐다 — 둥켈 1 → 0.839(폭 축 700, 기본), 본명조 1 → 0.989, 핸드젯
    0.722 → 0.790(굵기·말투와 상관없이 같다). 먼저 잰 값은 서체가 덜 받아진
    채 대신 선 서체를 쟀던 것으로 보인다. 둥켈은 폭 축을 따라 넓어진다
-   (1000에서 0.984) — advanceFor가 그 사이를 잇는다. */
+   (1000에서 0.984) — advanceFor가 그 사이를 잇는다.
+   2026-09-28에 둥켈을 또 쟀다: 한글은 **고정폭**이고 폭 축 700 = 0.678, 850 = 0.823, 1000 = 0.967
+   (곧은 선 위 — advanceFor의 보간이 맞다). 09-25의 0.839는 어도비 킷이 글자를 덜 받아 와 일부가
+   대체 서체(Pretendard 0.864)로 그려진 채 잰 값이다 — 킷은 화면에 오른 글자만 받아 오므로, 잴 때는
+   그 글자를 먼저 화면에 올리고 기다려야 한다. 나무의 머리는 글에 바짝 붙어 이 표가 곧 여백이다. */
 const ADVANCE: Record<string, { hangul: number; space: number }> = {
-  ttoryeot: { hangul: 0.839, space: 0.116 },
+  ttoryeot: { hangul: 0.678, space: 0.116 },
   chabun: { hangul: 0.989, space: 0.31 },
   doran: { hangul: 1, space: 0.35 },
   deulseok: { hangul: 0.79, space: 0.177 },
   botong: { hangul: 0.864, space: 0.251 }
 };
 /** 둥켈산스 폭 축 1000에서의 글자폭 */
-const TTORYEOT_WIDE = { hangul: 0.984, space: 0.174 };
+const TTORYEOT_WIDE = { hangul: 0.967, space: 0.174 };
 function advanceFor(key: string, wdth?: number) {
   const a = ADVANCE[key] ?? ADVANCE.botong;
   if (key !== 'ttoryeot' || !wdth) return a;
@@ -190,12 +194,17 @@ export interface Stone {
   /** 오른쪽 아래 안쪽 빗금의 띠들 */
   hatch: Quad[];
 }
-/** 당당한의 별. 원점 = 구름 상자 왼쪽 위, u 단위 */
-export interface Star {
-  /** 끝 · 골이 번갈아 — 곧은 변으로 잇는다. 굴리지 않는다 */
-  pts: Pt[];
-  /** 끝의 연장선 — 시작 · 끝 두 점씩. 그리는 쪽이 켜졌다 꺼졌다 하게 한다 */
-  rays: [Pt, Pt][];
+/** 당당한의 나무. 원점 = 구름 상자 왼쪽 위, u 단위 */
+export type TreeTier =
+  | { kind: 'trap'; pts: Pt[] }                                                  // 예리한 — 사다리꼴 네 점
+  | { kind: 'round'; x: number; y: number; w: number; h: number; r: number };   // 온화한 — 양 끝이 둥근 층
+export interface Tree {
+  sharp: boolean;
+  tiers: TreeTier[];
+  /** 머리 — 예리한: 작은 뾰족 세모, 온화한: 작은 타원 */
+  cap: { kind: 'spire'; pts: Pt[] } | { kind: 'oval'; cx: number; cy: number; rx: number; ry: number };
+  /** 기둥. 머리 밑에 0.4u 물린다. 세로 줄 stripes개 가운데 짝수 번째(두 번째 · 네 번째 …)를 오린다 */
+  trunk: { x: number; y: number; w: number; h: number; stripes: number };
 }
 
 export interface Cloud {
@@ -207,8 +216,8 @@ export interface Cloud {
   spikes: Spike[];
   /** 차분한의 돌. 있으면 circles · spikes는 비어 있다 */
   stone?: Stone;
-  /** 당당한의 별. 있으면 circles · spikes는 비어 있다 */
-  star?: Star;
+  /** 당당한의 나무. 있으면 circles · spikes는 비어 있다 */
+  tree?: Tree;
   /** 구름 상자 (u) */
   w: number; h: number;
   /** 글 덩어리가 앉는 자리 (상자 안, u) */
@@ -260,6 +269,8 @@ interface Options {
   wdth?: number;
   /** 자간 (em) */
   track?: number;
+  /** 3/5 말투 — 나무가 머리를 고른다(1 = 예리한 · 0 = 온화한, palettes.ts의 MANNER와 같은 차례) */
+  manner?: number;
 }
 
 /**
@@ -269,7 +280,7 @@ interface Options {
 export function cloudForTone(lines: readonly string[], tone: Parameters<typeof formFor>[0] | null | undefined, o: Pick<Options, 'seed' | 'minDiameter'> = {}): Cloud {
   if (!tone) return cloudFor(lines, undefined, o);
   const f = formFor(tone);
-  return cloudFor(lines, tone.font, { ...o, scaleX: f.scaleX, scaleY: f.scaleY, slant: f.slant, wdth: f.wdth, track: parseFloat(f.letterSpacing) || 0 });
+  return cloudFor(lines, tone.font, { ...o, scaleX: f.scaleX, scaleY: f.scaleY, slant: f.slant, wdth: f.wdth, track: parseFloat(f.letterSpacing) || 0, manner: tone.manner });
 }
 
 /**
@@ -287,7 +298,7 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
   const optic = opticalFix[font ?? '']?.scale ?? 1;
   const scaleX = o.scaleX ?? 1, slant = o.slant ?? 0;
   /* 세로 비율은 글 덩어리를 가운데에서 누른다 — 보이는 줄 높이가 그만큼 준다 */
-  const LH = LINE_HEIGHT * optic * (o.scaleY ?? 1);        // 줄 높이 (u)
+  const LH = (pr.lh ?? LINE_HEIGHT) * optic * (o.scaleY ?? 1);   // 줄 높이 (u)
   const H = LH / 2 + PAD;                                  // 줄 위아래로 반드시 덮을 반높이
   const R = rng(hash((o.seed ?? lines.join('\n')) + '|' + pr.key));
   const pick = (range: readonly [number, number]) => range[0] + (range[1] - range[0]) * R();
@@ -298,7 +309,7 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
   const boxes = widths.map((w, i) => ({ x0: (TW - w) / 2, x1: (TW + w) / 2, yc: (i + 0.5) * LH }));
   const rule: 'B' | 'C' = boxes.length <= 2 ? 'B' : 'C';
   if (pr.edge === 'stone' && pr.stone) return stoneFor(pr, rule, TW, TH, R);
-  if (pr.edge === 'star' && pr.star) return starFor(pr, rule, TW, TH, R);
+  if (pr.edge === 'tree' && pr.tree) return treeFor(pr, rule, widths, TW, LH, !!o.manner);
 
   const circles: Circle[] = [];
   const put = (x: number, y: number, r: number, kind: Circle['kind']) =>
@@ -534,75 +545,76 @@ function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () =>
   };
 }
 
-// ─── 당당한 — 별 (2026-09-27) ────────────────────────────────────────
-// 고른 과정과 잰 결과는 design/landscape.md '별'. 값은 PERSONAS.ttoryeot.star.
+// ─── 당당한 — 나무 (2026-09-28) ──────────────────────────────────────
+// 고른 과정과 잰 결과는 design/landscape.md '나무'. 값은 PERSONAS.ttoryeot.tree.
 
 /**
- * 당당한의 별.
+ * 당당한의 나무 — 기본 정렬(가운데)의 실루엣은 달걀.
  *
- * 골은 글 + 여백을 품는 타원 위, 끝은 그 타원 위의 뿌리에서 바깥으로 len. 끝의 방향 ·
- * 길이만 조금 흔든다. 끝 수와 길이는 별의 크기(√반폭·반높이)를 따른다 — 고정해 두면 짧은
- * 한 마디에서 끝이 작은 별을 압도해 벽의 글이 68%로 작아졌다(두 줄 견본에서 끝 7개 · 3u,
- * 한 마디는 5개 · 짧게, 다섯 줄은 8~9개 · 길게).
+ * 글 한 줄이 머리의 한 층이다. 층 폭은 줄을 그대로 따르지 않고 줄을 다 품는 **달걀 윤곽**을 따른다 —
+ * 반폭 = A · √(1 − t²) · (1 + lean · t), t = (줄 가운데 − 중심) / B. 줄들이 |t| ≤ span 안에 들게 B를,
+ * 모든 줄(+ 여백)을 품게 A를 잡는다. 아래가 조금 넓다.
  *
- * 흔들림은 키우기 전에 한 번만 뽑는다 — 글 + 여백을 품을 때까지 키우는 동안 모양이
- * 바뀌면 안 된다.
+ * 예리한(말투 1)은 층이 사다리꼴 — 줄 윗모서리 높이에서 반폭이 윤곽이고, 아래로 기울기 slope만큼
+ * 넓어진다. 층 윗변은 tuck만큼 윗 층 밑으로 물려, 윗 층의 아랫변이 튀어나온 소나무 계단이 된다.
+ * 맨 위에 작은 뾰족 머리. 온화한(말투 0)은 양 끝이 둥근 층, 맨 위에 작은 타원.
  *
- * 끝의 연장선: toward(오른쪽 아래)를 향한 끝 가운데 가까운 count개를, 끝에서 gap 떨어진
- * 곳부터 같은 방향으로. 가운데(toward에 가장 가까운) 선이 len, 나머지는 그 side배, 모두
- * 크기에 비례. **자리를 지킨다** — from~to 밖의 끝은 쓰지 않는다. 작은 별은 두 줄이 되기도
- * 한다(수를 지키면 한 줄이 반대쪽 끝까지 끌려갔다, 200개 중 14%).
+ * 기둥은 머리 밑에서 trunk.length. 벽에서는 나무 키(벽 높이의 30~60%)를 기둥이 채운다 — 그 길이는
+ * 벽이 정한다. 글은 가운데 맞춤이다(정렬 고르기는 아직 — 4/5에서 고른 왼 · 오른도 가운데로 선다).
  */
-function starFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number): Cloud {
-  const s = pr.star!, r = s.rays;
-  const cx = TW / 2, cy = TH / 2, a = TW / 2 + PAD, b = TH / 2 + PAD;
-  const clamp = (v: number, [lo, hi]: readonly [number, number]) => Math.max(lo, Math.min(hi, v));
-  const ratio = Math.sqrt(a * b) / s.base;
-  const n = clamp(Math.round(s.corners * Math.sqrt(ratio)), s.cornerRange);
-  const len = s.len * clamp(ratio, s.lenScale);
+function treeFor(pr: Persona, rule: 'B' | 'C', widths: readonly number[], TW: number, LH: number, sharp: boolean): Cloud {
+  const t = pr.tree!, m = t.margin, n = widths.length, cx = TW / 2, TH = n * LH;
+  const hw = widths.map((w) => w / 2 + m);
+  const ys = widths.map((_, i) => (i + 0.5) * LH);
+  const yc = (ys[0] + ys[n - 1]) / 2 + 0.1 * TH;
+  const B = Math.max(0.9, (Math.max(...ys.map((y) => Math.abs(y - yc))) + 0.45) / t.egg.span);
+  const prof = ys.map((y) => { const q = (y - yc) / B; return Math.sqrt(Math.max(0.05, 1 - q * q)) * (1 + t.egg.lean * q); });
+  const A = Math.max(...hw.map((h, i) => h / prof[i]));
+  const half = prof.map((p) => A * p);
 
-  const off = -Math.PI / 2 + (R() - 0.5) * (Math.PI / n);
-  const jitTip = Array.from({ length: n }, () => (R() - 0.5) * 2 * s.jit);
-  const jitVal = Array.from({ length: n }, () => (R() - 0.5) * s.jit);
-  const jitLen = Array.from({ length: n }, () => Math.max(0.35, 1 + (R() - 0.5) * 2 * s.lenJit));
-  const make = (k: number): Pt[] => {
-    const P: Pt[] = [];
-    for (let i = 0; i < n; i++) {
-      const ta = off + ((i + jitTip[i]) / n) * Math.PI * 2, tv = off + ((i + 0.5 + jitVal[i]) / n) * Math.PI * 2;
-      const bx = cx + a * k * Math.cos(ta), by = cy + b * k * Math.sin(ta), l = Math.hypot(bx - cx, by - cy);
-      const L = len * jitLen[i];
-      P.push([bx + ((bx - cx) / l) * L, by + ((by - cy) / l) * L], [cx + a * k * Math.cos(tv), cy + b * k * Math.sin(tv)]);
-    }
-    return P;
-  };
-  const need = rimOf(-PAD, -PAD, TW + PAD, TH + PAD);
-  let k = 1, pts = make(k);
-  for (let g = 0; g < 90 && !need.every(([x, y]) => inPolygon(x, y, pts)); g++) pts = make((k *= 1.03));
+  const tiers: TreeTier[] = [];
+  let cap: Tree['cap'], bottom = 0;
+  if (sharp) {
+    let top0 = 0, hTop0 = 0;
+    half.forEach((h, i) => {
+      const yTop = i * LH - m, top = yTop - t.tuck, bot = (i + 1) * LH + m;
+      const hT = h - t.tuck / t.slope, hB = h + (bot - yTop) / t.slope;
+      tiers.push({ kind: 'trap', pts: [[cx - hT, top], [cx + hT, top], [cx + hB, bot], [cx - hB, bot]] });
+      if (i === 0) { top0 = top; hTop0 = hT; }
+      bottom = bot;
+    });
+    const hb = Math.min(hTop0, t.spire.half), hh = Math.min(hb * t.slope, t.spire.height);
+    cap = { kind: 'spire', pts: [[cx, top0 - hh], [cx + hb, top0 + 0.05], [cx - hb, top0 + 0.05]] };
+  } else {
+    let top0 = 0, half0 = 0;
+    half.forEach((h, i) => {
+      const top = i * LH - m - (i ? t.tuck : t.tuck / 2), bot = (i + 1) * LH + m, r = (bot - top) / 2, w = h + r * 0.35;
+      tiers.push({ kind: 'round', x: cx - w, y: top, w: 2 * w, h: bot - top, r });
+      if (i === 0) { top0 = top; half0 = w; }
+      bottom = bot;
+    });
+    cap = { kind: 'oval', cx, cy: top0 - t.cap.lift, rx: Math.min(t.cap.rx, half0 * 0.55), ry: t.cap.ry };
+  }
+  const trunk = { x: cx - t.trunk.width / 2, y: bottom - 0.4, w: t.trunk.width, h: t.trunk.length + 0.4, stripes: t.trunk.stripes };
 
-  // 끝의 연장선 — 오른쪽 아래를 향한 끝만, 가까운 순으로 count개
-  const deg = (p: Pt) => (Math.atan2(p[1] - cy, p[0] - cx) * 180) / Math.PI;
-  const off45 = (p: Pt) => Math.abs(((deg(p) - r.toward + 540) % 360) - 180);
-  const tips = pts.filter((_, i) => i % 2 === 0);
-  let pick = tips.filter((p) => deg(p) >= r.from && deg(p) <= r.to).sort((p, q) => off45(p) - off45(q)).slice(0, r.count);
-  if (!pick.length) pick = [...tips].sort((p, q) => off45(p) - off45(q)).slice(0, 1);   // 운에 맡기지 않는다
-  const lead = pick[0];
-  const scale = clamp(ratio, s.lenScale);
-  const rays: [Pt, Pt][] = pick.sort((p, q) => deg(p) - deg(q)).map((p) => {
-    const l = Math.hypot(p[0] - cx, p[1] - cy), ux = (p[0] - cx) / l, uy = (p[1] - cy) / l;
-    const L = r.len * scale * (p === lead ? 1 : r.side);
-    const s0: Pt = [p[0] + ux * r.gap, p[1] + uy * r.gap];
-    return [s0, [s0[0] + ux * L, s0[1] + uy * L]];
-  });
-
-  // 상자 — 끝과 연장선까지 다 들게
-  const e = 0.05 + r.width;
-  const all = [...pts, ...rays.flat()], xs = all.map((p) => p[0]), ys = all.map((p) => p[1]);
-  const minX = Math.min(...xs) - e, minY = Math.min(...ys) - e;
+  // 상자 — 머리 · 기둥이 다 들게
+  const pts: Pt[] = [
+    ...tiers.flatMap((q): Pt[] => (q.kind === 'trap' ? q.pts : [[q.x, q.y], [q.x + q.w, q.y + q.h]])),
+    ...(cap.kind === 'spire' ? cap.pts : [[cap.cx - cap.rx, cap.cy - cap.ry] as Pt, [cap.cx + cap.rx, cap.cy + cap.ry] as Pt]),
+    [trunk.x, trunk.y], [trunk.x + trunk.w, trunk.y + trunk.h]
+  ];
+  const e = 0.05, xs = pts.map((p) => p[0]), yAll = pts.map((p) => p[1]);
+  const minX = Math.min(...xs) - e, minY = Math.min(...yAll) - e;
   const mv = ([x, y]: Pt): Pt => [x - minX, y - minY];
   return {
     persona: pr, rule, circles: [], spikes: [],
-    star: { pts: pts.map(mv), rays: rays.map(([p, q]): [Pt, Pt] => [mv(p), mv(q)]) },
-    w: Math.max(...xs) + e - minX, h: Math.max(...ys) + e - minY,
+    tree: {
+      sharp,
+      tiers: tiers.map((q): TreeTier => (q.kind === 'trap' ? { kind: 'trap', pts: q.pts.map(mv) } : { ...q, x: q.x - minX, y: q.y - minY })),
+      cap: cap.kind === 'spire' ? { kind: 'spire', pts: cap.pts.map(mv) } : { ...cap, cx: cap.cx - minX, cy: cap.cy - minY },
+      trunk: { ...trunk, x: trunk.x - minX, y: trunk.y - minY }
+    },
+    w: Math.max(...xs) + e - minX, h: Math.max(...yAll) + e - minY,
     text: { x: -minX, y: -minY, w: TW, h: TH }
   };
 }

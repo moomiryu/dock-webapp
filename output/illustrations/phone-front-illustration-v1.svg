@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 390" role="img" aria-labelledby="title desc">
+  <title id="title">정면 스마트폰 삽화</title>
+  <desc id="desc">메가폰트의 단색 도형과 색을 사용한 정면 스마트폰 아이콘</desc>
+  <ellipse cx="195" cy="322" rx="83" ry="9" fill="#5a5580" opacity=".2"/>
+  <g id="phone">
+    <rect x="124" y="112" width="5" height="19" rx="2" fill="#272c32"/>
+    <rect x="124" y="140" width="5" height="19" rx="2" fill="#272c32"/>
+    <rect x="261" y="125" width="5" height="32" rx="2" fill="#272c32"/>
+    <rect x="127" y="60" width="136" height="258" rx="9" fill="#272c32"/>
+    <rect x="138" y="84" width="114" height="208" rx="3" fill="#cf5b4c"/>
+    <rect x="177" y="70" width="36" height="4" rx="2" fill="#fff"/>
+    <g id="message" fill="#fff">
+      <rect x="155" y="163" width="58" height="7" rx="1"/>
+      <rect x="155" y="181" width="80" height="7" rx="1"/>
+      <rect x="155" y="199" width="43" height="7" rx="1"/>
+    </g>
+    <rect x="177" y="303" width="36" height="4" rx="2" fill="#fff"/>
+  </g>
+</svg>

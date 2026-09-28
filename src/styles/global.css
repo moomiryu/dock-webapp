@@ -216,6 +216,11 @@ body.themed {
    벽 · 관리에는 data-edge가 없다 */
 html[data-edge]{ background: linear-gradient(to bottom, var(--edge-top) 50%, var(--edge-bottom) 50%) var(--edge-top); }
 html[data-edge] body{ background: transparent; }
+/* 바탕이 그라데이션이거나 덮개(::after)로 칠해진 화면은 제 끝의 칠을 여기 적는다
+   (홈 · 소개, app.css). 색을 읽는 쪽은 단색 바탕만 볼 수 있어서다. 물려받지 않게
+   등록한다 — 안에 든 흰 카드가 바깥 틀의 칠을 제 것으로 내밀지 않도록 */
+@property --edge-top-paint{ syntax: '<color>'; inherits: false; initial-value: transparent; }
+@property --edge-bottom-paint{ syntax: '<color>'; inherits: false; initial-value: transparent; }
 
 #root {
   width: 100%;

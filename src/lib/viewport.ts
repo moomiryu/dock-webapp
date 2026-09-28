@@ -65,68 +65,139 @@ export function trackViewport(): () => void {
 // 그대로 옮길 뿐이다. 위 끝 색은 문서 바탕 위쪽과 theme-color에, 아래 끝
 // 색은 문서 바탕 아래쪽에 간다(global.css의 html[data-edge]).
 
-/** 문서의 원래 바탕(tokens.css의 --paper)을 [r, g, b]로 */
-function paperRGB(): [number, number, number] {
-  const hex = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim().replace('#', '');
-  const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
-  const n = parseInt(full, 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+/* 어떤 색 표기든(#hex · 토큰 · color-mix) 브라우저에게 풀게 해 [r, g, b, a]로 받는다 */
+let probe: HTMLElement | null = null;
+const rgbaCache = new Map<string, number[] | null>();
+function rgba(css: string): number[] | null {
+  css = css.trim();
+  if (!css) return null;
+  const hit = rgbaCache.get(css);
+  if (hit !== undefined) return hit;
+  let out: number[] | null = null;
+  const m0 = css.match(/^rgba?\(([^)]+)\)$/);
+  const m = m0 ? m0[1].match(/[\d.]+%?/g) : null;
+  if (!m) {
+    if (!probe) { probe = document.createElement('i'); probe.style.display = 'none'; document.documentElement.appendChild(probe); }
+    probe.style.color = '';
+    probe.style.color = css;
+    const back = probe.style.color ? getComputedStyle(probe).color : '';
+    const n = back.match(/rgba?\(([^)]+)\)/)?.[1].match(/[\d.]+%?/g);
+    if (n) out = n.map((v, i) => (i === 3 && v.endsWith('%') ? parseFloat(v) / 100 : parseFloat(v)));
+  } else {
+    out = m.map((v, i) => (i === 3 && v.endsWith('%') ? parseFloat(v) / 100 : parseFloat(v)));
+  }
+  if (out && out.length === 3) out.push(1);
+  rgbaCache.set(css, out);
+  return out;
 }
 
-/** 한 점에 쌓인 층들의 바탕을 위에서부터 겹쳐 본 색. 문서(html · body)는 뺀다 — 여기서 칠하는 곳이다 */
-function colorAt(x: number, y: number): string {
+/**
+ * 한 점에 쌓인 층들의 칠을 위에서부터 겹쳐 본 색. 문서(html · body)는 뺀다 — 여기서 칠하는 곳이다.
+ *
+ * 단색 바탕(background-color)만으로는 모자랐다 — 홈은 회색 그라데이션, 소개는
+ * 바닥에서 올라오는 더운 기운(::after)이라 둘 다 '투명'으로 읽혀 하양이 칠해졌다
+ * (사용자, 2026-09-28). 그라데이션 · 덮개를 쓰는 화면은 CSS에 제 끝의 칠을 적어
+ * 둔다: --edge-top-paint · --edge-bottom-paint(global.css의 @property — 물려받지
+ * 않는다). 그 칠은 제 바탕색 **위에** 놓인 것으로 겹친다.
+ */
+function colorAt(x: number, y: number, edge: 'top' | 'bottom'): string {
   let r = 0, g = 0, b = 0, a = 0;
+  const layer = (c: number[] | null) => {
+    if (!c || c[3] <= 0 || a >= 0.99) return;
+    const w = (1 - a) * c[3];
+    r += w * c[0]; g += w * c[1]; b += w * c[2]; a += w;
+  };
   for (const el of document.elementsFromPoint(x, y)) {
     if (el === document.documentElement || el === document.body) continue;
-    const m = getComputedStyle(el).backgroundColor.match(/[\d.]+/g);
-    if (!m) continue;
-    const al = m.length > 3 ? parseFloat(m[3]) : 1;
-    if (al <= 0) continue;
-    const w = (1 - a) * al;
-    r += w * +m[0]; g += w * +m[1]; b += w * +m[2]; a += w;
+    const cs = getComputedStyle(el);
+    layer(rgba(cs.getPropertyValue(`--edge-${edge}-paint`)));
+    layer(rgba(cs.backgroundColor));
     if (a >= 0.99) break;
   }
-  // 끝까지 투명한 자리가 남으면 원래 문서 바탕 위에 놓인 것으로 본다
-  const rest = Math.max(0, 1 - a), [pr, pg, pb] = paperRGB();
+  // 끝까지 투명한 자리가 남으면 원래 문서 바탕(--paper) 위에 놓인 것으로 본다
+  const rest = Math.max(0, 1 - a);
+  const [pr, pg, pb] = rgba(getComputedStyle(document.documentElement).getPropertyValue('--paper')) ?? [255, 255, 255];
   return `rgb(${Math.round(r + rest * pr)}, ${Math.round(g + rest * pg)}, ${Math.round(b + rest * pb)})`;
 }
 
 export function trackEdgeTint(): () => void {
   const root = document.documentElement;
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-  let timer = 0, last = '';
+  let timer = 0, raf = 0, last = '';
+  const watched = new WeakSet<Animation>();
   const read = () => {
-    timer = 0;
-    const x = window.innerWidth / 2;
-    const top = colorAt(x, 1), bottom = colorAt(x, window.innerHeight - 1);
+    clearTimeout(timer); timer = 0;
+    cancelAnimationFrame(raf); raf = 0;
+    /* **화면이 가는 곳의 색을 읽는다.** 3/5 조율판은 0.05초에 오르기 시작해 0.585초에
+       끝나는데 끝 0.2초는 거의 멈춘 꼬리이고, 그 사이 빨간 '다음' 버튼이 아래 끝을
+       지나간다(재 봄). 끝을 기다리면 늦고, 그때그때 따라가면 깜빡인다.
+       그래서 끝이 있는 움직임을 끝 1ms 앞으로 잠깐 옮겨 읽고 같은 자리에서 되돌린다 —
+       그 사이 화면은 그려지지 않는다. 끝나는 순간(finished)에 한 번 더 읽어 확인한다.
+       끝없이 도는 것(홈 캐릭터의 떠다님)은 건드리지 않는다.
+       끝 1ms 앞이지 끝이 아니다 — 끝으로 옮기면 그 움직임의 finished가 풀려 버린다 */
+    const finite = (document.getAnimations?.() ?? []).filter((a) =>
+      a.playState === 'running' && Number.isFinite(Number(a.effect?.getComputedTiming().endTime)));
+    for (const a of finite) if (!watched.has(a)) { watched.add(a); a.finished.then(now, () => {}); }
+    // 미리 읽는 것은 1초 안에 끝나는 움직임만 — 5/5 제목은 3초 뒤에 접힌다. 그것까지 당기면 3초 뒤를 칠한다
+    const moving = finite.filter((a) => Number(a.effect!.getComputedTiming().endTime) - Number(a.currentTime ?? 0) <= 1000);
+    const saved = moving.map((a) => a.currentTime);
+    let top: string, bottom: string;
+    try {
+      for (const a of moving) a.currentTime = Number(a.effect!.getComputedTiming().endTime) - 1;
+      const x = window.innerWidth / 2;
+      top = colorAt(x, 1, 'top');
+      bottom = colorAt(x, window.innerHeight - 1, 'bottom');
+    } finally {
+      moving.forEach((a, i) => { a.currentTime = saved[i]; });
+    }
     if (top + bottom === last) return;
     last = top + bottom;
     root.style.setProperty('--edge-top', top);
     root.style.setProperty('--edge-bottom', bottom);
     if (meta) meta.content = top;
   };
-  /* 화면이 바뀌는 신호는 많고 잦다(홈 캐릭터는 매 프레임 style을 바꾼다) —
-     120ms에 한 번만 읽는다. 바탕이 번지며 바뀌는 화면(03 · 04, 420ms)은
-     전환이 끝날 때 한 번 더 읽는다.
-     신호만으로는 모자랐다: 움직임 줄이기에서 3/5 조율판이 올라온 뒤에도
-     아래 끝이 빨강으로 남았다(재 봄 — 판이 서는 순간에 오는 신호가 없다).
-     그래서 0.5초마다 한 번 더 본다. 점 두 개를 읽는 일이라 폰에 짐이 안 된다. */
-  const soon = () => { if (!timer) timer = window.setTimeout(read, 120); };
-  const mo = new MutationObserver(soon);
+  /* 화면이 바뀌면 **바로 다음 프레임**에 읽는다 — 새 화면이 처음 그려지는 그
+     프레임에 테두리도 같이 바뀐다. 처음엔 신호마다 120ms를 기다렸는데, 폰에서
+     "다음 화면으로 넘길 때 버벅이고 바뀐다"고 했다(사용자, 2026-09-28). 재 보니
+     화면이 바뀐 뒤 테두리가 120~130ms 늦었다(3/5 조율판은 190ms).
+     style만 바뀌는 신호는 예외로 120ms에 한 번만 읽는다 — 홈 캐릭터가 매 프레임
+     style을 바꿔서, 그걸 다 따라가면 프레임마다 읽게 된다. 화면 전환은 요소가
+     갈리거나(childList) class가 바뀌는 쪽이라 이 예외에 걸리지 않는다.
+     신호만으로는 모자란 때가 있다: 움직임 줄이기에서 3/5 조율판이 올라온 뒤에도
+     아래 끝이 빨강으로 남았다(판이 서는 순간에 오는 신호가 없다). 그래서 0.5초마다
+     한 번 더 본다. 점 두 개를 읽는 일이라 폰에 짐이 안 된다. */
+  /* 홈은 떠다니는 말이 생기고 사라져 초당 30번쯤 읽는다. 한 번이 0.02ms(이 PC)라
+     폰이 열 배 느려도 1초에 6ms 안쪽이다 — 모아 읽기(0.1초)를 해 봤더니 그게
+     전환을 붙잡아 3/5 조율판이 0.13초 늦었다. 모으지 않는다 */
+  function now() { if (!raf) raf = requestAnimationFrame(read); }
+  const soon = () => { if (!timer && !raf) timer = window.setTimeout(read, 120); };
+  /* style만 바뀌는 움직임(3/5 조율판이 매 프레임 style로 미끄러져 오른다)은 끝났다는
+     신호가 없다 — 바뀜이 60ms 멎으면 다 선 것으로 보고 읽는다. 그러지 않으면 판이
+     선 뒤 0.18초 늦게 따라갔다. 쉬지 않고 도는 것(홈 캐릭터)은 멎지 않으니 여기
+     걸리지 않고, 위의 120ms 간격만 탄다 */
+  let settle = 0;
+  const mo = new MutationObserver((recs) => {
+    if (recs.some((r) => r.attributeName !== 'style')) { now(); return; }
+    soon();
+    clearTimeout(settle);
+    settle = window.setTimeout(now, 60);
+  });
   mo.observe(document.body, { subtree: true, childList: true, attributes: true });
-  document.addEventListener('transitionend', soon, true);
-  document.addEventListener('animationend', soon, true);
-  window.addEventListener('resize', soon);
+  document.addEventListener('transitionend', now, true);
+  document.addEventListener('animationend', now, true);
+  window.addEventListener('resize', now);
   const beat = window.setInterval(() => { if (!document.hidden) soon(); }, 500);
   root.dataset.edge = '';
-  soon();
+  now();
   return () => {
     clearTimeout(timer);
+    clearTimeout(settle);
+    cancelAnimationFrame(raf);
     clearInterval(beat);
     mo.disconnect();
-    document.removeEventListener('transitionend', soon, true);
-    document.removeEventListener('animationend', soon, true);
-    window.removeEventListener('resize', soon);
+    document.removeEventListener('transitionend', now, true);
+    document.removeEventListener('animationend', now, true);
+    window.removeEventListener('resize', now);
     delete root.dataset.edge;
   };
 }

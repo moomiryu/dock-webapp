@@ -257,6 +257,9 @@
   padding: 0;
   gap: 0;
   background: linear-gradient(to bottom, var(--grey-50) 0 50%, var(--grey-200) 60% 100%);
+  /* 폰의 상태줄 · 주소창이 이 그라데이션의 두 끝을 잇는다(viewport.ts trackEdgeTint) */
+  --edge-top-paint: var(--grey-50);
+  --edge-bottom-paint: var(--grey-200);
 }
 
 .home-layer{
@@ -1763,7 +1766,7 @@
    · 바닥의 더운 기운(::after) — 흰 종이를 받치려던 것이다
    · 삽화 윗변을 풀던 그라데이션과 마스크 — 검정에서 검정으로 스미는 것은
      아무것도 아니다(is-bleed 쪽에 남겨 두면 죽은 규칙이 된다) */
-.info-overlay.is-dark{ background: var(--night); }
+.info-overlay.is-dark{ background: var(--night); --edge-bottom-paint: transparent; }
 .info-overlay.is-dark::after{ display: none; }
 /* 어두운 화면의 위계: 제목은 흰색, 보조 설명과 단계 정보는 읽히는 회색.
    밝은 화면과 같은 차례이고 밝기만 뒤집힌다. */
@@ -2625,6 +2628,9 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 
    자리는 그대로다. 이 띠는 pointer-events가 없는 덮개라 흐름에서 자리를
    먹지 않았다 — 걷어내도 글과 버튼 사이 간격은 한 px도 안 움직인다. */
+/* 아래 주소창이 이 기운이 다 오른 색(흰 바탕 위 --brand-scrim)을 잇는다 — 색을 읽는
+   쪽은 덮개(::after)를 못 보므로 여기 적는다(viewport.ts trackEdgeTint). 어두운 장은 끈다 */
+.info-overlay{ --edge-bottom-paint: var(--brand-scrim); }
 .info-overlay::after{
   content: '';
   position: absolute;

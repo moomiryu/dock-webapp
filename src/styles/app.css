@@ -3645,6 +3645,10 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .cloud-trunk-ext{ position: absolute; height: var(--trunk-ext, 0px); }
 /* 한 글자씩 펄럭이려면 글자마다 제 상자가 있어야 한다(인라인 글자는 transform을 안 받는다) */
 .voice-bubble .ch{ display: inline-block; }
+/* 구름의 휜 배치(아치 · 부채꼴 · 미소) — 글 상자 안에 한 자씩 제 가운데 자리로(VoiceBubble glyphs).
+   글자 상자는 em 한 칸 높이라 가운데가 곧 글자의 가운데다 */
+.voice-bubble-text.is-arc{ position: relative; }
+.arc-glyph{ position: absolute; line-height: 1; white-space: pre; }
 
 /* ── 벽의 풍경 (2026-09-28, design/landscape.md '나무' · '구름') ─────────────
    말들은 한 겹(.wall-field)에 모아 격리한다 — 구름(다정한)은 겹친 자리를 곱하는데(리소 오버프린트),

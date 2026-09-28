@@ -162,9 +162,13 @@ function buildRestClient(): FirestoreLike {
    */
   function toneForWall(t: Draft['tone']) {
     if (!t) return t;
-    const { speed, weight, ...rest } = t;
+    const { speed, weight, align, ...rest } = t;
     void speed; void weight;
-    return rest;
+    /* 2026-09-28 — 나무 · 구름의 제 정렬(균등 배분 · 사다리꼴 · 아치 · 부채꼴 · 미소)도 같다. 규칙 파일은 받게
+       고쳤지만 배포 전이라 보내면 전송째 거부된다 — 벽으로는 규칙이 아는 가운데로 보낸다(4/5 · 5/5는 고른 대로
+       보인다). 규칙이 나가면 speed · weight와 함께 이 거름을 걷는다. */
+    const known = align === 'left' || align === 'center' || align === 'right';
+    return align === undefined ? rest : { ...rest, align: known ? align : 'center' };
   }
   return {
     async addMessage(d: Draft) {

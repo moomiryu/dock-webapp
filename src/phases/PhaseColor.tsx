@@ -3,13 +3,13 @@ import StepHeader from '../components/StepHeader';
 import SnapSwitch from '../components/SnapSwitch';
 import VoiceBubble from '../components/VoiceBubble';
 import CloudBubble from '../components/CloudBubble';
-import { cloudForTone, cloudShape } from '../lib/cloud';
+import { arrangementsFor, cloudForTone, cloudShape } from '../lib/cloud';
 import { bubbleAt, fillFromLegacySize, foldLines } from '../lib/fit';
 import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import { messageColors } from '../lib/messageStyle';
 import { pick, useLang } from '../lib/lang';
-import type { ToneState } from '../types';
+import type { Align, ToneState } from '../types';
 
 /* 이 화면의 말. 영어는 초안이다(2026-09-26, 영문판) */
 const T = {
@@ -32,16 +32,21 @@ const T = {
     /* 정렬 스위치 칸의 말 — 3/5 말투 스위치처럼 칸 안에 짧은 말로 */
     left: { ko: '왼쪽', en: 'Left' },
     center: { ko: '가운데', en: 'Centre' },
-    right: { ko: '오른쪽', en: 'Right' }
+    right: { ko: '오른쪽', en: 'Right' },
+    /* 성격마다 제 정렬(2026-09-28, design/landscape.md) — 나무(당당한) · 구름(다정한) */
+    distribute: { ko: '균등 배분', en: 'Justify' },
+    trapezoid: { ko: '사다리꼴', en: 'Trapezoid' },
+    arch: { ko: '아치', en: 'Arch' },
+    fan: { ko: '부채꼴', en: 'Fan' },
+    smile: { ko: '미소', en: 'Smile' }
 };
 
-/**
- * 정렬 잣대의 선택지(2026-09-28). 지금은 모든 성격이 고전적인 셋 — 왼쪽 · 가운데 ·
- * 오른쪽이다. 성격마다 정렬 방식이 따로 생기면(작업 중) 이 목록만 바꾼다.
- * 값은 이미 저장되고 벽까지 가는 tone.align 그대로다.
+/*
+ * 정렬 잣대의 선택지는 성격이 정한다(cloud.ts · arrangementsFor, 2026-09-28). 차분한 · 유머있는은
+ * 고전적인 셋(왼쪽 · 가운데 · 오른쪽), 당당한(나무)은 가운데 · 균등 배분 · 사다리꼴, 다정한(구름)은
+ * 가운데 · 아치 · 부채꼴 · 미소. 고르면 미리보기의 형상이 그 자리에서 바뀐다 — 정렬이 곧 실루엣이다.
+ * 값은 tone.align으로 저장되고 벽까지 간다.
  */
-const ALIGNS = ['left', 'center', 'right'] as const;
-type Align = typeof ALIGNS[number];
 interface Props {
     text: string;
     tone: ToneState;
@@ -125,14 +130,16 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
     const initial = messageColors(tone);
     const lang = useLang();
     const lines = foldLines(text);
-    // 벽과 같은 구름이어야 미리보기가 거짓말이 아니다 — 씨앗은 글 자체(cloud.ts)
-    const cloud = cloudForTone(lines, tone);
-    const box = bubbleAt(lines, cloudShape(cloud), fillFromLegacySize(tone.size));
     const [bg, setBg] = useState(initial.bg);
     const [fg, setFg] = useState(initial.text);
-    /* 정렬 — 조정판의 둘째 잣대(2026-09-28). 전에 고른 값이 있으면 그것, 없으면 가운데 */
-    const [align, setAlign] = useState<Align>((ALIGNS as readonly string[]).includes(tone.align ?? '') ? tone.align as Align : 'center');
+    /* 정렬 — 조정판의 둘째 잣대(2026-09-28). 전에 고른 값이 이 성격의 것이면 그것, 아니면 가운데
+       (다른 성격에서 고른 '아치'를 들고 돌에 오면 가운데로 선다) */
+    const ALIGNS = arrangementsFor(tone.font);
+    const [align, setAlign] = useState<Align>(tone.align && ALIGNS.includes(tone.align) ? tone.align : 'center');
     const current = { ...tone, align, backgroundColor: bg, textColor: fg };
+    // 벽과 같은 구름이어야 미리보기가 거짓말이 아니다 — 씨앗은 글 자체(cloud.ts). 정렬이 형상을 바꾸므로 고른 정렬로 짓는다
+    const cloud = cloudForTone(lines, current);
+    const box = bubbleAt(lines, cloudShape(cloud), fillFromLegacySize(tone.size));
     /* 두 장(2026-09-28, 3/5와 같은 흐름): 'intro' = 설명과 시연 · 'work' = 고르는 장.
        moved는 한 번이라도 넘긴 뒤인지 — 처음 들어올 때는 둘째 장이 움직이지 않고 숨어 있다 */
     const [step, setStep] = useState<'intro' | 'work'>('intro');
@@ -194,7 +201,7 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
   <div className="tslider">
    <span className="tslider-name" id="align-name">{pick(T.align, lang)}</span>
    {/* 3/5 말투 스위치와 같은 부품이다(2026-09-28, 사용자 — "3단계 UI를 적극 활용",
-       같은 앱이니 같은 분위기) — 칸만 셋 */}
+       같은 앱이니 같은 분위기) — 칸 수는 성격의 정렬 수(셋 또는 넷) */}
    <SnapSwitch labels={ALIGNS.map((a) => pick(T[a], lang))} at={ALIGNS.indexOf(align)}
      onPick={(i) => setAlign(ALIGNS[i])} labelledBy="align-name" />
   </div>

@@ -180,10 +180,19 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   const tree = cloud.tree, beads = cloud.beads;
   const pt = (p: readonly [number, number]) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`;
   const bead = (p: readonly [number, number], i: number) => <circle key={i} cx={(p[0] * K).toFixed(1)} cy={(p[1] * K).toFixed(1)} r={((beads?.r ?? 0) * K).toFixed(1)} />;
-  // 정렬 고르기가 들기 전까지 나무 · 구슬 구름의 글은 가운데 — 형상이 가운데 맞춘 줄을 품게 지어졌다
   // 기둥의 끝(상자 높이의 비율) — 벽에서 이어 붙인 기둥이 여기서 시작하고, 펴지며 등장할 때 축이 그 밑이다
   const trunkEnd = tree ? `${(((tree.trunk.y + tree.trunk.h) / cloud.h) * 100).toFixed(3)}%` : undefined;
-  const kids = (tree || beads) && isValidElement(children) ? cloneElement(children as ReactElement<{ align?: string }>, { align: 'center' }) : children;
+  // 나무 · 구슬 구름은 글 배치를 형상이 정한다(cloud.ts의 layout — 다시 나눈 줄 · 줄마다 자간 · 한 자씩의 자리).
+  // 줄 맞춤은 가운데 — 균등 배분 · 사다리꼴은 줄이 이미 틀을 채웠고, 달걀 · 뭉게구름은 가운데 맞춘 줄을 품게 지었다
+  const lay = cloud.layout;
+  const kids = (tree || beads) && isValidElement(children)
+    ? cloneElement(children as ReactElement<{ align?: string; text?: string; lineTrack?: readonly number[]; glyphs?: unknown; glyphBox?: unknown }>, {
+        align: 'center',
+        ...(lay?.lines ? { text: lay.lines.join('\n') } : {}),
+        ...(lay?.track ? { lineTrack: lay.track } : {}),
+        ...(lay?.glyphs && lay.box ? { glyphs: lay.glyphs, glyphBox: lay.box } : {})
+      })
+    : children;
   return (
     <div
       className={'cloud-bubble' + (tree ? ' is-tree' : '') + (beads ? ' is-bead' : '') + (className ? ' ' + className : '')}

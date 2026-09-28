@@ -54,7 +54,9 @@ service cloud.firestore {
         && t.size is number && t.size >= 10 && t.size <= 100
         && t.paletteIdx is int && t.paletteIdx >= 0 && t.paletteIdx <= 9
         && t.graphicIdx is int && t.graphicIdx >= -1 && t.graphicIdx <= 20
-        && (!('align' in t) || t.align in ['left', 'center', 'right'])
+        // 2026-09-28: 나무(당당한) · 구름(다정한)의 제 정렬이 더해졌다(cloud.ts · arrangementsFor).
+        // 배포 전까지 폰은 벽으로 가운데를 보낸다(firebase.ts · toneForWall)
+        && (!('align' in t) || t.align in ['left', 'center', 'right', 'distribute', 'trapezoid', 'arch', 'fan', 'smile'])
         && (!('manner' in t) || (t.manner is number && t.manner >= 0 && t.manner <= 1))
         && (!('speed' in t) || (t.speed is number && t.speed >= 0 && t.speed <= 1))
         && (!('weight' in t) || (t.weight is number && t.weight >= 0 && t.weight <= 1))

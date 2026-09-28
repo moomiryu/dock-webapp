@@ -1,6 +1,8 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { fitFontSize } from '../lib/fit';
 import { formFor, opticalFix } from '../lib/palettes';
+import type { Glyph } from '../lib/cloud';
+import type { Align } from '../types';
 interface Props {
     children?: ReactNode;
     text: string;
@@ -14,7 +16,8 @@ interface Props {
     slant?: number;
     fontSize?: string;
     wave?: number;
-    align?: 'left' | 'center' | 'right';
+    /** 줄 맞춤. 나무 · 구름의 제 정렬(균등 배분 · 아치 …)은 형상이 배치를 정하고 줄은 가운데에 선다 */
+    align?: Align;
     size?: number;
     /** 말투 — 무게 축이 없는 얼굴이 무게 대신 쓰는 축(palettes.ts · MANNER) */
     manner?: number;
@@ -29,6 +32,11 @@ interface Props {
     weightPos?: number;
     /** 글자를 한 자씩 따로 둔다(.ch, 띄어쓰기는 빼고). 벽의 구름이 한 글자씩 펄럭일 때만 */
     perChar?: boolean;
+    /** 줄마다 더하는 자간(em) — 나무의 균등 배분 · 사다리꼴(cloud.ts treeLayout). 끝 글자 뒤 몫은 도로 뺀다 */
+    lineTrack?: readonly number[];
+    /** 한 자씩 놓은 자리(em)와 글 상자 — 구름의 휜 배치(cloud.ts beadArcFor). 있으면 줄 대신 이것을 그린다 */
+    glyphs?: readonly Glyph[];
+    glyphBox?: { w: number; h: number };
 }
 /**
  * 상자를 채우는 글자 크기 — 재서 정한다.
@@ -89,7 +97,9 @@ function fitToBox(el: HTMLElement): number {
  * max를 씌워야 바닥이 진짜 바닥이 된다 — 안쪽 clamp에 넣으면 뒤따르는
  * 곱셈이 다시 깎는다.
  */
-export default function VoiceBubble({ text, bg, color, fontFamily, font, weight, width = 1, slant = 0, fontSize, align = 'center', size = 44, manner = 0, fill, speed, weightPos, perChar, children }: Props) {
+export default function VoiceBubble({ text, bg, color, fontFamily, font, weight, width = 1, slant = 0, fontSize, align: alignIn = 'center', size = 44, manner = 0, fill, speed, weightPos, perChar, lineTrack, glyphs, glyphBox, children }: Props) {
+    /* 글 맞춤은 셋뿐이다 — 나머지 정렬은 형상(cloud.ts)이 줄 · 자리로 이미 풀어 넘긴다 */
+    const align = alignIn === 'left' || alignIn === 'right' ? alignIn : 'center';
     /* 모양은 서체별 표 하나가 정한다(2026-09-25). 3/5 견본 · 4/5 · 미리보기 ·
        벽이 모두 이 한 줄을 지난다. 세로 비율과 둥켈의 폭 축, 차분한의 자간이
        여기서 붙는다. */
@@ -118,9 +128,25 @@ export default function VoiceBubble({ text, bg, color, fontFamily, font, weight,
     /* 무게 축이 없는 서체는 못 움직인다 — 그 칸에서만 획이 대신 답한다.
        나머지 서체는 '0'이 와서 -webkit-text-stroke가 아무 일도 안 한다. */
     return <div ref={body} className={'voice-bubble line-bubble' + (fill ? ' is-fill' : '')} style={{ '--line-bg': bg, color, fontFamily, fontWeight: f.weight, fontVariationSettings: f.variation, '--optical-stroke': f.stroke, letterSpacing: f.letterSpacing, textAlign: align, fontSize: fill ? `${filled * optic}px` : `calc((${fontSize ?? `max(14px, calc(${fitFontSize(text, { min: 3, max: 240 })} * 0.52 * ${scale} / ${Math.max(1, f.scaleX)}))`}) * ${optic})` } as CSSProperties}>
+  {glyphs && glyphBox ? (
+   /* 휜 배치 — 한 자씩 제 자리 · 제 기울기로. 장평 · 세로 비율도 글자마다 건다(줄 전체를 누르면 호가 찌그러진다).
+      안쪽 .ch는 벽의 펄럭임이 움직이는 자리다 — 자리 · 기울기는 바깥이 들고 있어 서로 안 덮는다 */
+   <div className="voice-bubble-text line-bubble-text is-arc" style={{ width: `${glyphBox.w.toFixed(4)}em`, height: `${glyphBox.h.toFixed(4)}em` }}>
+    {glyphs.map((g, i) => <span key={i} className="arc-glyph" style={{ left: `${g.x.toFixed(4)}em`, top: `${g.y.toFixed(4)}em`,
+      transform: `translate(-50%, -50%) rotate(${g.a.toFixed(4)}rad) scale(${f.scaleX}, ${f.scaleY})`, fontStyle: f.slant ? `oblique ${f.slant}deg` : 'normal' }}><span className="ch">{g.c}</span></span>)}
+    {children}
+   </div>
+  ) : (
   <div className="voice-bubble-text line-bubble-text" style={{ textAlign: align, transform: `scale(${f.scaleX}, ${f.scaleY})`, transformOrigin: align }}>
-   {text.split('\n').map((line, i) => <div className="message-line" key={i}><span className="message-line-fill"><span style={{ fontStyle: f.slant ? `oblique ${f.slant}deg` : 'normal' }}>{perChar ? (line ? Array.from(line).map((c, j) => (c.trim() ? <span key={j} className="ch">{c}</span> : c)) : '\u200b') : line.split(/([A-Za-z0-9][A-Za-z0-9 .,!?'-]*)/g).map((part, j) => /[A-Za-z0-9]/.test(part) ? <span key={j} lang="en" style={{ fontStyle: f.slant ? 'italic' : 'normal' }}>{part}</span> : part || '\u200b')}</span></span></div>)}
+   {text.split('\n').map((line, i) => <div className="message-line" key={i}><span className="message-line-fill"><span style={{ fontStyle: f.slant ? `oblique ${f.slant}deg` : 'normal', ...trackStyle(lineTrack?.[i], f.letterSpacing) }}>{perChar ? (line ? Array.from(line).map((c, j) => (c.trim() ? <span key={j} className="ch">{c}</span> : c)) : '\u200b') : line.split(/([A-Za-z0-9][A-Za-z0-9 .,!?'-]*)/g).map((part, j) => /[A-Za-z0-9]/.test(part) ? <span key={j} lang="en" style={{ fontStyle: f.slant ? 'italic' : 'normal' }}>{part}</span> : part || '\u200b')}</span></span></div>)}
    {children}
   </div>
+  )}
  </div>;
+}
+
+/** 줄 하나에 더하는 자간 — 원래 자간(em) 위에 더하고, 끝 글자 뒤로 붙는 몫은 오른쪽 여백으로 도로 뺀다 */
+function trackStyle(t: number | undefined, base: string): CSSProperties {
+    if (!t) return {};
+    return { letterSpacing: `${(t + (parseFloat(base) || 0)).toFixed(4)}em`, marginRight: `${(-t).toFixed(4)}em` };
 }

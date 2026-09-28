@@ -1,5 +1,6 @@
 import { LINE_HEIGHT, type BoxShape } from './fit';
 import { formFor, opticalFix } from './palettes';
+import type { Align } from '../types';
 
 /**
  * 발화 배경 — 구름.
@@ -102,6 +103,8 @@ export interface Persona {
     egg: { lean: number; span: number };
     /** 기둥 — 굵기 · 머리 밑으로 보이는 길이 (u) · 세로 줄 수(홀수, 짝수 번째를 오린다) */
     trunk: { width: number; length: number; stripes: number };
+    /** 사다리꼴 정렬 — 아래로 한 줄마다 넓어지는 폭 (u) */
+    step: number;
   };
   /** 다정한 — 구슬 구름(beadFor). 뭉게구름 윤곽을 한 크기 구슬로 찍는다. 값의 근거는 design/landscape.md '구름' */
   bead?: {
@@ -115,6 +118,9 @@ export interface Persona {
     lets: readonly (readonly number[])[];
     gap: readonly [number, number];
     bob: number;
+    /** 휜 배치(아치 · 부채꼴 · 미소) — 아치 · 미소의 가장 긴 줄의 반지름(줄 길이의 배수) · 부채꼴이 두르는 각(도) ·
+        글 띠와 윤곽 사이 (u) */
+    arc: { bow: number; fan: number; band: number };
   };
 }
 
@@ -129,7 +135,7 @@ export const PERSONAS: Record<string, Persona> = {
   // 고른 과정과 버린 것은 design/landscape.md '나무'.
   ttoryeot: { key: 'ttoryeot', edge: 'tree', lobe: [1.25, 1.85], fill: [0.6, 0.8], gap: 1.9, spread: [0.2, 0.9], sat: 0, blur: 0, lh: 1.1,
     tree: { margin: 0.3, slope: 2.45, tuck: 0.3, spire: { half: 1.1, height: 2.4 }, cap: { rx: 1.6, ry: 0.75, lift: 0.3 },
-      egg: { lean: 0.18, span: 0.8 }, trunk: { width: 0.9, length: 2.2, stripes: 5 } } },
+      egg: { lean: 0.18, span: 0.8 }, trunk: { width: 0.9, length: 2.2, stripes: 5 }, step: 1.2 } },
   // 날 선 돌 (2026-09-27). 매끈한 덩이였다 — 성격의 짝이 돌·별·꽃·나비로 바뀌면서
   // 차분한이 먼저 돌이 됐다. 원을 안 써서 아래 lobe·fill·gap·spread는 쓰이지 않는다.
   // 값은 격자에서 골랐다 — 뭉툭 · 굴린 각 · 깎은 돌 중 날 선 각, 긴 글이 네모로 끌리던
@@ -145,7 +151,7 @@ export const PERSONAS: Record<string, Persona> = {
   // 원을 부풀리지 않아 lobe · fill · gap · spread는 쓰이지 않는다. 행간 1.1은 나무와 같다.
   // 고른 과정과 버린 것은 design/landscape.md '구름'.
   doran: { key: 'doran', edge: 'bead', lobe: [1.1, 1.6], fill: [0.5, 0.75], gap: 1.6, spread: [0, 0.9], sat: 0, blur: 0, lh: 1.1,
-    bead: { step: 0.6, r: 0.36, side: 0.55, top: 0.35, lets: [[2, 1], [2]], gap: [0.3, 0.7], bob: 0.3 } },
+    bead: { step: 0.6, r: 0.36, side: 0.55, top: 0.35, lets: [[2, 1], [2]], gap: [0.3, 0.7], bob: 0.3, arc: { bow: 1.3, fan: 130, band: 0.45 } } },
   // 픽셀 구름. 같은 합집합을 0.5u 격자에 찍는다. 번짐은 모서리만 아주 살짝 —
   // 0.16칸에서는 계단이 흐려져 둥근 덩이에 잔털이 난 것이 됐다.
   deulseok: { key: 'deulseok', edge: 'pixel', lobe: [1.1, 1.6], fill: [0.55, 0.75], gap: 1.7, spread: [0, 0.8], sat: 2, blur: 0.04, cell: 0.5 }
@@ -236,6 +242,20 @@ export interface Beads {
   chars: Pt[];
 }
 
+/** 휜 배치의 글자 한 자 — 글 상자 왼쪽 위에서 가운데까지(em), 기울기(rad) */
+export interface Glyph { c: string; x: number; y: number; a: number }
+/**
+ * 형상이 정한 글 배치 — 말풍선(VoiceBubble)이 이대로 그린다(CloudBubble이 넘긴다).
+ * lines = 형상이 다시 나눈 줄(사다리꼴), track = 줄마다 더하는 자간(em, 균등 배분 · 사다리꼴),
+ * glyphs · box = 한 자씩 놓은 자리와 글 상자(em, 아치 · 부채꼴 · 미소)
+ */
+export interface TextLayout {
+  lines?: string[];
+  track?: number[];
+  glyphs?: Glyph[];
+  box?: { w: number; h: number };
+}
+
 export interface Cloud {
   persona: Persona;
   rule: 'B' | 'C';
@@ -249,6 +269,8 @@ export interface Cloud {
   tree?: Tree;
   /** 다정한의 구슬 구름. 있으면 circles · spikes는 비어 있다 */
   beads?: Beads;
+  /** 형상이 정한 글 배치. 없으면 들어온 줄 그대로 */
+  layout?: TextLayout;
   /** 구름 상자 (u) */
   w: number; h: number;
   /** 글 덩어리가 앉는 자리 (상자 안, u) */
@@ -302,16 +324,30 @@ interface Options {
   track?: number;
   /** 3/5 말투 — 나무가 머리를 고른다(1 = 예리한 · 0 = 온화한, palettes.ts의 MANNER와 같은 차례) */
   manner?: number;
+  /** 4/5 정렬 — 나무 · 구름은 이것으로 글 배치와 제 모양을 바꾼다(arrangementsFor) */
+  align?: Align;
+}
+
+/**
+ * 성격마다 4/5에서 고를 수 있는 정렬 — 첫째가 기본(가운데)은 아니다: 고전 셋은 왼쪽 · 가운데 · 오른쪽 차례.
+ * 나무 · 구름은 제 정렬만 준다(2026-09-28 디자이너 — 나무는 '양끝 정렬의 정도', 구름은 '다정함과 어울리는 휜 배치').
+ */
+const ARRANGEMENTS: Record<string, readonly Align[]> = {
+  ttoryeot: ['center', 'distribute', 'trapezoid'],
+  doran: ['center', 'arch', 'fan', 'smile']
+};
+export function arrangementsFor(font: string | undefined): readonly Align[] {
+  return ARRANGEMENTS[BY_FONT[font ?? ''] ?? ''] ?? ['left', 'center', 'right'];
 }
 
 /**
  * 조율 값 그대로 구름을 만든다 — 서체별 표(palettes.ts · formFor)가 계산한
  * 장평·세로·기울기·폭 축·자간을 넘긴다. 4/5와 벽이 같은 이 함수를 쓴다.
  */
-export function cloudForTone(lines: readonly string[], tone: Parameters<typeof formFor>[0] | null | undefined, o: Pick<Options, 'seed' | 'minDiameter'> = {}): Cloud {
+export function cloudForTone(lines: readonly string[], tone: (Parameters<typeof formFor>[0] & { align?: Align }) | null | undefined, o: Pick<Options, 'seed' | 'minDiameter'> = {}): Cloud {
   if (!tone) return cloudFor(lines, undefined, o);
   const f = formFor(tone);
-  return cloudFor(lines, tone.font, { ...o, scaleX: f.scaleX, scaleY: f.scaleY, slant: f.slant, wdth: f.wdth, track: parseFloat(f.letterSpacing) || 0, manner: tone.manner });
+  return cloudFor(lines, tone.font, { ...o, scaleX: f.scaleX, scaleY: f.scaleY, slant: f.slant, wdth: f.wdth, track: parseFloat(f.letterSpacing) || 0, manner: tone.manner, align: tone.align });
 }
 
 /**
@@ -340,8 +376,11 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
   const boxes = widths.map((w, i) => ({ x0: (TW - w) / 2, x1: (TW + w) / 2, yc: (i + 0.5) * LH }));
   const rule: 'B' | 'C' = boxes.length <= 2 ? 'B' : 'C';
   if (pr.edge === 'stone' && pr.stone) return stoneFor(pr, rule, TW, TH, R);
-  if (pr.edge === 'tree' && pr.tree) return treeFor(pr, rule, widths, TW, LH, !!o.manner);
-  if (pr.edge === 'bead' && pr.bead) return beadFor(pr, rule, TW, TH, R, charCenters(lines, font, optic, scaleX, o.wdth, o.track ?? 0, TW, LH));
+  if (pr.edge === 'tree' && pr.tree) return treeLayout(pr, rule, lines, font, optic, scaleX, slant, o, LH);
+  if (pr.edge === 'bead' && pr.bead) {
+    if (o.align === 'arch' || o.align === 'fan' || o.align === 'smile') return beadArcFor(pr, rule, lines, font, optic, scaleX, o, LH, R, o.align);
+    return beadFor(pr, rule, TW, TH, R, charCenters(lines, font, optic, scaleX, o.wdth, o.track ?? 0, TW, LH));
+  }
 
   const circles: Circle[] = [];
   const put = (x: number, y: number, r: number, kind: Circle['kind']) =>
@@ -594,7 +633,7 @@ function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () =>
  * 기둥은 머리 밑에서 trunk.length. 벽에서는 나무 키(벽 높이의 30~60%)를 기둥이 채운다 — 그 길이는
  * 벽이 정한다. 글은 가운데 맞춤이다(정렬 고르기는 아직 — 4/5에서 고른 왼 · 오른도 가운데로 선다).
  */
-function treeFor(pr: Persona, rule: 'B' | 'C', widths: readonly number[], TW: number, LH: number, sharp: boolean): Cloud {
+function treeFor(pr: Persona, rule: 'B' | 'C', widths: readonly number[], TW: number, LH: number, sharp: boolean, shape: 'egg' | 'flat' = 'egg'): Cloud {
   const t = pr.tree!, m = t.margin, n = widths.length, cx = TW / 2, TH = n * LH;
   const hw = widths.map((w) => w / 2 + m);
   const ys = widths.map((_, i) => (i + 0.5) * LH);
@@ -602,7 +641,8 @@ function treeFor(pr: Persona, rule: 'B' | 'C', widths: readonly number[], TW: nu
   const B = Math.max(0.9, (Math.max(...ys.map((y) => Math.abs(y - yc))) + 0.45) / t.egg.span);
   const prof = ys.map((y) => { const q = (y - yc) / B; return Math.sqrt(Math.max(0.05, 1 - q * q)) * (1 + t.egg.lean * q); });
   const A = Math.max(...hw.map((h, i) => h / prof[i]));
-  const half = prof.map((p) => A * p);
+  // 균등 배분 · 사다리꼴은 줄이 이미 틀(박스 · 사다리꼴)을 채웠다 — 층이 줄을 그대로 따른다
+  const half = shape === 'egg' ? prof.map((p) => A * p) : hw;
 
   const tiers: TreeTier[] = [];
   let cap: Tree['cap'], bottom = 0;
@@ -685,7 +725,7 @@ function inRound(x: number, y: number, x0: number, y0: number, x1: number, y1: n
  * 안 붙는다. 본 구름(알 40~200개)과 급이 확실히 갈리는 크기다.
  */
 function beadFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number, chars: Pt[]): Cloud {
-  const b = pr.bead!, S = b.step, rb = b.r, rh = (S * Math.sqrt(3)) / 2, mm = rb / 3;
+  const b = pr.bead!, S = b.step, mm = b.r / 3;
   // 글 덩어리 — 글자 끝에서 0.06u, 줄 상자 위아래로 0.12u 더 잡는다(견본과 같다)
   const X = -0.06 - b.side, Y = -0.12 - b.top, W = TW + 0.12 + 2 * b.side, floor = TH + 0.12 + b.top, Hh = floor - Y;
   const domes: [number, number, number][] = [];
@@ -695,10 +735,21 @@ function beadFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => 
   for (let i = 0; i < n; i++) { const r = Rt * pat[i % pat.length]; domes.push([X + (W * (i + 0.5)) / n, Y + 0.45 * r, r]); }   // 위 봉우리 — 위로 r × 0.55
   const inside = (x: number, y: number) => y <= floor + mm &&
     (inRound(x, y, X - mm, Y - mm, X + W + mm, floor + mm, Math.min(0.8, Hh / 2) + mm) || domes.some(([cx, cy, r]) => Math.hypot(x - cx, y - cy) <= r + mm));
-  const body: Pt[] = [];
-  for (let j = 0, y = Y - 3; y <= floor + S; j++, y += rh)
-    for (let x = X - 1.5 + (j % 2 ? S / 2 : 0); x <= X + W + 1.5; x += S) if (inside(x, y)) body.push([x, y]);
+  const body = beadGrid(inside, X - 1.5, Y - 3, X + W + 1.5, floor + S, S);
+  return finishBeads(pr, rule, body, { x0: 0, y0: 0, x1: TW, y1: TH }, chars, R);
+}
 
+/** 윤곽 안의 육각 격자 자리마다 구슬 하나 — 격자는 (x0, y0)에서 시작한다 */
+function beadGrid(inside: (x: number, y: number) => boolean, x0: number, y0: number, x1: number, y1: number, S: number): Pt[] {
+  const rh = (S * Math.sqrt(3)) / 2, out: Pt[] = [];
+  for (let j = 0, y = y0; y <= y1; j++, y += rh)
+    for (let x = x0 + (j % 2 ? S / 2 : 0); x <= x1; x += S) if (inside(x, y)) out.push([x, y]);
+  return out;
+}
+
+/** 구슬 구름 마무리 — 곁의 작은 구름을 붙이고 상자를 잡는다. tb = 글 상자(u, 구슬과 같은 원점) */
+function finishBeads(pr: Persona, rule: 'B' | 'C', body: Pt[], tb: { x0: number; y0: number; x1: number; y1: number }, chars: Pt[], R: () => number, layout?: TextLayout): Cloud {
+  const b = pr.bead!, S = b.step, rb = b.r, rh = (S * Math.sqrt(3)) / 2;
   // 곁의 작은 구름 — 알 피라미드(아래 줄부터, 윗줄은 반 칸 밀려 얹힌다). 자리는 본 구름 구슬의 바깥 상자 테두리
   const x0 = Math.min(...body.map((p) => p[0])) - rb, x1 = Math.max(...body.map((p) => p[0])) + rb;
   const y0 = Math.min(...body.map((p) => p[1])) - rb, y1 = Math.max(...body.map((p) => p[1])) + rb;
@@ -719,16 +770,147 @@ function beadFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => 
 
   // 상자 — 구슬 · 작은 구름(오르내리는 폭까지) · 글이 다 들게
   const e = 0.02;
-  const xs = [0, TW, ...body.map((p) => p[0] - rb), ...body.map((p) => p[0] + rb), ...lets.flat().flatMap((p) => [p[0] - rb, p[0] + rb])];
-  const ys = [0, TH, ...body.map((p) => p[1] - rb), ...body.map((p) => p[1] + rb), ...lets.flat().flatMap((p) => [p[1] - rb - b.bob, p[1] + rb + b.bob])];
+  const xs = [tb.x0, tb.x1, ...body.map((p) => p[0] - rb), ...body.map((p) => p[0] + rb), ...lets.flat().flatMap((p) => [p[0] - rb, p[0] + rb])];
+  const ys = [tb.y0, tb.y1, ...body.map((p) => p[1] - rb), ...body.map((p) => p[1] + rb), ...lets.flat().flatMap((p) => [p[1] - rb - b.bob, p[1] + rb + b.bob])];
   const minX = Math.min(...xs) - e, minY = Math.min(...ys) - e;
   const mv = ([x, y]: Pt): Pt => [x - minX, y - minY];
   return {
     persona: pr, rule, circles: [], spikes: [],
     beads: { r: rb, body: body.map(mv), lets: lets.map((l) => l.map(mv)), chars: chars.map(mv) },
     w: Math.max(...xs) + e - minX, h: Math.max(...ys) + e - minY,
-    text: { x: -minX, y: -minY, w: TW, h: TH }
+    text: { x: tb.x0 - minX, y: tb.y0 - minY, w: tb.x1 - tb.x0, h: tb.y1 - tb.y0 },
+    ...(layout ? { layout } : {})
   };
+}
+
+/**
+ * 구름의 휜 배치 셋(2026-09-28, 디자이너 — '아치' · '부채꼴'처럼 다정함과 어울리는 정렬).
+ *
+ * 줄마다 제 길이를 같은 중심의 호에 얹는다 — 자간 · 행간은 그대로다(디자이너 몫). 글자는 제 가운데가 호 위에
+ * 서고 호를 따라 기운다.
+ * - 아치: 중심이 아래, 첫 줄(가장 바깥)의 반지름 = 가장 긴 줄 × arc.bow(4u 이상), 아래 줄은 한 줄씩 안으로
+ * - 부채꼴: 중심이 아래, 가장 긴 줄이 arc.fan°를 두를 만큼 중심이 가깝다 — 마지막 줄이 가장 안쪽
+ * - 미소: 아치를 뒤집어 중심이 위 — 양 끝이 올라간다
+ *
+ * **구름도 휜다.** 줄마다 글이 놓인 휜 띠(호 ± 반 줄 + arc.band)를 두르고 양 끝을 둥글게, 봉우리는 맨 윗줄 곡선을
+ * 따라 솟고, 가장 넓은 띠 양 끝에 옆 봉우리. 네모 구름으로 두르면 모서리가 휑했다(견본).
+ */
+function beadArcFor(pr: Persona, rule: 'B' | 'C', lines: readonly string[], font: string | undefined, optic: number, scaleX: number, o: Options, LH: number, R: () => number, mode: 'arch' | 'fan' | 'smile'): Cloud {
+  const b = pr.bead!, S = b.step, mm = b.r / 3, m = b.arc.band;
+  const adv = advanceFor(BY_FONT[font ?? ''] ?? font ?? '', o.wdth), tr = o.track ?? 0;
+  const L = lines.map((line) => {
+    const cs = Array.from(line);
+    const av = cs.map((ch) => ((ch === ' ' ? adv.space : /[A-Za-z0-9.,!?'"-]/.test(ch) ? LATIN : adv.hangul) + tr) * optic * scaleX);
+    return { cs, av, len: Math.max(0.5, av.reduce((s, v) => s + v, 0)) };
+  });
+  const n = L.length, Lmax = Math.max(...L.map((l) => l.len));
+  let Rr: number[];
+  if (mode === 'fan') {
+    const span = (b.arc.fan * Math.PI) / 180, rin = Math.max(0.9, ...L.map((l, i) => l.len / span - (n - 1 - i) * LH));
+    Rr = L.map((_, i) => rin + (n - 1 - i) * LH);
+  } else {
+    const R0 = Math.max(Lmax * b.arc.bow, 4);
+    Rr = L.map((_, i) => (mode === 'arch' ? R0 - i * LH : R0 + i * LH));
+  }
+  const up = mode !== 'smile';                                  // 위로 볼록 — 중심이 아래
+  const pt = (r: number, ph: number): Pt => (up ? [r * Math.sin(ph), -r * Math.cos(ph)] : [r * Math.sin(ph), r * Math.cos(ph)]);
+  const polar = (x: number, y: number): [number, number] => (up ? [Math.hypot(x, y), Math.atan2(x, -y)] : [Math.hypot(x, y), Math.atan2(x, y)]);
+
+  // 글자 — 제 가운데가 호 위에. 띄어쓰기는 자리만 차지한다
+  const placed: { c: string; x: number; y: number; a: number; w: number }[] = [];
+  L.forEach((l, i) => {
+    let s = 0;
+    const a0 = -l.len / Rr[i] / 2;
+    l.cs.forEach((c, j) => {
+      const ph = a0 + (s + l.av[j] / 2) / Rr[i];
+      s += l.av[j];
+      if (!c.trim()) return;
+      const [x, y] = pt(Rr[i], ph);
+      placed.push({ c, x, y, a: up ? ph : -ph, w: l.av[j] });
+    });
+  });
+  const corners = placed.flatMap((q) => {
+    const ca = Math.cos(q.a), sa = Math.sin(q.a);
+    return [[-q.w / 2, -LH / 2], [q.w / 2, -LH / 2], [-q.w / 2, LH / 2], [q.w / 2, LH / 2]].map(([dx, dy]): Pt => [q.x + dx * ca - dy * sa, q.y + dx * sa + dy * ca]);
+  });
+  const bx0 = Math.min(...corners.map((p) => p[0])) - 0.06, bx1 = Math.max(...corners.map((p) => p[0])) + 0.06;
+  const by0 = Math.min(...corners.map((p) => p[1])) - 0.06, by1 = Math.max(...corners.map((p) => p[1])) + 0.06;
+
+  // 휜 띠 · 둥근 끝 · 봉우리
+  const bands = L.map((l, i) => ({ a: l.len / Rr[i] / 2, rIn: Rr[i] - LH / 2 - m, rOut: Rr[i] + LH / 2 + m, R: Rr[i] }));
+  const domes: [number, number, number][] = [];
+  for (const d of bands) { const rm = (d.rIn + d.rOut) / 2, rr = (d.rOut - d.rIn) / 2; for (const sg of [-1, 1]) { const [x, y] = pt(rm, sg * d.a); domes.push([x, y, rr]); } }
+  const t0 = bands[0], edge = up ? t0.rOut : t0.rIn, arcLen = 2 * t0.a * edge + 1.0;
+  const nd = Math.max(2, Math.round(arcLen / 2.6)), Rt = Math.min(Math.max(0.2 * arcLen, 1.2), 1.7), pat = [0.85, 1.1, 1.0, 0.9, 1.05, 0.95];
+  const aSpan = t0.a + 0.5 / edge;
+  for (let k = 0; k < nd; k++) {
+    const r = Rt * pat[k % pat.length], ph = -aSpan + (2 * aSpan * (k + 0.5)) / nd;
+    const [x, y] = pt(up ? edge - 0.45 * r : edge + 0.45 * r, ph);        // 곡선 바깥(위)으로 0.55r
+    domes.push([x, y, r]);
+  }
+  const wide = bands.reduce((p, q) => (q.a * q.R > p.a * p.R ? q : p)), Rs = Math.min(Math.max(0.5 * (wide.rOut - wide.rIn), 0.9), 1.4);
+  for (const sg of [-1, 1]) { const [x, y] = pt((wide.rIn + wide.rOut) / 2, sg * (wide.a + 0.2 / wide.R)); domes.push([x, y, Rs]); }
+  const inside = (x: number, y: number) => {
+    const [r, ph] = polar(x, y);
+    return bands.some((d) => r >= d.rIn - mm && r <= d.rOut + mm && Math.abs(ph) <= d.a) || domes.some(([cx, cy, rr]) => Math.hypot(x - cx, y - cy) <= rr + mm);
+  };
+  const body = beadGrid(inside, bx0 - 3.5, by0 - 3.5, bx1 + 3.5, by1 + 3, S);
+  const layout: TextLayout = {
+    glyphs: placed.map((q) => ({ c: q.c, x: (q.x - bx0) / optic, y: (q.y - by0) / optic, a: q.a })),
+    box: { w: (bx1 - bx0) / optic, h: (by1 - by0) / optic }
+  };
+  return finishBeads(pr, rule, body, { x0: bx0, y0: by0, x1: bx1, y1: by1 }, placed.map((q): Pt => [q.x, q.y]), R, layout);
+}
+
+/**
+ * 나무의 정렬 셋(2026-09-28, 디자이너 — '양끝 정렬의 정도'로 셋, 실루엣도 셋).
+ *
+ * - 가운데 → 달걀. 줄은 그대로, 층은 줄을 품는 달걀 윤곽(treeFor)
+ * - 균등 배분 → 박스. 모든 줄을 가장 긴 줄 폭에 맞춰 **글자 사이로** 벌린다(R23 포스터). 층도 모두 같은 폭
+ * - 사다리꼴 → 아래로 한 줄마다 tree.step씩 넓어지는 틀을 먼저 두고, 줄바꿈도 그 틀을 따른다(낱말은 안 쪼갠다).
+ *   줄마다 글자 사이로 제 폭을 채운다
+ *
+ * 자간은 줄마다 em으로 돌려준다(layout.track). 한 글자 줄은 벌릴 데가 없어 가운데에 선다 — 짧은 줄이 크게
+ * 벌어지는 것('없 … 다')은 그대로 둔다(디자이너). 폭은 lineWidth의 표로 잰다 — 둥켈 한글은 고정폭이라 표가
+ * 정확하고, 라틴은 어림이라 줄 끝이 조금 어긋날 수 있다.
+ */
+function treeLayout(pr: Persona, rule: 'B' | 'C', lines: readonly string[], font: string | undefined, optic: number, scaleX: number, slant: number, o: Options, LH: number): Cloud {
+  const t = pr.tree!, wOf = (s: string, sl = slant) => lineWidth(s, font, optic, scaleX, sl, o.wdth, o.track ?? 0);
+  if (o.align !== 'distribute' && o.align !== 'trapezoid') {
+    const widths = lines.map((l) => wOf(l));
+    return treeFor(pr, rule, widths, Math.max(0.5, ...widths), LH, !!o.manner);
+  }
+  const ls = o.align === 'trapezoid' ? trapezoidLines(lines, (s) => wOf(s, 0), t.step) : [...lines];
+  const widths = ls.map((l) => wOf(l));
+  const W0 = o.align === 'distribute' ? Math.max(...widths) : Math.max(...widths.map((x, i) => x - t.step * i));
+  const target = widths.map((_, i) => (o.align === 'distribute' ? W0 : W0 + t.step * i));
+  const track = ls.map((l, i) => { const n = Array.from(l).length; return n > 1 ? (target[i] - widths[i]) / (n - 1) / (optic * scaleX) : 0; });
+  const cloud = treeFor(pr, rule, target, Math.max(0.5, ...target), LH, !!o.manner, 'flat');
+  return { ...cloud, layout: { ...(o.align === 'trapezoid' ? { lines: ls } : {}), track } };
+}
+
+/**
+ * 사다리꼴의 줄 나누기 — 윗줄 폭 c0에서 한 줄마다 step씩 넓어지는 틀에 낱말을 채운다. c0는 가장 긴 낱말에서
+ * 시작해, 줄 수가 (들어온 줄 수 + 1)을 넘지 않을 때까지 늘린다(견본과 같다). 발화자가 넣은 줄바꿈도 이 틀을
+ * 따른다 — 사다리꼴을 고른 것이 곧 틀에 맡긴 것이다.
+ */
+function trapezoidLines(lines: readonly string[], wOf: (s: string) => number, step: number): string[] {
+  const words = lines.join(' ').split(/\s+/).filter(Boolean);
+  if (words.length < 2) return [...lines];
+  const ws = words.map(wOf), sp = wOf(' ');
+  const total = ws.reduce((a, b) => a + b, 0) + sp * (words.length - 1);
+  for (let c0 = Math.max(...ws); c0 <= total + 0.1; c0 += 0.1) {
+    const out: string[] = [];
+    let cur: string[] = [], cw = 0;
+    words.forEach((w, i) => {
+      const add = cur.length ? sp + ws[i] : ws[i], cap = c0 + step * out.length;
+      if (!cur.length || cw + add <= cap) { cur.push(w); cw += add; }
+      else { out.push(cur.join(' ')); cur = [w]; cw = ws[i]; }
+    });
+    if (cur.length) out.push(cur.join(' '));
+    if (out.length <= lines.length + 1) return out;
+  }
+  return [words.join(' ')];
 }
 
 /** fit.ts와 잇는 계약. 구름은 글이 정하므로 tw·th를 안 받고 제 상자를 답한다 */

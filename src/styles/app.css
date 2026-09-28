@@ -184,7 +184,6 @@
 .home-info-btn:active,
 .info-step:active:not(:disabled),
 .z-cycle:active,
-.style-card:active,
 .sim-replay:active,
 .info-close:active,
 .done-home-link:active,
@@ -192,7 +191,6 @@
   background: var(--press-tint);
 }
 
-.style-card.on:active,
 .z-step.on:active {
   filter: brightness(0.96);
 }
@@ -202,17 +200,17 @@
    그 손맛 하나다 — 행 배경 · 카드 모양은 따라 하지 않는다. 누르면 --press-scale(97%)로
    줄고, 떼면 --t-return · --ease-standard(3/5 판이 붙는 그 시간 · 곡선)로 제자리에
    온다. 눌리는 쪽은 그 절반이라 손끝에 먼저 답한다. 위의 누름 색은 그대로 겹친다.
-   끄는 것(게이지 · 스위치 · 색 룰렛 창)은 뺐다 — 이미 판이 손을 따라 움직인다.
+   끄는 것(게이지 · 스위치 · 색 룰렛 창 · 2/5 네 칸)은 뺐다 — 이미 판이 손을 따라 움직인다.
    홈의 원형 물음표(.home-help)는 제 값(0.94)을 따로 든다. 움직임 줄이기에서는 크기를
    두고 색만 바뀐다. 제 transition을 가진 버튼은 거기에 scale을 함께 적는다
    (4/5 '이렇게 담을게요' — .color-panel > .primary-action). */
 .primary-action, .home-cta, .home-info-btn, .z-back, .tone-more, .hint-open, .hint-close,
-.style-card, .color-roll-arrows > button, .ask-answers > button, .done-home-link,
+.color-roll-arrows > button, .ask-answers > button, .done-home-link,
 .sim-replay, .feedback-send{
   transition: scale var(--t-return) var(--ease-standard);
 }
 .primary-action:active:not(:disabled), .home-cta:active, .home-info-btn:active, .z-back:active,
-.tone-more:active, .hint-open:active, .hint-close:active, .style-card:active,
+.tone-more:active, .hint-open:active, .hint-close:active,
 .color-roll-arrows > button:active, .ask-answers > button:active, .done-home-link:active,
 .sim-replay:active, .feedback-send:active:not(:disabled){
   scale: var(--press-scale);
@@ -220,7 +218,7 @@
 }
 @media (prefers-reduced-motion: reduce){
   .primary-action:active, .home-cta:active, .home-info-btn:active, .z-back:active,
-  .tone-more:active, .hint-open:active, .hint-close:active, .style-card:active,
+  .tone-more:active, .hint-open:active, .hint-close:active,
   .color-roll-arrows > button:active, .ask-answers > button:active, .done-home-link:active,
   .sim-replay:active, .feedback-send:active{ scale: none; }
 }
@@ -2041,12 +2039,17 @@
      안 줄고 화면이 밀린다(1fr의 최소는 내용) — 그때 아래 화살표가 다시 선다.
      (09-25 세로 목록: 한 줄 = 폭의 절반과 160 중 큰 값, flex: none.) */
   grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, 1fr);
-  gap: 1px; flex: 1 1 auto; background: var(--line); border: 0; overflow: visible;
-  /* 줄은 화면 끝에서 끝까지 간다(2026-09-25). 틀의 좌우 여백만큼 바깥으로
-     꺼낸다 — 고른 줄의 붉은 면과 줄 사이 선이 머리줄 밑 선처럼 양 끝에
-     닿는다. 글자는 줄 안쪽 여백(--pad-x)에서 시작해 머리줄 글자와 같은
-     세로선에 선다. */
-  margin-inline: calc(var(--pad-x) * -1);
+  flex: 1 1 auto; overflow: visible;
+  /* 2026-09-29: 테두리 칸 안의 판(사용자 · 견본 A2 — 3/5 · 4/5 스위치와 같은 손맛).
+     십자 선(칸 사이 1px 틈으로 비치던 --line)과 화면 끝까지 가던 폭을 걷고, 3/5 스위치
+     틀과 같은 값으로 여백 안에 선다: 테두리 --grey-300 · 바탕 --grey-200 · 안쪽 --s1.
+     칸은 비어 있고 고른 칸 자리에 판(.style-thumb)이 선다. 모서리는 14(--r-button) —
+     견본 3 · 14 · 23 중 14. 판은 그 안쪽 동심(14 − 4). 칸이 좁아진 만큼(약 10%)
+     이름 글자도 칸 폭을 따라 작아진다(--card-fit이 cqw). 끄는 동안 스크롤이
+     손가락을 가로채지 않게 touch-action: none(스위치와 같다). */
+  gap: 0; padding: var(--s1); border: 1px solid var(--grey-300); background: var(--grey-200);
+  position: relative; touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer;
+  margin-inline: 0;
   /* 화면 여백 **안**에 선다(2026-09-22). 좌우 여백을 되물려 가장자리까지
      갔었는데, 이 앱의 다른 모든 요소는 모든 화면에서 x20~370이라 1/5에서
      넘어오는 순간 콘텐츠가 화면 밖으로 터져 나가는 것처럼 보였다
@@ -2055,7 +2058,7 @@
      2026-09-15 스케치는 고른 면이 가장자리까지 가는 그림이었다. 고른 뒤
      붉은 면이 화면이 아니라 카드가 되는 것을 알고 바꾼다 — 화면들 사이의
      흐름이 한 화면 안의 시원함보다 먼저다. */
-  border-radius: 0;   /* 목록 행은 둥글리지 않고 이어진다 */
+  border-radius: var(--r-button);   /* 위 2026-09-29 주석 */
   /* ── 여기에 모핑은 없다 (2026-09-20) ──────────────────────────────
      고른 칸이 화면 전체로 **자라는** 연출이 있었다. 460 → 680 → 1360ms로
      세 번 늘렸고, 4080ms에 튕기게도(--ease-boing) 해 봤다. 전부 걷어냈다.
@@ -2071,7 +2074,9 @@
 
      그래서 전환 자체를 없앤다. 누르면 그 자리에서 바뀐다. 무엇이 골라졌
      는지는 움직임이 아니라 **색이 말한다**(고른 칸만 --brand-strong).
-     다시 넣기 전에 이 문단을 읽을 것. */ }
+     다시 넣기 전에 이 문단을 읽을 것.
+     (2026-09-29부터 고른 것은 색이 아니라 판이 말하고, 판이 칸 사이를 미끄러진다.
+     칸 자체는 여전히 자라지 않는다 — 위 두 까닭은 그대로다.) */ }
 /* 한 칸 = 한 성격(2026-09-27부터 다시 2×2). 높이는 격자가 나눠 주고 최소는
    내용(이름 + 안쪽 여백)이다. 고른 뒤에도 높이·자리는 그대로다 — 09-22~25
    2×2 때의 '고른 칸이 자라고 나머지가 접히는' 규칙(.is-picked)은 돌아오지 않는다.
@@ -2081,7 +2086,7 @@
    안쪽 여백은 위아래 16 · 좌우 --pad-x. 이름은 칸 한가운데에 선다. */
 .tone-choice .style-card{ position: relative; min-width: 0; overflow: visible;
   min-height: auto; border: 0; border-radius: 0;
-  display: grid; place-items: center; background: var(--paper); text-align: center;
+  display: grid; place-items: center; background: none; text-align: center;   /* 칸은 비었다 — 판이 뒤에 선다(2026-09-29) */
   padding: var(--pad-box) var(--pad-x);
   container-type: inline-size; }
 /* 줄 안의 칸 폭을 줄 폭에 못박는다. 칸이 제 내용으로 폭을 정하면, 폭을 재서
@@ -2090,9 +2095,21 @@
 .tone-choice .style-card{ grid-template-columns: minmax(0, 1fr); }
 /* 줄 안의 견본 칸(.style-card-sample)과 이름표(.style-card-label)는 이름이
    다시 큰 글자가 되면서 없어졌다(2026-09-25). */
-/* 고른 칸은 빨강이 칸 전체를 먹는다. 스케치는 #CF5B4C이지만 그 위의 흰
-   글자는 4.00:1 — AA(4.5)에 못 미친다. 채움 버튼과 같은 --brand-strong(4.64:1). */
-.tone-choice .style-card.on{ background: var(--brand-strong); color: var(--paper); }
+/* 고른 칸 — 판 위라 이름이 흰 글자다(--grey-600 위 4.6:1). 2026-09-29까지는 빨강
+   (--brand-strong)이 칸 전체를 먹고 체크가 붙었다. 빨강은 이제 아래 버튼 하나에 남는다. */
+.tone-choice .style-card.on{ background: none; color: var(--paper); }
+/* 판 — 3/5 스위치 판(.tseg-thumb)의 2차원판. 칸 하나 크기로 안쪽 --s1 자리에 서서
+   --x · --y(0 ~ 1, 칸 하나가 1)만큼 옮겨 간다. 누르면 --t-return으로 미끄러져 붙고,
+   끄는 동안(.is-moving)은 손가락을 바로 따른다. 처음 설 때는 제자리에서 나타난다 —
+   미끄러져 올 자리가 없었다. 칸들보다 먼저 그려져 이름이 그 위에 앉는다. */
+.tone-choice .style-thumb{ position: absolute; top: var(--s1); left: var(--s1);
+  width: calc((100% - var(--s1) * 2) / 2); height: calc((100% - var(--s1) * 2) / 2);
+  border-radius: calc(var(--r-button) - var(--s1)); background: var(--grey-600); pointer-events: none;
+  transform: translate(calc(var(--x, 0) * 100%), calc(var(--y, 0) * 100%));
+  transition: transform var(--t-return) var(--ease-standard);
+  animation: styleThumbIn var(--t-return) var(--ease-standard); }
+.tone-choice .style-cards.is-moving .style-thumb{ transition: none; }
+@keyframes styleThumbIn{ from { opacity: 0; } }
 /* 01 한 줄 — 상자가 없다. 자판을 내리면 글이 정사각 상자에 담기던 연출을
    걷어냈다(그 상자가 발화자의 줄바꿈을 다시 접었다). 여기서는 자판의
    줄바꿈이 그대로 남는다. */
@@ -4121,11 +4138,8 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .tone-adjust .z-glyph-stage .z-step-of{ color: var(--paper); }
 
 /* ─── 성격: 손가락이 닿는 순간 ─────────────────────────────────
-   누르고 떼야 색이 바뀌면 고른 것이 한 박자 늦게 온다. 닿는 순간
-   고른 모습을 미리 보여 준다 — 어차피 떼면 그게 선택이다.
-   줄무늬(:nth-child)가 .style-card:active보다 특정성이 높아 공용 누름
-   규칙이 먹지 않았다. 그래서 여기서 같은 무게로 다시 쓴다. */
-.tone-choice .style-card:active{ background: var(--brand-strong); color: var(--paper); }
+   닿는 순간 빨강으로 미리 보여 주던 규칙은 2026-09-29에 걷었다 — 이제 닿는
+   순간 판이 그 칸으로 간다(PhaseGlyph). */
 /* ── 마우스가 있는 기기에서만 ────────────────────────────────────────
    폰에서 hover를 켜면 **누른 뒤에도 색이 남는다.** 손가락은 떼도 마지막에
    닿은 것을 계속 가리키기 때문이다. 이 규칙은 원래 성격 카드 하나에만
@@ -4135,7 +4149,6 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    같이 오지 못한 것이 하나 있다: .z-back:hover는 border-color를 바꾸는데
    .z-back에는 테두리가 없어서 처음부터 죽은 줄이었다. 옮기는 대신 지웠다. */
 @media (hover: hover) {
-  .tone-choice .style-card:hover:not(.on){ background: var(--brand-soft); }
   .mf-home-btn:hover{ color: var(--ink); }
   .home-link:hover,
   .done-home-link:hover{ color: var(--ink); }
@@ -4313,13 +4326,9 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .z-glyph-stage.has-face .step-header{ --step-ink: var(--paper); }
 .color-choice .step-header{ --step-ink: var(--paper); }
 
-/* ─── 02 성격: 고른 줄 · 확정 띠 (2026-09-25) ───────────────────────
-   고른 줄은 원래 쓰던 붉은 면에 **체크**를 더한다(색만으로 말하지 않는다).
-   체크는 늘 제 자리에 있고 고르지 않은 줄에서는 보이지만 않는다 — 고르기
-   전후로 글자가 한 픽셀도 움직이지 않는다. */
-.tone-choice .style-card-check{ position: absolute; top: var(--pad-box); right: var(--pad-x);
-  width: var(--s5); height: var(--s5); visibility: hidden; }
-.tone-choice .style-card.on .style-card-check{ visibility: visible; }
+/* ─── 02 성격: 확정 띠 (2026-09-25) ───────────────────────────────
+   고른 칸의 체크(색만으로 말하지 않으려고 붙였다)는 2026-09-29에 걷었다 — 이제
+   판이 모양으로 말한다. */
 /* 확정 버튼은 화면 아래에 붙는다. 제 바탕(흰 종이)을 가진 띠라서 스크롤되는
    견본이 그 밑으로 지나가도 글자와 겹쳐 보이지 않는다. 띠가 화면 여백 밖까지
    가고 기기 아래 안전 영역을 비운다. 화면이 커서 다 들어가면 버튼은 그냥
@@ -4541,8 +4550,6 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    320 · 360에서 '남겨주세요.'만 셋째 줄에 혼자 남았다. 쉼표 뒤 마디를 한
    덩어리로 묶어, 모자라면 그 마디째 내려가게 한다 — 넓은 화면은 두 줄 그대로 */
 .glyph-note .keep{ white-space: nowrap; }
-/* 2×2가 된 뒤로는(2026-09-27) 네 칸과 이 선 사이의 틀 간격(섹션 24)이 빈 띠로 남아,
-   가운데 세로선이 이 선에 닿지 못하고 24px 위에서 끊겼다(사용자, 2026-09-28).
-   그 간격만큼 올려 붙여 **이 선이 곧 네 칸의 아래 끝선**이 되게 한다 — 십자의
-   세로선이 여기 닿아 ㅗ로 맺는다. 줄어든 자리는 네 칸이 나눠 받는다. */
-.tone-choice > .style-cards + .glyph-note{ margin-top: calc(var(--space-section) * -1); }
+/* 2026-09-28~29: 네 칸 십자의 세로선이 이 선에 닿게 틀 간격(섹션 24)만큼 올려 붙였었다.
+   네 칸이 제 테두리를 가진 칸이 되면서(2026-09-29) 걷었다 — 두 선이 겹치지 않게 틀
+   간격을 그대로 둔다. */

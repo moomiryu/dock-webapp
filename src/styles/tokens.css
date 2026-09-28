@@ -283,6 +283,9 @@
   --t-hold: 700ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+  /* 누른 버튼이 줄어드는 비율(2026-09-29, 사용자 — 98 · 97 · 96 중 97). 폭 358 주 버튼이
+     약 11px 준다. 홈의 원형 물음표(.home-help)만 제 값 0.94를 따로 들고 있다 — 작은 원이다 */
+  --press-scale: 0.97;
   --z-content: 1;
   --z-elevated: 2;
 }

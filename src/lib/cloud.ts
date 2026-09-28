@@ -349,8 +349,8 @@ interface Options {
  */
 const ARRANGEMENTS: Record<string, readonly Align[]> = {
   ttoryeot: ['center', 'distribute', 'trapezoid'],
-  // 차분한 — 포스터 넷(R17~R20)을 하나씩 넣는 중(2026-09-28): 걸기(두 칸) · 세로쓰기 · 윤곽 따라.
-  // 넘치기(R18)는 칸이 아니라 가운데 돌의 기본이다
+  // 차분한 — 포스터 넷(R17~R20)을 하나씩 넣는 중(2026-09-28): 걸기(두 칸) · 윤곽 따라.
+  // 넘치기(R18)는 칸이 아니라 가운데 돌의 기본이다. 세로쓰기(R19)는 차분한에서 안 쓴다 — 다른 태도용으로 남겨 둔다
   chabun: ['center', 'hang-up', 'hang-down'],
   doran: ['center', 'arch', 'fan', 'smile']
 };

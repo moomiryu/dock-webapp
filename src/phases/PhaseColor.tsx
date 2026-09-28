@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
 import SnapSwitch from '../components/SnapSwitch';
 import VoiceBubble from '../components/VoiceBubble';
@@ -19,9 +19,11 @@ const T = {
     title: { ko: '발화를 어떻게 담아볼까요?', en: 'How would you like to hold your line?' },
     lead: { ko: <>발화가 지닌 태도를 떠올리며,<br />정렬 방식과 색을 골라 말을 담을 그릇을 그려봐요.</>,
       en: <>Think of the attitude your line carries,<br />then pick an alignment and a colour to draw the vessel that holds it.</> },
-    tray: { ko: '색 고르기', en: 'Choose a colour' },
-    /* 칩 안의 견본 글자 — 바탕은 배경색, 이 글자는 글자색 */
+    /* 룰렛 창 안의 견본 글자 — 바탕은 배경색, 이 글자는 글자색 */
     sample: { ko: '가', en: 'A' },
+    /* 룰렛 오른쪽 ▲▼의 낭독 이름 */
+    prevColour: { ko: '이전 색', en: 'Previous colour' },
+    nextColour: { ko: '다음 색', en: 'Next colour' },
     next: { ko: '이렇게 담을게요', en: 'Hold it like this' },
     /* 첫 장 — 3/5와 같은 말(2026-09-28) */
     start: { ko: '화면을 누르면 시작해요', en: 'Tap the screen to start' },
@@ -100,12 +102,41 @@ interface Props {
 const AREA = 'min(96cqw, 96cqh)';
 
 /**
+ * 시간 토큰(--t-*)을 ms로 읽는다 — **단위를 보고.** 빌드가 220ms를 .22s로, 700ms를 .7s로
+ * 고쳐 적어서, 숫자만 읽으면 dev에서는 멀쩡하고 라이브에서만 1000배 빨라진다(2026-09-29,
+ * 라이브 벽 구름이 같은 까닭으로 순간이동했다 — f202187). 값은 tokens.css 한 곳에만 산다.
+ */
+function tokenMs(name: string, fallback: number) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return (parseFloat(v) || 0) * (v.endsWith('ms') ? 1 : 1000) || fallback;
+}
+
+/**
+ * 룰렛이 도는 짝 — 열 짝에서 **겹치는 둘을 뺀 여덟**(2026-09-29).
+ *
+ * palettes-v2의 열 짝 중 흑백 · 백지(흰 바탕 · 검정 글자)와 밤 · 형광(초록 · 검정)이
+ * 같은 색이다. 늘어놓을 때는 옆 칸이라 티가 덜 났는데, 한 짝씩 넘기면 넘겨도 색이
+ * 안 바뀐 것처럼 보인다(밤 · 형광은 끝과 처음이라 한 바퀴 이음새에서 그랬다). 데이터는
+ * 그대로 둔다 — 옛 메시지의 paletteIdx가 거기 걸려 있다. 앞의 것만 남기므로 순서는 같다.
+ */
+const PAIRS = moods.filter((m, i) => moods.findIndex((n) =>
+    n.bg.toUpperCase() === m.bg.toUpperCase() && n.text.toUpperCase() === m.text.toUpperCase()) === i);
+const pairAt = (bg: string, text: string) => PAIRS.findIndex((m) =>
+    m.bg.toUpperCase() === bg.toUpperCase() && m.text.toUpperCase() === text.toUpperCase());
+/**
+ * 처음 들어오면 흰 바탕 · 검정 글자(2026-09-29, 사용자). 3/5를 마친 형식은 작업용 하늘색
+ * (messageStyle · DRAFT_COLORS)을 들고 오는데 그건 고를 수 있는 짝이 아니다 — 고른 짝이
+ * 아니면 흰 짝에서 시작하고, 한 번 고른 뒤에는 그 짝이 남는다(App · saveTone).
+ */
+const FIRST = Math.max(0, PAIRS.findIndex((m) => m.id === 'mono'));
+
+/**
  * 첫 장의 시연(2026-09-28, 사용자) — 3/5에서 다듬은 내 글이 위에서 굴러 떨어져
  * 가운데 말풍선에 들어가고, 그 말풍선이 색 짝을 차례로 갈아입는다.
  *
  * 떨어져 들어가는 움직임은 CSS(app.css · colorDemoFall · colorDemoInk)가 하고(말풍선은
- * 처음부터 서 있다), 색은 이 부품의 제 상태가 돈다 — 참여자가 고른 색(bg · fg)에는 닿지 않는다. 열 짝을
- * 같은 시간씩 차례로 도므로 어느 색도 권하지 않는다(절대원칙). 시작은 지금 색이다.
+ * 처음부터 서 있다), 색은 이 부품의 제 상태가 돈다 — 참여자가 고른 색(bg · fg)에는 닿지 않는다. 룰렛의
+ * 여덟 짝(PAIRS)을 같은 시간씩 차례로 도므로 어느 색도 권하지 않는다(절대원칙). 시작은 지금 색이다.
  * 움직임 줄이기를 켠 사람에게는 떨어지지도 돌지도 않는다.
  */
 function ColorDemo({ lines, tone, cloud, box, from }: {
@@ -116,14 +147,14 @@ function ColorDemo({ lines, tone, cloud, box, from }: {
         if (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
         /* 박자는 토큰에서 읽는다 — 떨어져 자리 잡는 동안(--t-hold × 2.4)은 첫 색 그대로,
            그 뒤 --t-hold × 1.5마다 한 짝씩 */
-        const hold = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--t-hold')) || 700;
+        const hold = tokenMs('--t-hold', 700);
         let iv = 0;
         const t = window.setTimeout(() => {
-            iv = window.setInterval(() => setI((k) => (k + 1) % moods.length), hold * 1.5);
+            iv = window.setInterval(() => setI((k) => (k + 1) % PAIRS.length), hold * 1.5);
         }, hold * 2.4);
         return () => { window.clearTimeout(t); window.clearInterval(iv); };
     }, []);
-    const m = moods[i];
+    const m = PAIRS[i];
     return <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={m.bg} still>
      <VoiceBubble text={lines.join('\n')} bg={m.bg} color={m.text} fontFamily={fontMap[tone.font]} font={tone.font}
        weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size} manner={tone.manner}
@@ -132,12 +163,123 @@ function ColorDemo({ lines, tone, cloud, box, from }: {
     </CloudBubble>;
 }
 
+/**
+ * 색 룰렛(2026-09-29, 사용자 — 참고는 mastercard.com/businessoutcomes의 세로로 굴러가는
+ * 숫자 창, 가져온 것은 그 굴러가는 방식 하나다). 짝 여덟을 트랙에 다 늘어놓던 것을 걷고,
+ * 알약 창 하나에 **지금 짝 하나만** 세운다. 위아래로 쓸거나 오른쪽 ▲▼를 누르면 이웃
+ * 짝이 위나 아래에서 굴러 들어와 한 짝에 멈춘다. 끝에서 처음으로 이어진다.
+ *
+ * **한 번의 손짓은 한 칸이다.** 옆으로 넘기던 트랙은 관성 스크롤이라 폰에서 가볍게
+ * 튕겨도 여러 색을 건너뛰었다(사용자). 여기서는 끄는 거리를 창 한 칸으로 묶고, 놓으면
+ * 속도와 상관없이 다음 · 이전 · 제자리 셋 중 하나로만 간다 — 한 칸의 4분의 1을 넘겨
+ * 끌었으면 넘어가고, 아니면 돌아온다. 도는 중에 누른 것은 한 칸씩 차례로 가되 둘까지만
+ * 기다린다(키를 누르고 있어도 끝없이 쌓이지 않게).
+ *
+ * 창은 [이전 · 지금 · 다음] 세 칸을 세로로 쌓은 띠를 한 칸만큼 올려 가운데를 보인다.
+ * 돌 때는 띠를 한 칸 더 밀고, 다 가면 부모가 고른 짝을 바꾸며 띠를 가운데로 되돌린다 —
+ * 같은 그림 안에서 일어나므로(useLayoutEffect) 튀지 않는다. 시간 · 곡선은 3/5 게이지가
+ * 놓았을 때 붙는 값과 같다(--t-return · --ease-standard).
+ */
+function ColorRoll({ at, onPick, labelledBy, lang }: {
+    at: number; onPick: (i: number) => void; labelledBy: string; lang: ReturnType<typeof useLang>;
+}) {
+    const win = useRef<HTMLDivElement>(null);
+    const strip = useRef<HTMLDivElement>(null);
+    const busy = useRef(false);
+    const queued = useRef(0);
+    const drag = useRef<{ y: number; dy: number } | null>(null);
+    const atRef = useRef(at);
+    atRef.current = at;
+    const n = PAIRS.length;
+    const wrap = (i: number) => ((i % n) + n) % n;
+    const shift = (px: number) => `translateY(calc(${px}px - 100% / 3))`;
+    const settle = () => {
+        strip.current?.getAnimations().forEach((a) => a.cancel());
+        if (strip.current) strip.current.style.transform = '';
+        win.current?.classList.remove('is-rolling');
+        busy.current = false;
+        if (queued.current) {
+            const d = Math.sign(queued.current) as 1 | -1;
+            queued.current -= d;
+            requestAnimationFrame(() => roll(d, 0));
+        }
+    };
+    /* 부모가 짝을 바꾼 그림에서 띠를 가운데로 — 칠하기 전에 */
+    useLayoutEffect(settle, [at]);
+    function roll(dir: -1 | 0 | 1, from: number) {
+        const el = strip.current;
+        if (!el) return;
+        busy.current = true;
+        win.current?.classList.add('is-rolling');
+        const root = getComputedStyle(document.documentElement);
+        const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const a = el.animate(
+            [{ transform: shift(from) }, { transform: `translateY(${-(1 + dir) * 100 / 3}%)` }],
+            { duration: still ? 0 : tokenMs('--t-return', 220),
+              easing: root.getPropertyValue('--ease-standard').trim() || 'ease-out', fill: 'forwards' });
+        a.finished.then(() => { if (dir) onPick(wrap(atRef.current + dir)); else settle(); }).catch(() => {});
+    }
+    const step = (dir: -1 | 1) => {
+        if (busy.current || drag.current) { queued.current = Math.max(-2, Math.min(2, queued.current + dir)); return; }
+        roll(dir, 0);
+    };
+    const pair = PAIRS[at];
+    return <div className="color-roll">
+     <div ref={win} className="color-roll-window" role="spinbutton" tabIndex={0}
+       aria-labelledby={labelledBy} aria-valuenow={at + 1} aria-valuemin={1} aria-valuemax={n}
+       aria-valuetext={pick(pair.name, lang)}
+       onKeyDown={(e) => {
+           if (e.key === 'ArrowDown') { e.preventDefault(); step(1); }
+           else if (e.key === 'ArrowUp') { e.preventDefault(); step(-1); }
+       }}
+       onPointerDown={(e) => {
+           if (busy.current) return;
+           e.currentTarget.setPointerCapture(e.pointerId);
+           drag.current = { y: e.clientY, dy: 0 };
+       }}
+       onPointerMove={(e) => {
+           const d = drag.current;
+           if (!d || !strip.current) return;
+           const h = e.currentTarget.clientHeight;
+           d.dy = Math.max(-h, Math.min(h, e.clientY - d.y));
+           win.current?.classList.add('is-rolling');
+           strip.current.style.transform = shift(d.dy);
+       }}
+       onPointerUp={(e) => {
+           const d = drag.current;
+           drag.current = null;
+           if (!d) return;
+           if (!d.dy) { settle(); return; }
+           const q = e.currentTarget.clientHeight / 4;
+           /* 손가락이 올라가면(띠가 위로) 아래의 다음 짝이 들어온다 */
+           roll(d.dy <= -q ? 1 : d.dy >= q ? -1 : 0, d.dy);
+       }}
+       onPointerCancel={() => { const d = drag.current; drag.current = null; if (d) roll(0, d.dy); }}>
+      <div ref={strip} className="color-roll-strip">
+       {[-1, 0, 1].map((o) => {
+           const m = PAIRS[wrap(at + o)];
+           return <div key={o} className="color-roll-item" style={{ background: m.bg, color: m.text }} aria-hidden>
+            {pick(T.sample, lang)}</div>;
+       })}
+      </div>
+     </div>
+     <div className="color-roll-arrows">
+      <button type="button" aria-label={pick(T.prevColour, lang)} onClick={() => step(-1)}>
+       <svg viewBox="0 0 12 7" aria-hidden><path d="M6 0 12 7H0z" /></svg></button>
+      <button type="button" aria-label={pick(T.nextColour, lang)} onClick={() => step(1)}>
+       <svg viewBox="0 0 12 7" aria-hidden><path d="M0 0h12L6 7z" /></svg></button>
+     </div>
+    </div>;
+}
+
 export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props) {
     const initial = messageColors(tone);
     const lang = useLang();
     const lines = foldLines(text);
-    const [bg, setBg] = useState(initial.bg);
-    const [fg, setFg] = useState(initial.text);
+    /* 고른 짝 — 룰렛의 자리. 고른 적 없는 색(작업용 하늘색)이면 흰 짝에서 시작한다(FIRST) */
+    const [at, setAt] = useState(() => { const i = pairAt(initial.bg, initial.text); return i >= 0 ? i : FIRST; });
+    const bg = PAIRS[at].bg;
+    const fg = PAIRS[at].text;
     /* 정렬 — 조정판의 둘째 잣대(2026-09-28). 전에 고른 값이 이 성격의 것이면 그것, 아니면 그 성격의 기본
        (가운데, 차분한은 중간 걸기 — 다른 성격에서 고른 '아치'를 들고 돌에 오면 중간 걸기로 선다) */
     const ALIGNS = arrangementsFor(tone.font);
@@ -152,9 +294,8 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
     const [moved, setMoved] = useState(false);
     const [visit, setVisit] = useState(0);
     const go = (s: 'intro' | 'work') => { setMoved(true); if (s === 'intro') setVisit((v) => v + 1); setStep(s); };
-    const fromMood = Math.max(0, moods.findIndex((m) => m.bg.toUpperCase() === bg.toUpperCase() && m.text.toUpperCase() === fg.toUpperCase()));
     return <div className="z-frame compose-screen color-choice is-pulled"
-      data-step={step} data-moved={moved ? '' : undefined}
+      data-step={step} data-moved={moved ? '' : undefined} data-pair={PAIRS[at].id}
       style={{ '--pane-bg': bg, '--chrome-ink': fg } as CSSProperties}>
  {/* ── 첫 장: 무엇을 하는 자리인지 + 시연 (2026-09-28) ──────────────────
      3/5의 첫 장과 같은 흐름이다. 장 전체가 넘기는 손짓이되 버튼 위는 아니다
@@ -170,7 +311,7 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
   <div className="color-stage color-demo" style={{ '--color-area': AREA } as CSSProperties}>
    {/* 늘 달아 둔다 — 넘길 때 위로 빠지는 장에 시연이 그대로 실려 간다. 되돌아오면
        key가 바뀌어 처음부터 다시 떨어진다 */}
-   <ColorDemo key={visit} lines={lines} tone={tone} cloud={cloud} box={box} from={fromMood} />
+   <ColorDemo key={visit} lines={lines} tone={tone} cloud={cloud} box={box} from={at} />
   </div>
   <button type="button" className="tone-more" onClick={() => go('work')}>{pick(T.start, lang)}</button>
  </section>
@@ -191,18 +332,11 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
  </div></div>
  {/* ── 조정판 (2026-09-28) — 3/5와 같은 회색 판, [이름 | 잣대] 두 줄 ──────── */}
  <div className="tone-panel color-panel">
-  {/* 열 조합. 배경과 글자가 한 짝이라 따로 고르지 않는다 — 네모 하나가
-      그 짝을 통째로 보여 준다(바탕은 배경색, 안의 '가'는 글자색). */}
+  {/* 배경과 글자가 한 짝이라 따로 고르지 않는다 — 창 하나가 그 짝을 통째로
+      보여 준다(바탕은 배경색, 가운데 '가'는 글자색). 한 번에 한 짝(위 ColorRoll). */}
   <div className="tslider">
    <span className="tslider-name" id="color-name">{pick(T.colour, lang)}</span>
-   <div className="color-tray" role="group" aria-labelledby="color-name">
-    {moods.map(m => {
-        const on = m.bg.toUpperCase() === bg.toUpperCase() && m.text.toUpperCase() === fg.toUpperCase();
-        return <button key={m.id} type="button" className={'color-chip' + (on ? ' on' : '')}
-          style={{ background: m.bg, color: m.text }} aria-pressed={on} aria-label={pick(m.name, lang)}
-          onClick={() => { setBg(m.bg); setFg(m.text); }}>{pick(T.sample, lang)}</button>;
-    })}
-   </div>
+   <ColorRoll at={at} onPick={setAt} labelledBy="color-name" lang={lang} />
   </div>
   <div className="tslider">
    <span className="tslider-name" id="align-name">{pick(T.align, lang)}</span>

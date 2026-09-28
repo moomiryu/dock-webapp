@@ -52,6 +52,8 @@ interface Props {
   still?: boolean;
   className?: string;
   style?: CSSProperties;
+  /** 나무의 기둥을 상자 밑으로 더 잇는다 — 길이는 CSS 변수 --trunk-ext(벽이 나무 키로 정한다) */
+  trunkExt?: boolean;
   children?: ReactNode;
 }
 
@@ -117,7 +119,7 @@ function prefersStill(): boolean {
   return typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-export default function CloudBubble({ cloud, box, side, color, still, className, style, children }: Props) {
+export default function CloudBubble({ cloud, box, side, color, still, className, style, trunkExt, children }: Props) {
   const filterId = 'cloud' + useId().replace(/[^a-zA-Z0-9]/g, '');
   const quiet = still || prefersStill();
   const W = cloud.w * K, H = cloud.h * K;
@@ -179,11 +181,13 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   const pt = (p: readonly [number, number]) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`;
   const bead = (p: readonly [number, number], i: number) => <circle key={i} cx={(p[0] * K).toFixed(1)} cy={(p[1] * K).toFixed(1)} r={((beads?.r ?? 0) * K).toFixed(1)} />;
   // 정렬 고르기가 들기 전까지 나무 · 구슬 구름의 글은 가운데 — 형상이 가운데 맞춘 줄을 품게 지어졌다
+  // 기둥의 끝(상자 높이의 비율) — 벽에서 이어 붙인 기둥이 여기서 시작하고, 펴지며 등장할 때 축이 그 밑이다
+  const trunkEnd = tree ? `${(((tree.trunk.y + tree.trunk.h) / cloud.h) * 100).toFixed(3)}%` : undefined;
   const kids = (tree || beads) && isValidElement(children) ? cloneElement(children as ReactElement<{ align?: string }>, { align: 'center' }) : children;
   return (
     <div
       className={'cloud-bubble' + (tree ? ' is-tree' : '') + (beads ? ' is-bead' : '') + (className ? ' ' + className : '')}
-      style={{ width: `calc(${side} * ${box.w.toFixed(4)})`, height: `calc(${side} * ${box.h.toFixed(4)})`, ...(pr.lh ? { '--cloud-lh': pr.lh } : {}), ...style } as CSSProperties}
+      style={{ width: `calc(${side} * ${box.w.toFixed(4)})`, height: `calc(${side} * ${box.h.toFixed(4)})`, ...(pr.lh ? { '--cloud-lh': pr.lh } : {}), ...(trunkEnd ? { '--trunk-end': trunkEnd } : {}), ...style } as CSSProperties}
     >
       <svg className="cloud-art" viewBox={`0 0 ${W.toFixed(1)} ${H.toFixed(1)}`} aria-hidden="true" focusable="false">
         {stone && !(hatch?.on && stone.hatch.length) ? (
@@ -251,6 +255,14 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
           </>
         )}
       </svg>
+      {/* 벽의 나무 — 기둥을 바닥까지 잇는다. 줄무늬는 SVG의 기둥과 같다(칠 · 비움 · 칠 …, 비운 줄로 바탕이 비친다) */}
+      {tree && trunkExt && (
+        <i className="cloud-trunk-ext" aria-hidden="true" style={{
+          left: `${((tree.trunk.x / cloud.w) * 100).toFixed(3)}%`, width: `${((tree.trunk.w / cloud.w) * 100).toFixed(3)}%`, top: trunkEnd,
+          background: `linear-gradient(to right, ${Array.from({ length: tree.trunk.stripes }, (_, i) =>
+            `${i % 2 ? 'transparent' : color} ${((i / tree.trunk.stripes) * 100).toFixed(2)}% ${(((i + 1) / tree.trunk.stripes) * 100).toFixed(2)}%`).join(', ')})`
+        }} />
+      )}
       {/* 글은 제 자리에 앉는다 — 구름이 비대칭이라 한가운데가 아니다 */}
       <div className="cloud-text" style={{
         left: `${((t.x / cloud.w) * 100).toFixed(3)}%`, top: `${((t.y / cloud.h) * 100).toFixed(3)}%`,

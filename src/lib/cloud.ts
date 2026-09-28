@@ -232,6 +232,8 @@ export interface Beads {
   body: Pt[];
   /** 곁의 작은 구름들 — 구름마다 구슬 중심. 벽에서 저마다 오르내린다(상자에 그 폭까지 넣었다) */
   lets: Pt[][];
+  /** 글자 한 자씩의 가운데(띄어쓰기 빼고, 줄 차례대로) — 벽에서 남의 구슬이 이 자리를 비켜 가고, 펄럭임이 이 차례로 지나간다 */
+  chars: Pt[];
 }
 
 export interface Cloud {
@@ -339,7 +341,7 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
   const rule: 'B' | 'C' = boxes.length <= 2 ? 'B' : 'C';
   if (pr.edge === 'stone' && pr.stone) return stoneFor(pr, rule, TW, TH, R);
   if (pr.edge === 'tree' && pr.tree) return treeFor(pr, rule, widths, TW, LH, !!o.manner);
-  if (pr.edge === 'bead' && pr.bead) return beadFor(pr, rule, TW, TH, R);
+  if (pr.edge === 'bead' && pr.bead) return beadFor(pr, rule, TW, TH, R, charCenters(lines, font, optic, scaleX, o.wdth, o.track ?? 0, TW, LH));
 
   const circles: Circle[] = [];
   const put = (x: number, y: number, r: number, kind: Circle['kind']) =>
@@ -652,6 +654,18 @@ function treeFor(pr: Persona, rule: 'B' | 'C', widths: readonly number[], TW: nu
 // ─── 다정한 — 구슬 구름 (2026-09-28) ─────────────────────────────────
 // 고른 과정과 견본은 design/landscape.md '구름'. 값은 PERSONAS.doran.bead.
 
+/** 글자 한 자씩의 가운데 (u) — 줄은 가운데 맞춤, 띄어쓰기는 빼고 줄 차례대로. 폭은 lineWidth와 같은 표 */
+function charCenters(lines: readonly string[], font: string | undefined, optic: number, scaleX: number, wdth: number | undefined, track: number, TW: number, LH: number): Pt[] {
+  const adv = advanceFor(BY_FONT[font ?? ''] ?? font ?? '', wdth), out: Pt[] = [];
+  lines.forEach((line, i) => {
+    const cs = Array.from(line);
+    const a = cs.map((ch) => ((ch === ' ' ? adv.space : /[A-Za-z0-9.,!?'"-]/.test(ch) ? LATIN : adv.hangul) + track) * optic * scaleX);
+    let x = (TW - a.reduce((s, v) => s + v, 0)) / 2;
+    cs.forEach((ch, j) => { if (ch.trim()) out.push([x + a[j] / 2, (i + 0.5) * LH]); x += a[j]; });
+  });
+  return out;
+}
+
 /** 둥근 모서리 네모 안인가 */
 function inRound(x: number, y: number, x0: number, y0: number, x1: number, y1: number, r: number): boolean {
   const cx = Math.min(Math.max(x, x0 + r), x1 - r), cy = Math.min(Math.max(y, y0 + r), y1 - r);
@@ -670,7 +684,7 @@ function inRound(x: number, y: number, x0: number, y0: number, x1: number, y1: n
  * 자리는 글이 씨앗인 무작위라 같은 글은 같은 자리이고, 둘은 테두리의 35~65%만큼 떨어진다. 밑에는
  * 안 붙는다. 본 구름(알 40~200개)과 급이 확실히 갈리는 크기다.
  */
-function beadFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number): Cloud {
+function beadFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number, chars: Pt[]): Cloud {
   const b = pr.bead!, S = b.step, rb = b.r, rh = (S * Math.sqrt(3)) / 2, mm = rb / 3;
   // 글 덩어리 — 글자 끝에서 0.06u, 줄 상자 위아래로 0.12u 더 잡는다(견본과 같다)
   const X = -0.06 - b.side, Y = -0.12 - b.top, W = TW + 0.12 + 2 * b.side, floor = TH + 0.12 + b.top, Hh = floor - Y;
@@ -711,7 +725,7 @@ function beadFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => 
   const mv = ([x, y]: Pt): Pt => [x - minX, y - minY];
   return {
     persona: pr, rule, circles: [], spikes: [],
-    beads: { r: rb, body: body.map(mv), lets: lets.map((l) => l.map(mv)) },
+    beads: { r: rb, body: body.map(mv), lets: lets.map((l) => l.map(mv)), chars: chars.map(mv) },
     w: Math.max(...xs) + e - minX, h: Math.max(...ys) + e - minY,
     text: { x: -minX, y: -minY, w: TW, h: TH }
   };

@@ -27,6 +27,8 @@ interface Props {
      */
     speed?: number;
     weightPos?: number;
+    /** 글자를 한 자씩 따로 둔다(.ch, 띄어쓰기는 빼고). 벽의 구름이 한 글자씩 펄럭일 때만 */
+    perChar?: boolean;
 }
 /**
  * 상자를 채우는 글자 크기 — 재서 정한다.
@@ -87,7 +89,7 @@ function fitToBox(el: HTMLElement): number {
  * max를 씌워야 바닥이 진짜 바닥이 된다 — 안쪽 clamp에 넣으면 뒤따르는
  * 곱셈이 다시 깎는다.
  */
-export default function VoiceBubble({ text, bg, color, fontFamily, font, weight, width = 1, slant = 0, fontSize, align = 'center', size = 44, manner = 0, fill, speed, weightPos, children }: Props) {
+export default function VoiceBubble({ text, bg, color, fontFamily, font, weight, width = 1, slant = 0, fontSize, align = 'center', size = 44, manner = 0, fill, speed, weightPos, perChar, children }: Props) {
     /* 모양은 서체별 표 하나가 정한다(2026-09-25). 3/5 견본 · 4/5 · 미리보기 ·
        벽이 모두 이 한 줄을 지난다. 세로 비율과 둥켈의 폭 축, 차분한의 자간이
        여기서 붙는다. */
@@ -117,7 +119,7 @@ export default function VoiceBubble({ text, bg, color, fontFamily, font, weight,
        나머지 서체는 '0'이 와서 -webkit-text-stroke가 아무 일도 안 한다. */
     return <div ref={body} className={'voice-bubble line-bubble' + (fill ? ' is-fill' : '')} style={{ '--line-bg': bg, color, fontFamily, fontWeight: f.weight, fontVariationSettings: f.variation, '--optical-stroke': f.stroke, letterSpacing: f.letterSpacing, textAlign: align, fontSize: fill ? `${filled * optic}px` : `calc((${fontSize ?? `max(14px, calc(${fitFontSize(text, { min: 3, max: 240 })} * 0.52 * ${scale} / ${Math.max(1, f.scaleX)}))`}) * ${optic})` } as CSSProperties}>
   <div className="voice-bubble-text line-bubble-text" style={{ textAlign: align, transform: `scale(${f.scaleX}, ${f.scaleY})`, transformOrigin: align }}>
-   {text.split('\n').map((line, i) => <div className="message-line" key={i}><span className="message-line-fill"><span style={{ fontStyle: f.slant ? `oblique ${f.slant}deg` : 'normal' }}>{line.split(/([A-Za-z0-9][A-Za-z0-9 .,!?'-]*)/g).map((part, j) => /[A-Za-z0-9]/.test(part) ? <span key={j} lang="en" style={{ fontStyle: f.slant ? 'italic' : 'normal' }}>{part}</span> : part || '\u200b')}</span></span></div>)}
+   {text.split('\n').map((line, i) => <div className="message-line" key={i}><span className="message-line-fill"><span style={{ fontStyle: f.slant ? `oblique ${f.slant}deg` : 'normal' }}>{perChar ? (line ? Array.from(line).map((c, j) => (c.trim() ? <span key={j} className="ch">{c}</span> : c)) : '\u200b') : line.split(/([A-Za-z0-9][A-Za-z0-9 .,!?'-]*)/g).map((part, j) => /[A-Za-z0-9]/.test(part) ? <span key={j} lang="en" style={{ fontStyle: f.slant ? 'italic' : 'normal' }}>{part}</span> : part || '\u200b')}</span></span></div>)}
    {children}
   </div>
  </div>;

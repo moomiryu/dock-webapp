@@ -3641,6 +3641,33 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    곧 글 자리보다 (1 − scaleY) × 높이 ÷ 2 아래 — 에 섰다(네 줄에서 11px). 칸을 글 자리 크기에
    묶으면 넘친 몫이 위아래로 고르게 나가 눌린 글이 글 자리 한가운데 선다. */
 .cloud-bubble.is-tree .cloud-text, .cloud-bubble.is-bead .cloud-text{ grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
+/* 벽의 나무 — 기둥을 바닥까지 잇는 조각(CloudBubble trunkExt). 길이는 WallSimulation이 나무 키로 적는다 */
+.cloud-trunk-ext{ position: absolute; height: var(--trunk-ext, 0px); }
+/* 한 글자씩 펄럭이려면 글자마다 제 상자가 있어야 한다(인라인 글자는 transform을 안 받는다) */
+.voice-bubble .ch{ display: inline-block; }
+
+/* ── 벽의 풍경 (2026-09-28, design/landscape.md '나무' · '구름') ─────────────
+   말들은 한 겹(.wall-field)에 모아 격리한다 — 구름(다정한)은 겹친 자리를 곱하는데(리소 오버프린트),
+   벽의 검정까지 곱하면 구름이 통째로 검게 사라진다. 격리한 겹 안에서는 말끼리만 곱해지고,
+   그 겹이 검정 위에 그대로 얹힌다. 겹 안의 차례는 DOM 차례다: 키 큰 나무 → 작은 나무 → 돌 → 떠다니는
+   말 → 구름. 곱해진 색은 두 참여자의 색이 겹쳐 생긴 것이라 '새 색을 만들지 않는다'의 예외다(디자이너). */
+.wall-field{ position: absolute; inset: 0; isolation: isolate; }
+.wall-block.is-cloud{ mix-blend-mode: multiply; }
+/* 나무는 처음 나타날 때만 종이가 펴지듯 — 바닥(이어 붙인 기둥 끝)을 축으로 뒤로 누운 90°에서 곧게.
+   그 밖에는 가만히 선다. 원근은 벽 높이의 2.5배 앞에서 보는 것(견본과 같은 비).
+   펴지기는 벽이 나무를 **처음 자리에 세운 순간**(data-placed, WallSimulation)에 시작한다 — 붙자마자 시작하면
+   벽이 뜨는 동안(글꼴 · 목록을 받는 사이) 다 펴져 버려 아무도 못 봤다. 그 전에는 누운 채 보이지 않는다 */
+.wall-block.is-tree{ perspective: 250vh; }
+.wall-block.is-tree .cloud-bubble{
+  transform-origin: 50% calc(var(--trunk-end, 100%) + var(--trunk-ext, 0px));
+  transform: rotateX(90deg);
+}
+.wall-block.is-tree[data-placed] .cloud-bubble{
+  transform: none;
+  animation: treeUnfold calc(var(--t-hold) + var(--t-return)) var(--ease-standard) both;
+}
+@keyframes treeUnfold{ from{ transform: rotateX(90deg); } to{ transform: none; } }
+@media (prefers-reduced-motion: reduce){ .wall-block.is-tree[data-placed] .cloud-bubble{ animation: none; } }
 
 .compose-count{ transition: opacity 240ms; }
 @media (prefers-reduced-motion: reduce) {

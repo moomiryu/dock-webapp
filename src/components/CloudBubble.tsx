@@ -185,9 +185,9 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   // 나무 · 구슬 구름은 글 배치를 형상이 정한다(cloud.ts의 layout — 다시 나눈 줄 · 줄마다 자간 · 한 자씩의 자리).
   // 줄 맞춤은 가운데 — 균등 배분 · 사다리꼴은 줄이 이미 틀을 채웠고, 달걀 · 뭉게구름은 가운데 맞춘 줄을 품게 지었다
   const lay = cloud.layout;
-  const kids = (tree || beads) && isValidElement(children)
+  const kids = (tree || beads || lay) && isValidElement(children)
     ? cloneElement(children as ReactElement<{ align?: string; text?: string; lineTrack?: readonly number[]; glyphs?: unknown; glyphBox?: unknown }>, {
-        align: 'center',
+        align: lay?.align ?? 'center',
         ...(lay?.lines ? { text: lay.lines.join('\n') } : {}),
         ...(lay?.track ? { lineTrack: lay.track } : {}),
         ...(lay?.glyphs && lay.box ? { glyphs: lay.glyphs, glyphBox: lay.box } : {})
@@ -275,7 +275,9 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
       {/* 글은 제 자리에 앉는다 — 구름이 비대칭이라 한가운데가 아니다 */}
       <div className="cloud-text" style={{
         left: `${((t.x / cloud.w) * 100).toFixed(3)}%`, top: `${((t.y / cloud.h) * 100).toFixed(3)}%`,
-        width: `${((t.w / cloud.w) * 100).toFixed(3)}%`, height: `${((t.h / cloud.h) * 100).toFixed(3)}%`
+        width: `${((t.w / cloud.w) * 100).toFixed(3)}%`, height: `${((t.h / cloud.h) * 100).toFixed(3)}%`,
+        // 걸기 — 글 상자를 제 가운데로 돌려 곧은 윗변과 나란히 둔다(cloud.ts stoneFor)
+        ...(lay?.rotate ? { transform: `rotate(${lay.rotate.toFixed(4)}rad)` } : {})
       }}>{kids}</div>
     </div>
   );

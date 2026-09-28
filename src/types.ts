@@ -12,9 +12,10 @@ export type FontFamily = 'doran' | 'chabun' | 'botong' | 'ttoryeot' | 'deulseok'
 /**
  * 정렬 — 4/5에서 고른다. 셋은 모든 성격의 고전 정렬이고, 나머지는 성격마다 제 것이 있다
  * (2026-09-28, design/landscape.md): 당당한(나무) = 가운데 · 균등 배분 · 사다리꼴,
- * 다정한(구름) = 가운데 · 아치 · 부채꼴 · 미소. 목록은 cloud.ts의 arrangementsFor
+ * 다정한(구름) = 가운데 · 아치 · 부채꼴 · 미소, 차분한(돌) = 가운데 · 걸기 · 넘치기 · 세로쓰기 · 윤곽 따라
+ * (포스터 넷 R17~R20, 넣는 중). 목록은 cloud.ts의 arrangementsFor
  */
-export type Align = 'left' | 'center' | 'right' | 'distribute' | 'trapezoid' | 'arch' | 'fan' | 'smile';
+export type Align = 'left' | 'center' | 'right' | 'distribute' | 'trapezoid' | 'arch' | 'fan' | 'smile' | 'hang-up' | 'hang-down';
 
 export interface ToneState {
   align?: Align;

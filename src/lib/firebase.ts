@@ -164,7 +164,11 @@ function buildRestClient(): FirestoreLike {
    */
   function toneForWall(t: Draft['tone']) {
     if (!t) return t;
-    return Object.fromEntries(Object.entries(t).filter(([, v]) => v !== undefined));
+    const out = Object.fromEntries(Object.entries(t).filter(([, v]) => v !== undefined));
+    /* 차분한(돌)의 제 정렬(2026-09-28, 넣는 중)은 규칙 파일에만 있고 아직 게시 전이다 — 보내면 전송째
+       거부되므로 벽으로는 가운데로 보낸다(4/5 · 5/5는 고른 대로 보인다). 게시하면 이 몇 줄을 걷는다 */
+    if (typeof out.align === 'string' && !PUBLISHED_ALIGNS.includes(out.align)) out.align = 'center';
+    return out;
   }
   return {
     async addMessage(d: Draft) {
@@ -217,6 +221,9 @@ function buildRestClient(): FirestoreLike {
     }
   };
 }
+
+/** 운영 규칙(firestore.rules)에 **게시된** 정렬 값 — 여기 없는 값은 게시 전까지 가운데로 보낸다(toneForWall) */
+const PUBLISHED_ALIGNS = ['left', 'center', 'right', 'distribute', 'trapezoid', 'arch', 'fan', 'smile'];
 
 const MOCK_KEY = 'megafont.mock.messages.v1';
 

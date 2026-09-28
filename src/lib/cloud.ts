@@ -85,6 +85,8 @@ export interface Persona {
     /** 빗금 — 켜짐 · 바깥 법선 각도 범위(도, 0 = 오른쪽 · 90 = 아래) · 깊이 · 간격 · 굵기 (u).
         on이 false면 빗금을 만들지도 그리지도 않는다 — 값은 그대로 두어 on만 되돌리면 산다 */
     hatch: { on: boolean; from: number; to: number; depth: number; gap: number; width: number };
+    /** 걸기(R17) — 돌과 글이 같이 기우는 각도(도, + = 시계 방향: 올려 걸기 · 내려 걸기) · 돌의 몸이 글 아래로 처지는 깊이(글 높이의 배수) */
+    hang: { up: number; down: number; drop: number };
   };
   /** 줄 높이(글자 크기의 배수). 없으면 LINE_HEIGHT(1.5). 글에 바짝 붙는 형상(나무)이 좁힌다 */
   lh?: number;
@@ -145,7 +147,10 @@ export const PERSONAS: Record<string, Persona> = {
       crack: { count: 2, angle: [25, 65], clear: 0.3 },
       // 빗금은 꺼 두었다(2026-09-28, 사용자 — "일단 없애 보자, 나중에 되살릴 수 있게").
       // 되살리려면 on: true. 나머지 값은 09-28 새벽에 깊이를 0.6 → 0.3u로 줄인 그대로다
-      hatch: { on: false, from: -35, to: 125, depth: 0.3, gap: 0.2, width: 0.055 } } },
+      hatch: { on: false, from: -35, to: 125, depth: 0.3, gap: 0.2, width: 0.055 },
+      // 걸기의 각도 — 여섯 안(0 · 6 · 12 · 18° 올림, 6 · 12° 내림)을 4/5 격자로 보고 둘을 골라 두 칸으로 나눴다
+      // (2026-09-28, 디자이너): 올려 걸기 = 오른쪽이 12° 올라감, 내려 걸기 = 오른쪽이 6° 내려감
+      hang: { up: -12, down: 6, drop: 1 } } },
   // 구슬 구름 (2026-09-28). 꽃 → 옛 뭉게구름(부풀던 원 + 번짐)을 거쳐, 당당한 박스의 틀(글에 붙는 덩어리)을
   // 구름으로 옮겼다 — 밑은 평평하고 위와 양옆에 봉우리, 사방 여백을 고르게, 굵은 구슬 한 크기로 찍는다.
   // 원을 부풀리지 않아 lobe · fill · gap · spread는 쓰이지 않는다. 행간 1.1은 나무와 같다.
@@ -247,13 +252,16 @@ export interface Glyph { c: string; x: number; y: number; a: number }
 /**
  * 형상이 정한 글 배치 — 말풍선(VoiceBubble)이 이대로 그린다(CloudBubble이 넘긴다).
  * lines = 형상이 다시 나눈 줄(사다리꼴), track = 줄마다 더하는 자간(em, 균등 배분 · 사다리꼴),
- * glyphs · box = 한 자씩 놓은 자리와 글 상자(em, 아치 · 부채꼴 · 미소)
+ * glyphs · box = 한 자씩 놓은 자리와 글 상자(em, 아치 · 부채꼴 · 미소),
+ * align = 줄 맞춤(걸기는 왼끝), rotate = 글 상자를 제 가운데로 돌리는 각(rad, 걸기)
  */
 export interface TextLayout {
   lines?: string[];
   track?: number[];
   glyphs?: Glyph[];
   box?: { w: number; h: number };
+  align?: 'left' | 'center' | 'right';
+  rotate?: number;
 }
 
 export interface Cloud {
@@ -334,6 +342,8 @@ interface Options {
  */
 const ARRANGEMENTS: Record<string, readonly Align[]> = {
   ttoryeot: ['center', 'distribute', 'trapezoid'],
+  // 차분한 — 포스터 넷(R17~R20)을 하나씩 넣는 중(2026-09-28): 걸기 · 넘치기 · 세로쓰기 · 윤곽 따라
+  chabun: ['center', 'hang-up', 'hang-down'],
   doran: ['center', 'arch', 'fan', 'smile']
 };
 export function arrangementsFor(font: string | undefined): readonly Align[] {
@@ -375,7 +385,7 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
   const TW = Math.max(0.5, ...widths), TH = Math.max(1, lines.length) * LH;
   const boxes = widths.map((w, i) => ({ x0: (TW - w) / 2, x1: (TW + w) / 2, yc: (i + 0.5) * LH }));
   const rule: 'B' | 'C' = boxes.length <= 2 ? 'B' : 'C';
-  if (pr.edge === 'stone' && pr.stone) return stoneFor(pr, rule, TW, TH, R);
+  if (pr.edge === 'stone' && pr.stone) return stoneFor(pr, rule, TW, TH, R, o.align === 'hang-up' || o.align === 'hang-down' ? o.align : 'center');
   if (pr.edge === 'tree' && pr.tree) return treeLayout(pr, rule, lines, font, optic, scaleX, slant, o, LH);
   if (pr.edge === 'bead' && pr.bead) {
     if (o.align === 'arch' || o.align === 'fan' || o.align === 'smile') return beadArcFor(pr, rule, lines, font, optic, scaleX, o, LH, R, o.align);
@@ -566,12 +576,16 @@ function hatchBands(P: readonly Pt[], cx: number, cy: number, h: { from: number;
  *
  * 원은 하나도 안 쓴다. 번지지도 숨 쉬지도 않는다 — 돌은 가만히 있다.
  */
-function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number): Cloud {
+function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number, mode: 'center' | 'hang-up' | 'hang-down' = 'center'): Cloud {
   const s = pr.stone!;
-  const cx = TW / 2, cy = TH / 2, a = TW / 2 + PAD, b = TH / 2 + PAD;
+  /* 걸기(R17, 2026-09-28): 돌의 몸을 글 아래로 글 높이 × drop만큼 더 잡고 짓는다. 무작위 기울기는 쓰지 않는다 —
+     차분한은 칸마다 같은 각도로 기운다(디자이너 — 올려 걸기 · 내려 걸기 두 칸). 윗변은 아래에서 곧게 자르고,
+     다 지은 뒤 돌과 글을 그 각도만큼 돌린다 */
+  const hang = mode !== 'center', drop = hang ? TH * s.hang.drop : 0;
+  const cx = TW / 2, cy = (TH + drop) / 2, a = TW / 2 + PAD, b = (TH + drop) / 2 + PAD;
   const pick = (range: readonly [number, number]) => range[0] + (range[1] - range[0]) * R();
   const k = s.corners[0] + Math.floor(R() * (s.corners[1] - s.corners[0] + 1));
-  const tilt = ((R() < 0.5 ? -1 : 1) * pick(s.tilt) * Math.PI) / 180;
+  const tilt0 = ((R() < 0.5 ? -1 : 1) * pick(s.tilt) * Math.PI) / 180, tilt = hang ? 0 : tilt0;
   const off = R() * Math.PI * 2;
   const sup = (v: number) => Math.sign(v) * Math.abs(v) ** (2 / 3);
 
@@ -585,8 +599,8 @@ function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () =>
   }
   pts.sort((p, q) => Math.atan2(p[1] - cy, p[0] - cx) - Math.atan2(q[1] - cy, q[0] - cx));
 
-  // 글 + 사방 여백을 다 품을 때까지 키운다
-  const need = rimOf(-PAD, -PAD, TW + PAD, TH + PAD);
+  // 글 + 사방 여백을 다 품을 때까지 키운다(걸기는 처지는 몸까지)
+  const need = rimOf(-PAD, -PAD, TW + PAD, TH + PAD + drop);
   for (let g = 0; g < 120 && !need.every(([x, y]) => inPolygon(x, y, pts)); g++) {
     pts = pts.map(([x, y]): Pt => [cx + (x - cx) * 1.02, cy + (y - cy) * 1.02]);
   }
@@ -596,12 +610,20 @@ function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () =>
   for (let i = quads.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [quads[i], quads[j]] = [quads[j], quads[i]]; }
   for (const [sx, sy] of quads.slice(0, s.crack.count)) {
     const th = (pick(s.crack.angle) * Math.PI) / 180, ux = sx * Math.cos(th), uy = sy * Math.sin(th);
+    if (hang && sy < 0) continue;                        // 걸기 — 위 모서리는 곧은 윗변이 어차피 자른다
     pts = clipHalf(pts, ux, uy, Math.max(...need.map(([x, y]) => ux * x + uy * y)) + s.crack.clear);
   }
+  if (hang) pts = clipHalf(pts, 0, -1, PAD);              // 곧은 윗변 — 글 윗줄에서 여백만큼 위
   // 자른 자리에 겹친 점이 남으면 길이 0인 변이 생긴다
   pts = pts.filter((p, i) => { const q = pts[(i + 1) % pts.length]; return Math.hypot(q[0] - p[0], q[1] - p[1]) > 1e-4; });
 
-  const hatch = s.hatch.on ? hatchBands(pts, cx, cy, s.hatch) : [];
+  // 걸기 — 돌과 글을 글 윗줄 왼끝을 축으로 같이 돌린다. 글 상자는 돌리지 않은 크기 그대로, 가운데만 옮긴다
+  const ang = hang ? ((mode === 'hang-up' ? s.hang.up : s.hang.down) * Math.PI) / 180 : 0, ca = Math.cos(ang), sa = Math.sin(ang);
+  const rot = ([x, y]: Pt): Pt => [x * ca - y * sa, x * sa + y * ca];
+  if (hang) pts = pts.map(rot);
+  const [tcx, tcy] = rot([TW / 2, TH / 2]);
+  const [hcx, hcy] = rot([cx, cy]);
+  const hatch = s.hatch.on ? hatchBands(pts, hcx, hcy, s.hatch) : [];
 
   // 상자 — 원점을 왼쪽 위로. 가장자리가 잘리지 않게 조금 넉넉히
   const e = 0.05;
@@ -612,7 +634,8 @@ function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () =>
     persona: pr, rule, circles: [], spikes: [],
     stone: { pts: pts.map(mv), hatch: hatch.map((q): Quad => [mv(q[0]), mv(q[1]), mv(q[2]), mv(q[3])]) },
     w: Math.max(...xs) + e - minX, h: Math.max(...ys) + e - minY,
-    text: { x: -minX, y: -minY, w: TW, h: TH }
+    text: { x: tcx - TW / 2 - minX, y: tcy - TH / 2 - minY, w: TW, h: TH },
+    ...(hang ? { layout: { align: 'left' as const, rotate: ang } } : {})
   };
 }
 

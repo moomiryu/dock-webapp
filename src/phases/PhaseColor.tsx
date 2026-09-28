@@ -38,7 +38,10 @@ const T = {
     trapezoid: { ko: '사다리꼴', en: 'Trapezoid' },
     arch: { ko: '아치', en: 'Arch' },
     fan: { ko: '부채꼴', en: 'Fan' },
-    smile: { ko: '미소', en: 'Smile' }
+    smile: { ko: '미소', en: 'Smile' },
+    /* 차분한(돌) — 포스터 넷(R17~R20). 이름은 일단 원론적인 이름으로(2026-09-28, 디자이너) */
+    'hang-up': { ko: '올려 걸기', en: 'Hang up' },
+    'hang-down': { ko: '내려 걸기', en: 'Hang down' }
 };
 
 /*

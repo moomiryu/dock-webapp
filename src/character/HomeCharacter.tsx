@@ -288,8 +288,12 @@ export default function HomeCharacter({ onTap }: {
      */
     const depth = 1;
     const liftMax = () => size * geo.span.y * LIFT_MAX;
-    /** 표정이 머무는 시간 — tokens.css의 --t-hold. 값은 거기 한 곳에만 산다 */
-    const holdMs = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--t-hold')) || 700;
+    /** 표정이 머무는 시간 — tokens.css의 --t-hold. 값은 거기 한 곳에만 산다.
+        단위를 보고 읽는다 — 빌드가 700ms를 .7s로 고쳐 적어, ms로만 읽으면 라이브에서 0.7ms가 된다(2026-09-29) */
+    const holdMs = () => {
+      const v = getComputedStyle(document.documentElement).getPropertyValue('--t-hold').trim();
+      return (parseFloat(v) || 0) * (v.endsWith('ms') ? 1 : 1000) || 700;
+    };
     /**
      * 들려 있는 손. 누른 자리(y0)와 지금 얼마나 떠 있는지(lift, px).
      *

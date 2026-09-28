@@ -224,10 +224,15 @@ const LETTER_PUSH_S = 0.02;
 /** 처음 뜬 뒤 이만큼(ms) 지나 들어오는 구름은 왼쪽 밖에서 들어온다. 그 전(벽이 막 켜졌을 때)은 벽 곳곳에 놓는다 */
 const CLOUD_ENTER_AFTER = 1500;
 
-/** --t-hold(초). 토큰을 한 번 읽어 둔다 — 못 읽는 곳(토큰이 없는 문서)에서만 0.7초 */
+/** --t-hold(초). 토큰을 한 번 읽어 둔다 — 못 읽는 곳(토큰이 없는 문서)에서만 0.7초.
+    단위를 보고 읽는다: 빌드가 CSS를 줄이며 700ms를 .7s로 고쳐 적는다. ms로만 읽었더니 라이브에서만
+    0.0007초가 되어 구름이 한 프레임에 600px씩 건너뛰고 펄럭임 · 엇걸음이 1000배로 떨었다(2026-09-29) */
 let HOLD_S = 0;
 function hold(): number {
-  if (!HOLD_S) HOLD_S = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--t-hold')) || 700) / 1000;
+  if (!HOLD_S) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue('--t-hold').trim();
+    HOLD_S = (parseFloat(v) || 0) * (v.endsWith('ms') ? 0.001 : 1) || 0.7;
+  }
   return HOLD_S;
 }
 /** 글 → 0~1. 같은 글은 같은 값(나무 키) */

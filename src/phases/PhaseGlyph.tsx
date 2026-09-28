@@ -13,8 +13,8 @@ const T = {
   group: { ko: '성격 고르기', en: 'Choose a character' },
   /* 줄은 문장 단위로 바꾼다(사용자 결정) — 문장 사이에서 한 번 끊는다 */
   note: {
-    ko: <>성격은 앞으로 더 늘어나요.<br />해 보고 싶은 성격이 있다면 마지막 화면에 적어 주세요.</>,
-    en: <>More characters are on the way.<br />If there is one you'd like to try, tell us on the last screen.</>
+    ko: <>성격은 앞으로 더 늘어날 예정입니다.<br />추가하고 싶은 성격이 있다면, <span className="keep">마지막에 개선사항을 남겨주세요.</span></>,
+    en: <>More characters are on the way.<br />If there is one you'd like added, leave it in the feedback at the end.</>
   } as Pair<ReactNode>,
   next: { ko: '이 성격으로 할게요', en: 'Use this character' }
 };

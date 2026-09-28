@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import BackButton from './BackButton';
 import { HomeX } from './StepHeader';
-import { aboutSvg, scopeSvg, slideSvg, step1Svg } from '../lib/svgAsset';
+import { scopeSvg, slideSvg, step1Svg, step3Svg } from '../lib/svgAsset';
 import { pick, useLang, type Pair } from '../lib/lang';
 
 // 작가가 삽화를 컷으로 나눠 준다. 컷 사이를 이어 도는 일은 svgAsset이 한다.
 //
-//   About   두 컷(불 켜진 벽 · 다 모인 밤)으로 **세 걸음**을 짓는다.
-//           ① 불빛이 켜지고 ② '내 생각은…'이 뜨고 ③ 구경꾼이 걸어 들어온다.
-//           가운데 걸음은 그림에 없다 — 둘째 컷을 벽면 안팎으로 쪼개 만든다.
+//   Step 3(작동)  한 컷(example_step3)으로 **세 걸음**을 짓는다.
+//           ① 불빛이 켜지고 ② '내 생각은…'이 한 글자씩 찍히고 ③ 하늘색 구경꾼이
+//           놀란다. 왼쪽 발화자는 가만히 있다(2026-09-29 작가).
 //
 //   Step 1  마지막 네 컷은 앞으로만 재생한 뒤 작성 첫 장면으로 돌아간다.
 //
@@ -20,8 +20,7 @@ import { pick, useLang, type Pair } from '../lib/lang';
 // 같은 폴더의 `Artboard size_*.pdf`는 번들에 넣지 않는다. 화면이 아니라
 // **기준**이다 — 그 페이지 크기(390×603)가 곧 삽화의 화판이고, 화면에서
 // 어디까지 보이고 어디가 잘려야 하는지를 그것이 정한다(app.css · --focus).
-import artAboutLit from '../../by_moomiryu/Renewal_v1/Tutorial/example_about_1.svg?raw';
-import artAboutFull from '../../by_moomiryu/Renewal_v1/Tutorial/example_about_2.svg?raw';
+import artStep3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3.svg?raw';
 import artRule1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_1_1.svg?raw';
 import artRule2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step_1_2.svg?raw';
 import artRule3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_3_1.svg?raw';
@@ -306,12 +305,12 @@ const GUIDE: Slide[] = [
       )
     },
     /* 한 바퀴를 12초에서 **8.4초(70%)로** 줄인다(2026-09-22). 보고 있으면
-       길었다 — 다섯 걸음(어둠·불빛·문구·사람·도로 어둠) 중 사람이 걸어
-       들어오는 구간이 혼자 5몫이라 그동안 화면이 멈춘 듯 보인다. 걸음의
-       비율은 그대로 두고 전체만 줄이므로 사람은 여전히 두 걸음으로 들어온다
-       (그 이유는 aboutSvg의 timeline 주석). 1번도 같은 값으로 줄였다. */
-    art: <Built name="about" still={artAboutFull}
-      make={(k) => aboutSvg(artAboutLit, artAboutFull, k, 8.4)} />,
+       길었다 — 다섯 마디(어둠·불빛·문구·머묾·도로 어둠) 중 넷째가 혼자
+       5몫이라 그동안 화면이 멈춘 듯 보인다. 1번도 같은 값으로 줄였다.
+       그림은 About에서 빌려 온 두 컷이었다가 작가의 한 컷(example_step3)으로
+       바뀌었다(2026-09-29) — 두 컷 사이에 발화자의 팔이 휘저어지던 것을 뺐다. */
+    art: <Built name="step3" still={artStep3}
+      make={(k) => step3Svg(artStep3, k, 8.4)} />,
     artClass: 'is-bleed',
     dark: true
   }

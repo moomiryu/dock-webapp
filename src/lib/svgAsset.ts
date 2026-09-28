@@ -2030,74 +2030,60 @@ export function chainSvg(raws: string[], key: string, dur = 11, even = false, lo
 }
 
 /**
- * About — 한 장면이 세 걸음으로 지어진다.
+ * Step 3 — 한 장면이 세 걸음으로 지어진다.
  *
- *   ① 불빛이 켜진다   ② '내 생각은…'이 뜬다   ③ 구경꾼들이 들어와 본다
+ *   ① 불빛이 켜진다   ② '내 생각은…'이 한 글자씩 찍힌다   ③ 구경꾼이 놀란다
  *
- * 작가가 준 것은 두 컷이다: 불만 켜진 것과 다 있는 것. 가운데 걸음(문구만
- * 있고 사람은 없는 상태)은 그림에 없어서 **둘째 컷을 쪼개** 만든다 —
- * 벽면 안쪽에 든 것은 문구, 그 아래에 선 것은 사람이다.
+ * **한 컷에서 짓는다**(2026-09-29, 작가가 example_step3으로 다시 그렸다).
+ * 전에는 About에서 빌려 온 두 컷(불만 켜진 것 example_about_1 · 다 있는 것 _2)의
+ * 차이로 움직였는데, 두 컷 사이에 **왼쪽 발화자의 팔 모양**이 달라서 한 바퀴마다
+ * 팔을 휘저었다. 작가가 그 움직임을 뺐다 — 왼쪽은 가만히 서 있고, 오른쪽의 불빛 ·
+ * 글자 · 하늘색 구경꾼의 표정만 산다. 한 컷이라 오갈 짝이 없으니 팔은 저절로 선다.
  *
- * 첫 걸음의 '켜진다'도 그림에 없다. 불빛(방사형 그라디언트)을 꺼 두고
+ * 첫 걸음의 '켜진다'는 그림에 없다. 불빛(방사형 그라디언트)을 꺼 두고
  * 시작해 밝기로 켠다 — 어두운 벽이 먼저 있고 거기 불이 들어오는 것이
  * 이 장면의 첫 문장이라서.
- *
- * 사람은 밝기로 나타나지 않고 **화면 밖에서 걸어 들어온다.** 둘 다 화판
- * 오른쪽에 서므로 오른쪽 밖에서 온다. 나갈 때는 같은 길로 물러난다 —
- * 한 바퀴가 곧 '벽이 켜지고 사람이 모였다 흩어지는' 하룻밤이다.
  */
-export function aboutSvg(litRaw: string, fullRaw: string, key: string, dur = 12): string {
-  if (typeof DOMParser === 'undefined') return scopeSvg(fullRaw, key);
+export function step3Svg(raw: string, key: string, dur = 12): string {
+  if (typeof DOMParser === 'undefined') return scopeSvg(raw, key);
   try {
-    const parse = (x: string) => new DOMParser().parseFromString(x, 'image/svg+xml').documentElement;
-    const A = parse(litRaw), B = parse(fullRaw);
+    const B = new DOMParser().parseFromString(raw, 'image/svg+xml').documentElement;
     const vb = (B.getAttribute('viewBox') ?? '').split(/[ ,]+/).map(Number);
-    if (!A.getAttribute('viewBox') || vb.length !== 4) return scopeSvg(fullRaw, key);
-    inlineFills(A); inlineFills(B);
-    const ia = itemsOf(A), ib = itemsOf(B);
-    const w = align(ia, ib);
+    if (vb.length !== 4) return scopeSvg(raw, key);
+    inlineFills(B);
+    const ib = itemsOf(B);
 
     /* 벽면 = 화판을 다 덮지 않는 제일 큰 사각형. 문구는 그 안에 들고
-       사람은 그 아래에 선다 — 둘을 가르는 선이 이것이다. */
+       사람은 그 아래 · 왼쪽에 선다 — 둘을 가르는 선이 이것이다. */
     let wall: { x: number; y: number; w: number; h: number } | null = null;
     for (const it of ib) {
       const b = it.tag === 'rect' ? boxOf(it) : null;
       if (!b || b.w >= vb[2] * 0.99) continue;
       if (!wall || b.w * b.h > wall.w * wall.h) wall = b;
     }
+    if (!wall) return scopeSvg(raw, key);
+    const W = wall;
 
-    /* 다섯 걸음: 어둠 · 불빛 · 문구 · 사람 · (도로 어둠)
-       사람이 들어오는 구간(셋째)만 길게 준다 — 걸어 들어오는 데 두 걸음은
-       있어야 걸음으로 읽힌다. 짧으면 미끄러져 들어온 것이 된다. */
+    /* 다섯 마디: 어둠 · 불빛 · 문구 · 머묾 · (도로 어둠). 넷째가 길다 —
+       사람이 걸어 들어오던 자리였고(2026-09-20에 걸음을 걷었다), 지금은
+       켜진 글을 보는 동안이다. 구경꾼은 그 첫머리에 놀란다(startle). */
     const t = timeline([1, 2, 2, 5, 1], [2, 2, 5, 2]);
-    const say = (el: Element, v: string[]) => animateSeq(el, 'opacity', v, t, dur);
 
     // ① 불빛 — 그라디언트를 쓰는 것이 불빛이다
     let lamps = 0;
     for (const it of ib) {
       if (!/^url\(/.test(it.fill)) continue;
-      say(it.el, ['0', '1', '1', '1', '0']);
+      animateSeq(it.el, 'opacity', ['0', '1', '1', '1', '0'], t, dur);
       lamps++;
     }
 
-    // 두 컷에 다 있는 것은 그대로 서 있되, 달라진 만큼만 움직인다
-    for (const [bEl, a] of w.pair) {
-      const b = ib.find((x) => x.el === bEl);
-      if (!b) continue;
-      if (a.d && b.d && a.d !== b.d) animateSeq(b.el, 'd', [a.d, a.d, b.d, b.d, a.d], t, dur);
-      else for (const at of NUM_ATTRS) {
-        const x = a.el.getAttribute(at), y = b.el.getAttribute(at);
-        if (x !== null && y !== null && x !== y) animateSeq(b.el, at, [x, x, y, y, x], t, dur);
-      }
-    }
-
-    // ②③ 둘째 컷에만 있는 것을 벽 안팎으로 가른다
-    const inWall = (it: Item) => {
-      const b = boxOf(it);
-      if (!b || !wall) return false;
-      const cy = b.y + b.h / 2;
-      return cy > wall.y && cy < wall.y + wall.h;
-    };
+    /* ② 글자 = 벽 안에 **온전히** 든 흰 조각. 두 컷일 때는 '둘째 컷에만 있는
+       것'이 글자였다 — 한 컷에는 그 차이가 없어서 색과 자리로 고른다. 벽에
+       걸친 빨간 메가폰의 동그라미들은 벽 안에 들어도 흰색이 아니라 안 걸리고,
+       구경꾼의 흰 눈은 벽 아래 끝에 걸쳐 온전히 들지 않는다(재서 확인). */
+    const inside = (b: { x: number; y: number; w: number; h: number } | null) =>
+      !!b && b.x >= W.x && b.y >= W.y && b.x + b.w <= W.x + W.w && b.y + b.h <= W.y + W.h;
+    const white = (f: string) => /^(#fff|#ffffff|white)$/i.test(f);
     /* ② 벽에 뜨는 말은 **한 글자씩 찍힌다.**
        글자를 다루는 물건이 벽에 글을 올리는 장면이라, 한꺼번에 떠오르는
        것보다 찍히는 편이 이 화면이 하는 일에 가깝다.
@@ -2109,7 +2095,7 @@ export function aboutSvg(litRaw: string, fullRaw: string, key: string, dur = 12)
 
        벽 바깥에 선 구경꾼은 처음부터 거기 있다(2026-09-20에 걸음을
        걷어냈다). 밝기도 자리도 건드리지 않는다. */
-    const letters = w.onlyB.filter(inWall)
+    const letters = ib.filter((it) => white(it.fill) && inside(boxOf(it)))
       .map((it) => ({ it, x: boxOf(it)?.x ?? 0 }))
       .sort((m, n) => m.x - n.x);
     const from = t.at[3], span = t.at[4] - t.at[3];
@@ -2123,13 +2109,19 @@ export function aboutSvg(litRaw: string, fullRaw: string, key: string, dur = 12)
       });
     });
 
-    if (!lamps && !w.onlyB.length) return scopeSvg(fullRaw, key);
+    if (!lamps && !letters.length) return scopeSvg(raw, key);
 
-    focusOn(B, [...ia, ...ib]);
+    focusOn(B, ib);
     markEyes(B);
+    /* 발화자(벽 왼쪽에 선 이)는 깜빡이지도 않는다 — 작가가 뺀 것은 '왼쪽의 움직임'
+       전부다. 깜빡임은 CSS가 .mf-eye에 건다. 이름표만 떼면 된다 */
+    for (const el of Array.from(B.querySelectorAll('.mf-eye'))) {
+      const b = boxOf(itemOf(el));
+      if (b && b.x + b.w / 2 < W.x) el.removeAttribute('class');
+    }
     startle(B, t.at[4], t.at[5], dur);
     return scopeSvg(new XMLSerializer().serializeToString(B), key);
   } catch {
-    return scopeSvg(fullRaw, key);
+    return scopeSvg(raw, key);
   }
 }

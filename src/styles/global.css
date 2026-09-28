@@ -211,11 +211,30 @@ body.themed {
 }
 
 /* 폰의 상태줄 · 주소창이 화면 끝의 색을 따라가게(2026-09-28, viewport.ts의 trackEdgeTint).
-   문서 바탕의 위 절반은 화면 위 끝의 색, 아래 절반은 아래 끝의 색 — 화면 틀 밖으로
-   드러나는 띠(주소창 뒤)가 제 쪽 끝의 색을 갖는다. 틀이 덮는 안쪽은 달라지지 않는다.
-   벽 · 관리에는 data-edge가 없다 */
-html[data-edge]{ background: linear-gradient(to bottom, var(--edge-top) 50%, var(--edge-bottom) 50%) var(--edge-top); }
+   틀이 덮는 안쪽은 달라지지 않는다. 벽 · 관리에는 data-edge가 없다.
+
+   **밑색이 아래 끝의 색이고, 위 끝의 색은 화면 위 절반에만 한 번 칠한다.** 처음엔 거꾸로
+   (밑색 = 위 색, 화면 한 장 높이의 두 색 그라데이션)였다. 그런데 아이폰 주소창 뒤의 띠는
+   문서의 한 장 높이 **바깥**이라, 그라데이션이 되풀이되며 다시 위 색부터 시작하거나 밑색이
+   드러났다 — 어느 쪽이든 위 색이었다. 폰 캡처(2026-09-29): 홈 아래가 짙은 회색이 아니라
+   옅은 회색, 가이드 아래가 분홍빛이 아니라 하양. 위아래가 같은 3/5 · 5/5만 맞아 보였다.
+   상태줄 쪽은 앱 화면이 그 밑까지 칠해서(viewport-fit=cover) 처음부터 맞았다.
+   그 다음 캡처에서 아래는 맞았는데 상태줄이 아래 색이 됐다 — 사파리는 두 띠를 이 밑색 **한
+   가지로** 같이 칠한다. 위아래를 가르는 것은 아래의 고정 띠 몫이다. */
+html[data-edge]{
+  background: linear-gradient(var(--edge-top), var(--edge-top)) top / 100% 50% no-repeat, var(--edge-bottom);
+}
 html[data-edge] body{ background: transparent; }
+/* 위 · 아래 끝의 고정 띠(viewport.ts가 body 끝에 둔다). 사파리는 화면 끝에 붙은 고정 요소의
+   색을 상태줄 · 주소창 뒤로 늘린다 — 끝을 짚어 찾으므로 누를 수 있어야 한다(pointer-events를
+   끄면 못 찾았다). 색은 그 자리에 이미 칠해진 것을 읽어 온 것이라 눈에는 안 보인다. 두께 8은
+   화면 위 · 아래의 빈 여백 안이다 — 버튼 · 아이콘에 닿지 않는다(뒤로가기 획은 위에서 10 아래).
+   1100은 떠다니는 홈 캐릭터(500) 위, 언어 창 가림막(1200) 아래다 — 가림막이 뜨면 사파리는
+   보이는 가림막을 늘린다 */
+html[data-edge] [data-edge-strip]{ position: fixed; left: 0; right: 0; height: var(--s3); z-index: 1100; }
+html[data-edge] [data-edge-strip="top"]{ top: 0; background: var(--edge-top); }
+html[data-edge] [data-edge-strip="bottom"]{ bottom: 0; background: var(--edge-bottom); }
+:root:not([data-edge]) [data-edge-strip]{ display: none; }
 /* 바탕이 그라데이션이거나 덮개(::after)로 칠해진 화면은 제 끝의 칠을 여기 적는다
    (홈 · 소개, app.css). 색을 읽는 쪽은 단색 바탕만 볼 수 있어서다. 물려받지 않게
    등록한다 — 안에 든 흰 카드가 바깥 틀의 칠을 제 것으로 내밀지 않도록 */

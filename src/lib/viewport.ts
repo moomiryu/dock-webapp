@@ -109,6 +109,7 @@ function colorAt(x: number, y: number, edge: 'top' | 'bottom'): string {
   };
   for (const el of document.elementsFromPoint(x, y)) {
     if (el === document.documentElement || el === document.body) continue;
+    if (el instanceof HTMLElement && el.dataset.edgeStrip) continue;   // 이 칠을 사파리에 넘기는 띠 — 제 색을 되읽지 않는다
     const cs = getComputedStyle(el);
     layer(rgba(cs.getPropertyValue(`--edge-${edge}-paint`)));
     layer(rgba(cs.backgroundColor));
@@ -155,6 +156,7 @@ export function trackEdgeTint(): () => void {
     root.style.setProperty('--edge-top', top);
     root.style.setProperty('--edge-bottom', bottom);
     if (meta) meta.content = top;
+    renewStrips();
   };
   /* 화면이 바뀌면 **바로 다음 프레임**에 읽는다 — 새 화면이 처음 그려지는 그
      프레임에 테두리도 같이 바뀐다. 처음엔 신호마다 120ms를 기다렸는데, 폰에서
@@ -187,6 +189,27 @@ export function trackEdgeTint(): () => void {
   document.addEventListener('animationend', now, true);
   window.addEventListener('resize', now);
   const beat = window.setInterval(() => { if (!document.hidden) soon(); }, 500);
+  /* 위 · 아래 끝의 띠(global.css [data-edge-strip]). 사파리는 상태줄과 주소창 뒤를 문서 밑색
+     **한 가지로** 같이 칠했다(폰 캡처 2026-09-29 — 밑색을 위 색으로 두면 둘 다 위 색, 아래 색으로
+     두면 둘 다 아래 색). 위아래를 따로 가르는 길은 사파리가 화면 끝에 붙은 **고정 요소**의 색을
+     그쪽으로 늘리는 것뿐이다. 사파리는 끝을 짚어(hit test) 그 요소를 찾으므로, 띠는 누를 수
+     있는 진짜 요소여야 한다 — 누를 수 없는 덧칠 층(body::after)으로 한 번 해 봤을 때 안 먹혔다.
+     React 바깥(body 끝)에 둔다.
+     **색이 바뀔 때마다 띠를 새로 갈아 끼운다.** 사파리는 띠를 처음 봤을 때의 색만 기억했다 —
+     처음 불러온 홈은 맞았는데, 버튼으로 넘긴 가이드는 홈의 색 그대로였다(사용자, 2026-09-29).
+     새 요소가 생기면 다시 읽는다 */
+  let strips: HTMLDivElement[] = [];
+  function renewStrips() {
+    strips.forEach((el) => el.remove());
+    strips = (['top', 'bottom'] as const).map((edge) => {
+      const el = document.createElement('div');
+      el.dataset.edgeStrip = edge;
+      el.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(el);
+      return el;
+    });
+  }
+  renewStrips();
   root.dataset.edge = '';
   now();
   return () => {
@@ -198,6 +221,7 @@ export function trackEdgeTint(): () => void {
     document.removeEventListener('transitionend', now, true);
     document.removeEventListener('animationend', now, true);
     window.removeEventListener('resize', now);
+    strips.forEach((el) => el.remove());
     delete root.dataset.edge;
   };
 }

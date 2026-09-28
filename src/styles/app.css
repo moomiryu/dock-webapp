@@ -4354,6 +4354,8 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    바닥의 붉은 기운은 버튼을 받치는 자리라(위 .info-overlay::after) 버튼과 함께 뺀다 —
    두면 밀어 올린 글이 그 위를 지나며 흐려진다. */
 .info-overlay.is-about::after{ display: none; }
+/* 기운을 뺐으니 주소창에 알리는 끝의 칠도 뺀다(viewport.ts trackEdgeTint) */
+.info-overlay.is-about{ --edge-bottom-paint: transparent; }
 .info-overlay.is-about > .info-track{ overflow-y: auto; overscroll-behavior: contain; }
 .info-overlay.is-about .info-slide{ height: auto; }
 

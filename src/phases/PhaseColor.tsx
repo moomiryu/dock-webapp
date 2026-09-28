@@ -10,6 +10,7 @@ import { moods } from '../lib/palettes-v2';
 import { messageColors } from '../lib/messageStyle';
 import { pick, useLang } from '../lib/lang';
 import type { Align, ToneState } from '../types';
+import { tick } from '../components/SnapSwitch';   // 룰렛이 한 칸 멈출 때의 진동(2026-09-29)
 
 /* 이 화면의 말. 영어는 초안이다(2026-09-26, 영문판) */
 const T = {
@@ -217,7 +218,9 @@ function ColorRoll({ at, onPick, labelledBy, lang }: {
             [{ transform: shift(from) }, { transform: `translateY(${-(1 + dir) * 100 / 3}%)` }],
             { duration: still ? 0 : tokenMs('--t-return', 220),
               easing: root.getPropertyValue('--ease-standard').trim() || 'ease-out', fill: 'forwards' });
-        a.finished.then(() => { if (dir) onPick(wrap(atRef.current + dir)); else settle(); }).catch(() => {});
+        /* 새 짝에 멈추는 순간 짧게 운다 — 3/5 스위치 · 2/5 판이 칸을 넘을 때와 같은 진동(2026-09-29,
+           사용자). 구를 때 흐리던 가장자리를 걷고 그 자리를 손끝이 받는다. 제자리로 돌아올 때는 울지 않는다 */
+        a.finished.then(() => { if (dir) { tick(); onPick(wrap(atRef.current + dir)); } else settle(); }).catch(() => {});
     }
     const step = (dir: -1 | 1) => {
         if (busy.current || drag.current) { queued.current = Math.max(-2, Math.min(2, queued.current + dir)); return; }

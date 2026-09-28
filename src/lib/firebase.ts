@@ -165,8 +165,9 @@ function buildRestClient(): FirestoreLike {
   function toneForWall(t: Draft['tone']) {
     if (!t) return t;
     const out = Object.fromEntries(Object.entries(t).filter(([, v]) => v !== undefined));
-    /* 차분한(돌)의 제 정렬(2026-09-28, 넣는 중)은 규칙 파일에만 있고 아직 게시 전이다 — 보내면 전송째
-       거부되므로 벽으로는 가운데로 보낸다(4/5 · 5/5는 고른 대로 보인다). 게시하면 이 몇 줄을 걷는다 */
+    /* 규칙 파일에 새 정렬을 더하고 아직 게시하지 않은 동안의 안전장치 — 게시된 값(PUBLISHED_ALIGNS)이 아니면
+       보내면 전송째 거부되므로 벽으로는 가운데로 보낸다(4/5 · 5/5는 고른 대로 보인다). 차분한의 걸기 셋이 이
+       길로 나갔다가 2026-09-29 게시와 함께 목록에 들었다. 새 값을 넣을 때도 게시 전까지 여기서 막는다 */
     if (typeof out.align === 'string' && !PUBLISHED_ALIGNS.includes(out.align)) out.align = 'center';
     return out;
   }
@@ -222,8 +223,9 @@ function buildRestClient(): FirestoreLike {
   };
 }
 
-/** 운영 규칙(firestore.rules)에 **게시된** 정렬 값 — 여기 없는 값은 게시 전까지 가운데로 보낸다(toneForWall) */
-const PUBLISHED_ALIGNS = ['left', 'center', 'right', 'distribute', 'trapezoid', 'arch', 'fan', 'smile'];
+/** 운영 규칙(firestore.rules)에 **게시된** 정렬 값 — 여기 없는 값은 게시 전까지 가운데로 보낸다(toneForWall).
+    규칙을 게시한 뒤에만 더한다(마지막 게시: 2026-09-29, 콘솔) */
+const PUBLISHED_ALIGNS = ['left', 'center', 'right', 'distribute', 'trapezoid', 'arch', 'fan', 'smile', 'hang-up', 'hang-mid', 'hang-down'];
 
 const MOCK_KEY = 'megafont.mock.messages.v1';
 

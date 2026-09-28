@@ -56,7 +56,7 @@ service cloud.firestore {
         && t.graphicIdx is int && t.graphicIdx >= -1 && t.graphicIdx <= 20
         // 2026-09-28: 나무(당당한) · 구름(다정한)의 제 정렬이 더해졌다(cloud.ts · arrangementsFor).
         // 같은 날 콘솔에서 게시했다 — 폰이 덜어 내던 거름(firebase.ts · toneForWall)도 걷었다.
-        // 이어서 차분한(돌)의 제 정렬(올려 걸기 · 내려 걸기 …, R17~R20)을 더하는 중 — 게시 전까지 폰이 가운데로 보낸다
+        // 이어서 차분한(돌)의 제 정렬(올려 걸기 · 중간 걸기 · 내려 걸기, R17)을 더해 2026-09-29에 콘솔에서 게시했다
         && (!('align' in t) || t.align in ['left', 'center', 'right', 'distribute', 'trapezoid', 'arch', 'fan', 'smile',
              'hang-up', 'hang-mid', 'hang-down'])
         && (!('manner' in t) || (t.manner is number && t.manner >= 0 && t.manner <= 1))

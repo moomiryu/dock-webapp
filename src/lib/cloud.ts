@@ -87,6 +87,8 @@ export interface Persona {
     hatch: { on: boolean; from: number; to: number; depth: number; gap: number; width: number };
     /** 걸기(R17) — 돌과 글이 같이 기우는 각도(도, + = 시계 방향: 올려 걸기 · 내려 걸기) · 돌의 몸이 글 아래로 처지는 깊이(글 높이의 배수) */
     hang: { up: number; down: number; drop: number };
+    /** 넘치기(R18) — 넘치는 깨짐의 각도 범위(도, 작을수록 가파르다) · 가장 바깥 줄 끝을 파고드는 깊이 범위 (u) */
+    overflow: { angle: readonly [number, number]; depth: readonly [number, number] };
   };
   /** 줄 높이(글자 크기의 배수). 없으면 LINE_HEIGHT(1.5). 글에 바짝 붙는 형상(나무)이 좁힌다 */
   lh?: number;
@@ -150,7 +152,9 @@ export const PERSONAS: Record<string, Persona> = {
       hatch: { on: false, from: -35, to: 125, depth: 0.3, gap: 0.2, width: 0.055 },
       // 걸기의 각도 — 여섯 안(0 · 6 · 12 · 18° 올림, 6 · 12° 내림)을 4/5 격자로 보고 둘을 골라 두 칸으로 나눴다
       // (2026-09-28, 디자이너): 올려 걸기 = 오른쪽이 12° 올라감, 내려 걸기 = 오른쪽이 6° 내려감
-      hang: { up: -12, down: 6, drop: 1 } } },
+      hang: { up: -12, down: 6, drop: 1 },
+      // 넘치기 — 카드 R18의 값 그대로(격자에서 0.2 · 0.35 · 0.5u를 보고 0.5는 너무 많이 먹어 뺐다)
+      overflow: { angle: [15, 35], depth: [0.2, 0.35] } } },
   // 구슬 구름 (2026-09-28). 꽃 → 옛 뭉게구름(부풀던 원 + 번짐)을 거쳐, 당당한 박스의 틀(글에 붙는 덩어리)을
   // 구름으로 옮겼다 — 밑은 평평하고 위와 양옆에 봉우리, 사방 여백을 고르게, 굵은 구슬 한 크기로 찍는다.
   // 원을 부풀리지 않아 lobe · fill · gap · spread는 쓰이지 않는다. 행간 1.1은 나무와 같다.
@@ -185,10 +189,12 @@ export function personaFor(font?: string): Persona {
    2026-09-28에 둥켈을 또 쟀다: 한글은 **고정폭**이고 폭 축 700 = 0.678, 850 = 0.823, 1000 = 0.967
    (곧은 선 위 — advanceFor의 보간이 맞다). 09-25의 0.839는 어도비 킷이 글자를 덜 받아 와 일부가
    대체 서체(Pretendard 0.864)로 그려진 채 잰 값이다 — 킷은 화면에 오른 글자만 받아 오므로, 잴 때는
-   그 글자를 먼저 화면에 올리고 기다려야 한다. 나무의 머리는 글에 바짝 붙어 이 표가 곧 여백이다. */
+   그 글자를 먼저 화면에 올리고 기다려야 한다. 나무의 머리는 글에 바짝 붙어 이 표가 곧 여백이다.
+   같은 날 본명조(차분한)도 같은 방법으로 쟀다: 한글 0.966 · 0.970(굵기 300 · 445 · 600 모두), 띄어쓰기 0.31 —
+   표의 0.989는 2% 넓었다. 돌의 넘치기(R18)가 줄 끝을 파고드는 깊이가 이 표에 걸려 있어 0.97로 고쳤다. */
 const ADVANCE: Record<string, { hangul: number; space: number }> = {
   ttoryeot: { hangul: 0.678, space: 0.116 },
-  chabun: { hangul: 0.989, space: 0.31 },
+  chabun: { hangul: 0.97, space: 0.31 },
   doran: { hangul: 1, space: 0.35 },
   deulseok: { hangul: 0.79, space: 0.177 },
   botong: { hangul: 0.864, space: 0.251 }
@@ -343,7 +349,7 @@ interface Options {
 const ARRANGEMENTS: Record<string, readonly Align[]> = {
   ttoryeot: ['center', 'distribute', 'trapezoid'],
   // 차분한 — 포스터 넷(R17~R20)을 하나씩 넣는 중(2026-09-28): 걸기 · 넘치기 · 세로쓰기 · 윤곽 따라
-  chabun: ['center', 'hang-up', 'hang-down'],
+  chabun: ['center', 'hang-up', 'hang-down', 'overflow'],
   doran: ['center', 'arch', 'fan', 'smile']
 };
 export function arrangementsFor(font: string | undefined): readonly Align[] {
@@ -385,7 +391,7 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
   const TW = Math.max(0.5, ...widths), TH = Math.max(1, lines.length) * LH;
   const boxes = widths.map((w, i) => ({ x0: (TW - w) / 2, x1: (TW + w) / 2, yc: (i + 0.5) * LH }));
   const rule: 'B' | 'C' = boxes.length <= 2 ? 'B' : 'C';
-  if (pr.edge === 'stone' && pr.stone) return stoneFor(pr, rule, TW, TH, R, o.align === 'hang-up' || o.align === 'hang-down' ? o.align : 'center');
+  if (pr.edge === 'stone' && pr.stone) return stoneFor(pr, rule, TW, TH, R, o.align === 'hang-up' || o.align === 'hang-down' || o.align === 'overflow' ? o.align : 'center', widths, LH);
   if (pr.edge === 'tree' && pr.tree) return treeLayout(pr, rule, lines, font, optic, scaleX, slant, o, LH);
   if (pr.edge === 'bead' && pr.bead) {
     if (o.align === 'arch' || o.align === 'fan' || o.align === 'smile') return beadArcFor(pr, rule, lines, font, optic, scaleX, o, LH, R, o.align);
@@ -576,12 +582,12 @@ function hatchBands(P: readonly Pt[], cx: number, cy: number, h: { from: number;
  *
  * 원은 하나도 안 쓴다. 번지지도 숨 쉬지도 않는다 — 돌은 가만히 있다.
  */
-function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number, mode: 'center' | 'hang-up' | 'hang-down' = 'center'): Cloud {
+function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number, mode: 'center' | 'hang-up' | 'hang-down' | 'overflow' = 'center', widths: readonly number[] = [TW], LH = TH): Cloud {
   const s = pr.stone!;
   /* 걸기(R17, 2026-09-28): 돌의 몸을 글 아래로 글 높이 × drop만큼 더 잡고 짓는다. 무작위 기울기는 쓰지 않는다 —
      차분한은 칸마다 같은 각도로 기운다(디자이너 — 올려 걸기 · 내려 걸기 두 칸). 윗변은 아래에서 곧게 자르고,
      다 지은 뒤 돌과 글을 그 각도만큼 돌린다 */
-  const hang = mode !== 'center', drop = hang ? TH * s.hang.drop : 0;
+  const hang = mode === 'hang-up' || mode === 'hang-down', drop = hang ? TH * s.hang.drop : 0;
   const cx = TW / 2, cy = (TH + drop) / 2, a = TW / 2 + PAD, b = (TH + drop) / 2 + PAD;
   const pick = (range: readonly [number, number]) => range[0] + (range[1] - range[0]) * R();
   const k = s.corners[0] + Math.floor(R() * (s.corners[1] - s.corners[0] + 1));
@@ -608,7 +614,19 @@ function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () =>
   // 깨기 — 오른쪽 아래(빗금 자리)는 두고 나머지 셋 중 count곳, 사분면 안의 각도로
   const quads: Pt[] = [[-1, -1], [1, -1], [-1, 1]];
   for (let i = quads.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [quads[i], quads[j]] = [quads[j], quads[i]]; }
-  for (const [sx, sy] of quads.slice(0, s.crack.count)) {
+  /* 넘치기(R18, 2026-09-28): 깨진 모서리 하나를 가파르게(overflow.angle) 깨서 그 면이 가장 바깥 줄 끝을
+     overflow.depth만큼 파고들게 한다 — 형상이 글을 다 품지 않는다. 파고드는 쪽은 빗금 자리(오른쪽 아래)의 반대편,
+     왼쪽이다(위 · 아래 모서리 중 글이 씨앗으로 하나). 넘친 글자의 색은 뒤집지 않는다(디자이너) — 검은 바탕에 묻히면
+     묻힌 대로. 다른 깨짐 하나는 그대로 글 + 여백 바깥을 지난다. '끝의 기준' 2번의 예외다(landscape.md) */
+  let cracks = quads.slice(0, s.crack.count);
+  if (mode === 'overflow') {
+    const sy = R() < 0.5 ? -1 : 1, th = (pick(s.overflow.angle) * Math.PI) / 180, d = pick(s.overflow.depth);
+    const ux = -Math.cos(th), uy = sy * Math.sin(th);
+    const ends = widths.flatMap((w, i): Pt[] => { const x0 = (TW - w) / 2, x1 = (TW + w) / 2; return [[x0, i * LH], [x1, i * LH], [x0, (i + 1) * LH], [x1, (i + 1) * LH]]; });
+    pts = clipHalf(pts, ux, uy, Math.max(...ends.map(([x, y]) => ux * x + uy * y)) - d);
+    cracks = quads.filter(([qx, qy]) => !(qx === -1 && qy === sy)).slice(0, s.crack.count - 1);
+  }
+  for (const [sx, sy] of cracks) {
     const th = (pick(s.crack.angle) * Math.PI) / 180, ux = sx * Math.cos(th), uy = sy * Math.sin(th);
     if (hang && sy < 0) continue;                        // 걸기 — 위 모서리는 곧은 윗변이 어차피 자른다
     pts = clipHalf(pts, ux, uy, Math.max(...need.map(([x, y]) => ux * x + uy * y)) + s.crack.clear);
@@ -635,7 +653,7 @@ function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () =>
     stone: { pts: pts.map(mv), hatch: hatch.map((q): Quad => [mv(q[0]), mv(q[1]), mv(q[2]), mv(q[3])]) },
     w: Math.max(...xs) + e - minX, h: Math.max(...ys) + e - minY,
     text: { x: tcx - TW / 2 - minX, y: tcy - TH / 2 - minY, w: TW, h: TH },
-    ...(hang ? { layout: { align: 'left' as const, rotate: ang } } : {})
+    ...(hang ? { layout: { align: 'left' as const, rotate: ang } } : mode === 'overflow' ? { layout: { align: 'center' as const } } : {})
   };
 }
 

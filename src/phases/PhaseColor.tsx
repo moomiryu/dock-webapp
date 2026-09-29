@@ -6,7 +6,7 @@ import CloudBubble from '../components/CloudBubble';
 import { arrangementsFor, cloudForTone, cloudShape, defaultAlign, linesFor } from '../lib/cloud';
 import { bubbleAt, fillFromLegacySize } from '../lib/fit';
 import { fontMap } from '../lib/palettes';
-import { moods } from '../lib/palettes-v2';
+import { colorsFor, type ColorPair } from '../lib/palettes-v2';
 import { messageColors } from '../lib/messageStyle';
 import { pick, useLang } from '../lib/lang';
 import type { Align, ToneState } from '../types';
@@ -116,23 +116,27 @@ function tokenMs(name: string, fallback: number) {
 }
 
 /**
- * 룰렛이 도는 짝 — 열 짝에서 **겹치는 둘을 뺀 여덟**(2026-09-29).
+ * 룰렛이 도는 짝 — **성격마다 제 여덟 짝**(2026-09-29, 디자이너 확정 · palettes-v2 ATTITUDE_COLORS).
  *
- * palettes-v2의 열 짝 중 흑백 · 백지(흰 바탕 · 검정 글자)와 밤 · 형광(초록 · 검정)이
- * 같은 색이다. 늘어놓을 때는 옆 칸이라 티가 덜 났는데, 한 짝씩 넘기면 넘겨도 색이
- * 안 바뀐 것처럼 보인다(밤 · 형광은 끝과 처음이라 한 바퀴 이음새에서 그랬다). 데이터는
- * 그대로 둔다 — 옛 메시지의 paletteIdx가 거기 걸려 있다. 앞의 것만 남기므로 순서는 같다.
+ * 그 전에는 네 성격이 옛 열 짝(moods)에서 겹치는 둘을 뺀 여덟을 같이 돌았다. 옛 짝의 데이터는
+ * 그대로 둔다 — 옛 메시지의 paletteIdx가 거기 걸려 있다.
  */
-const PAIRS = moods.filter((m, i) => moods.findIndex((n) =>
-    n.bg.toUpperCase() === m.bg.toUpperCase() && n.text.toUpperCase() === m.text.toUpperCase()) === i);
-const pairAt = (bg: string, text: string) => PAIRS.findIndex((m) =>
+const pairAt = (pairs: readonly ColorPair[], bg: string, text: string) => pairs.findIndex((m) =>
     m.bg.toUpperCase() === bg.toUpperCase() && m.text.toUpperCase() === text.toUpperCase());
 /**
- * 처음 들어오면 흰 바탕 · 검정 글자(2026-09-29, 사용자). 3/5를 마친 형식은 작업용 하늘색
- * (messageStyle · DRAFT_COLORS)을 들고 오는데 그건 고를 수 있는 짝이 아니다 — 고른 짝이
- * 아니면 흰 짝에서 시작하고, 한 번 고른 뒤에는 그 짝이 남는다(App · saveTone).
+ * 처음 들어오면 흰 바탕 · 검정 글자(2026-09-29, 사용자) — 흰 짝이 있는 성격(당당한)에서. 없는 성격은
+ * 제 첫 짝에서. 3/5를 마친 형식은 작업용 하늘색(messageStyle · DRAFT_COLORS)을 들고 오는데 그건
+ * 고를 수 있는 짝이 아니다 — 고른 짝이 아니면(다른 성격의 짝을 고른 뒤 돌아와도) 여기서 시작하고,
+ * 한 번 고른 뒤에는 그 짝이 남는다(App · saveTone).
  */
-const FIRST = Math.max(0, PAIRS.findIndex((m) => m.id === 'mono'));
+const firstOf = (pairs: readonly ColorPair[]) => Math.max(0, pairs.findIndex((m) => m.id === 'white'));
+/**
+ * 조정판(--grey-50)과 거의 같은 옅은 칠 — '이렇게 담을게요'가 판에 묻히지 않게 진한 회색 칸으로(app.css
+ * [data-pale]). 흰 짝만 그랬다(판과 대비 1.05, 2026-09-29 사용자가 견본에서 골랐다). 성격별 짝에서는 판과의 색 거리
+ * (ΔE2000)가 20 아래인 넷 — 흰(1.2) · 돌빛(13.2) · 얼음(17.5) · 연청(17.8). 그 위(연분홍 20.6 · 살구 23.2 ·
+ * 라벤더 24.2)는 제 빛깔로 판과 갈린다
+ */
+const PALE = new Set(['white', 'stone', 'ice', 'mist']);
 
 /**
  * 첫 장의 시연(2026-09-28, 사용자) — 3/5에서 다듬은 내 글이 위에서 굴러 떨어져
@@ -140,11 +144,12 @@ const FIRST = Math.max(0, PAIRS.findIndex((m) => m.id === 'mono'));
  *
  * 떨어져 들어가는 움직임은 CSS(app.css · colorDemoFall · colorDemoInk)가 하고(말풍선은
  * 처음부터 서 있다), 색은 이 부품의 제 상태가 돈다 — 참여자가 고른 색(bg · fg)에는 닿지 않는다. 룰렛의
- * 여덟 짝(PAIRS)을 같은 시간씩 차례로 도므로 어느 색도 권하지 않는다(절대원칙). 시작은 지금 색이다.
+ * 성격의 여덟 짝(pairs)을 같은 시간씩 차례로 도므로 어느 색도 권하지 않는다(절대원칙). 시작은 지금 색이다.
  * 움직임 줄이기를 켠 사람에게는 떨어지지도 돌지도 않는다.
  */
-function ColorDemo({ lines, tone, cloud, box, from }: {
+function ColorDemo({ lines, tone, cloud, box, from, pairs }: {
     lines: string[]; tone: ToneState; cloud: ReturnType<typeof cloudForTone>; box: ReturnType<typeof bubbleAt>; from: number;
+    pairs: readonly ColorPair[];
 }) {
     const [i, setI] = useState(from);
     useEffect(() => {
@@ -154,11 +159,11 @@ function ColorDemo({ lines, tone, cloud, box, from }: {
         const hold = tokenMs('--t-hold', 700);
         let iv = 0;
         const t = window.setTimeout(() => {
-            iv = window.setInterval(() => setI((k) => (k + 1) % PAIRS.length), hold * 1.5);
+            iv = window.setInterval(() => setI((k) => (k + 1) % pairs.length), hold * 1.5);
         }, hold * 2.4);
         return () => { window.clearTimeout(t); window.clearInterval(iv); };
     }, []);
-    const m = PAIRS[i];
+    const m = pairs[i % pairs.length];
     return <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={m.bg} still>
      <VoiceBubble text={lines.join('\n')} bg={m.bg} color={m.text} fontFamily={fontMap[tone.font]} font={tone.font}
        weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size} manner={tone.manner}
@@ -184,8 +189,8 @@ function ColorDemo({ lines, tone, cloud, box, from }: {
  * 같은 그림 안에서 일어나므로(useLayoutEffect) 튀지 않는다. 시간 · 곡선은 3/5 게이지가
  * 놓았을 때 붙는 값과 같다(--t-return · --ease-standard).
  */
-function ColorRoll({ at, onPick, labelledBy, lang }: {
-    at: number; onPick: (i: number) => void; labelledBy: string; lang: ReturnType<typeof useLang>;
+function ColorRoll({ at, onPick, labelledBy, lang, pairs }: {
+    at: number; onPick: (i: number) => void; labelledBy: string; lang: ReturnType<typeof useLang>; pairs: readonly ColorPair[];
 }) {
     const win = useRef<HTMLDivElement>(null);
     const strip = useRef<HTMLDivElement>(null);
@@ -194,7 +199,7 @@ function ColorRoll({ at, onPick, labelledBy, lang }: {
     const drag = useRef<{ y: number; dy: number } | null>(null);
     const atRef = useRef(at);
     atRef.current = at;
-    const n = PAIRS.length;
+    const n = pairs.length;
     const wrap = (i: number) => ((i % n) + n) % n;
     const shift = (px: number) => `translateY(calc(${px}px - 100% / 3))`;
     const settle = () => {
@@ -229,7 +234,7 @@ function ColorRoll({ at, onPick, labelledBy, lang }: {
         if (busy.current || drag.current) { queued.current = Math.max(-2, Math.min(2, queued.current + dir)); return; }
         roll(dir, 0);
     };
-    const pair = PAIRS[at];
+    const pair = pairs[at];
     return <div className="color-roll">
      <div ref={win} className="color-roll-window" role="spinbutton" tabIndex={0}
        aria-labelledby={labelledBy} aria-valuenow={at + 1} aria-valuemin={1} aria-valuemax={n}
@@ -263,7 +268,7 @@ function ColorRoll({ at, onPick, labelledBy, lang }: {
        onPointerCancel={() => { const d = drag.current; drag.current = null; if (d) roll(0, d.dy); }}>
       <div ref={strip} className="color-roll-strip">
        {[-1, 0, 1].map((o) => {
-           const m = PAIRS[wrap(at + o)];
+           const m = pairs[wrap(at + o)];
            return <div key={o} className="color-roll-item" style={{ background: m.bg, color: m.text }} aria-hidden>
             {pick(T.sample, lang)}</div>;
        })}
@@ -281,8 +286,9 @@ function ColorRoll({ at, onPick, labelledBy, lang }: {
 export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props) {
     const initial = messageColors(tone);
     const lang = useLang();
-    /* 고른 짝 — 룰렛의 자리. 고른 적 없는 색(작업용 하늘색)이면 흰 짝에서 시작한다(FIRST) */
-    const [at, setAt] = useState(() => { const i = pairAt(initial.bg, initial.text); return i >= 0 ? i : FIRST; });
+    /* 고른 짝 — 룰렛의 자리. 이 성격의 짝이 아니면(작업용 하늘색 · 다른 성격의 짝) 흰 짝 또는 첫 짝에서 시작한다(firstOf) */
+    const PAIRS = colorsFor(tone.font);
+    const [at, setAt] = useState(() => { const i = pairAt(PAIRS, initial.bg, initial.text); return i >= 0 ? i : firstOf(PAIRS); });
     const bg = PAIRS[at].bg;
     const fg = PAIRS[at].text;
     /* 정렬 — 조정판의 둘째 잣대(2026-09-28). 전에 고른 값이 이 성격의 것이면 그것, 아니면 그 성격의 기본
@@ -305,7 +311,7 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
     const [visit, setVisit] = useState(0);
     const go = (s: 'intro' | 'work') => { setMoved(true); if (s === 'intro') setVisit((v) => v + 1); setStep(s); };
     return <div className="z-frame compose-screen color-choice is-pulled"
-      data-step={step} data-moved={moved ? '' : undefined} data-pair={PAIRS[at].id}
+      data-step={step} data-moved={moved ? '' : undefined} data-pair={PAIRS[at].id} data-pale={PALE.has(PAIRS[at].id) ? '' : undefined}
       style={{ '--pane-bg': bg, '--chrome-ink': fg } as CSSProperties}>
  {/* ── 첫 장: 무엇을 하는 자리인지 + 시연 (2026-09-28) ──────────────────
      3/5의 첫 장과 같은 흐름이다. 장 전체가 넘기는 손짓이되 버튼 위는 아니다
@@ -321,7 +327,7 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
   <div className="color-stage color-demo" style={{ '--color-area': area } as CSSProperties}>
    {/* 늘 달아 둔다 — 넘길 때 위로 빠지는 장에 시연이 그대로 실려 간다. 되돌아오면
        key가 바뀌어 처음부터 다시 떨어진다 */}
-   <ColorDemo key={visit} lines={lines} tone={tone} cloud={cloud} box={box} from={at} />
+   <ColorDemo key={visit} lines={lines} tone={tone} cloud={cloud} box={box} from={at} pairs={PAIRS} />
   </div>
   <button type="button" className="tone-more" onClick={() => go('work')}>{pick(T.start, lang)}</button>
  </section>
@@ -346,7 +352,7 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
       보여 준다(바탕은 배경색, 가운데 '가'는 글자색). 한 번에 한 짝(위 ColorRoll). */}
   <div className="tslider">
    <span className="tslider-name" id="color-name">{pick(T.colour, lang)}</span>
-   <ColorRoll at={at} onPick={setAt} labelledBy="color-name" lang={lang} />
+   <ColorRoll at={at} onPick={setAt} labelledBy="color-name" lang={lang} pairs={PAIRS} />
   </div>
   <div className="tslider">
    <span className="tslider-name" id="align-name">{pick(T.align, lang)}</span>

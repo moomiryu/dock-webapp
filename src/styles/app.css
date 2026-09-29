@@ -3818,8 +3818,10 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    흰 면은 거의 흰 조절판(--grey-50)과 대비 1.05라 버튼이 사라지고 글자만 떴다 —
    처음 들어오면 바로 이 짝이다. --grey-100(1.06) · 2단계 '고르기 전'의 회색 글자
    (글자 대비 2.8)는 사라지거나 못 읽혔고, --grey-200 · 300(1.18 · 1.40)은 옅게만
-   갈렸다. --grey-800 + 흰 글자는 판과 10.5로 누르는 칸이 선다. */
-.color-choice[data-pair="mono"] .color-panel > .primary-action{ background: var(--grey-800); color: var(--paper); }
+   갈렸다. --grey-800 + 흰 글자는 판과 10.5로 누르는 칸이 선다.
+   성격마다 제 여덟 짝이 되면서(2026-09-29, palettes-v2 ATTITUDE_COLORS) 판과 거의 같은 옅은 칠 넷 — 흰 · 돌빛 ·
+   얼음 · 연청 — 이 같은 칸을 입는다(PhaseColor PALE · data-pale). */
+.color-choice[data-pale] .color-panel > .primary-action{ background: var(--grey-800); color: var(--paper); }
 
 /* ── 04 첫 장: 설명 + 시연 (2026-09-28, 사용자 — 3/5와 같은 흐름) ─────────────
    3/5처럼 설명하는 장이 먼저 서고, 화면을 누르면 위로 빠지며 고르는 장(지금까지의

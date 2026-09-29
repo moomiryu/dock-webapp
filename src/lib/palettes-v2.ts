@@ -145,3 +145,53 @@ export function moodAt(index: number): Mood {
 export function nextMoodIndex(current: number): number {
   return (current + 1) % moods.length;
 }
+
+// ─── 성격마다 여덟 짝 (2026-09-29, 디자이너 확정) ─────────────────────────
+//
+// 위의 열 짝(moods)은 성격이 생기기 전에 외벽의 무드(때와 장소)로 만든 목록이라, 네 성격이 같이 돌았다 —
+// 거기서 '당당한 색'을 고르려니 기준이 없었다(디자이너 — "가물가물"). 성격마다 **색의 구조**를 먼저 나누고
+// 그 안에서 여덟 짝을 골랐다. 형상에서 사물이 아니라 행동을 가져온 것과 같다(design/landscape.md '색').
+//   당당한 — 표지의 원색 + 검정 글자(모두 밝은 칠. 벽의 맨 뒤 가장 넓은 칠이라 무엇이 뚫고 지나가도 글이 산다)
+//   차분한 — 짙은 칠 + 흰(노랑) 글자, 밝은 둘은 돌빛 · 연청
+//   다정한 — 리소 잉크의 따뜻한 칠 + 남색 글자
+//   유머있는 — 형광 + 보색 충돌
+// 계열 사이에 너무 닮은 칠이 없게 모든 칠 사이의 색 거리(ΔE2000)를 재서 골랐다 — 서로 다른 성격끼리 가장 가까운
+// 둘이 12.9(차분 연청 · 다정 라벤더), 칠과 글자의 대비는 서른두 짝 모두 5.0 이상. 원칙은 위와 같다(풀채도, 한쪽은 극단).
+// 이름은 화면에 뜨지 않는다 — 룰렛의 낭독 이름이다. 옛 글은 제가 고른 칠 · 글자색(hex)을 그대로 들고 있다.
+export interface ColorPair {
+  id: string;
+  name: Pair;
+  bg: string;
+  text: string;
+}
+const cp = (id: string, ko: string, en: string, bg: string, text: string): ColorPair => ({ id, name: { ko, en }, bg, text });
+export const ATTITUDE_COLORS: Record<string, readonly ColorPair[]> = {
+  ttoryeot: [
+    cp('yellow', '노랑', 'Yellow', '#FFFF00', '#000000'), cp('white', '흰', 'White', '#FFFFFF', '#000000'),
+    cp('red', '빨강', 'Red', '#FF2D2D', '#000000'), cp('blue', '파랑', 'Blue', '#2F8CFF', '#000000'),
+    cp('green', '초록', 'Green', '#00A651', '#000000'), cp('orange', '주황', 'Orange', '#FF7A00', '#000000'),
+    cp('violet', '보라', 'Violet', '#8A5CFF', '#000000'), cp('sky', '하늘', 'Sky', '#33C9FF', '#000000')
+  ],
+  chabun: [
+    cp('navy', '남색', 'Navy', '#1E2A52', '#FFD93D'), cp('forest', '짙은 초록', 'Forest', '#0E4D2E', '#FFFFFF'),
+    cp('crimson', '진홍', 'Crimson', '#7A0A2A', '#FFFFFF'), cp('teal', '청록', 'Teal', '#004E5A', '#FFFFFF'),
+    cp('plum', '보라', 'Plum', '#3B1470', '#FFFFFF'), cp('ink', '먹', 'Ink', '#2B2B2B', '#FFFFFF'),
+    cp('stone', '돌빛', 'Stone', '#CFC8BA', '#2B2B2B'), cp('mist', '연청', 'Mist', '#A9C8E8', '#1E2A52')
+  ],
+  doran: [
+    cp('coral', '코랄', 'Coral', '#FF8E91', '#1E2A52'), cp('bubblegum', '버블검', 'Bubblegum', '#F984CA', '#1E2A52'),
+    cp('sunflower', '해바라기', 'Sunflower', '#FFB511', '#1E2A52'), cp('apricot', '살구', 'Apricot', '#FFCB8E', '#1E2A52'),
+    cp('orchid', '난초', 'Orchid', '#C77DDB', '#14183A'), cp('peach', '복숭아', 'Peach', '#FFA38A', '#1E2A52'),
+    cp('lavender', '라벤더', 'Lavender', '#C8B3FF', '#1E2A52'), cp('blush', '연분홍', 'Blush', '#FFC7D6', '#1E2A52')
+  ],
+  deulseok: [
+    cp('neon-green', '형광 초록', 'Neon green', '#00FF88', '#000000'), cp('hot-pink', '핫핑크', 'Hot pink', '#FF0080', '#000000'),
+    cp('electric', '전기 파랑', 'Electric blue', '#0033FF', '#FFEE00'), cp('lime', '라임', 'Lime', '#A6FF00', '#6600FF'),
+    cp('aqua', '아쿠아', 'Aqua', '#00FFD5', '#6600FF'), cp('cyan', '시안', 'Cyan', '#00F0FF', '#6600FF'),
+    cp('magenta', '마젠타', 'Magenta', '#F000FF', '#000000'), cp('ice', '얼음', 'Ice', '#C4FFF9', '#6600FF')
+  ]
+};
+/** 이 성격이 고르는 여덟 짝. 성격을 모르는 글(옛 서체 키)은 당당한의 짝으로 */
+export function colorsFor(font: string | undefined): readonly ColorPair[] {
+  return ATTITUDE_COLORS[font ?? ''] ?? ATTITUDE_COLORS.ttoryeot;
+}

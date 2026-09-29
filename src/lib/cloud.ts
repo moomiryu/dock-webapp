@@ -93,6 +93,8 @@ export interface Persona {
         돌을 처음 잡는 크기(가운데 돌에 대한 비율) · 글이 다 안 얹힐 때 한 번에 키우는 비율 ·
         한 줄에 얹는 길이의 한도(가장 긴 줄 폭의 배수 — 이것이 없으면 긴 윗 윤곽 하나에 글이 다 얹혀 줄이 안 생긴다) */
     contour: { inset: number; gap: number; slope: number; start: number; grow: number; fill: number };
+    /** 밑면 — 무게중심 좌우로 밑면이 되는 폭(돌 폭의 비율) · 글 + 여백에서 비켜 지나는 거리(u). flatBase */
+    base: { half: number; clear: number };
   };
   /** 줄 높이(글자 크기의 배수). 없으면 LINE_HEIGHT(1.5). 글에 바짝 붙는 형상(나무)이 좁힌다 */
   lh?: number;
@@ -162,7 +164,9 @@ export const PERSONAS: Record<string, Persona> = {
       // 윤곽 따라 — 카드 R20: 줄 사이 한 줄 비우기(ㄷ), 비탈 ±35° 안. 윤곽에서 더 떼기(ㄱ)는 안 골랐다
       // 돌은 가운데 돌의 절반에서 시작해 글이 다 얹힐 때까지만 키우고, 한 줄은 가장 긴 줄의 1.1배까지만 얹는다 —
       // 둘 다 없이는 윗 윤곽이 길어 글이 한두 줄로 위에만 얹히고 몸 아래가 비었다(4/5에서 글 여섯으로 봄)
-      contour: { inset: 0.45, gap: 1, slope: 35, start: 0.5, grow: 1.04, fill: 1.1 } } },
+      contour: { inset: 0.45, gap: 1, slope: 35, start: 0.5, grow: 1.04, fill: 1.1 },
+      // 밑면 — 무게중심 좌우 돌 폭의 20%씩(밑면이 폭의 40% 이상). 벽 바닥에 꼭짓점으로 서던 것을 변으로 앉힌다(2026-09-29)
+      base: { half: 0.2, clear: 0.05 } } },
   // 구슬 구름 (2026-09-28). 꽃 → 옛 뭉게구름(부풀던 원 + 번짐)을 거쳐, 당당한 박스의 틀(글에 붙는 덩어리)을
   // 구름으로 옮겼다 — 밑은 평평하고 위와 양옆에 봉우리, 사방 여백을 고르게, 굵은 구슬 한 크기로 찍는다.
   // 원을 부풀리지 않아 lobe · fill · gap · spread는 쓰이지 않는다. 행간 1.1은 나무와 같다.
@@ -606,6 +610,45 @@ function hatchBands(P: readonly Pt[], cx: number, cy: number, h: { from: number;
   return run.map(({ A, B, nx, ny }): Quad => [A, B, [B[0] - nx * h.depth, B[1] - ny * h.depth], [A[0] - nx * h.depth, A[1] - ny * h.depth]]);
 }
 
+/** 다각형의 무게중심(넓이로) */
+function centroidOf(P: readonly Pt[]): Pt {
+  let a = 0, x = 0, y = 0;
+  for (let i = 0; i < P.length; i++) {
+    const [x0, y0] = P[i], [x1, y1] = P[(i + 1) % P.length], c = x0 * y1 - x1 * y0;
+    a += c; x += (x0 + x1) * c; y += (y0 + y1) * c;
+  }
+  return Math.abs(a) < 1e-9 ? P[0] : [x / (3 * a), y / (3 * a)];
+}
+
+/**
+ * 밑면(2026-09-29, 디자이너 — "모서리로 서 있는 게 아니라 변으로 밑에 와 마주해야"). 벽 바닥에 돌이 가장 낮은 꼭짓점
+ * 하나로 서 있었다. 가장 낮은 곳을 수평으로 깨서 무게중심 좌우로 돌 폭의 half만큼은 밑면이 되게 한다 — 무게가 밑면
+ * 위에 실려 있어야 서 있는 것으로 보인다. 돌을 굴려 제 변으로 눕히지 않은 까닭: 걸기의 글자 각도(올려 12° · 내려 6°)는
+ * 참여자가 고른 값이라 벽이 바꾸면 안 된다. 그래서 4/5 · 5/5의 돌도 같은 밑면을 갖는다(같은 글은 같은 돌).
+ * keep(글 + 여백)에서 clear 안쪽으로는 깨지 않는다 — 거기까지 올라가도 모자라면 밑면이 그만큼 좁다.
+ */
+function flatBase(P: Pt[], keep: readonly Pt[], half: number, clear: number): Pt[] {
+  const xs = P.map((p) => p[0]), W = Math.max(...xs) - Math.min(...xs), [gx] = centroidOf(P);
+  const bottom = Math.max(...P.map((p) => p[1])), top = Math.max(...keep.map((p) => p[1])) + clear;
+  const chord = (y: number): [number, number] => {
+    let l = Infinity, r = -Infinity;
+    for (let i = 0; i < P.length; i++) {
+      const [x0, y0] = P[i], [x1, y1] = P[(i + 1) % P.length];
+      if ((y0 - y) * (y1 - y) > 0 || y0 === y1) continue;
+      const x = x0 + ((x1 - x0) * (y - y0)) / (y1 - y0);
+      l = Math.min(l, x); r = Math.max(r, x);
+    }
+    return [l, r];
+  };
+  let y = bottom;
+  for (const step = W / 400; y > top; y -= step) {
+    const [l, r] = chord(y);
+    if (l <= gx - half * W && r >= gx + half * W) break;
+  }
+  y = Math.max(y, top);
+  return y >= bottom - 1e-6 ? P : clipHalf(P, 0, 1, y);
+}
+
 /**
  * 차분한의 돌.
  *
@@ -685,6 +728,10 @@ function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () =>
   if (hang) pts = pts.map(rot);
   const [tcx, tcy] = rot([TW / 2, TH / 2]);
   const [hcx, hcy] = rot([cx, cy]);
+  // 밑면 — 벽 바닥에 모서리가 아니라 변으로 앉게(flatBase). 지킬 곳은 글 + 여백(윤곽 따라는 얹힌 글자마다) — 걸기가
+  // 처지게 잡은 몸(drop)은 깨도 된다
+  const keep = flow ? flow.glyphs.flatMap((g): Pt[] => rimOf(g.x - 0.6, g.y - 0.6, g.x + 0.6, g.y + 0.6, 1)) : rimOf(-PAD, -PAD, TW + PAD, TH + PAD).map(rot);
+  pts = flatBase(pts, keep, s.base.half, s.base.clear);
   const hatch = s.hatch.on ? hatchBands(pts, hcx, hcy, s.hatch) : [];
 
   // 상자 — 원점을 왼쪽 위로. 가장자리가 잘리지 않게 조금 넉넉히

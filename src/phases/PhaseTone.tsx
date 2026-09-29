@@ -9,7 +9,6 @@ import { pick, useLang } from '../lib/lang';
 /* 이 화면의 말. 축 이름은 사용자가 정했고 나머지 영어는 초안이다(2026-09-26) */
 const T = {
     backIntro: { ko: '성격 다시 고르기', en: 'Choose the character again' },
-    backWork: { ko: '설명 다시 보기', en: 'See the explanation again' },
     title: { ko: <>전하고 싶은 느낌으로<br />조절해보세요</>, en: <>Tune it to the feeling you want to get across</> },
     /* 셋째 축은 서체가 정한다 — 무게가 없는 서체는 말투를 묻는다(palettes.ts · MANNER) */
     leadWeight: { ko: '발화의 크기, 속도, 무게를 정해봐요.', en: 'Set the size, pace and weight of your line.' },
@@ -33,6 +32,8 @@ interface Props {
     /** 초기 화면으로. 초안은 지우지 않는다 */
     onHome: () => void;
     onNext: (tone: PartialTone) => void;
+    /** 4/5에서 뒤로가기로 돌아왔는가 — 그러면 첫 장 없이 조작하는 장에서 선다 */
+    returning?: boolean;
 }
 
 /**
@@ -42,6 +43,10 @@ interface Props {
  * 너무 많았다. **설명하는 장과 조작하는 장을 가른다** — 첫 장은 무엇을
  * 하는 자리인지만 말하고, 누르면 화면이 통째로 위로 밀려 올라가며 견본과
  * 축이 올라온다.
+ *
+ * **첫 장은 앞으로 들어올 때만 선다**(2026-09-29, 사용자). 뒤로가기에서는
+ * 과정 미리보기가 한 번도 나오지 않는다 — 4/5에서 돌아오면 곧장 조작하는
+ * 장이고, 조작하는 장의 뒤로가기는 첫 장이 아니라 2/5로 간다.
  *
  * ── 여기에 말풍선은 없다 ──────────────────────────────────────────────
  * 한때 이 화면에 최대 영역 틀과 진짜 말풍선을 세워 봤다(2026-09-19).
@@ -230,7 +235,7 @@ function MannerSwitch({ font, at, onPick }: { font: string; at: number; onPick: 
     </div>;
 }
 
-export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }: Props) {
+export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, returning = false }: Props) {
     /* 막대 자리가 없는 초안(슬라이더 전에 만든 것)은 가운데('보통')에서 시작한다 */
     const [tone, setTone] = useState<PartialTone>(() => {
         const t = { ...initialTone, speed: initialTone.speed ?? 0.5, weight: initialTone.weight ?? 0.5 };
@@ -238,7 +243,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }:
     });
     const lang = useLang();
     /** 'intro' = 설명하는 장 · 'work' = 조작하는 장 */
-    const [step, setStep] = useState<'intro' | 'work'>('intro');
+    const [step, setStep] = useState<'intro' | 'work'>(returning ? 'work' : 'intro');
     /** 견본을 눌러 기본 상태를 보고 있는가. 값을 만지면 편집값으로 돌아온다 */
     const [compare, setCompare] = useState(false);
     const lines = foldLines(text);
@@ -405,8 +410,9 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }:
   {/* ── 첫 장: 무엇을 하는 자리인지만 ───────────────────────────── */}
   {/* 장 전체가 넘기는 손짓이다. 다만 **버튼 위는 아니다** — 머리줄의
       뒤로가기가 이 안에 들어 있어서, 뒤로 가려고 누른 탭이 onBack과
-      setStep을 같이 돌렸다. 되돌리려는 손짓이 진행 손짓을 겸하면 안 된다. */}
-  <section className="tone-pane tone-intro"
+      setStep을 같이 돌렸다. 되돌리려는 손짓이 진행 손짓을 겸하면 안 된다.
+      뒤로 돌아온 길에는 이 장을 아예 달지 않는다 — 숨긴 채 시연만 돌 까닭이 없다. */}
+  {!returning && <section className="tone-pane tone-intro"
     onClick={e => { if (!(e.target as HTMLElement).closest('button')) setStep('work'); }}>
    <div className="z-glyph-stage has-face">
     <StepHeader at={3} back={{ label: pick(T.backIntro, lang), onClick: () => onBack(tone) }} onHome={onHome} />
@@ -432,12 +438,12 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext }:
         어긋나면 음성으로 조작하는 사람이 부를 이름을 잃는다). */}
     <button type="button" className="tone-more" onClick={() => setStep('work')}>{pick(T.start, lang)}</button>
    </div>
-  </section>
+  </section>}
 
   {/* ── 둘째 장: 견본과 편집 패널 ──────────────────────────────── */}
   <section className="tone-pane tone-work">
    <div className="z-glyph-stage has-face">
-    <StepHeader at={3} back={{ label: pick(T.backWork, lang), onClick: () => setStep('intro') }} onHome={onHome} />
+    <StepHeader at={3} back={{ label: pick(T.backIntro, lang), onClick: () => onBack(tone) }} onHome={onHome} />
     {/* 견본은 글자뿐이다. 도형은 색을 고르는 화면에서 처음 나온다.
         한 겹을 더 두른 것은 **자리를 재기 위해서다** — 머리줄을 뺀 나머지가
         견본의 몫인데, 칸 전체를 기준으로 삼으면 머리줄 높이만큼 넘친다.

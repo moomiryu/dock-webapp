@@ -27,7 +27,6 @@ const T = {
     next: { ko: '이렇게 담을게요', en: 'Hold it like this' },
     /* 첫 장 — 3/5와 같은 말(2026-09-28) */
     start: { ko: '화면을 누르면 시작해요', en: 'Tap the screen to start' },
-    backWork: { ko: '설명 다시 보기', en: 'See the explanation again' },
     /* 조정판의 두 잣대 — 3/5의 [이름 | 잣대] 줄과 같은 꼴(2026-09-28) */
     colour: { ko: '색', en: 'Colour' },
     align: { ko: '정렬', en: 'Align' },
@@ -64,6 +63,8 @@ interface Props {
     /** 초기 화면으로. 초안은 지우지 않는다 */
     onHome: () => void;
     onNext: (tone: ToneState) => void;
+    /** 5/5에서 뒤로가기로 돌아왔는가 — 그러면 첫 장 없이 고르는 장에서 선다 */
+    returning?: boolean;
 }
 /**
  * 04 색.
@@ -282,7 +283,7 @@ function ColorRoll({ at, onPick, labelledBy, lang, pairs }: {
     </div>;
 }
 
-export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props) {
+export default function PhaseColor({ text, tone, onBack, onHome, onNext, returning = false }: Props) {
     const initial = messageColors(tone);
     const lang = useLang();
     /* 고른 짝 — 룰렛의 자리. 이 성격의 짝이 아니면(작업용 하늘색 · 다른 성격의 짝) 흰 짝 또는 첫 짝에서 시작한다(firstOf) */
@@ -304,11 +305,13 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
        크기감으로 들어차게 늘린다(fit.ts · phoneSide, 2026-09-29). 첫 장 시연과 고르는 장이 같이 쓴다 */
     const area = phoneSide(AREA, box.w, box.h, fillFromLegacySize(tone.size));
     /* 두 장(2026-09-28, 3/5와 같은 흐름): 'intro' = 설명과 시연 · 'work' = 고르는 장.
-       moved는 한 번이라도 넘긴 뒤인지 — 처음 들어올 때는 둘째 장이 움직이지 않고 숨어 있다 */
-    const [step, setStep] = useState<'intro' | 'work'>('intro');
+       moved는 한 번이라도 넘긴 뒤인지 — 처음 들어올 때는 둘째 장이 움직이지 않고 숨어 있다.
+       첫 장은 앞으로 들어올 때만 선다(2026-09-29, 사용자) — 뒤로가기에서는 과정 미리보기가
+       한 번도 나오지 않는다. 5/5에서 돌아오면 곧장 고르는 장이고, 고르는 장의 뒤로가기는
+       첫 장이 아니라 3/5로 간다 */
+    const [step, setStep] = useState<'intro' | 'work'>(returning ? 'work' : 'intro');
     const [moved, setMoved] = useState(false);
-    const [visit, setVisit] = useState(0);
-    const go = (s: 'intro' | 'work') => { setMoved(true); if (s === 'intro') setVisit((v) => v + 1); setStep(s); };
+    const start = () => { setMoved(true); setStep('work'); };
     return <div className="z-frame compose-screen color-choice is-pulled"
       data-step={step} data-moved={moved ? '' : undefined} data-pair={PAIRS[at].id} data-pale={PALE.has(PAIRS[at].id) ? '' : undefined}
       style={{ '--pane-bg': bg, '--chrome-ink': fg } as CSSProperties}>
@@ -316,23 +319,23 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
      3/5의 첫 장과 같은 흐름이다. 장 전체가 넘기는 손짓이되 버튼 위는 아니다
      (머리줄의 뒤로가기를 누른 탭이 넘김까지 돌리면 안 된다). 아래의 고르는
      장은 그대로 두고 이 장이 위를 덮는다 — 누르면 위로 빠지고 고르는 장이
-     아래에서 올라온다(app.css · .color-intro). */}
- <section className="color-intro" onClick={e => { if (!(e.target as HTMLElement).closest('button')) go('work'); }}>
+     아래에서 올라온다(app.css · .color-intro). 뒤로 돌아온 길에는 이 장을 아예 달지
+     않는다 — 숨긴 채 시연만 돌 까닭이 없다. */}
+ {!returning && <section className="color-intro" onClick={e => { if (!(e.target as HTMLElement).closest('button')) start(); }}>
   <StepHeader at={4} back={{ label: pick(T.back, lang), onClick: () => onBack(current) }} onHome={onHome} />
   <div className="z-ask">
    <h1>{pick(T.title, lang)}</h1>
    <p>{pick(T.lead, lang)}</p>
   </div>
   <div className="color-stage color-demo" style={{ '--color-area': area } as CSSProperties}>
-   {/* 늘 달아 둔다 — 넘길 때 위로 빠지는 장에 시연이 그대로 실려 간다. 되돌아오면
-       key가 바뀌어 처음부터 다시 떨어진다 */}
-   <ColorDemo key={visit} lines={lines} tone={tone} cloud={cloud} box={box} from={at} pairs={PAIRS} />
+   {/* 늘 달아 둔다 — 넘길 때 위로 빠지는 장에 시연이 그대로 실려 간다 */}
+   <ColorDemo lines={lines} tone={tone} cloud={cloud} box={box} from={at} pairs={PAIRS} />
   </div>
-  <button type="button" className="tone-more" onClick={() => go('work')}>{pick(T.start, lang)}</button>
- </section>
+  <button type="button" className="tone-more" onClick={start}>{pick(T.start, lang)}</button>
+ </section>}
  <div className="proj-stage is-bleed"><div className="proj-fit">
   <div className="proj-frame compose-editor is-pulled">
-   <StepHeader className="compose-chrome" at={4} back={{ label: pick(T.backWork, lang), onClick: () => go('intro') }} onHome={onHome} />
+   <StepHeader className="compose-chrome" at={4} back={{ label: pick(T.back, lang), onClick: () => onBack(current) }} onHome={onHome} />
    {/* 제목과 안내는 첫 장으로 옮겼다(2026-09-28) — 3/5처럼 고르는 장은 위가
        미리보기, 아래가 조정판이다. 무엇을 하는 자리인지는 첫 장이 말한다 */}
    <div className="color-stage" style={{ '--color-area': area } as CSSProperties}>

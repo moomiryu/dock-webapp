@@ -73,6 +73,11 @@ export default function App() {
    * 08이 세는 30초가 벽의 30초와 같은 곳에서 출발하려면 이 값이 있어야 한다.
    */
   const [broadcast, setBroadcast] = useState<{ startedAt: number; session: string } | null>(null);
+  /**
+   * 뒷단계에서 뒤로가기로 돌아온 길인가. 3/5·4/5의 첫 장(과정 미리보기)은 앞으로
+   * 들어올 때만 선다(2026-09-29, 사용자) — 돌아오면 곧장 고르는 장이다.
+   */
+  const [returning, setReturning] = useState(false);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -176,7 +181,7 @@ export default function App() {
           initialTone={glyphTone ?? (draft?.tone ? toPartial(draft.tone) : null)}
           onBack={() => setScreen('compose')}
           onHome={goHome}
-          onNext={(partial) => { setGlyphTone(partial); setScreen('tone'); }}
+          onNext={(partial) => { setGlyphTone(partial); setReturning(false); setScreen('tone'); }}
         />
       );
 
@@ -189,7 +194,7 @@ export default function App() {
             initialTone={null}
             onBack={() => setScreen('compose')}
             onHome={goHome}
-            onNext={(p) => { setGlyphTone(p); setScreen('tone'); }}
+            onNext={(p) => { setGlyphTone(p); setReturning(false); setScreen('tone'); }}
           />
         );
       }
@@ -199,7 +204,8 @@ export default function App() {
           initialTone={partial}
           onBack={(p) => { setGlyphTone(p); setScreen('glyph'); }}
           onHome={goHome}
-          onNext={(p) => { saveTone(p); setScreen('color'); }}
+          onNext={(p) => { saveTone(p); setReturning(false); setScreen('color'); }}
+          returning={returning}
         />
       );
     }
@@ -218,12 +224,13 @@ export default function App() {
       }
       if (screen === 'color') {
         return <PhaseColor text={draft.text} tone={draft.tone}
-          onBack={(tone) => { saveFull(draft.text, tone); setScreen('tone'); }}
+          onBack={(tone) => { saveFull(draft.text, tone); setReturning(true); setScreen('tone'); }}
           onHome={goHome}
-          onNext={(tone) => { saveFull(draft.text, tone); setScreen('preview'); }} />;
+          onNext={(tone) => { saveFull(draft.text, tone); setScreen('preview'); }}
+          returning={returning} />;
       }
       return (
-        <PhaseSubmit draft={draft} onDocked={handleDocked} onEdit={() => setScreen('color')} onHome={goHome} onRestart={handleRestart} />
+        <PhaseSubmit draft={draft} onDocked={handleDocked} onEdit={() => { setReturning(true); setScreen('color'); }} onHome={goHome} onRestart={handleRestart} />
       );
 
     case 'submit':
@@ -231,7 +238,7 @@ export default function App() {
         <PhaseSubmit
           draft={draft}
           onDocked={handleDocked}
-          onEdit={() => setScreen('color')}
+          onEdit={() => { setReturning(true); setScreen('color'); }}
           onHome={goHome}
           onRestart={handleRestart}
         />

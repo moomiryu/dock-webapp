@@ -1,5 +1,5 @@
 import { cloneElement, isValidElement, useEffect, useId, useMemo, useRef, type CSSProperties, type ReactElement, type ReactNode } from 'react';
-import { AMP, DRIFT, T1, T2, type Circle, type Cloud } from '../lib/cloud';
+import { AMP, DRIFT, T1, T2, type Circle, type Cloud, type Tree } from '../lib/cloud';
 import type { Boxed } from '../lib/fit';
 
 /**
@@ -26,11 +26,11 @@ import type { Boxed } from '../lib/fit';
  * 오른쪽 아래 빗금은 칠하지 않고 **오려 낸다**(mask) — 뒤에 있는 것이 그대로
  * 비쳐 벽에서도 폰에서도 '틈'이 된다. 시스템이 새 색을 만들지 않는다.
  *
- * ── 나무 (당당한, 2026-09-28) ─────────────────────────────────────────
- * 층(사다리꼴 또는 양 끝이 둥근 층) · 작은 머리 · 기둥(cloud.ts · treeFor). 번지지도 숨 쉬지도
- * 않는다. 기둥의 세로 줄무늬는 칠하지 않고 **오려 낸다**(mask) — 돌의 빗금과 같은 방법이라 새 색이
- * 없다. 기둥을 먼저 그리고 머리를 위에 얹어, 머리 밑에 물린 기둥 끝이 안 보인다. 행간은 1.1이라
- * 글 상자에 --cloud-lh로 내려 준다(app.css). 정렬 고르기가 아직이라 글은 가운데로 세운다.
+ * ── 나무 (당당한, 2026-09-28, 09-29 다시) ─────────────────────────────
+ * 실루엣 하나(cloud.ts · treeFor) — 예리한은 이등변 삼각형의 단, 온화한은 같은 원. 기둥 · 줄무늬는
+ * 없다. 단 · 원을 path 하나로 합쳐 칠한다 — 따로 그리면 단 사이 이음매가 가늘게 비쳤다(격자). 번지지도
+ * 숨 쉬지도 않는다. 행간은 1.1이라 글 상자에 --cloud-lh로 내려 준다(app.css). 사선 · 세로쓰기는
+ * 한 자씩 자리를 받는다(layout.glyphs).
  *
  * ── 구슬 구름 (다정한, 2026-09-28) ─────────────────────────────────────
  * 한 크기 구슬(cloud.ts · beadFor)을 그대로 찍는다 — 번짐 필터도 숨도 없다. 알끼리 조금씩 겹쳐
@@ -52,8 +52,8 @@ interface Props {
   still?: boolean;
   className?: string;
   style?: CSSProperties;
-  /** 나무의 기둥을 상자 밑으로 더 잇는다 — 길이는 CSS 변수 --trunk-ext(벽이 나무 키로 정한다) */
-  trunkExt?: boolean;
+  /** 벽의 나무 — 폰 판 아래로 바닥까지 잇는 단(원)도 그린다(tree.more). 상자 밖으로 내려가고, 화면 밑이 자른다 */
+  reach?: boolean;
   children?: ReactNode;
 }
 
@@ -115,11 +115,19 @@ function stonePath(pts: readonly (readonly [number, number])[], r: number): stri
   return d + 'Z';
 }
 
+/** 나무의 실루엣 — 단(삼각형 · 목에서 벌어지는 네모)과 원을 한 path로. 모두 같은 방향으로 돌아 겹친 곳이 비지 않는다 */
+function treePath(tree: Tree, reach: boolean): string {
+  const f = (v: number) => (v * K).toFixed(1);
+  return (reach ? [...tree.tiers, ...tree.more] : tree.tiers).map((q) => q.kind === 'tri'
+    ? 'M' + q.pts.map((p) => `${f(p[0])},${f(p[1])}`).join('L') + 'Z'
+    : `M${f(q.cx - q.r)},${f(q.cy)}a${f(q.r)},${f(q.r)} 0 1,1 ${f(2 * q.r)},0a${f(q.r)},${f(q.r)} 0 1,1 ${f(-2 * q.r)},0Z`).join('');
+}
+
 function prefersStill(): boolean {
   return typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-export default function CloudBubble({ cloud, box, side, color, still, className, style, trunkExt, children }: Props) {
+export default function CloudBubble({ cloud, box, side, color, still, className, style, reach, children }: Props) {
   const filterId = 'cloud' + useId().replace(/[^a-zA-Z0-9]/g, '');
   const quiet = still || prefersStill();
   const W = cloud.w * K, H = cloud.h * K;
@@ -178,12 +186,9 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   const stone = cloud.stone, hatch = pr.stone?.hatch;
   const stoneD = useMemo(() => (stone ? stonePath(stone.pts, pr.stone?.round ?? 0) : ''), [stone, pr.stone?.round]);
   const tree = cloud.tree, beads = cloud.beads;
-  const pt = (p: readonly [number, number]) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`;
   const bead = (p: readonly [number, number], i: number) => <circle key={i} cx={(p[0] * K).toFixed(1)} cy={(p[1] * K).toFixed(1)} r={((beads?.r ?? 0) * K).toFixed(1)} />;
-  // 기둥의 끝(상자 높이의 비율) — 벽에서 이어 붙인 기둥이 여기서 시작하고, 펴지며 등장할 때 축이 그 밑이다
-  const trunkEnd = tree ? `${(((tree.trunk.y + tree.trunk.h) / cloud.h) * 100).toFixed(3)}%` : undefined;
   // 나무 · 구슬 구름은 글 배치를 형상이 정한다(cloud.ts의 layout — 다시 나눈 줄 · 줄마다 자간 · 한 자씩의 자리).
-  // 줄 맞춤은 가운데 — 균등 배분 · 사다리꼴은 줄이 이미 틀을 채웠고, 달걀 · 뭉게구름은 가운데 맞춘 줄을 품게 지었다
+  // 줄 맞춤은 가운데 — 나무 · 뭉게구름은 가운데 맞춘 줄을 품게 지었다
   const lay = cloud.layout;
   const kids = (tree || beads || lay) && isValidElement(children)
     ? cloneElement(children as ReactElement<{ align?: string; text?: string; lineTrack?: readonly number[]; glyphs?: unknown; glyphBox?: unknown }>, {
@@ -196,7 +201,7 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   return (
     <div
       className={'cloud-bubble' + (tree ? ' is-tree' : '') + (beads ? ' is-bead' : '') + (className ? ' ' + className : '')}
-      style={{ width: `calc(${side} * ${box.w.toFixed(4)})`, height: `calc(${side} * ${box.h.toFixed(4)})`, ...(pr.lh ? { '--cloud-lh': pr.lh } : {}), ...(trunkEnd ? { '--trunk-end': trunkEnd } : {}), ...style } as CSSProperties}
+      style={{ width: `calc(${side} * ${box.w.toFixed(4)})`, height: `calc(${side} * ${box.h.toFixed(4)})`, ...(pr.lh ? { '--cloud-lh': pr.lh } : {}), ...style } as CSSProperties}
     >
       <svg className="cloud-art" viewBox={`0 0 ${W.toFixed(1)} ${H.toFixed(1)}`} aria-hidden="true" focusable="false">
         {stone && !(hatch?.on && stone.hatch.length) ? (
@@ -221,27 +226,7 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
             <path d={stoneD} fill={color} mask={`url(#${filterId}m)`} />
           </>
         ) : tree ? (
-          <>
-            <defs>
-              {/* 기둥의 세로 줄무늬 — 짝수 번째 줄을 검정으로 = 오린다. 벽 바탕이 그대로 비친다 */}
-              <mask id={filterId + 't'} maskUnits="userSpaceOnUse" x="0" y="0" width={W.toFixed(1)} height={H.toFixed(1)}>
-                <rect width={W.toFixed(1)} height={H.toFixed(1)} fill="white" />
-                {Array.from({ length: Math.floor(tree.trunk.stripes / 2) }, (_, i) => {
-                  const sw = tree.trunk.w / tree.trunk.stripes;
-                  return <rect key={i} x={((tree.trunk.x + (2 * i + 1) * sw) * K).toFixed(1)} y={(tree.trunk.y * K).toFixed(1)} width={(sw * K).toFixed(1)} height={(tree.trunk.h * K).toFixed(1)} fill="black" />;
-                })}
-              </mask>
-            </defs>
-            <g fill={color}>
-              <rect x={(tree.trunk.x * K).toFixed(1)} y={(tree.trunk.y * K).toFixed(1)} width={(tree.trunk.w * K).toFixed(1)} height={(tree.trunk.h * K).toFixed(1)} mask={`url(#${filterId}t)`} />
-              {tree.tiers.map((q, i) => q.kind === 'trap'
-                ? <polygon key={i} points={q.pts.map(pt).join(' ')} />
-                : <rect key={i} x={(q.x * K).toFixed(1)} y={(q.y * K).toFixed(1)} width={(q.w * K).toFixed(1)} height={(q.h * K).toFixed(1)} rx={(q.r * K).toFixed(1)} />)}
-              {tree.cap.kind === 'spire'
-                ? <polygon points={tree.cap.pts.map(pt).join(' ')} />
-                : <ellipse cx={(tree.cap.cx * K).toFixed(1)} cy={(tree.cap.cy * K).toFixed(1)} rx={(tree.cap.rx * K).toFixed(1)} ry={(tree.cap.ry * K).toFixed(1)} />}
-            </g>
-          </>
+          <path d={treePath(tree, !!reach)} fill={color} />
         ) : beads ? (
           <g fill={color}>
             <g className="cloud-body">{beads.body.map(bead)}</g>
@@ -264,14 +249,6 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
           </>
         )}
       </svg>
-      {/* 벽의 나무 — 기둥을 바닥까지 잇는다. 줄무늬는 SVG의 기둥과 같다(칠 · 비움 · 칠 …, 비운 줄로 바탕이 비친다) */}
-      {tree && trunkExt && (
-        <i className="cloud-trunk-ext" aria-hidden="true" style={{
-          left: `${((tree.trunk.x / cloud.w) * 100).toFixed(3)}%`, width: `${((tree.trunk.w / cloud.w) * 100).toFixed(3)}%`, top: trunkEnd,
-          background: `linear-gradient(to right, ${Array.from({ length: tree.trunk.stripes }, (_, i) =>
-            `${i % 2 ? 'transparent' : color} ${((i / tree.trunk.stripes) * 100).toFixed(2)}% ${(((i + 1) / tree.trunk.stripes) * 100).toFixed(2)}%`).join(', ')})`
-        }} />
-      )}
       {/* 글은 제 자리에 앉는다 — 구름이 비대칭이라 한가운데가 아니다 */}
       <div className="cloud-text" style={{
         left: `${((t.x / cloud.w) * 100).toFixed(3)}%`, top: `${((t.y / cloud.h) * 100).toFixed(3)}%`,

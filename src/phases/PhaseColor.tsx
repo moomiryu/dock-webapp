@@ -3,8 +3,8 @@ import StepHeader from '../components/StepHeader';
 import SnapSwitch from '../components/SnapSwitch';
 import VoiceBubble from '../components/VoiceBubble';
 import CloudBubble from '../components/CloudBubble';
-import { arrangementsFor, cloudForTone, cloudShape, defaultAlign } from '../lib/cloud';
-import { bubbleAt, fillFromLegacySize, foldLines } from '../lib/fit';
+import { arrangementsFor, cloudForTone, cloudShape, defaultAlign, linesFor } from '../lib/cloud';
+import { bubbleAt, fillFromLegacySize } from '../lib/fit';
 import { fontMap } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import { messageColors } from '../lib/messageStyle';
@@ -37,9 +37,11 @@ const T = {
     left: { ko: '왼쪽', en: 'Left' },
     center: { ko: '가운데', en: 'Centre' },
     right: { ko: '오른쪽', en: 'Right' },
-    /* 성격마다 제 정렬(2026-09-28, design/landscape.md) — 나무(당당한) · 구름(다정한) */
-    distribute: { ko: '균등 배분', en: 'Justify' },
-    trapezoid: { ko: '사다리꼴', en: 'Trapezoid' },
+    /* 성격마다 제 정렬(2026-09-28, design/landscape.md) — 나무(당당한) · 구름(다정한).
+       나무는 기본 배열 · 사선 배열 · 세로쓰기 배열(2026-09-29, 디자이너) — 칸이 좁아 '배열'은 뺀다. 나무의 가운데가 '기본'이다 */
+    basic: { ko: '기본', en: 'Basic' },
+    slant: { ko: '사선', en: 'Diagonal' },
+    vertical: { ko: '세로쓰기', en: 'Vertical' },
     arch: { ko: '아치', en: 'Arch' },
     fan: { ko: '부채꼴', en: 'Fan' },
     smile: { ko: '미소', en: 'Smile' },
@@ -279,7 +281,6 @@ function ColorRoll({ at, onPick, labelledBy, lang }: {
 export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props) {
     const initial = messageColors(tone);
     const lang = useLang();
-    const lines = foldLines(text);
     /* 고른 짝 — 룰렛의 자리. 고른 적 없는 색(작업용 하늘색)이면 흰 짝에서 시작한다(FIRST) */
     const [at, setAt] = useState(() => { const i = pairAt(initial.bg, initial.text); return i >= 0 ? i : FIRST; });
     const bg = PAIRS[at].bg;
@@ -289,6 +290,8 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
     const ALIGNS = arrangementsFor(tone.font);
     const [align, setAlign] = useState<Align>(tone.align && ALIGNS.includes(tone.align) ? tone.align : defaultAlign(tone.font));
     const current = { ...tone, align, backgroundColor: bg, textColor: fg };
+    // 줄은 정렬이 정한다 — 나무의 기본 · 사선은 8자, 그 밖은 12자(cloud.ts · linesFor)
+    const lines = linesFor(text, current);
     // 벽과 같은 구름이어야 미리보기가 거짓말이 아니다 — 씨앗은 글 자체(cloud.ts). 정렬이 형상을 바꾸므로 고른 정렬로 짓는다
     const cloud = cloudForTone(lines, current);
     const box = bubbleAt(lines, cloudShape(cloud), fillFromLegacySize(tone.size));
@@ -349,7 +352,7 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext }: Props
    <span className="tslider-name" id="align-name">{pick(T.align, lang)}</span>
    {/* 3/5 말투 스위치와 같은 부품이다(2026-09-28, 사용자 — "3단계 UI를 적극 활용",
        같은 앱이니 같은 분위기) — 칸 수는 성격의 정렬 수(셋 또는 넷) */}
-   <SnapSwitch labels={ALIGNS.map((a) => pick(T[a], lang))} at={ALIGNS.indexOf(align)}
+   <SnapSwitch labels={ALIGNS.map((a) => pick(a === 'center' && tone.font === 'ttoryeot' ? T.basic : T[a as Exclude<Align, 'distribute' | 'trapezoid'>], lang))} at={ALIGNS.indexOf(align)}
      onPick={(i) => setAlign(ALIGNS[i])} labelledBy="align-name" />
   </div>
   <button className="primary-action" onClick={() => onNext(current)}>{pick(T.next, lang)}</button>

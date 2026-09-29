@@ -15,7 +15,7 @@ export type FontFamily = 'doran' | 'chabun' | 'botong' | 'ttoryeot' | 'deulseok'
  * 다정한(구름) = 가운데 · 아치 · 부채꼴 · 미소, 차분한(돌) = 올려 걸기 · 중간 걸기 · 내려 걸기(R17).
  * 목록은 cloud.ts의 arrangementsFor. 'contour'(윤곽 따라, R20)는 칸에서 뺐지만 되살릴 수 있게 둔다
  */
-export type Align = 'left' | 'center' | 'right' | 'distribute' | 'trapezoid' | 'arch' | 'fan' | 'smile' | 'hang-up' | 'hang-mid' | 'hang-down' | 'contour';
+export type Align = 'left' | 'center' | 'right' | 'distribute' | 'trapezoid' | 'arch' | 'fan' | 'smile' | 'hang-up' | 'hang-mid' | 'hang-down' | 'contour' | 'slant' | 'vertical';
 
 export interface ToneState {
   align?: Align;

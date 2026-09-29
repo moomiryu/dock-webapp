@@ -48,7 +48,7 @@ export const LAMBDA = 8;
 /** 조각이 옮겨 다니는 거리 (u). 조각만 자리를 옮긴다 */
 export const DRIFT = 0.6;
 
-export type Edge = 'spike' | 'smooth' | 'cumulus' | 'pixel' | 'stone' | 'tree' | 'bead';
+export type Edge = 'spike' | 'smooth' | 'cumulus' | 'pixel' | 'stone' | 'tree' | 'bead' | 'creature';
 
 export interface Persona {
   key: string;
@@ -130,6 +130,39 @@ export interface Persona {
         글 띠와 윤곽 사이 (u) */
     arc: { bow: number; fan: number; band: number };
   };
+  /** 유머있는 — 말투가 형상을 가른다: 귀여운 = 새, 시니컬한 = 박쥐(creatureFor). 기하 도형만(원 · 세모 · 띠 · 원호).
+      몸은 글을 따르고, 붙는 것(꼬리 · 귀 · 날개)은 길이가 정해져 있다. 값의 근거는 design/landscape.md '새' · '박쥐' */
+  creature?: {
+    bird: {
+      /** 몸 = 글 + 여백 네모의 네 모서리를 지나는 원 × grow */
+      grow: number;
+      /** 머리 원 — 반지름(몸 R의 배수) · 자리(도, 화면 각도라 −가 위) · 몸 밖으로 나온 몫(머리 반지름의 배수) */
+      head: { r: number; at: number; out: number };
+      /** 부리 세모 — 길이 · 밑변 반(머리 반지름의 배수) */
+      beak: { len: number; half: number };
+      /** 꼬리 띠 — 길이 · 반폭(u, 고정) · 몸에서 나오는 자리(R의 배수) · 방향(from = 나오는 각, to = 뻗는 각):
+          글이 고르는 둘(뒤로 조금 위 · 아래로 늘어뜨림)과 날 때(곧게 뒤로) */
+      tail: { len: number; half: number; root: number; up: { from: number; to: number }; down: { from: number; to: number }; fly: { from: number; to: number } };
+      /** 앉음(벽) — 원을 가운데에서 R × cut 아래로 잘라 바닥을 평평하게 */
+      cut: number;
+      /** 날개(벽, 날 때) — 부채(원의 조각): 뿌리(R 배수 · 각) · 반지름(R 배수) · 가운데 각 · 벌어짐(도) */
+      wing: { root: number; at: number; r: number; dir: number; span: number };
+    };
+    bat: {
+      /** 귀 — 높이(u) · 안쪽 밑 · 바깥 밑 · 끝의 가로 자리(높이의 배수, 가운데에서) */
+      ear: { h: number; in: number; out: number; tip: number };
+      /** 아래 끝 · 날개 폭 · 날개 들림의 단위 · 윗변이 글 + 여백 위로 뜨는 거리 · 옆선이 글 + 여백 밖으로 나가는 거리 ·
+          옆선의 끝이 글 + 여백 아래로 내려가는 거리 (모두 u, 고정) */
+      foot: number; span: number; unit: number; top: number; side: number; hip: number;
+      /** 날개가 내려오는 높이 — 두 줄 견본의 날개 높이(u). 여기에 들림 × unit을 더한다. 그 아래는 옆선이 곧다 */
+      reach: number;
+      /** 아랫변 파임 — 현 길이에 대한 부풂 */
+      sag: number;
+      /** 자세 — 들림(unit 배수, −는 처짐) · 파임 수 · 손가락 끝이 처지는 정도(unit 배수). 매달림은 이것을 뒤집는다 */
+      fly: { lift: number; n: number; drop: number };
+      hang: { lift: number; n: number; drop: number };
+    };
+  };
 }
 
 /**
@@ -173,9 +206,17 @@ export const PERSONAS: Record<string, Persona> = {
   // 고른 과정과 버린 것은 design/landscape.md '구름'.
   doran: { key: 'doran', edge: 'bead', lobe: [1.1, 1.6], fill: [0.5, 0.75], gap: 1.6, spread: [0, 0.9], sat: 0, blur: 0, lh: 1.1,
     bead: { step: 0.6, r: 0.36, side: 0.55, top: 0.35, lets: { count: [1, 2, 2, 2, 3, 3], sizes: [[3, 5], [1, 3], [1, 2]], angle: [-20, 200], apart: 50 }, gap: [0.3, 0.8], bob: 0.3, arc: { bow: 1.3, fan: 130, band: 0.45 } } },
-  // 픽셀 구름. 같은 합집합을 0.5u 격자에 찍는다. 번짐은 모서리만 아주 살짝 —
-  // 0.16칸에서는 계단이 흐려져 둥근 덩이에 잔털이 난 것이 됐다.
-  deulseok: { key: 'deulseok', edge: 'pixel', lobe: [1.1, 1.6], fill: [0.55, 0.75], gap: 1.7, spread: [0, 0.8], sat: 2, blur: 0.04, cell: 0.5 }
+  // 새 · 박쥐 (2026-09-29). 픽셀 구름 → 나비(시안) → 말투가 가른다: 귀여운 = 새, 시니컬한 = 박쥐. 기하 도형만.
+  // 원을 부풀리지 않아 lobe · fill · gap · spread · cell은 쓰이지 않는다(cell은 옛 픽셀 구름의 격자 — 그리는 코드가 남아 있다).
+  // 새: 몸 원 · 머리 0.55R · 꼬리 4u(글이 두 방향 중 하나). 박쥐: 한 몸, 귀 · 아래 끝 · 날개는 두 줄 견본에서 잰 길이 그대로.
+  // 고른 과정과 200개로 잰 것은 design/landscape.md '새' · '박쥐'.
+  deulseok: { key: 'deulseok', edge: 'creature', lobe: [1.1, 1.6], fill: [0.55, 0.75], gap: 1.7, spread: [0, 0.8], sat: 0, blur: 0, cell: 0.5,
+    creature: {
+      bird: { grow: 1.02, head: { r: 0.55, at: -38, out: 0.5 }, beak: { len: 0.34, half: 0.2 },
+        tail: { len: 4, half: 0.34, root: 0.78, up: { from: 200, to: 195 }, down: { from: 165, to: 150 }, fly: { from: 185, to: 185 } },
+        cut: 0.92, wing: { root: 0.3, at: 250, r: 1.3, dir: 232, span: 58 } },
+      bat: { ear: { h: 2.1, in: 0.12, out: 0.85, tip: 0.93 }, foot: 1.9, span: 3.4, unit: 2.1, top: 0.63, side: 0.15, hip: 0.5,
+        reach: 5.32, sag: 0.22, fly: { lift: 0.7, n: 3, drop: 0.7 }, hang: { lift: -0.3, n: 2, drop: 0.9 } } } }
 };
 
 /** 성격 → 구름. 옛 Firestore 문서의 서체 키는 fontMap과 같은 칸으로 보낸다 */
@@ -263,6 +304,18 @@ export interface Beads {
   chars: Pt[];
 }
 
+/** 유머있는의 새 · 박쥐 한 자세 — 원과 다각형. 원점 = 구름 상자 왼쪽 위, u 단위 */
+export interface CreaturePose { discs: { cx: number; cy: number; r: number }[]; polys: Pt[][] }
+/**
+ * 유머있는의 새(귀여운) · 박쥐(시니컬한). 자세마다 한 벌 — rest는 폰(4/5 · 5/5)의 자세이고 상자(w · h)는 이것으로 잰다:
+ * 새는 앉되 원을 자르지 않고, 박쥐는 거꾸로 매달린다(형상만 뒤집고 글은 바로 선다). sit · fly는 벽이 고르는 자세 —
+ * 새는 앉음(원 아래를 잘라 평평) · 날기(부채 날개, 꼬리를 곧게), 박쥐는 날기(펼침). 상자 밖으로 나갈 수 있다
+ */
+export interface Creature {
+  kind: 'bird' | 'bat';
+  poses: { rest: CreaturePose; fly: CreaturePose; sit?: CreaturePose };
+}
+
 /** 휜 배치의 글자 한 자 — 글 상자 왼쪽 위에서 가운데까지(em), 기울기(rad) */
 export interface Glyph { c: string; x: number; y: number; a: number }
 /**
@@ -293,6 +346,8 @@ export interface Cloud {
   tree?: Tree;
   /** 다정한의 구슬 구름. 있으면 circles · spikes는 비어 있다 */
   beads?: Beads;
+  /** 유머있는의 새 · 박쥐. 있으면 circles · spikes는 비어 있다 */
+  creature?: Creature;
   /** 형상이 정한 글 배치. 없으면 들어온 줄 그대로 */
   layout?: TextLayout;
   /** 구름 상자 (u) */
@@ -438,6 +493,8 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
     if (o.align === 'arch' || o.align === 'fan' || o.align === 'smile') return beadArcFor(pr, rule, lines, font, optic, scaleX, o, LH, R, o.align);
     return beadFor(pr, rule, TW, TH, R, charCenters(lines, font, optic, scaleX, o.wdth, o.track ?? 0, TW, LH));
   }
+  // 말투가 없는 옛 글은 귀여운(새)이다 — 0이 귀여운, 1이 시니컬한(palettes.ts의 MANNER 차례)
+  if (pr.edge === 'creature' && pr.creature) return creatureFor(pr, rule, TW, TH, R, o.manner === 1 ? 'bat' : 'bird');
 
   const circles: Circle[] = [];
   const put = (x: number, y: number, r: number, kind: Circle['kind']) =>
@@ -1233,6 +1290,101 @@ function beadArcFor(pr: Persona, rule: 'B' | 'C', lines: readonly string[], font
     box: { w: (bx1 - bx0) / optic, h: (by1 - by0) / optic }
   };
   return finishBeads(pr, rule, body, { x0: bx0, y0: by0, x1: bx1, y1: by1 }, placed.map((q): Pt => [q.x, q.y]), R, layout);
+}
+
+// ─── 유머있는 — 새 · 박쥐 (2026-09-29) ─────────────────────────────────
+// 말투가 가른다: 귀여운 = 새, 시니컬한 = 박쥐. 기하 도형만이고 곡선을 다듬지 않는다. 몸은 글을 따르고, 붙는 것
+// (꼬리 · 귀 · 날개)은 길이가 정해져 있다. 고른 과정과 200개로 잰 것은 design/landscape.md '새' · '박쥐'.
+// 값은 PERSONAS.deulseok.creature. 두 형상 모두 글 + 여백 네모를 품는 것이 구조로 보장된다 — 새의 몸은 네모의 네
+// 모서리를 지나는 원, 박쥐의 윤곽은 네모 바깥으로만 지나간다(파인 아랫변은 날개 높이만큼만 내려온다).
+
+const DEG = Math.PI / 180;
+
+/** A에서 B까지의 원호(A는 빼고 B까지) — toward 쪽으로 현 길이 × sag만큼 부푼다. 박쥐 날개의 파인 아랫변 */
+function scallopArc(A: Pt, B: Pt, toward: Pt, sag: number, n = 24): Pt[] {
+  const c = Math.hypot(B[0] - A[0], B[1] - A[1]), s = sag * c, mx = (A[0] + B[0]) / 2, my = (A[1] + B[1]) / 2;
+  if (c < 1e-6) return [B];
+  let nx = -(B[1] - A[1]) / c, ny = (B[0] - A[0]) / c;
+  if (nx * (toward[0] - mx) + ny * (toward[1] - my) < 0) { nx = -nx; ny = -ny; }
+  const r = (c * c / 4 + s * s) / (2 * s), ox = mx - nx * (r - s), oy = my - ny * (r - s);
+  const a0 = Math.atan2(A[1] - oy, A[0] - ox), a1 = Math.atan2(B[1] - oy, B[0] - ox), am = Math.atan2(my + ny * s - oy, mx + nx * s - ox);
+  const norm = (x: number) => ((x % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  // a0에서 a1로 가되 부푼 점(am)을 지나는 쪽으로
+  let d = norm(a1 - a0);
+  if (norm(am - a0) > d) d -= 2 * Math.PI;
+  return Array.from({ length: n }, (_, i): Pt => { const t = a0 + (d * (i + 1)) / n; return [ox + r * Math.cos(t), oy + r * Math.sin(t)]; });
+}
+
+function creatureFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number, kind: 'bird' | 'bat'): Cloud {
+  const cr = pr.creature!;
+  const x0 = -PAD, y0 = -PAD, x1 = TW + PAD, y1 = TH + PAD, HW = (x1 - x0) / 2, HH = (y1 - y0) / 2, CX = TW / 2, CY = TH / 2;
+  let poses: Creature['poses'];
+  if (kind === 'bird') {
+    const b = cr.bird, Rr = Math.hypot(HW, HH) * b.grow;
+    const at = (r: number, deg: number): Pt => [CX + r * Math.cos(deg * DEG), CY + r * Math.sin(deg * DEG)];
+    const body = { cx: CX, cy: CY, r: Rr };
+    const hr = b.head.r * Rr, [hx, hy] = at(Rr - hr * (1 - b.head.out), b.head.at), head = { cx: hx, cy: hy, r: hr };
+    // 부리 — 머리 앞, 가운데보다 조금 아래에 밑변을 물린다
+    const bl = hr * b.beak.len, bh = hr * b.beak.half, bx = hx + hr * 0.92, by = hy + hr * 0.1;
+    const beak: Pt[] = [[bx - bh, by - bh], [bx + bl, by], [bx - bh, by + bh]];
+    const tail = (t: { from: number; to: number }): Pt[] => {
+      const [px, py] = at(Rr * b.tail.root, t.from), dx = Math.cos(t.to * DEG), dy = Math.sin(t.to * DEG), nx = -dy, ny = dx, L = b.tail.len, w = b.tail.half;
+      return [[px + nx * w, py + ny * w], [px + dx * L + nx * w, py + dy * L + ny * w], [px + dx * L - nx * w, py + dy * L - ny * w], [px - nx * w, py - ny * w]];
+    };
+    const mine = R() < 0.5 ? b.tail.up : b.tail.down;   // 글이 고른다 — 같은 글은 언제나 같은 꼬리
+    // 앉음 — 원을 가운데에서 R × cut 아래로 자른다(글 + 여백 밑보다 위로는 안 올라온다)
+    const base = Math.max(b.cut * Rr, HH + 0.05), al = Math.asin(Math.min(0.999, base / Rr)) / DEG;
+    const cutBody = Array.from({ length: 97 }, (_, i) => at(Rr, 180 - al + ((180 + 2 * al) * i) / 96));
+    const wc = at(Rr * b.wing.root, b.wing.at), wr = Rr * b.wing.r;
+    const fan: Pt[] = [wc, ...Array.from({ length: 41 }, (_, i): Pt => {
+      const t = (b.wing.dir - b.wing.span / 2 + (b.wing.span * i) / 40) * DEG; return [wc[0] + wr * Math.cos(t), wc[1] + wr * Math.sin(t)]; })];
+    poses = {
+      rest: { discs: [body, head], polys: [beak, tail(mine)] },
+      sit: { discs: [head], polys: [cutBody, beak, tail(mine)] },
+      fly: { discs: [body, head], polys: [beak, tail(b.tail.fly), fan] }
+    };
+  } else {
+    const t = cr.bat, E = t.ear.h;
+    // 한 몸: 귀 → 날개 윗변(손목) → 날개 끝 → 파인 아랫변 → 옆선 → 아래 끝 → 반대쪽. 매달림은 이것을 위아래로 뒤집는다
+    const outline = (p: { lift: number; n: number; drop: number }, flip: boolean): Pt[] => {
+      const top = y0 - t.top;
+      const tip = (s: number): Pt => [CX + s * (HW + t.span), top - p.lift * t.unit];
+      const wrist = (s: number): Pt => [CX + s * (HW + t.span * 0.3), top - (p.lift * 0.5 + 0.15) * t.unit];
+      const ear = (s: number): Pt[] => [[CX + s * E * t.ear.in, top], [CX + s * E * t.ear.tip, top - E], [CX + s * E * t.ear.out, top]];
+      const hip = (s: number): Pt => [CX + s * (HW + t.side), y1 + t.hip];
+      // 날개는 크기가 정해져 있다 — 견본의 날개 높이만큼만 내려오고, 글이 길면 그 아래는 옆선이 곧게 내려간다
+      const end = (s: number): Pt => [hip(s)[0], Math.min(hip(s)[1], tip(s)[1] + t.reach + p.lift * t.unit)];
+      const hem = (s: number): Pt[] => {
+        const T = tip(s), B = end(s), W = wrist(s), out: Pt[] = [];
+        let prev = T;
+        for (let k = 1; k <= p.n; k++) {
+          const f = k / p.n, q: Pt = k === p.n ? B : [T[0] + (B[0] - T[0]) * f, T[1] + (B[1] - T[1]) * f + t.unit * p.drop * Math.sin(f * Math.PI)];
+          out.push(...scallopArc(prev, q, [(T[0] + W[0]) / 2, W[1]], t.sag));
+          prev = q;
+        }
+        return out;
+      };
+      const [rIn, rTip, rOut] = ear(1), [lIn, lTip, lOut] = ear(-1);
+      const P: Pt[] = [rIn, rTip, rOut, wrist(1), tip(1), ...hem(1), hip(1), [CX, y1 + t.foot], hip(-1), ...[tip(-1), ...hem(-1)].reverse(), wrist(-1), lOut, lTip, lIn];
+      return flip ? P.map(([x, y]): Pt => [x, 2 * CY - y]) : P;
+    };
+    poses = { rest: { discs: [], polys: [outline(t.hang, true)] }, fly: { discs: [], polys: [outline(t.fly, false)] } };
+  }
+  // 상자는 폰 자세(rest)로 잰다 — 벽의 다른 자세는 이 상자 밖으로 나갈 수 있다
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const see = (x: number, y: number) => { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); };
+  for (const d of poses.rest.discs) { see(d.cx - d.r, d.cy - d.r); see(d.cx + d.r, d.cy + d.r); }
+  for (const P of poses.rest.polys) for (const [x, y] of P) see(x, y);
+  const move = (q: CreaturePose): CreaturePose => ({
+    discs: q.discs.map((d) => ({ cx: d.cx - minX, cy: d.cy - minY, r: d.r })),
+    polys: q.polys.map((P) => P.map(([x, y]): Pt => [x - minX, y - minY]))
+  });
+  const moved: Creature['poses'] = { rest: move(poses.rest), fly: move(poses.fly), ...(poses.sit ? { sit: move(poses.sit) } : {}) };
+  return {
+    persona: pr, rule, circles: [], spikes: [], creature: { kind, poses: moved },
+    w: maxX - minX, h: maxY - minY,
+    text: { x: -minX, y: -minY, w: TW, h: TH }
+  };
 }
 
 /** fit.ts와 잇는 계약. 구름은 글이 정하므로 tw·th를 안 받고 제 상자를 답한다 */

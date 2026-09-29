@@ -36,6 +36,11 @@ import type { Boxed } from '../lib/fit';
  * 한 크기 구슬(cloud.ts · beadFor)을 그대로 찍는다 — 번짐 필터도 숨도 없다. 알끼리 조금씩 겹쳐
  * 윤곽이 구슬 줄로 읽힌다. 곁의 작은 구름은 제 묶음(.cloud-let)이라 벽에서 따로 오르내릴 수 있다.
  * 행간 1.1 · 글은 가운데(나무와 같다).
+ *
+ * ── 새 · 박쥐 (유머있는, 2026-09-29) ───────────────────────────────────
+ * 말투가 가른다(cloud.ts · creatureFor) — 귀여운은 새(원 둘 · 부리 세모 · 꼬리 띠), 시니컬한은 박쥐(윤곽 하나).
+ * 도형을 그대로 겹쳐 한 색으로 칠한다 — 번지지도 숨 쉬지도 않는다. pose로 자세를 고른다: 안 주면 폰의 자세(rest),
+ * 벽은 sit · fly를 줄 수 있다(없는 자세면 rest). 박쥐의 매달림은 형상만 뒤집혀 있고 글은 바로 선다.
  */
 const K = 100;
 /** 픽셀 구름을 다시 찍는 간격. 12fps면 계단이 옮겨 가는 것이 보이되 파이에 짐이 안 된다 */
@@ -54,6 +59,8 @@ interface Props {
   style?: CSSProperties;
   /** 벽의 나무 — 폰 판 아래로 바닥까지 잇는 단(원)도 그린다(tree.more). 상자 밖으로 내려가고, 화면 밑이 자른다 */
   reach?: boolean;
+  /** 새 · 박쥐의 자세 — 안 주면 폰의 자세(rest). 벽이 앉음(sit, 새만) · 날기(fly)를 고른다 */
+  pose?: 'rest' | 'sit' | 'fly';
   children?: ReactNode;
 }
 
@@ -127,7 +134,7 @@ function prefersStill(): boolean {
   return typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-export default function CloudBubble({ cloud, box, side, color, still, className, style, reach, children }: Props) {
+export default function CloudBubble({ cloud, box, side, color, still, className, style, reach, pose, children }: Props) {
   const filterId = 'cloud' + useId().replace(/[^a-zA-Z0-9]/g, '');
   const quiet = still || prefersStill();
   const W = cloud.w * K, H = cloud.h * K;
@@ -150,7 +157,7 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   }, [cloud, quiet]);
 
   const art = useMemo(() => {
-    if (pr.edge === 'pixel' || cloud.stone || cloud.tree || cloud.beads) return null;
+    if (pr.edge === 'pixel' || cloud.stone || cloud.tree || cloud.beads || cloud.creature) return null;
     return (
       <>
         {cloud.circles.map((c, i) => (
@@ -187,6 +194,7 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   const stoneD = useMemo(() => (stone ? stonePath(stone.pts, pr.stone?.round ?? 0) : ''), [stone, pr.stone?.round]);
   const tree = cloud.tree, beads = cloud.beads;
   const bead = (p: readonly [number, number], i: number) => <circle key={i} cx={(p[0] * K).toFixed(1)} cy={(p[1] * K).toFixed(1)} r={((beads?.r ?? 0) * K).toFixed(1)} />;
+  const creature = cloud.creature, shape = creature ? (pose && creature.poses[pose]) || creature.poses.rest : null;
   // 나무 · 구슬 구름은 글 배치를 형상이 정한다(cloud.ts의 layout — 다시 나눈 줄 · 줄마다 자간 · 한 자씩의 자리).
   // 줄 맞춤은 가운데 — 나무 · 뭉게구름은 가운데 맞춘 줄을 품게 지었다
   const lay = cloud.layout;
@@ -231,6 +239,11 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
           <g fill={color}>
             <g className="cloud-body">{beads.body.map(bead)}</g>
             {beads.lets.map((l, i) => <g key={i} className={`cloud-let l${i}`}>{l.map(bead)}</g>)}
+          </g>
+        ) : shape ? (
+          <g fill={color}>
+            {shape.polys.map((P, i) => <path key={'p' + i} d={'M' + P.map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join('L') + 'Z'} />)}
+            {shape.discs.map((d, i) => <circle key={'d' + i} cx={(d.cx * K).toFixed(1)} cy={(d.cy * K).toFixed(1)} r={(d.r * K).toFixed(1)} />)}
           </g>
         ) : (
           <>

@@ -10,7 +10,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import CloudBubble from '../components/CloudBubble';
-import { cloudForTone, cloudShape, convexHull, linesFor, type Cloud } from '../lib/cloud';
+import { cloudForTone, cloudShape, convexHull, linesFor, type Cloud, type Creature, type CreaturePose } from '../lib/cloud';
 import { SIZE_FILLS, bubbleAt, fillFromLegacySize, type Boxed } from '../lib/fit';
 import { fontMap } from '../lib/palettes';
 import { palettes as legacyPalettes } from '../lib/palettes';
@@ -142,6 +142,14 @@ export const BIG_SIDE_MAX_VW = 88;
  * 더 커도 된다고 봤다. 같은 날 칸이 열둘로 늘었다.
  */
 const ECHO_SIDE_VH = 37.2;
+/**
+ * 유머있는(새 · 박쥐)의 벽 크기 — 다른 말의 0.68배(2026-09-29, 디자이너). 실제 동물 크기라면 나무 · 구름에 비해 아주 작지만
+ * 적절히 키우되 같은 위계는 아니게("그렇다해서 또 동 위계면 애매"). 같은 벽에 나무 · 구름 · 돌을 세우고 ×1 · 0.75 · 0.6 · 0.45를
+ * 견줘 본 뒤 골랐다 — ×1은 새가 나무 꼭대기만 해 모자처럼 읽혔다. 몸이 글을 감싸서 글자도 같이 작아진다: 보통 크기가 실물 벽
+ * (높이 1.4m)에서 2.6cm → 1.8cm. 참여자가 고른 크기는 그 안에서 그대로 산다. 크게 보여 준 발화는 제 크기로 서고, 내려앉을
+ * 때 이 배율까지 줄어든다
+ */
+const CREATURE_SCALE = 0.68;
 /** 잔상도 숨 쉰다. 파이의 크로미움이 열두 개의 번짐을 못 따라오면 여기서 끈다 — 강조만 숨 쉰다 */
 const ECHO_MOTION = true;
 /** 큰 목소리가 잔상으로 내려앉는 시간 */
@@ -162,8 +170,8 @@ type Land = { dx: number; dy: number; scale: number };
 /** 도착점을 못 재면 제자리에서 잔상 크기로 가라앉는다 */
 const SINK: Land = { dx: 0, dy: 0, scale: ECHO_SIDE_VH / BIG_SIDE_VH };
 
-/** 몸의 종류 — 떠다니는 말 · 차분한의 돌 · 당당한의 나무 · 다정한의 구름 */
-type Kind = 'float' | 'stone' | 'tree' | 'cloud';
+/** 몸의 종류 — 떠다니는 말 · 차분한의 돌 · 당당한의 나무 · 다정한의 구름 · 유머있는의 새(귀여운) · 박쥐(시니컬한) */
+type Kind = 'float' | 'stone' | 'tree' | 'cloud' | 'bird' | 'bat';
 
 /** 떠다니는 몸 하나. 자리와 속도는 여기 있고 React는 모른다 — 프레임마다
     상태를 갱신하면 열두 개 × 60프레임 = 초당 720번 다시 그리게 된다.
@@ -183,6 +191,8 @@ type Body = {
   lead: Body | null; rel: Pt2;
   /** 칠 · 글자색(0~1) — 곱해진 자리에서 글자가 읽히나(legible) */
   bg: RGB; fg: RGB;
+  /** 나무 — 새가 앉는 끝(꼭대기 · 단 끝, 상자에 대한 비율). 새 · 박쥐 — 앉음 · 날기 · 몸짓의 상태 */
+  perch: Pt2[] | null; cr: CrState | null;
 };
 type RGB = [number, number, number];
 type Pt2 = [number, number];
@@ -190,13 +200,16 @@ type Pt2 = [number, number];
 type Rect = [number, number, number, number];
 /** 물리 계산이 보는 한 글의 치수 — 상자에 대한 비율(0~1)로. 한 변(side)이 창과 함께 바뀌기 때문이다 */
 type Size = {
-  w: number; h: number; heavy?: boolean; kind: Kind; poly?: Pt2[];
+  /** 폭 · 높이는 벽의 크기 배율(scale — 새 · 박쥐 CREATURE_SCALE)까지 곱한 값 */
+  w: number; h: number; scale?: number; heavy?: boolean; kind: Kind; poly?: Pt2[];
   /** 나무 — 키(벽 높이의 비율). 글 상자(상자에 대한 비율) — 모두 */
   tall?: number; tx?: Rect;
   /** 짝을 찾나 · 얼마나 겹치나 — 글이 씨앗인 0~1(PAIR_ODDS · PAIR_OVER) */
   pair?: number; over?: number;
   /** 칠 · 글자색(0~1) */
   bg?: RGB; fg?: RGB;
+  /** 나무 — 새가 앉는 끝(상자에 대한 비율). 새 · 박쥐 — 형상(형상 단위) */
+  perch?: Pt2[]; cr?: CrGeo;
   /** 구름 — 글자 가운데, 글자 한 칸(한 변의 비율) · 상자 폭 · 작은 구름 오르내림 (u) */
   chars?: Pt2[]; unit?: number; cw?: number; bob?: number;
 };
@@ -310,8 +323,69 @@ function tallOf(msg: StoredMessage): number {
   const x = (fillFromLegacySize(msg.tone?.size) - SIZE_FILLS[0]) / (SIZE_FILLS[SIZE_FILLS.length - 1] - SIZE_FILLS[0]);
   return TREE_TALL[0] + (TREE_TALL[1] - TREE_TALL[0]) * x + TREE_JITTER * (2 * seed01(msg.text + '|tall') - 1);
 }
+/** 벽에서 이 말의 크기 배율 — 새 · 박쥐만 CREATURE_SCALE */
+function scaleOf(cloud: Cloud): number {
+  return cloud.creature ? CREATURE_SCALE : 1;
+}
 function kindOf(cloud: Cloud): Kind {
-  return cloud.stone ? 'stone' : cloud.tree ? 'tree' : cloud.beads ? 'cloud' : 'float';
+  return cloud.stone ? 'stone' : cloud.tree ? 'tree' : cloud.beads ? 'cloud' : cloud.creature ? cloud.creature.kind : 'float';
+}
+/** 나무에서 새가 앉는 끝 — 상자에 대한 비율. 예리한은 꼭대기 · 단마다 밑변의 양 끝(벽이 바닥까지 이은 단까지), 온화한은 맨 위 원의 꼭대기.
+    온화한의 아래 원들은 윗 원 안에 반쯤 들어가 앉을 턱이 없다 */
+function perchesOf(cloud: Cloud): Pt2[] | undefined {
+  const t = cloud.tree;
+  if (!t) return undefined;
+  const fr = ([x, y]: readonly [number, number]): Pt2 => [x / cloud.w, y / cloud.h], out: Pt2[] = [];
+  const all = [...t.tiers, ...t.more];
+  const first = all[0];
+  if (!first) return undefined;
+  if (first.kind === 'disc') return [fr([first.cx, first.cy - first.r])];
+  out.push(fr(first.pts[0]));
+  for (const q of all) if (q.kind === 'tri') {
+    const low = Math.max(...q.pts.map((p) => p[1]));
+    for (const p of q.pts) if (Math.abs(p[1] - low) < 1e-6) out.push(fr(p));
+  }
+  return out;
+}
+/** 새 · 박쥐의 형상 — 형상 단위. anchor = 앉는 점(새: 몸 원의 맨 밑) · 매다는 점(박쥐: 뒤집힌 발끝, 폰 자세의 맨 위) */
+function crGeoOf(cloud: Cloud): CrGeo | undefined {
+  const c = cloud.creature;
+  if (!c) return undefined;
+  const rest = c.poses.rest, t = cloud.text;
+  let anchor: Pt2;
+  if (c.kind === 'bird') { const body = rest.discs[0]; anchor = [body.cx, body.cy + body.r]; }
+  else { const top = rest.polys[0].reduce((m, p) => (p[1] < m[1] ? p : m)); anchor = [top[0], top[1]]; }
+  const tcx = t.x + t.w / 2, tcy = t.y + t.h / 2;
+  return { kind: c.kind, w: cloud.w, h: cloud.h, tcx, tcy, anchor, poses: c.poses, ...reachOf(c, anchor, tcx, tcy) };
+}
+/**
+ * 자세들이 차지하는 테두리(형상 단위) — 앉은 새는 몸짓(꼬리 · 고개 · 부풀림 · 쪼기 · 콩콩)과 양쪽 방향 모두, 나는 새는
+ * 날갯짓과 양쪽 방향. 박쥐는 발끝을 붙인 채 움찔 · 펴기 · 흔들림, 나는 박쥐는 편 자세. 앉을 자리 · 나는 길을 이 테두리로
+ * 따진다 — 폰 자세 상자로만 따졌더니 반대로 돌아선 새의 꼬리가 돌의 글을 덮었다(벽에서 60초에 15프레임, 재서 알았다)
+ */
+function reachOf(c: Creature, anchor: Pt2, tcx: number, tcy: number): { reach: Rect; flyReach: Rect } {
+  const turn = (P: Pt2[], deg: number, o: Pt2): Pt2[] => {
+    const a = (deg * Math.PI) / 180, co = Math.cos(a), sn = Math.sin(a);
+    return P.map(([x, y]): Pt2 => [o[0] + (x - o[0]) * co - (y - o[1]) * sn, o[1] + (x - o[0]) * sn + (y - o[1]) * co]);
+  };
+  const ring = (d: { cx: number; cy: number; r: number }, k = 1, dy = 0): Pt2[] =>
+    Array.from({ length: 16 }, (_, i): Pt2 => [d.cx + d.r * k * Math.cos((i * Math.PI) / 8), d.cy + dy + d.r * k * Math.sin((i * Math.PI) / 8)]);
+  const boxOf = (P: Pt2[]): Rect => [Math.min(...P.map((p) => p[0])), Math.min(...P.map((p) => p[1])), Math.max(...P.map((p) => p[0])), Math.max(...P.map((p) => p[1]))];
+  const both = (P: Pt2[]) => [...P, ...P.map(([x, y]): Pt2 => [2 * tcx - x, y])];             // 양쪽 방향
+  const topOf = (Q: readonly (readonly [number, number])[]) => Math.min(...Q.map((p) => p[1]));
+  if (c.kind === 'bird') {
+    const sit = c.poses.sit ?? c.poses.rest, [body, head] = sit.discs, [beak, tail] = sit.polys as Pt2[][];
+    const root: Pt2 = [(tail[0][0] + tail[3][0]) / 2, (tail[0][1] + tail[3][1]) / 2];
+    const P = [...ring(body, 1.05), ...ring(head, 1.05), ...ring(head, 1.05, 0.25), ...beak, ...beak.map(([x, y]): Pt2 => [x, y + 0.25]), ...tail, ...turn(tail, -14, root)];
+    const r = boxOf(both([...P, ...turn(P, 12, [tcx, tcy])]));
+    const fly = c.poses.fly, [fb, fh] = fly.discs, [fk, ft, fan] = fly.polys as Pt2[][];
+    const F = [...ring(fb), ...ring(fh), ...fk, ...ft, ...(fan ? [...turn(fan, 18, fan[0]), ...turn(fan, -18, fan[0])] : [])];
+    return { reach: [r[0], r[1] - 0.6, r[2], r[3]], flyReach: boxOf(both(F)) };
+  }
+  const rest = c.poses.rest.polys[0] as Pt2[], t0 = topOf(rest);
+  const pinned = (Q: Pt2[]) => Q.map(([x, y]): Pt2 => [x, y + t0 - topOf(Q)]);
+  const P = [rest, c.poses.twitch?.polys[0], c.poses.stretch?.polys[0]].filter((q): q is Pt2[] => !!q).flatMap((q) => pinned(q));
+  return { reach: boxOf([...turn(P, 3, anchor), ...turn(P, -3, anchor)]), flyReach: boxOf(pinned(c.poses.fly.polys[0] as Pt2[])) };
 }
 /** 글 상자 — 상자에 대한 비율. 걸기처럼 돌린 글(layout.rotate)은 돌린 뒤의 테두리 */
 function textBox(cloud: Cloud): Rect {
@@ -381,10 +455,10 @@ function lettersWander(b: Body, home: Pt2, w: number, h: number): Rect {
  */
 const LEGIBLE = 3;
 /** 층의 차례(겹 안의 DOM 차례와 같다 — layered) · 층마다 섞는 방식(채널 하나: 아래 cb, 위 cs). 떠다니는 말은 섞지 않는다 */
-const RANK: Record<Kind, number> = { tree: 0, stone: 1, float: 2, cloud: 3 };
+const RANK: Record<Kind, number> = { tree: 0, stone: 1, float: 2, bird: 2, bat: 2, cloud: 3 };
 const hardLight = (cb: number, cs: number) => (cs <= 0.5 ? cb * 2 * cs : cb + (2 * cs - 1) - cb * (2 * cs - 1));
 const BLEND: Record<Kind, (cb: number, cs: number) => number> = {
-  tree: Math.min, stone: Math.min, cloud: hardLight, float: (_cb, cs) => cs
+  tree: Math.min, stone: Math.min, cloud: hardLight, float: (_cb, cs) => cs, bird: (_cb, cs) => cs, bat: (_cb, cs) => cs
 };
 /** 나무의 몸 폭 — 폰 판 아래로 이어 쌓은 단은 마지막 단의 1.3배까지 넓어진다(cloud.ts treeFor) */
 const TREE_BASE = 1.3;
@@ -455,7 +529,8 @@ function homeHits(b: Body, home: Pt2, w: number, h: number, bodies: Iterable<Bod
 /** 헤매던 구름이 나무와 부딪치면(글자끼리 · 읽히지 않는 글자와 몸) 덜 들어간 쪽으로 조금씩 떼어 놓는다. 나머지는 나무가
     구름을 뚫고 지나간다 — 곱해진다 */
 function cloudOffTrees(b: Body, bodies: Body[], h: number, dt: number) {
-  for (const t of bodies) if (t.kind === 'tree') for (const [R, Z] of clashes(b, t, h)) pushOut(b, R, Z, dt);
+  // 새 · 박쥐도 — 구름이 그 글자 위로 지나가며 묻히게 하지 않는다(새 · 박쥐는 섞이지 않고 구름 밑에 있다)
+  for (const t of bodies) if (t.kind === 'tree' || t.cr) for (const [R, Z] of clashes(b, t, h)) pushOut(b, R, Z, dt);
 }
 /**
  * 구름의 짝(PAIR_ODDS) — 짝이 없는 구름 옆에 붙어 같이 떠다닌다. 겹침 양을 글이 고른 값부터 35%까지 내려 가며, 조금 위나
@@ -588,11 +663,21 @@ function boxSide(): number {
  *  (pairCloud). 좁은 쪽 폭의 PAIR_OVER만큼(o.over가 고른다) 포개지되 글자는 비키는 자리.
  *  u = 구름의 글자 한 칸(px) — 헤매는 영역의 크기가 거기 걸려 있다. tx = 글 상자(상자에 대한 비율) */
 function spawn(r: number, hw: number, hh: number, kind: Kind, w: number, h: number, taken: Body[],
-  o: { tall: number; u: number; tx: Rect | null; pair: number; over: number; bg: RGB; fg: RGB }): Body {
+  o: { tall: number; u: number; tx: Rect | null; pair: number; over: number; bg: RGB; fg: RGB; perch?: Pt2[]; cr?: CrGeo }): Body {
   const { tall, u, tx, over } = o, heavy = kind === 'stone', zones = zonesOf(taken), seek = o.pair < PAIR_ODDS;
   const still = { held: false, heavy, a: 0, va: 0, r, hw, hh, poly: null, kind, tall, home: null,
     sway: Math.random() * Math.PI * 2, flutter: Math.random(), u: 0, chars: [], side: 0, tx, zone: null,
-    lead: null, rel: [0, 0] as Pt2, bg: o.bg, fg: o.fg };
+    lead: null, rel: [0, 0] as Pt2, bg: o.bg, fg: o.fg, perch: o.perch ?? null, cr: null };
+  // 새 · 박쥐 — 앉을(매달릴) 자리에 앉은 채 나타난다. 자리가 없으면 벽 위쪽에서 날며 찾는다(creatureStep)
+  if ((kind === 'bird' || kind === 'bat') && o.cr) {
+    const b: Body = { ...still, x: w / 2, y: h / 3, vx: 0, vy: 0 };
+    b.cr = { geo: o.cr, mode: 'perch', spot: null, until: 0, from: [0, 0], t0: 0, dur: 1, face: Math.random() < 0.5 ? 1 : -1, arc: 1,
+      t0s: {}, next: {}, hopTurn: false, lookFor: 0, box: null };
+    const sp = pickSpot(b, taken, w, h), P = sp && spotPoint(sp, taken);
+    if (sp && P) { b.cr.spot = sp; placeAt(b, P); b.cr.box = crBox(b, P); b.cr.until = performance.now() / 1000 + perchFor(o.cr); }
+    else placeAt(b, [crRnd(hw, w - hw), crRnd(0.15, 0.4) * h]);
+    return b;
+  }
   if (kind === 'tree') {
     const y = h - Math.max(tall * h, 2 * hh) + hh;
     const at = (x: number): Body => ({ ...still, x, y, vx: 0, vy: 0, zone: tx ? zoneAt(x, y, hw, hh, tx, h) : null });
@@ -679,7 +764,7 @@ function spawn(r: number, hw: number, hh: number, kind: Kind, w: number, h: numb
  * 모서리끼리 먼저 닿아 '보이지 않는 경계'가 생겼다. 돌은 무거워서 부딪힌 말은 튕겨
  * 나가고 돌은 조금만 밀린다(STONE_MASS).
  */
-function step(bodies: Body[], w: number, h: number, dt: number, sec: number) {
+function step(bodies: Body[], w: number, h: number, dt: number, sec: number, still = false) {
   const ground = new Set<Body>();
   // 나무는 가만히 선다 — 바닥에서 제 키만큼. 창이 바뀌면 같이 바뀐다. 글 자리를 먼저 적어 둔다 — 다른 것들이 비킨다
   for (const b of bodies) if (b.kind === 'tree') {
@@ -689,6 +774,7 @@ function step(bodies: Body[], w: number, h: number, dt: number, sec: number) {
   const zones = zonesOf(bodies);
   for (const b of bodies) {
     if (b.held || b.kind === 'tree') continue;
+    if (b.cr) { creatureStep(b, bodies, w, h, sec, still); continue; }
     if (b.kind === 'cloud') { drift(b, w, h, dt, sec, bodies); continue; }
     if (b.heavy) {
       // 흔들림은 늘 제자리(0)로 돌아온다
@@ -723,6 +809,8 @@ function step(bodies: Body[], w: number, h: number, dt: number, sec: number) {
     for (let j = i + 1; j < bodies.length; j++) {
       const a = bodies[i], b = bodies[j];
       // 구름은 무엇과도 부딪치지 않고 겹쳐 지나간다(곱하기) — 다른 구름의 글자만 비킨다
+      // 새 · 박쥐는 부딪치지 않는다 — 앉을 자리를 고를 때 남의 글자 · 서로를 비킨다(spotOk)
+      if (a.cr || b.cr) continue;
       if (a.kind === 'cloud' || b.kind === 'cloud') { if (a.kind === b.kind) cloudsApart(a, b, h, dt); continue; }
       // 나무는 무엇과도 부딪치지 않는다 — 돌은 그 앞에 서고, 구름 · 떠다니는 말은 겹쳐 지나간다.
       // 떠다니는 말을 머리에 튕기게 했더니 나무 머리들과 벽 끝 사이에 끼어 제자리에서 초당 600px씩
@@ -1016,6 +1104,298 @@ function prefersReducedMotion(): boolean {
   return typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+// ─── 새 · 박쥐 (유머있는) — 앉았다 날았다 (2026-09-29, design/landscape.md '새' · '박쥐') ─────────
+// 새는 나무 꼭대기 · 단 끝 · 나무 중턱(글 아래) · 돌 위에 앉고, 박쥐는 벽 맨 위 · 구름 밑에 매달린다(디자이너). 저마다
+// 무작위로 머물다 다음 자리로 날아간다. 앉아 있는 동안은 가만히 굳지 않고 작은 몸짓을 한다 — 움직이는 견본에서 아홉 가지를
+// 모두 골랐다("몸짓 자체는 모두 좋은데", "모두 반영"). 보는 방향도 제각각이다 — 한쪽으로만 서 있으니 어색했다(디자이너).
+// 몸짓 · 방향은 모양에만 입힌다 — 글은 늘 바로 선다(콩콩 뛸 때 · 박쥐가 흔들릴 때만 글도 같이).
+// 시간은 모두 --t-hold(T)의 배수 — hold().
+
+/** 새 · 박쥐의 형상(형상 단위, 폰 자세 상자가 원점) — 벽이 부품을 직접 그린다 */
+type CrGeo = { kind: 'bird' | 'bat'; w: number; h: number; tcx: number; tcy: number; anchor: Pt2; poses: Creature['poses']; reach: Rect; flyReach: Rect };
+/** 앉는(매다는) 자리 — 나무 끝(i번째) · 나무 중턱(가운데에서 dx, 높이 y) · 돌 위(가운데에서 dx) · 벽 맨 위(x = dx) ·
+    구름 밑(가운데에서 dx). i < 0은 갈 곳이 없어 떠도는 목표(dx, y) */
+type Spot = { kind: 'tip' | 'mid' | 'stone' | 'ceil' | 'cloud'; host: Body | null; i: number; dx: number; y: number };
+/** 새 · 박쥐의 상태 — 앉음 · 날기, 날 때는 from → spot을 t0부터 dur초. face = 보는 쪽(1 오른쪽).
+    t0s · next = 몸짓마다 시작한 때 · 다음 때. box = 앉을(앉은) 자리의 상자 — 다른 새가 겹쳐 앉지 않게 */
+type CrState = {
+  geo: CrGeo; mode: 'perch' | 'fly'; spot: Spot | null; until: number;
+  from: Pt2; t0: number; dur: number; face: 1 | -1; arc: number;
+  t0s: Record<string, number | undefined>; next: Record<string, number>; hopTurn: boolean; lookFor: number; box: Rect | null;
+};
+/** 머무는 시간(T 배수) — 새 12~28(약 8~20초) · 박쥐 14~36(약 10~25초) */
+const PERCH_BIRD: readonly [number, number] = [12, 28];
+const PERCH_BAT: readonly [number, number] = [14, 36];
+/** 나는 빠르기(초당 벽 높이의 비율)와 나는 시간의 범위(T 배수 — 약 2.8~4.9초) · 나는 길이 솟는 높이(거리의 비율, 더해 벽 높이 5%) */
+const FLY_SPEED = 0.2;
+const FLY_T: readonly [number, number] = [4, 7];
+const FLY_ARC = 0.25;
+/** 나는 길이 남의 글자를 가로지르면 이만큼 더 높이 솟는 길(FLY_ARC의 배수)을 차례로 본다 — 그래도 걸리면 다른 자리.
+    길을 안 따졌더니 40초에 17프레임, 날며 나무 · 구름 글자를 덮고 지나갔다(벽에서 재서 알았다) */
+const FLY_ARCS = [1, 2, 3.2];
+/** 몸짓마다 [걸리는 시간, 다음까지 최소, 최대] — T 배수(0.63 = --t-return 둘). 견본에서 고른 그대로 */
+const IDLE: Record<string, readonly [number, number, number]> = {
+  tail: [0.63, 4, 10], bob: [0.63, 3, 8], hop: [1, 6, 14], fluff: [2, 7, 16], peck: [1, 7, 16], look: [3, 8, 18],
+  twitch: [0.63, 4, 11], stretch: [4, 10, 26]
+};
+const crRnd = (a: number, b: number) => a + Math.random() * (b - a);
+const bump = (x: number) => (x <= 0 || x >= 1 ? 0 : Math.sin(Math.PI * x));
+const smooth01 = (x: number) => 0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, Math.min(1, x)));
+const perchFor = (g: CrGeo) => crRnd(...(g.kind === 'bird' ? PERCH_BIRD : PERCH_BAT)) * hold();
+
+/** 돌 윤곽의 윗변 높이(px) — x에서. 윤곽 밖이면 상자 위 */
+function topAt(s: Body, x: number): number {
+  const P = outline(s), lx = x - s.x;
+  let best = Infinity;
+  for (let i = 0; i < P.length; i++) {
+    const [ax, ay] = P[i], [bx, by] = P[(i + 1) % P.length];
+    if ((ax - lx) * (bx - lx) > 0 || ax === bx) continue;
+    best = Math.min(best, ay + ((by - ay) * (lx - ax)) / (bx - ax));
+  }
+  return s.y + (best === Infinity ? -s.hh : best);
+}
+/** 자리의 점(px) — 앉는(매다는) 점이 올 곳. 자리가 사라졌으면(나무 · 돌 · 구름이 벽을 떠남) null */
+function spotPoint(sp: Spot, bodies: Body[]): Pt2 | null {
+  if (sp.i < 0) return [sp.dx, sp.y];
+  const o = sp.host;
+  if (o && !bodies.includes(o)) return null;
+  switch (sp.kind) {
+    case 'tip': { const p = o?.perch?.[sp.i]; return o && p ? [o.x - o.hw + p[0] * 2 * o.hw, o.y - o.hh + p[1] * 2 * o.hh] : null; }
+    case 'mid': return o ? [o.x + sp.dx, sp.y] : null;
+    case 'stone': return o ? [o.x + sp.dx, topAt(o, o.x + sp.dx)] : null;
+    case 'ceil': return [sp.dx, 0];
+    case 'cloud': return o ? [o.x + sp.dx, o.y + o.hh - 0.3 * o.u] : null;
+  }
+}
+/** 앉는 점이 P일 때 이 새(박쥐)가 차지할 수 있는 테두리(px) — 앉은 몸짓 전부(reach), fly면 나는 자세(flyReach) */
+function crBox(b: Body, P: Pt2, fly = false): Rect {
+  const g = b.cr!.geo, r = fly ? g.flyReach : g.reach, px = (2 * b.hw) / g.w, py = (2 * b.hh) / g.h;
+  return [P[0] + (r[0] - g.anchor[0]) * px, P[1] + (r[1] - g.anchor[1]) * py, P[0] + (r[2] - g.anchor[0]) * px, P[1] + (r[3] - g.anchor[1]) * py];
+}
+/** 지금 앉는 점(px) · 앉는 점이 P가 되게 놓기 */
+function crAnchor(b: Body): Pt2 {
+  const g = b.cr!.geo;
+  return [b.x - b.hw + (g.anchor[0] / g.w) * 2 * b.hw, b.y - b.hh + (g.anchor[1] / g.h) * 2 * b.hh];
+}
+function placeAt(b: Body, P: Pt2) {
+  const g = b.cr!.geo;
+  b.x = P[0] + b.hw - (g.anchor[0] / g.w) * 2 * b.hw;
+  b.y = P[1] + b.hh - (g.anchor[1] / g.h) * 2 * b.hh;
+}
+/** 이 자리에 앉아도 되나 — 벽 안, 남의 글자(둘레 포함)를 가리지 않고, 다른 새 · 박쥐와 겹치지 않는다(지금 자리 · 가는 자리 둘 다) */
+function spotOk(b: Body, P: Pt2, bodies: Body[], w: number, h: number): boolean {
+  const r = crBox(b, P), m = TEXT_CLEAR * h;
+  if (r[0] < 0 || r[2] > w || r[1] < -2 || r[3] > h) return false;
+  for (const o of bodies) {
+    if (o === b) continue;
+    if (o.cr) {
+      if (overlapArea(r, [o.x - o.hw, o.y - o.hh, o.x + o.hw, o.y + o.hh]) > 0) return false;
+      if (o.cr.box && overlapArea(r, o.cr.box) > 0) return false;
+    } else {
+      const L = lettersOf(o, m);
+      if (L && overlapArea(r, L) > 0) return false;
+    }
+  }
+  return true;
+}
+/** 다음 자리들 — 새: 나무 끝 · 나무 중턱 · 돌 위, 박쥐: 벽 맨 위 · 구름 밑. 되는 자리를 섞어서(지금 자리는 되도록 뺀다) */
+function spotsFor(b: Body, bodies: Body[], w: number, h: number): Spot[] {
+  const g = b.cr!.geo, cands: Spot[] = [];
+  if (g.kind === 'bird') {
+    for (const o of bodies) {
+      if (o.kind === 'tree') {
+        (o.perch ?? []).forEach((_p, i) => cands.push({ kind: 'tip', host: o, i, dx: 0, y: 0 }));
+        // 중턱 — 나무 글 아래, 벽 밑 20%(돌 자리)보다 위. 나무 앞에 선다
+        const z = o.zone, lo = (z ? z[3] : o.y - o.hh) + 2 * b.hh, hi = h * 0.8;
+        for (let k = 0; k < 2 && hi > lo; k++) cands.push({ kind: 'mid', host: o, i: 0, dx: crRnd(-0.3, 0.3) * o.hw, y: crRnd(lo, hi) });
+      } else if (o.kind === 'stone') {
+        for (const f of [-0.3, 0, 0.3]) cands.push({ kind: 'stone', host: o, i: 0, dx: f * o.hw, y: 0 });
+      }
+    }
+  } else {
+    for (let k = 0; k < 6; k++) cands.push({ kind: 'ceil', host: null, i: 0, dx: crRnd(b.hw, w - b.hw), y: 0 });
+    for (const o of bodies) if (o.kind === 'cloud') for (const f of [-0.35, 0, 0.35]) cands.push({ kind: 'cloud', host: o, i: 0, dx: f * o.hw, y: 0 });
+  }
+  const now = b.cr!.spot;
+  const ok = cands.filter((sp) => { const P = spotPoint(sp, bodies); return !!P && spotOk(b, P, bodies, w, h); });
+  const fresh = ok.filter((sp) => !now || sp.host !== now.host || sp.kind !== now.kind || sp.i !== now.i);
+  return shuffled(fresh.length ? fresh : ok);
+}
+function pickSpot(b: Body, bodies: Body[], w: number, h: number): Spot | null {
+  return spotsFor(b, bodies, w, h)[0] ?? null;
+}
+/**
+ * 나는 길 위의 한 점(앉는 점, px) — 2차 곡선, e = 0~1. 새는 솟았다 내려앉고, 박쥐는 떨어졌다가 올라가 매달린다
+ * (천장에 매달린 채 위로 솟을 수는 없다 — 솟게 뒀더니 천장을 따라 미끄러지며 날개가 화면 밖으로 잘렸다).
+ * 몸 전체가 벽 안에 있게 앉는 점의 높이를 묶는다 — 새의 앉는 점은 발끝이라 0에 묶으면 몸이 통째로 화면 위로 나간다
+ */
+function flyAt(b: Body, from: Pt2, to: Pt2, arc: number, w: number, h: number, e: number, wob = 0): Pt2 {
+  const g = b.cr!.geo, dist = Math.hypot(to[0] - from[0], to[1] - from[1]), lift = arc * FLY_ARC * dist + 0.05 * h;
+  const cx = (from[0] + to[0]) / 2, cy = g.kind === 'bat' ? Math.max(from[1], to[1]) + lift : Math.min(from[1], to[1]) - lift;
+  const x = (1 - e) ** 2 * from[0] + 2 * (1 - e) * e * cx + e * e * to[0], y = (1 - e) ** 2 * from[1] + 2 * (1 - e) * e * cy + e * e * to[1] + wob;
+  // 나는 자세의 테두리가 벽 안에 들게 — 앉는 점에서 네 변까지(px). 날아오르고 내려앉는 끝점은 앉은 자리 그대로
+  const r = crBox(b, [0, 0], true), k = Math.min(1, 8 * e, 8 * (1 - e));
+  const cl = (v: number, lo: number, hi: number) => (lo > hi ? v : Math.min(hi, Math.max(lo, v)));
+  return [x + (cl(x, -r[0], w - r[2]) - x) * k, y + (cl(y, -r[1], h - r[3]) - y) * k];
+}
+/** 이 길로 날면 남의 글자(둘레 포함)를 몇 번 가로지르나 — 길 위 16점에서 몸 상자로 */
+function pathHits(b: Body, from: Pt2, to: Pt2, arc: number, bodies: Body[], w: number, h: number): number {
+  const m = TEXT_CLEAR * h, L = bodies.filter((o) => o !== b && !o.cr).map((o) => lettersOf(o, m)).filter((r): r is Rect => !!r);
+  let hit = 0;
+  for (let k = 1; k < 16; k++) { const r = crBox(b, flyAt(b, from, to, arc, w, h, k / 16), true); for (const z of L) if (overlapArea(r, z) > 0) hit++; }
+  return hit;
+}
+/** 날아오른다 — 다음 자리를 골라 거리만큼(FLY_SPEED) 날아간다. 갈 곳이 없으면 벽 위쪽 아무 데로 날며 닿으면 다시 찾는다 */
+function takeOff(b: Body, bodies: Body[], w: number, h: number, sec: number) {
+  const c = b.cr!, from = crAnchor(b);
+  // 되는 자리마다 낮은 길부터 — 남의 글자를 안 가로지르는 첫 (자리, 길). 없으면 가장 덜 가로지르는 것
+  let next: Spot | null = null, arc = 1, least = Infinity;
+  for (const sp of spotsFor(b, bodies, w, h).slice(0, 8)) {
+    const P = spotPoint(sp, bodies)!;
+    for (const a of FLY_ARCS) {
+      const hits = pathHits(b, from, P, a, bodies, w, h);
+      if (hits < least) { least = hits; next = sp; arc = a; }
+      if (!hits) break;
+    }
+    if (!least) break;
+  }
+  c.spot = next ?? { kind: 'ceil', host: null, i: -1, dx: crRnd(b.hw, w - b.hw), y: crRnd(0.2, 0.5) * h };
+  const to = spotPoint(c.spot, bodies)!, T = hold(), dist = Math.hypot(to[0] - from[0], to[1] - from[1]);
+  c.mode = 'fly'; c.from = from; c.t0 = sec; c.arc = arc;
+  c.dur = Math.max(FLY_T[0] * T, Math.min(FLY_T[1] * T, dist / (FLY_SPEED * h)));
+  if (Math.abs(to[0] - from[0]) > 1) c.face = to[0] > from[0] ? 1 : -1;
+  c.box = next ? crBox(b, to) : null;
+}
+/** 한 걸음 — 앉아 있으면 자리를 따라가고(구름 밑의 박쥐는 구름과 함께) 때가 되면 날아오른다. 날고 있으면 둥근 길로 가서 앉는다.
+    움직임 줄이기를 켠 사람에게는 날아오르지 않는다 */
+function creatureStep(b: Body, bodies: Body[], w: number, h: number, sec: number, still: boolean) {
+  const c = b.cr!;
+  if (b.held) return;
+  if (!c.spot) {
+    const sp = pickSpot(b, bodies, w, h);
+    if (sp) { c.spot = sp; c.mode = 'perch'; c.until = sec + perchFor(c.geo); }
+    else if (!still) { takeOff(b, bodies, w, h, sec); return; }
+    else return;
+  }
+  if (c.mode === 'perch') {
+    const P = spotPoint(c.spot, bodies);
+    if (!P) { c.spot = null; return; }
+    placeAt(b, P);
+    c.box = crBox(b, P);
+    if (!still && sec >= c.until) takeOff(b, bodies, w, h, sec);
+    return;
+  }
+  // 난다 — 솟았다 내려앉는 2차 곡선에 작은 오르내림
+  const to = spotPoint(c.spot, bodies);
+  if (!to) { takeOff(b, bodies, w, h, sec); return; }
+  const s = Math.min(1, (sec - c.t0) / c.dur);
+  placeAt(b, flyAt(b, c.from, to, c.arc, w, h, smooth01(s), Math.sin(sec * 2 * Math.PI * 1.2) * 0.02 * h * bump(s)));
+  if (s >= 1) {
+    if (c.spot.i < 0) { c.spot = null; return; }     // 떠돌던 목표 — 다음 걸음에 다시 찾는다
+    c.mode = 'perch'; c.until = sec + perchFor(c.geo);
+  }
+}
+
+/** 한 마리의 그림 — React가 그린 폰 자세를 숨기고, 부품을 따로 그린 겹을 벽이 직접 다룬다 */
+type CrDom = { el: HTMLElement; live: SVGGElement; pose: SVGGElement; parts: Record<string, SVGElement> };
+const SVGNS = 'http://www.w3.org/2000/svg';
+function crDomOf(cache: Map<string, CrDom>, id: string, el: HTMLElement, g: CrGeo): CrDom | null {
+  const had = cache.get(id);
+  if (had && had.el === el && had.live.isConnected) return had;
+  const svg = el.querySelector<SVGSVGElement>('svg.cloud-art'), react = svg?.querySelector<SVGGElement>(':scope > g:not(.cr-live)');
+  if (!svg || !react) return null;
+  react.style.display = 'none';
+  svg.querySelector(':scope > g.cr-live')?.remove();
+  const live = document.createElementNS(SVGNS, 'g') as SVGGElement;
+  live.setAttribute('class', 'cr-live'); live.setAttribute('fill', react.getAttribute('fill') ?? '#fff');
+  live.setAttribute('transform', `scale(${(svg.viewBox.baseVal.width / g.w).toFixed(4)})`);
+  const pose = document.createElementNS(SVGNS, 'g') as SVGGElement;
+  live.appendChild(pose); svg.appendChild(live);
+  const mk = (tag: string) => { const e = document.createElementNS(SVGNS, tag) as SVGElement; pose.appendChild(e); return e; };
+  const parts: Record<string, SVGElement> = g.kind === 'bird'
+    ? { wing: mk('polygon'), tail: mk('polygon'), body: mk('circle'), head: mk('circle'), beak: mk('polygon') }
+    : { body: mk('polygon') };
+  const d = { el, live, pose, parts };
+  cache.set(id, d);
+  return d;
+}
+const ptsOf = (P: readonly (readonly [number, number])[]) => P.map((p) => p[0].toFixed(3) + ',' + p[1].toFixed(3)).join(' ');
+/** 몸짓 하나의 진행(0~1) — 때가 되면 시작하고, 끝나면 다음 때를 잡는다. 안 하는 중이면 −1 */
+function idlePhase(c: CrState, name: string, sec: number, on: boolean): number {
+  const [dur, a, b] = IDLE[name], T = hold();
+  if (!on) { c.t0s[name] = undefined; return -1; }
+  if (c.next[name] === undefined) c.next[name] = sec + crRnd(0.5, b * T);
+  if (sec >= c.next[name] && c.t0s[name] === undefined) {
+    c.t0s[name] = sec;
+    if (name === 'hop') c.hopTurn = Math.random() < 0.35;
+    if (name === 'look') c.lookFor = crRnd(2 * T, 4 * T);
+  }
+  const t0 = c.t0s[name];
+  if (t0 === undefined) return -1;
+  const x = (sec - t0) / (name === 'look' ? c.lookFor : dur * T);
+  if (x >= 1) {
+    c.t0s[name] = undefined; c.next[name] = sec + crRnd(a * T, b * T);
+    if (name === 'hop' && c.hopTurn) c.face = c.face === 1 ? -1 : 1;
+    return -1;
+  }
+  return x;
+}
+/**
+ * 한 프레임의 모양 — 새: 앉아서 꼬리 까딱 · 고개 까딱 · 콩콩(셋에 하나꼴 공중에서 돌아섬) · 깃털 부풀림 · 쪼기 · 두리번,
+ * 날 때는 부채 날개를 친다. 박쥐: 매달려 움찔 · 날개 폈다 접기 · 흔들림, 날 때는 편 자세. 돌려주는 것은 요소 전체에
+ * 더할 것 — 콩콩의 높이(px) · 흔들림(도)
+ */
+function creatureFrame(d: CrDom, b: Body, sec: number, moving: boolean): { dy: number; rot: number } {
+  const c = b.cr!, g = c.geo, T = hold(), perched = c.mode === 'perch' && moving && !b.held;
+  const pu = (2 * b.hw) / g.w;                                             // 형상 단위 하나 = px
+  const P = d.parts;
+  if (g.kind === 'bird') {
+    const fly = c.mode === 'fly' && !b.held, pose: CreaturePose = fly ? g.poses.fly : g.poses.sit ?? g.poses.rest;
+    const [body, head] = pose.discs, [beak, tail, fan] = pose.polys;
+    const tp = idlePhase(c, 'tail', sec, perched), bp = idlePhase(c, 'bob', sec, perched), fp = idlePhase(c, 'fluff', sec, perched);
+    const pp = idlePhase(c, 'peck', sec, perched), lp = idlePhase(c, 'look', sec, perched), hp = idlePhase(c, 'hop', sec, perched);
+    const ta = tp < 0 ? 0 : -14 * bump(tp), hy = bp < 0 ? 0 : 0.25 * bump(bp), fs = fp < 0 ? 1 : 1 + 0.05 * bump(fp);
+    const pa = pp < 0 ? 0 : 12 * bump(pp), back = lp > 0.1 && lp < 0.9, turned = hp > 0.5 && c.hopTurn;
+    const face = turned ? -c.face : c.face;
+    const hx = back ? 2 * g.tcx - head.cx : head.cx;
+    P.body.setAttribute('cx', body.cx.toFixed(3)); P.body.setAttribute('cy', body.cy.toFixed(3)); P.body.setAttribute('r', (body.r * fs).toFixed(3));
+    P.head.setAttribute('cx', hx.toFixed(3)); P.head.setAttribute('cy', (head.cy + hy).toFixed(3)); P.head.setAttribute('r', (head.r * fs).toFixed(3));
+    P.beak.setAttribute('points', ptsOf(beak.map((p): Pt2 => [back ? 2 * g.tcx - p[0] : p[0], p[1] + hy])));
+    const root = [(tail[0][0] + tail[3][0]) / 2, (tail[0][1] + tail[3][1]) / 2];
+    P.tail.setAttribute('points', ptsOf(tail));
+    P.tail.setAttribute('transform', `rotate(${ta.toFixed(2)} ${root[0].toFixed(3)} ${root[1].toFixed(3)})`);
+    if (fly && fan) {
+      // 날갯짓 — 부채의 뿌리를 축으로 ±18°, T × 0.4마다 한 번
+      P.wing.setAttribute('points', ptsOf(fan));
+      P.wing.setAttribute('transform', `rotate(${(18 * Math.sin((2 * Math.PI * sec) / (0.4 * T))).toFixed(2)} ${fan[0][0].toFixed(3)} ${fan[0][1].toFixed(3)})`);
+      P.wing.style.display = '';
+    } else P.wing.style.display = 'none';
+    d.pose.setAttribute('transform', (face === -1 ? `translate(${(2 * g.tcx).toFixed(3)} 0) scale(-1 1) ` : '') + `rotate(${pa.toFixed(2)} ${g.tcx.toFixed(3)} ${g.tcy.toFixed(3)})`);
+    return { dy: hp < 0 ? 0 : -0.6 * pu * bump(hp), rot: 0 };
+  }
+  // 박쥐 — 발끝은 천장(구름 밑)에 붙어 있다. 자세가 바뀌어 꼭대기가 올라가는 만큼 몸 전체를 내린다.
+  // 안 내렸더니 벽 맨 위의 박쥐가 펴는 동안 · 날아오르는 순간 윗부분이 화면 밖으로 잘렸다(벽 캡처에서 봤다)
+  const topOf = (Q: readonly (readonly [number, number])[]) => Math.min(...Q.map((p) => p[1]));
+  if (c.mode === 'fly' && !b.held) {
+    const F = g.poses.fly.polys[0];
+    P.body.setAttribute('points', ptsOf(F));
+    return { dy: (topOf(g.poses.rest.polys[0]) - topOf(F)) * pu, rot: 0 };
+  }
+  const rest = g.poses.rest.polys[0], tw = g.poses.twitch?.polys[0] ?? rest, st = g.poses.stretch?.polys[0] ?? rest;
+  const wp = idlePhase(c, 'twitch', sec, perched), sp = idlePhase(c, 'stretch', sec, perched);
+  const w1 = wp < 0 ? 0 : bump(wp);
+  // 폈다(T) 두었다(2T) 접는다(T) — 펴는 동안은 움찔을 안 한다
+  const s2 = sp < 0 ? 0 : sp < 0.25 ? smooth01(sp / 0.25) : sp < 0.75 ? 1 : 1 - smooth01((sp - 0.75) / 0.25);
+  const now = rest.map((p, i): Pt2 => {
+    const ax = p[0] + (tw[i][0] - p[0]) * w1 * (1 - s2), ay = p[1] + (tw[i][1] - p[1]) * w1 * (1 - s2);
+    return [ax + (st[i][0] - ax) * s2, ay + (st[i][1] - ay) * s2];
+  });
+  P.body.setAttribute('points', ptsOf(now));
+  // 흔들림 — 매달린 발끝을 축으로 ±3°, 한 번 T × 6(박쥐마다 박자가 다르다)
+  return { dy: (topOf(rest) - topOf(now)) * pu, rot: perched ? 3 * Math.sin((2 * Math.PI * sec) / (6 * T) + b.sway) : 0 };
+}
+
+
 // ─── Component ────────────────────────────────────────────────────────
 
 export default function WallSimulation() {
@@ -1051,6 +1431,8 @@ export default function WallSimulation() {
   const sizesRef = useRef(new Map<string, Size>());
   /** 구름의 펄럭임 · 작은 구름이 움직일 요소들(글마다). 요소가 바뀌면 다시 찾는다 */
   const cloudDomRef = useRef(new Map<string, CloudDom>());
+  /** 새 · 박쥐의 부품(글마다). 요소가 바뀌면 다시 짓는다 */
+  const crDomRef = useRef(new Map<string, CrDom>());
 
   // 화면이 다 차 있을 때 한 칸씩 갈아 끼우는 시계
   const [rotate, setRotate] = useState(0);
@@ -1190,8 +1572,8 @@ export default function WallSimulation() {
         setEmphLand({
           dx: body.x - window.innerWidth / 2,
           dy: body.y - window.innerHeight / 2,
-          // 같은 글이라 잔상과 큰 상자의 생김새가 같다 — 배율은 한 변의 비다
-          scale: boxSide() / bigSide
+          // 같은 글이라 잔상과 큰 상자의 생김새가 같다 — 배율은 한 변의 비다(새 · 박쥐는 잔상이 CREATURE_SCALE만큼 작다)
+          scale: (boxSide() * (sizesRef.current.get(id!)?.scale ?? 1)) / bigSide
         });
       } else {
         setEmphLand(SINK);
@@ -1314,11 +1696,12 @@ export default function WallSimulation() {
       // 상자에 대한 비율(0~1)로 넘긴다 — 한 변(side)이 창과 함께 바뀌기 때문이다
       const fr = ([x, y]: readonly [number, number]): Pt2 => [x / cloud.w, y / cloud.h];
       const poly = cloud.stone ? convexHull(cloud.stone.pts).map(fr) : undefined;
-      const kind = kindOf(cloud), t = cloud.tree, bd = cloud.beads, colors = colorsOf(msg);
+      const kind = kindOf(cloud), t = cloud.tree, bd = cloud.beads, colors = colorsOf(msg), scale = scaleOf(cloud);
       m.set(msg.id, {
-        w: box.w, h: box.h + box.tail, heavy: kind === 'stone', kind, poly,
+        w: box.w * scale, h: (box.h + box.tail) * scale, scale, heavy: kind === 'stone', kind, poly,
         tx: textBox(cloud), pair: seed01(msg.text + '|pair'), over: seed01(msg.text + '|over'), bg: rgbOf(colors.bg), fg: rgbOf(colors.text),
-        ...(t ? { tall: tallOf(msg) } : {}),
+        ...(t ? { tall: tallOf(msg), perch: perchesOf(cloud) } : {}),
+        ...(cloud.creature ? { cr: crGeoOf(cloud) } : {}),
         ...(bd ? { chars: bd.chars.map(fr), unit: box.unit, cw: cloud.w, bob: cloud.persona.bead?.bob ?? 0 } : {})
       });
     }
@@ -1343,7 +1726,7 @@ export default function WallSimulation() {
         return (side * (f ? Math.max(f.w, f.h) : 1)) / 2;
       };
       const map = bodiesRef.current;
-      for (const id of [...map.keys()]) if (!ids.includes(id)) { map.delete(id); cloudDomRef.current.delete(id); }
+      for (const id of [...map.keys()]) if (!ids.includes(id)) { map.delete(id); cloudDomRef.current.delete(id); crDomRef.current.delete(id); }
       for (const id of ids) {
         const f = sizesRef.current.get(id);
         const hw = (side * (f?.w ?? 1)) / 2, hh = (side * (f?.h ?? 1)) / 2, kind = f?.kind ?? 'float';
@@ -1354,8 +1737,9 @@ export default function WallSimulation() {
         if (!b || (b.kind !== kind && !b.held)) {
           if (b) map.delete(id);
           map.set(id, (b = spawn(rOf(id), hw, hh, kind, w, h, [...map.values()],
-            { tall: f?.tall ?? 0, u: side * (f?.unit ?? 0), tx: f?.tx ?? null, pair: f?.pair ?? 1, over: f?.over ?? 0, bg: f?.bg ?? [1, 1, 1], fg: f?.fg ?? [0, 0, 0] })));
-        } else { b.r = rOf(id); b.hw = hw; b.hh = hh; b.heavy = kind === 'stone'; b.kind = kind; b.tall = f?.tall ?? 0; b.tx = f?.tx ?? null; b.bg = f?.bg ?? b.bg; b.fg = f?.fg ?? b.fg; }   // 창 크기가 바뀌면 같이 바뀐다
+            { tall: f?.tall ?? 0, u: side * (f?.unit ?? 0), tx: f?.tx ?? null, pair: f?.pair ?? 1, over: f?.over ?? 0, bg: f?.bg ?? [1, 1, 1], fg: f?.fg ?? [0, 0, 0],
+              perch: f?.perch, cr: f?.cr })));
+        } else { b.r = rOf(id); b.hw = hw; b.hh = hh; b.heavy = kind === 'stone'; b.kind = kind; b.tall = f?.tall ?? 0; b.tx = f?.tx ?? null; b.bg = f?.bg ?? b.bg; b.fg = f?.fg ?? b.fg; b.perch = f?.perch ?? null; if (b.cr && f?.cr) b.cr.geo = f.cr; }   // 창 크기가 바뀌면 같이 바뀐다
         b.poly = poly;
         if (kind === 'cloud' && f?.chars && b.side !== side) {
           b.side = side; b.u = side * (f.unit ?? 0); b.chars = f.chars.map(off);
@@ -1368,8 +1752,8 @@ export default function WallSimulation() {
           b.vx = b.vy = 0;
         }
       }
-      step([...map.values()], w, h, dt, t / 1000);
       const moving = !prefersReducedMotion();
+      step([...map.values()], w, h, dt, t / 1000, !moving);
       for (const [id, b] of map) {
         const el = elsRef.current.get(id);
         if (!el) continue;
@@ -1383,6 +1767,18 @@ export default function WallSimulation() {
           if (el.style.getPropertyValue('--tree-ext') !== ext) el.style.setProperty('--tree-ext', ext);
           // 처음 세운 순간 — 여기서부터 펴진다(app.css). React가 안 건드리는 data 속성이라 다시 그려도 남는다
           if (!el.dataset.placed) el.dataset.placed = '1';
+        }
+        if (b.cr) {
+          // 새 · 박쥐 — 부품을 벽이 그린다. 콩콩은 요소째 뛰고, 박쥐의 흔들림은 매달린 발끝을 축으로 요소째 돈다
+          const d = crDomOf(crDomRef.current, id, el, b.cr.geo);
+          if (d) {
+            const g = b.cr.geo, { dy, rot } = creatureFrame(d, b, t / 1000, moving);
+            tf = `translate3d(${(b.x - (side * f.w) / 2).toFixed(1)}px, ${(b.y - (side * f.h) / 2 + dy).toFixed(1)}px, 0)`;
+            if (rot) {
+              el.style.transformOrigin = `${((g.anchor[0] / g.w) * 2 * b.hw).toFixed(1)}px ${((g.anchor[1] / g.h) * 2 * b.hh - dy).toFixed(1)}px`;
+              tf += ` rotate(${rot.toFixed(2)}deg)`;
+            }
+          }
         }
         if (b.kind === 'cloud' && moving && ECHO_MOTION) {
           // 엇걸음 — 가운데 높이를 축으로 몸 전체를 기울여 위아래 끝이 ±SWAY_U씩 번갈아 앞선다. 평소엔 꺼 둔다(SWAY_ON)
@@ -1511,7 +1907,7 @@ export default function WallSimulation() {
 const WallBlock = memo(function WallBlock({ msg, ghost, onEl }: { msg: StoredMessage; index: number; ghost: boolean; onEl: (id: string, el: HTMLElement | null) => void }) {
   const { bg, text, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
   const { lines, cloud, box } = useMemo(() => cloudOf(msg), [msg]);
-  const kind = kindOf(cloud);
+  const kind = kindOf(cloud), scale = scaleOf(cloud);
 
   // 자리는 CSS가 아니라 프레임 루프가 transform으로 적는다(위 useEffect).
   // 여기서 style에 자리를 주면 매 프레임 React를 거치게 된다.
@@ -1523,11 +1919,11 @@ const WallBlock = memo(function WallBlock({ msg, ghost, onEl }: { msg: StoredMes
     >
       {/* 숨은 구름마다 시작점이 다르다(cloud.ts의 phase0) — 열두 개가 같은 박자로 안 뛴다.
           파이가 열두 개의 번짐을 못 따라오면 ECHO_MOTION을 끈다. */}
-      <CloudBubble cloud={cloud} box={box} side="var(--echo-side)" color={bg} still={!ECHO_MOTION} reach={kind === 'tree'}>
+      <CloudBubble cloud={cloud} box={box} side={scale === 1 ? 'var(--echo-side)' : `calc(var(--echo-side) * ${scale})`} color={bg} still={!ECHO_MOTION} reach={kind === 'tree'}>
         <VoiceBubble text={lines.join('\n')} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght}
           width={scaleX} slant={skew} align={msg.tone?.align} size={msg.tone?.size} manner={msg.tone?.manner}
           speed={msg.tone?.speed} weightPos={msg.tone?.weight} perChar={kind === 'cloud'}
-          fontSize={`calc(var(--echo-side) * ${box.unit.toFixed(4)})`} />
+          fontSize={`calc(var(--echo-side) * ${(box.unit * scale).toFixed(4)})`} />
       </CloudBubble>
     </div>
   );

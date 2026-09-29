@@ -230,7 +230,9 @@ export function variationFor(font: string, wght: number, manner = 0): string {
 
    기울기는 속도 가운데에서 0, 오른쪽 끝에서 18도 — 그 사이를 이어서 기운다
    (12~18도로 세기를 조절, 사용자 결정). 모든 값은 세 지점 사이를 곧게 잇는다.
-   장평·세로·기울기는 서체의 축이 아니라 브라우저 변형이다(scale · oblique). */
+   장평·세로·기울기는 서체의 축이 아니라 브라우저 변형이다(scale · skewX). 기울기는
+   oblique였다가 줄마다 skewX로 바꿨다(2026-09-29) — 기운 글꼴이 없어 브라우저가
+   흉내 냈고, 크롬에서 9°는 안 기울고 18°는 14°로 고정이었다(VoiceBubble). */
 export const SLANT_MAX = 18;
 type Three = [number, number, number];
 const SPEED: Record<string, { sx: Three; sy: Three; wdth?: Three }> = {

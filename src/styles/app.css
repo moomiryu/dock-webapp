@@ -2574,8 +2574,16 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    길이 구조적으로 없다 — 참여자가 고른 값은 둘째 장에만 있고, 여기 있는
    것은 그 값의 그림이 아니라 축의 그림이다.
 
-   크기는 기본 44를 1로 놓은 28~60의 비율(0.64~1.18), 폭은 0.7~1.3(장평
-   사다리의 양 끝). 한 축이 3.5초씩, 한 바퀴 7초.
+   크기는 기본 44를 1로 놓은 28~60의 비율(0.64~1.18). 한 축이 1.75초씩, 한
+   바퀴 3.5초(--t-hold × 5) — 7초였다가 두 배 빠르게 했다(2026-09-29, 사용자).
+
+   속도는 **둘째 장의 표 그대로**다(2026-09-29, 사용자 — "속도를 진짜 모양대로").
+   가로 폭만 1.3 → 0.7로 훑던 것을 걷고, PhaseTone이 formFor로 뽑은 천천히 ·
+   보통 · 빠르게 세 자리(--sx · --sy · --fv, 0 · m · 1)를 오간다 — 서체마다 가로 ·
+   세로 배율이 다르고, 당당한은 폭 축(wdth)까지 움직이고, 빠르게 끝에서 글이
+   18° 기운다. 기울기는 font-style이 아니라 skewX다: 이 서체들은 기운 글꼴이
+   없어 브라우저가 흉내 내는데, 크롬에서 재 보니 9°는 안 기울고 18°는 14°로
+   고정이라(2026-09-29) 매끄럽게 이어지지 않는다. 표의 각도를 그대로 쓴다.
 
    ── 셋째 축은 없다 ─────────────────────────────────────────────────
    셋째 도구는 얼굴에 따라 **무게이거나 말투**다(위 설명 문구가 그렇게
@@ -2593,20 +2601,24 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .tone-figure{ flex: 1; display: grid; place-items: center; line-height: 1;
   --fig: min(46cqw, 28vh);
   font-size: var(--fig); color: rgb(255 255 255 / 92%);
-  animation: toneDemo 7s var(--ease-standard) infinite;
+  /* 움직임이 꺼져 있어도 보통 자리의 모양으로 선다 */
+  scale: var(--sxm, 1) var(--sym, 1); font-variation-settings: var(--fvm, normal);
+  animation: toneDemo calc(var(--t-hold) * 5) var(--ease-standard) infinite;
 }
-/* 빠르기는 잣대와 같은 방향으로 훑는다 — 천천히(넓게)에서 빠르게(좁게).
+/* 속도는 잣대와 같은 방향으로 훑는다 — 천천히에서 빠르게.
    잣대를 뒤집을 때 함께 뒤집었다(2026-09-24).
-   마디마다 둘을 모두 적는다. 한 마디에서 빠뜨린 속성은 그 마디를 건너뛰고
-   보간되어, 크기를 되돌리는 도중에 폭이 먼저 움직인다. */
+   마디마다 넷을 모두 적는다. 한 마디에서 빠뜨린 속성은 그 마디를 건너뛰고
+   보간되어, 크기를 되돌리는 도중에 폭이 먼저 움직인다.
+   기울기(transform)는 배율(scale)보다 먼저 걸린다 — 둘째 장에서 기운 글꼴을
+   배율로 늘이는 것과 같은 차례다. */
 @keyframes toneDemo{
-  0%,   9%  { font-size: var(--fig);             scale: 1 1; }
-  21%       { font-size: calc(var(--fig) * 0.64); scale: 1 1; }
-  39%       { font-size: calc(var(--fig) * 1.18); scale: 1 1; }
-  50%,  59% { font-size: var(--fig);             scale: 1 1; }
-  71%       { font-size: var(--fig);             scale: 1.3 1; }
-  89%       { font-size: var(--fig);             scale: 0.7 1; }
-  100%      { font-size: var(--fig);             scale: 1 1; }
+  0%,   9%  { font-size: var(--fig);             scale: var(--sxm) var(--sym); font-variation-settings: var(--fvm); transform: skewX(0deg); }
+  21%       { font-size: calc(var(--fig) * 0.64); scale: var(--sxm) var(--sym); font-variation-settings: var(--fvm); transform: skewX(0deg); }
+  39%       { font-size: calc(var(--fig) * 1.18); scale: var(--sxm) var(--sym); font-variation-settings: var(--fvm); transform: skewX(0deg); }
+  50%,  59% { font-size: var(--fig);             scale: var(--sxm) var(--sym); font-variation-settings: var(--fvm); transform: skewX(0deg); }
+  71%       { font-size: var(--fig);             scale: var(--sx0) var(--sy0); font-variation-settings: var(--fv0); transform: skewX(0deg); }
+  89%       { font-size: var(--fig);             scale: var(--sx1) var(--sy1); font-variation-settings: var(--fv1); transform: skewX(var(--sk1)); }
+  100%      { font-size: var(--fig);             scale: var(--sxm) var(--sym); font-variation-settings: var(--fvm); transform: skewX(0deg); }
 }
 @media (prefers-reduced-motion: reduce){ .tone-figure{ animation: none; } }
 /* 첫 장면의 견본은 이제 내 글이다(2026-09-25, PhaseTone). 줄은 벽의 줄 접기
@@ -4236,23 +4248,30 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    것처럼 읽힌다. 1.8도를 넘기지 않는다. 그 위로는 자유분방이 아니라
    조판이 틀어진 것으로 보인다. 박자는 -1.7초씩 어긋나게 준다. */
 @keyframes glyphTilt{
-  0%, 100% { transform: rotate(-1.8deg) translateY(1px); }
-  50%      { transform: rotate(1.8deg)  translateY(-2px); }
+  0%, 100% { rotate: -1.8deg; translate: 0 1px; }
+  50%      { rotate: 1.8deg;  translate: 0 -2px; }
 }
 .tone-adjust .z-glyph-char{ display: inline-block; font-weight: inherit; font-style: inherit;
   animation: glyphTilt 5.2s ease-in-out infinite; }
+/* 속도 잣대의 기울기(2026-09-29) — 줄마다 skewX다. font-style: oblique였는데 이 서체들엔
+   기운 글꼴이 없어 브라우저가 흉내 내고, 크롬에서 9°는 안 기울고 18°는 14°로 고정이었다.
+   흔들림 둘(glyphTilt · glyphGust)은 rotate · translate 칸으로 옮겨 transform 칸을 이 기울기에
+   비워 둔다 — 흔들림이 기울기를 덮어쓰지 않고, 기울기가 먼저 걸린 뒤 흔들린다. */
+.tone-adjust .z-glyph-char{ transform: skewX(var(--glyph-skew, 0deg)); }
 /* 빠른 쪽 두 칸에서는 글자가 기운다. 그때는 느긋한 기울임 대신 맞바람을
    맞는 것처럼 짧게 버틴다 — 앞으로 기운 글자가 가만히 있으면 기울기가
-   자세가 아니라 오타로 보인다. 한 요소에 transform 애니메이션은 하나만
+   자세가 아니라 오타로 보인다. 한 요소에 같은 칸의 애니메이션은 하나만
    걸 수 있어서, 같은 자리의 애니메이션을 갈아 끼운다. */
 @keyframes glyphGust{
-  0%, 100% { transform: translateX(0)    rotate(0deg); }
-  20%      { transform: translateX(-2px) rotate(-1deg); }
-  45%      { transform: translateX(1.5px) rotate(0.7deg); }
-  70%      { transform: translateX(-1px) rotate(-0.5deg); }
+  0%, 100% { translate: 0 0;     rotate: 0deg; }
+  20%      { translate: -2px 0;  rotate: -1deg; }
+  45%      { translate: 1.5px 0; rotate: 0.7deg; }
+  70%      { translate: -1px 0;  rotate: -0.5deg; }
 }
 .tone-adjust .z-glyph.is-gust .z-glyph-char{ animation: glyphGust 0.75s ease-in-out infinite; }
 /* ── 기운 글자가 사파리에서 잘리던 것 (2026-09-28, 사용자가 폰에서 찾았다) ──
+   (2026-09-29부터 기울기는 skewX라 획이 줄 상자와 함께 기울어 이 일이 다시 나지 않는다.
+   여유는 그대로 둔다 — 해가 없다.)
    빠른 쪽 칸의 기울기는 font-style: oblique다. 서체에 기운 글꼴이 없으면(당당한
    Dunkelsans 등) 브라우저가 글자를 **합성해 기울이고**, 윗부분이 오른쪽으로
    밀려 줄 상자 밖으로 나간다(18°에서 글자 높이 × tan 18° ≈ 0.28em). 줄마다 움직임

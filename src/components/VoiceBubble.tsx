@@ -125,6 +125,12 @@ export default function VoiceBubble({ text, bg, color, fontFamily, font, weight,
         ro.observe(el.parentElement);
         return () => { ro.disconnect(); if (waiting) cancelAnimationFrame(waiting); };
     }, [fill, text, fontFamily, weight, width, slant, align]);
+    /* 기울기는 줄마다 skewX로 건다(2026-09-29). font-style: oblique였는데, 이 서체들엔 기운
+       글꼴이 없어 브라우저가 흉내 내고, 크롬에서 재 보니 9°는 안 기울고 18°는 14°로 고정이었다 —
+       속도 잣대의 끝 두 칸이 표와 다르게 섰다. 줄 하나를 제자리에서 기울이므로 여러 줄이 계단처럼
+       밀리지 않고, 기운 만큼 넓어진 폭(행간 × tan)은 cloud.ts · lineWidth가 이미 셈에 넣고 있다.
+       영문 조각에만 따로 걸던 italic도 이 한 번에 들어간다 */
+    const lean: CSSProperties = f.slant ? { display: 'inline-block', transform: `skewX(${-f.slant}deg)` } : {};
     /* 무게 축이 없는 서체는 못 움직인다 — 그 칸에서만 획이 대신 답한다.
        나머지 서체는 '0'이 와서 -webkit-text-stroke가 아무 일도 안 한다. */
     return <div ref={body} className={'voice-bubble line-bubble' + (fill ? ' is-fill' : '')} style={{ '--line-bg': bg, color, fontFamily, fontWeight: f.weight, fontVariationSettings: f.variation, '--optical-stroke': f.stroke, letterSpacing: f.letterSpacing, textAlign: align, fontSize: fill ? `${filled * optic}px` : `calc((${fontSize ?? `max(14px, calc(${fitFontSize(text, { min: 3, max: 240 })} * 0.52 * ${scale} / ${Math.max(1, f.scaleX)}))`}) * ${optic})` } as CSSProperties}>
@@ -133,12 +139,12 @@ export default function VoiceBubble({ text, bg, color, fontFamily, font, weight,
       안쪽 .ch는 벽의 펄럭임이 움직이는 자리다 — 자리 · 기울기는 바깥이 들고 있어 서로 안 덮는다 */
    <div className="voice-bubble-text line-bubble-text is-arc" style={{ width: `${glyphBox.w.toFixed(4)}em`, height: `${glyphBox.h.toFixed(4)}em` }}>
     {glyphs.map((g, i) => <span key={i} className="arc-glyph" style={{ left: `${g.x.toFixed(4)}em`, top: `${g.y.toFixed(4)}em`,
-      transform: `translate(-50%, -50%) rotate(${g.a.toFixed(4)}rad) scale(${f.scaleX}, ${f.scaleY})`, fontStyle: f.slant ? `oblique ${f.slant}deg` : 'normal' }}><span className="ch">{g.c}</span></span>)}
+      transform: `translate(-50%, -50%) rotate(${g.a.toFixed(4)}rad) scale(${f.scaleX}, ${f.scaleY})${f.slant ? ` skewX(${-f.slant}deg)` : ''}` }}><span className="ch">{g.c}</span></span>)}
     {children}
    </div>
   ) : (
   <div className="voice-bubble-text line-bubble-text" style={{ textAlign: align, transform: `scale(${f.scaleX}, ${f.scaleY})`, transformOrigin: align }}>
-   {text.split('\n').map((line, i) => <div className="message-line" key={i}><span className="message-line-fill"><span style={{ fontStyle: f.slant ? `oblique ${f.slant}deg` : 'normal', ...trackStyle(lineTrack?.[i], f.letterSpacing) }}>{perChar ? (line ? Array.from(line).map((c, j) => (c.trim() ? <span key={j} className="ch">{c}</span> : c)) : '\u200b') : line.split(/([A-Za-z0-9][A-Za-z0-9 .,!?'-]*)/g).map((part, j) => /[A-Za-z0-9]/.test(part) ? <span key={j} lang="en" style={{ fontStyle: f.slant ? 'italic' : 'normal' }}>{part}</span> : part || '\u200b')}</span></span></div>)}
+   {text.split('\n').map((line, i) => <div className="message-line" key={i}><span className="message-line-fill"><span style={{ ...lean, ...trackStyle(lineTrack?.[i], f.letterSpacing) }}>{perChar ? (line ? Array.from(line).map((c, j) => (c.trim() ? <span key={j} className="ch">{c}</span> : c)) : '\u200b') : line.split(/([A-Za-z0-9][A-Za-z0-9 .,!?'-]*)/g).map((part, j) => /[A-Za-z0-9]/.test(part) ? <span key={j} lang="en">{part}</span> : part || '\u200b')}</span></span></div>)}
    {children}
   </div>
   )}

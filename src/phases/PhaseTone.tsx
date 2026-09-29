@@ -260,6 +260,16 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
     const figure = useRef<HTMLDivElement>(null);
     const figText = useRef<HTMLSpanElement>(null);
     const [fig, setFig] = useState<number | null>(null);
+    /**
+     * 속도 잣대의 세 자리 — 둘째 장이 그리는 **그 표**(formFor)에서 온다(2026-09-29, 사용자:
+     * "속도를 진짜 모양대로"). 전에는 가로 폭만 1.3 → 0.7로 훑어서, 빠르게 쪽에서 글이
+     * 기울고 서체마다 높이 · 폭 축이 바뀌는 것이 안 보였다. 무게 · 말투는 지금 값 그대로
+     * 두고 속도만 움직인다. 값은 CSS 변수로만 건네고 움직임은 CSS가 한다(app.css · toneDemo).
+     */
+    const slow = formFor({ ...tone, speed: 0 });
+    const mid = formFor({ ...tone, speed: 0.5 });
+    const fast = formFor({ ...tone, speed: 1 });
+    const fvs = (f: typeof mid) => f.variation || 'normal';
     const [refit, setRefit] = useState(0);
     useEffect(() => {
         const again = () => setRefit((n) => n + 1);
@@ -273,21 +283,27 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
         const box = figure.current;
         const span = figText.current;
         if (!box || !span) return;
-        const key = `${text}|${tone.font}|${refit}`;
+        const key = `${text}|${tone.font}|${fvs(slow)}|${fvs(fast)}|${refit}`;
         if (figTries.current.key !== key) figTries.current = { key, n: 0 };
         if (figTries.current.n >= 3) return;
         const fs = parseFloat(getComputedStyle(span).fontSize);
         const W = box.clientWidth;
         const H = box.clientHeight;
         if (!fs || !W || !H) return;
-        // 글자 크기 1px당 폭·높이 — 시연이 걸어 둔 배율(scale)은 offset 값에 안 들어간다
-        const perW = span.offsetWidth / fs;
-        const perH = span.offsetHeight / fs;
-        if (!perW || !perH) return;
+        // 글자 크기 1px당 폭·높이 — 시연이 걸어 둔 배율(scale)은 offset 값에 안 들어간다.
+        // 속도 양 끝은 서체의 축(당당한의 폭 축)까지 바꾸므로 세 자리를 각각 잰다
+        const at = (fv: string) => { span.style.fontVariationSettings = fv; return { w: span.offsetWidth / fs, h: span.offsetHeight / fs }; };
+        const m0 = at(fvs(slow)), mm = at(fvs(mid)), m1 = at(fvs(fast));
+        span.style.fontVariationSettings = '';
+        if (!mm.w || !mm.h) return;
+        // 기울기는 배율보다 먼저 걸린다(app.css) — 기운 만큼 넓어진 폭에 가로 배율이 곱해진다
+        const tan = Math.tan((fast.slant * Math.PI) / 180);
+        const needW = Math.max(mm.w * mid.scaleX * 1.18, m0.w * slow.scaleX, (m1.w + m1.h * tan) * fast.scaleX);
+        const needH = Math.max(mm.h * mid.scaleY * 1.18, m0.h * slow.scaleY, m1.h * fast.scaleY);
         const cap = Math.min(W * 0.46, window.innerHeight * 0.28);
-        const next = Math.min(cap, (W * 0.97) / (perW * 1.3), (H * 0.97) / (perH * 1.18));
+        const next = Math.min(cap, (W * 0.97) / needW, (H * 0.97) / needH);
         if (fig === null || Math.abs(next - fig) / next > 0.01) { figTries.current.n += 1; setFig(next); }
-    }, [text, tone.font, refit, fig]);
+    }, [text, tone.font, fvs(slow), fvs(fast), refit, fig]);
     const longest = Math.max(1, ...lines.map((l) => Array.from(l).length));
     /**
      * 견본 크기 — **제 자리를 재서 정한다.**
@@ -398,7 +414,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
         fontFamily: fontMap[shown.font], fontWeight: form.weight,
         fontVariationSettings: form.variation,
         transform: `scale(${form.scaleX.toFixed(3)}, ${form.scaleY.toFixed(3)})`,
-        fontStyle: form.slant ? `oblique ${form.slant.toFixed(1)}deg` : 'normal',
+        '--glyph-skew': `${-form.slant}deg`,   // 줄마다 skewX로 기운다(app.css · .z-glyph-char, VoiceBubble과 같은 까닭)
         letterSpacing: form.letterSpacing,
         fontSize: `calc(min(${byLine}cqw, ${byHeight}cqh) * ${optic})`,
         '--optical-stroke': form.stroke
@@ -422,12 +438,16 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
      <h1>{pick(T.title, lang)}</h1>
      <p>{pick(hasWeightAxis(tone.font) ? T.leadWeight : T.leadManner, lang)}</p>
     </div>
-    {/* 삽화 자리. 아직 그려지지 않았다 — 지금은 '발화' 두 글자가 대신
-        서서 크기와 빠르기 축을 차례로 훑는다(app.css · toneDemo).
-        연출은 전부 CSS에 있다: 여기서 상태를 만들지 않으므로 이 움직임이
-        참여자가 고른 값에 닿을 길이 없다. */}
+    {/* 삽화 자리. 아직 그려지지 않았다 — 지금은 내 글이 대신 서서 크기와
+        속도 축을 차례로 훑는다(app.css · toneDemo). 속도의 세 자리(위 slow · mid ·
+        fast)는 변수로만 건넨다. 연출은 전부 CSS에 있다: 여기서 상태를 만들지
+        않으므로 이 움직임이 참여자가 고른 값에 닿을 길이 없다. */}
     <div ref={figure} className="tone-figure" aria-hidden="true"
-      style={{ fontFamily: fontMap[tone.font], ...(fig ? { '--fig': `${fig.toFixed(1)}px` } : null) } as CSSProperties}>
+      style={{ fontFamily: fontMap[tone.font], letterSpacing: mid.letterSpacing,
+        '--sx0': slow.scaleX, '--sy0': slow.scaleY, '--fv0': fvs(slow),
+        '--sxm': mid.scaleX, '--sym': mid.scaleY, '--fvm': fvs(mid),
+        '--sx1': fast.scaleX, '--sy1': fast.scaleY, '--fv1': fvs(fast), '--sk1': `${-fast.slant}deg`,
+        ...(fig ? { '--fig': `${fig.toFixed(1)}px` } : null) } as CSSProperties}>
      <span ref={figText} className="tone-figure-text">{lines.join('\n')}</span>
     </div>
     {/* 글자였다. 그러면 이 장에서 **앞으로 가는 길이 손가락뿐**이라

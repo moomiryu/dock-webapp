@@ -21,8 +21,6 @@ const T = {
     title: { ko: '발화를 어떻게 담아볼까요?', en: 'How would you like to hold your line?' },
     lead: { ko: <>발화가 지닌 태도를 떠올리며,<br />정렬 방식과 색을 골라 말을 담을 그릇을 그려봐요.</>,
       en: <>Think of the attitude your line carries,<br />then pick an alignment and a colour to draw the vessel that holds it.</> },
-    /* 룰렛 창 안의 견본 글자 — 바탕은 배경색, 이 글자는 글자색 */
-    sample: { ko: '가', en: 'A' },
     /* 룰렛 오른쪽 ▲▼의 낭독 이름 */
     prevColour: { ko: '이전 색', en: 'Previous colour' },
     nextColour: { ko: '다음 색', en: 'Next colour' },
@@ -269,8 +267,9 @@ function ColorRoll({ at, onPick, labelledBy, lang, pairs }: {
       <div ref={strip} className="color-roll-strip">
        {[-1, 0, 1].map((o) => {
            const m = pairs[wrap(at + o)];
+           /* 창 안의 글자는 그 짝의 이름 — 바탕은 칠, 글자는 글자색. '가' 한 자였다(2026-09-29, 디자이너 — "실제 색 이름을") */
            return <div key={o} className="color-roll-item" style={{ background: m.bg, color: m.text }} aria-hidden>
-            {pick(T.sample, lang)}</div>;
+            {pick(m.name, lang)}</div>;
        })}
       </div>
      </div>

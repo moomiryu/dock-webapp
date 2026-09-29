@@ -114,7 +114,7 @@ export async function toVoice(page, font = null, text = SAMPLE_TEXT) {
 }
 
 /** 성격 이름(한국어·영어·내부 키 어느 것이든) → 목록의 자리. 순서는 src/lib/tone.ts의 STYLE_OPTIONS */
-const VOICES = [['당당한', 'bold', 'ttoryeot'], ['차분한', 'calm', 'chabun'], ['유머있는', 'witty', 'deulseok'], ['다정한', 'warm', 'doran']];
+const VOICES = [['당당한', 'bold', 'ttoryeot'], ['차분한', 'calm', 'chabun'], ['다정한', 'warm', 'doran'], ['유머있는', 'witty', 'deulseok']];
 export function voiceIndex(font) {
   const i = VOICES.findIndex((names) => names.includes(String(font).toLowerCase()));
   if (i < 0) throw new Error(`모르는 성격: ${font}`);

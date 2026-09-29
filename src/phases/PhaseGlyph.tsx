@@ -10,12 +10,12 @@ import type { ToneState } from '../types';
 const T = {
   back: { ko: '한 줄 다시 쓰기', en: 'Rewrite your line' },
   title: { ko: <>어떤 성격으로<br />말해볼까요?</>, en: <>Which character will you speak with?</> },
-  lead: { ko: '마음에 드는 것을 골라주세요.', en: 'Choose the one you like.' },
+  lead: { ko: '마음에 드는 표현을 골라주세요.', en: 'Choose the expression you like.' },
   group: { ko: '성격 고르기', en: 'Choose a character' },
-  /* 줄은 문장 단위로 바꾼다(사용자 결정) — 문장 사이에서 한 번 끊는다 */
+  /* 한 문장으로 줄였다(2026-09-29, 사용자 문구) */
   note: {
-    ko: <>성격은 앞으로 더 늘어날 예정입니다.<br />추가하고 싶은 성격이 있다면, <span className="keep">마지막에 개선사항을 남겨주세요.</span></>,
-    en: <>More characters are on the way.<br />If there is one you'd like added, leave it in the feedback at the end.</>
+    ko: '성격은 앞으로 더 늘어날 예정이에요.',
+    en: 'More characters are on the way.'
   } as Pair<ReactNode>,
   next: { ko: '이 성격으로 할게요', en: 'Use this character' }
 };

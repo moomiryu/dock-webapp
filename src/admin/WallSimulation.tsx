@@ -11,7 +11,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import CloudBubble from '../components/CloudBubble';
 import { cloudForTone, cloudShape, convexHull, linesFor, type Cloud } from '../lib/cloud';
-import { bubbleAt, fillFromLegacySize, type Boxed } from '../lib/fit';
+import { SIZE_FILLS, bubbleAt, fillFromLegacySize, type Boxed } from '../lib/fit';
 import { fontMap } from '../lib/palettes';
 import { palettes as legacyPalettes } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
@@ -170,56 +170,90 @@ type Kind = 'float' | 'stone' | 'tree' | 'cloud';
     hw · hh = 상자의 반폭 · 반높이. heavy = 차분한의 돌, a · va = 돌의 흔들림(rad).
     poly = 돌의 실제 윤곽(볼록 다각형, 가운데 기준 px). 말은 없다 — 상자로 친다.
     나무: tall = 키(벽 높이의 비율). 구름: home = 제 자리(벽에 대한 비율), sway · flutter = 엇걸음 ·
-    펄럭임의 위상(헤맴의 가로 · 세로 위상도 겸한다), u = 글자 한 칸(px), beads · chars = 구슬 · 글자 가운데(가운데 기준 px),
-    beadR = 구슬 반지름(px), side = 그 값들을 잰 한 변(창이 바뀌면 다시 잰다) */
+    펄럭임의 위상(헤맴의 가로 · 세로 위상도 겸한다), u = 글자 한 칸(px), chars = 글자 가운데(가운데 기준 px),
+    side = 그 값들을 잰 한 변(창이 바뀌면 다시 잰다) */
 type Body = {
   x: number; y: number; vx: number; vy: number; r: number; hw: number; hh: number;
   held: boolean; heavy: boolean; a: number; va: number; poly: Pt2[] | null;
   kind: Kind; tall: number; home: Pt2 | null; sway: number; flutter: number;
-  u: number; beadR: number; beads: Pt2[]; chars: Pt2[]; side: number;
-  /** 나무 — 글 상자(상자에 대한 비율) · 그 글 자리(px, 여유 포함). 다른 것이 여기 안 들어온다(TEXT_CLEAR) */
+  u: number; chars: Pt2[]; side: number;
+  /** 글 상자(상자에 대한 비율, 걸기처럼 돌린 글은 돌린 뒤의 테두리) · 나무의 글 자리(px, 여유 포함 — TEXT_CLEAR) */
   tx: Rect | null; zone: Rect | null;
+  /** 짝(PAIR_ODDS) — 구름: 같이 떠다니는 짝 구름과 그 구름에서의 거리(px) */
+  lead: Body | null; rel: Pt2;
+  /** 칠 · 글자색(0~1) — 곱해진 자리에서 글자가 읽히나(legible) */
+  bg: RGB; fg: RGB;
 };
+type RGB = [number, number, number];
 type Pt2 = [number, number];
 /** 네모 — 왼 · 위 · 오른 · 아래 */
 type Rect = [number, number, number, number];
 /** 물리 계산이 보는 한 글의 치수 — 상자에 대한 비율(0~1)로. 한 변(side)이 창과 함께 바뀌기 때문이다 */
 type Size = {
   w: number; h: number; heavy?: boolean; kind: Kind; poly?: Pt2[];
-  /** 나무 — 키(벽 높이의 비율) · 글 상자(상자에 대한 비율) */
+  /** 나무 — 키(벽 높이의 비율). 글 상자(상자에 대한 비율) — 모두 */
   tall?: number; tx?: Rect;
-  /** 구름 — 구슬(작은 구름까지) · 글자 가운데, 글자 한 칸(한 변의 비율) · 구슬 반지름 · 상자 폭 · 작은 구름 오르내림 (u) */
-  beads?: Pt2[]; chars?: Pt2[]; unit?: number; beadR?: number; cw?: number; bob?: number;
+  /** 짝을 찾나 · 얼마나 겹치나 — 글이 씨앗인 0~1(PAIR_ODDS · PAIR_OVER) */
+  pair?: number; over?: number;
+  /** 칠 · 글자색(0~1) */
+  bg?: RGB; fg?: RGB;
+  /** 구름 — 글자 가운데, 글자 한 칸(한 변의 비율) · 상자 폭 · 작은 구름 오르내림 (u) */
+  chars?: Pt2[]; unit?: number; cw?: number; bob?: number;
 };
 
 // ─── 나무 (당당한) — 벽 아래에 선다 (2026-09-28, design/landscape.md '나무') ─────────
-/** 나무 키(바닥 → 머리 꼭대기) — 벽 높이의 비율 범위. 글이 씨앗이라 같은 글은 같은 키.
-    글이 든 모양(폰 판)이 이보다 작으면 그 아래로 단(원)을 바닥까지 더 쌓아 키를 채운다(2026-09-29 — 기둥이 하던 일을
-    반복이 한다, 디자이너). 모양이 이보다 크면 모양이 곧 키다.
-    30~60%였다 — 벽에 세워 보니 고도가 높아(디자이너) 같은 벽 · 같은 자리에 넷을 나란히 놓고 15~35%를
-    골랐다(2026-09-28). 대신 키 작은 나무는 돌에 가려지기 시작한다(돌이 앞에 선다) */
-const TREE_TALL: readonly [number, number] = [0.15, 0.35];
+/** 나무 키(바닥 → 꼭대기) — 벽 높이의 비율. **3/5에서 고른 크기가 곧 키다**(2026-09-29, 디자이너 — "고른 크기가 곧 키가
+    되는게 마음에 듭니다"): 매우 작게 20% → 작게 30% → 보통 40% → 크게 50% → 매우 크게 60%. 같은 크기 안에서는 글이 씨앗으로
+    ±TREE_JITTER 흔들린다 — 벽 전체에 여러 키가 섞이게("다양한 크기의 나무가 있길", 같은 날). 같은 글 · 같은 크기면 같은 키.
+    글이 든 모양(폰 판)이 이보다 작으면 그 아래로 단(원)을 바닥까지 더 쌓아 키를 채운다(기둥이 하던 일을 반복이 한다).
+    모양이 이보다 크면 모양이 곧 키다.
+    지나온 값: 30~60%(09-28 처음) → "고도가 높다"며 15~35%(같은 날, 넷 중에서) → 기둥 없는 새 나무에서 "더 높아도 된다"
+    (09-29) — 같은 벽에 15~35 · 20~45 · 25~55 · 30~60%를 세워 보고, 범위 대신 크기와 잇기로 했다 */
+const TREE_TALL: readonly [number, number] = [0.2, 0.6];
+const TREE_JITTER = 0.05;
 /** 나무끼리 겹쳐 서도 된다(키 큰 나무가 뒤) — 다만 한자리에 포개지지 않게 가로로 이만큼(반폭 합의 비율)은 떼어 본다 */
 const TREE_SPREAD = 0.6;
 /**
- * 나무의 글 자리 — 글 상자에서 이만큼(벽 높이의 비율, 1920×1080에서 11px) 둘레까지. 여기엔 다른 글자가 들어오지 않는다
- * (2026-09-29, 디자이너 — "나무의 텍스트 부분과 텍스트가 서로 겹치지 않아야"). 나무는 뒤에 서고 돌은 앞에 서니, 돌이
- * 나무 글 앞에 앉으면 글이 통째로 가려졌다(벽 캡처에서 분홍 돌이 산호 나무의 글을 덮었다). 몸끼리는 여전히 겹친다 —
- * 지키는 것은 글 자리 하나다.
- * - 돌: 글 자리의 **세로 띠**(위에서 바닥까지)에 들어오지 않는다. 떨어지는 동안에도 앞을 지나지 않게 띠로 잡았다.
+ * 글 자리 — 글 상자에서 이만큼(벽 높이의 비율, 1920×1080에서 11px) 둘레까지. **글자와 글자는 겹치지 않는다**
+ * (2026-09-29, 디자이너 — "나무의 텍스트 부분과 텍스트가 서로 겹치지 않아야"). 처음엔 나무의 글 자리에 어떤 몸도 못
+ * 들어오게 했다 — 돌이 곱하지 않고 앞에 서서 나무 글을 통째로 가렸기 때문이다(분홍 돌이 산호 나무의 글을 덮었다).
+ * 같은 날 돌도 곱하게 되면서(오버프린트, PAIR_ODDS) 몸은 남의 글 위로도 걸친다 — 곱해도 검은 글자는 그대로 읽힌다.
+ * 지키는 것은 글자끼리다:
+ * - 돌: 제 글의 **세로 띠**가 나무 글 자리에 들어가지 않는다. 떨어지는 동안에도 글끼리 스치지 않게 띠로 잡았다.
  *   떨어질 자리를 띠 밖에서 고르고, 밀려 들어오면 가까운 쪽으로 미끄러져 나간다
- * - 떠다니는 말: 글 자리에서 바닥까지를 기둥으로 치고 튕긴다. 밑으로는 안 민다 — 나무 머리에 튕기게 했을 때 머리와
- *   벽 끝 사이에 끼어 떨었다(2026-09-28). 옆이 벽에 막히면 위로 비킨다
- * - 구름: 헤매는 영역 전체가 글 자리를 비키는 곳에 제 자리를 잡는다. 새 나무가 서서 걸리면 자리를 옮긴다
- * - 나무끼리: 글 자리가 안 겹치는 가로 자리를 고른다(몸은 겹쳐도 된다 — 곱하기)
+ * - 떠다니는 말(유머있는): 아직 곱하지 않는다(가린다) — 나무 글 자리에서 바닥까지를 기둥으로 치고 튕긴다. 밑으로는
+ *   안 민다 — 나무 머리에 튕기게 했을 때 머리와 벽 끝 사이에 끼어 떨었다(2026-09-28). 옆이 벽에 막히면 위로 비킨다
+ * - 구름: 나무 위 어디든 자리를 잡고(나무가 구름을 뚫고 지나간다), 헤매다 글줄이 나무 글 자리에 닿으려 하면 그때 비킨다.
+ *   제 자리에서부터 글이 걸리는 새 나무가 서면 자리를 옮긴다
+ * - 나무끼리: 글 자리가 안 겹치는 가로 자리를 고른다
  * 자리가 정말 없으면(벽이 꽉 찼을 때) 가장 덜 겹치는 곳을 고르고, 돌은 미끄러져 나간다.
  */
 const TEXT_CLEAR = 0.01;
+/**
+ * 오버프린트 — 짝 찾기(2026-09-29, 디자이너). 벽에 오르는 글 둘에 하나꼴(글이 씨앗)이 높이가 걸치는 짝을 찾아 옆으로
+ * 일부 포개진 자리에 선다. 나머지는 빈자리에 선다. 모두가 겹치면 어색하다(디자이너) — 겹친 곳이 드문드문 강조로 읽히게.
+ * 높이는 성격의 규칙 그대로 두고 옆으로만 찾는다(억지로 끌어올리거나 내리지 않는다):
+ * - 돌 ↔ 나무: 둘 다 바닥에 선다. 새 돌은 나무 옆에, 새 나무는 돌 옆에
+ * - 구름 ↔ 구름: 새 구름이 짝 구름 옆(조금 위나 아래로 비껴)에 붙어 **같이 떠다닌다** — 따로 헤매면 겹침이 벌어졌다 닫혔다 한다
+ * - 구름 ↔ 나무: 짝으로 찾지 않는다 — 구름은 곳곳의 빈자리로 흩어지고, 거기 솟은 나무가 구름을 뚫고 지나가며 곱해진다
+ *   (디자이너 — "나무가 구름을 관통할 수 있게, 구름이 더 곳곳에"). 나무 끝에 걸터앉는 짝을 먼저 넣었다가 걷었다(pairCloud)
+ * - 나무끼리는 짝을 찾지 않는다(지금처럼 자리를 고르다 우연히만, 디자이너)
+ * 얼마나: 둘 중 좁은 쪽 폭의 35~60%가 가로로 포개진다(글이 씨앗). 벽 크기 견본 넷(지금 · 글 자리 보호 최대 · 글자끼리만
+ * 35% · 60%) 중 뒤의 둘 사이로 골랐다(디자이너 — "C~D를 자유롭게"). 글자끼리 닿으면 그만큼 덜 겹치고, 35%도 안 되면
+ * 다른 짝 · 다른 쪽을 보고, 끝내 없으면 빈자리에 선다.
+ */
+const PAIR_ODDS = 0.5;
+const PAIR_OVER: readonly [number, number] = [0.35, 0.6];
 
 // ─── 구름 (다정한) — 제자리에서 부유한다 (2026-09-29, design/landscape.md '구름') ─────
 // 벽의 느린 박자는 모두 --t-hold의 배수다(아래 hold()).
-/** 구름이 다니는 곳 — 벽 위 끝(여백)에서 이 비율까지. 아래 30%는 돌 · 나무 자리 */
-const CLOUD_ZONE = 0.7;
+/** 구름이 다니는 곳 — 벽 위 끝(여백)에서 이 비율까지. 맨 밑 18%는 돌 자리다.
+    0.7이었다(아래 30%는 돌 · 나무 자리). 나무 키를 크기로 이으며(최대 65%) 디자이너가 풀었다 — "구름의 고도 제한을 풀자.
+    돌 옆에 있으면 어색하겠지, 맨 밑 부분에는 안 되겠지만 저 많은 나무의 남는 부분들을 구름이 마음껏 관통하며"(2026-09-29).
+    구름은 나무 사이로 내려와 나무를 뚫고 지나가며 곱해진다. 돌 곁은 CLOUD_STONE_GAP만큼 비킨다 */
+const CLOUD_ZONE = 0.82;
+/** 구름이 돌(과 돌이 떨어질 길)에서 떨어지는 거리 — 벽 높이의 비율(1920×1080에서 32px). 헤매며 닿는 곳 전체로 본다 */
+const CLOUD_STONE_GAP = 0.03;
 const CLOUD_MARGIN = 0.02;
 /** 부유 — 구름마다 제 자리(home)를 하나 받아 그 둘레만 헤맨다. 가운데가 다니는 가로 반지름(u) · 세로는 그 비율 ·
     가로 한 바퀴(--t-hold 배수) · 세로 박자는 가로보다 이만큼 느리게(같은 동그라미를 되풀이하지 않는다).
@@ -248,8 +282,9 @@ const FLUTTER_U = 0.3;
 const FLUTTER_WIDTH = 1.1;
 /** 곁의 작은 구름이 오르내리는 한 번(--t-hold 배수). 폭은 cloud.ts의 bead.bob */
 const BOB = 4;
-/** 구슬이 남의 글자 한 자에서 떨어지는 거리(u) — 글자의 둥근 자리 0.55 + 틈 0.15. 겹쳐 지나가되(곱하기) 글자에는 안 닿는다 */
-const LETTER_CLEAR = 0.7;
+/** 두 구름의 글자 한 자끼리 떨어지는 거리(u, 가운데 사이) — 글자의 둥근 자리 0.55 둘 + 틈 0.15. 몸은 겹쳐 지나가되(곱하기)
+    글자끼리는 안 닿는다. 오버프린트 전에는 구슬이 남의 글자에서 0.7u(0.55 + 0.15) 떨어졌다 */
+const LETTER_APART = 1.25;
 /** 파고든 만큼을 이 시간(초)에 걸쳐 떼어 놓는다. 0.06초(견본 값)에서는 다가오는 빠르기를 못 따라가 구슬이 둘레를 0.32u까지
     파고들었다(벽에서 20초 재서) — 두어 프레임에 뗀다. 파고듦이 조금씩 자라므로 한 번에 미는 양은 여전히 작다 */
 const LETTER_PUSH_S = 0.02;
@@ -265,26 +300,56 @@ function hold(): number {
   }
   return HOLD_S;
 }
-/** 글 → 0~1. 같은 글은 같은 값(나무 키) */
+/** 글 → 0~1. 같은 글은 같은 값(나무 키의 흔들림 · 짝을 찾나 · 얼마나 겹치나) */
 function seed01(text: string): number {
   let h = 2166136261;
   for (const c of text) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
   return (h >>> 0) / 4294967296;
 }
-function tallOf(text: string): number {
-  return TREE_TALL[0] + (TREE_TALL[1] - TREE_TALL[0]) * seed01(text + '|tall');
+function tallOf(msg: StoredMessage): number {
+  const x = (fillFromLegacySize(msg.tone?.size) - SIZE_FILLS[0]) / (SIZE_FILLS[SIZE_FILLS.length - 1] - SIZE_FILLS[0]);
+  return TREE_TALL[0] + (TREE_TALL[1] - TREE_TALL[0]) * x + TREE_JITTER * (2 * seed01(msg.text + '|tall') - 1);
 }
 function kindOf(cloud: Cloud): Kind {
   return cloud.stone ? 'stone' : cloud.tree ? 'tree' : cloud.beads ? 'cloud' : 'float';
+}
+/** 글 상자 — 상자에 대한 비율. 걸기처럼 돌린 글(layout.rotate)은 돌린 뒤의 테두리 */
+function textBox(cloud: Cloud): Rect {
+  const t = cloud.text, rot = cloud.layout?.rotate ?? 0, cx = t.x + t.w / 2, cy = t.y + t.h / 2;
+  const c = Math.abs(Math.cos(rot)), sn = Math.abs(Math.sin(rot)), hw = (t.w * c + t.h * sn) / 2, hh = (t.w * sn + t.h * c) / 2;
+  return [(cx - hw) / cloud.w, (cy - hh) / cloud.h, (cx + hw) / cloud.w, (cy + hh) / cloud.h];
 }
 /** 나무의 키(px) — 글이 든 모양보다 작아지지 않는다. 모자란 몫은 단(원)을 더 쌓아 채운다(CloudBubble reach) */
 function treeHeight(b: Body, h: number): number {
   return Math.max(b.tall * h, 2 * b.hh);
 }
-/** 나무의 글 자리(px) — 가운데 (x, y) · 반폭 · 반높이의 상자 안 글 상자(tx)에 TEXT_CLEAR만큼 둘레를 더해 */
-function zoneAt(x: number, y: number, hw: number, hh: number, tx: Rect, h: number): Rect {
-  const m = TEXT_CLEAR * h, x0 = x - hw, y0 = y - hh;
+/** 글 자리(px) — 가운데 (x, y) · 반폭 · 반높이의 상자 안 글 상자(tx)에 둘레 m을 더해 */
+function textAt(x: number, y: number, hw: number, hh: number, tx: Rect, m: number): Rect {
+  const x0 = x - hw, y0 = y - hh;
   return [x0 + tx[0] * 2 * hw - m, y0 + tx[1] * 2 * hh - m, x0 + tx[2] * 2 * hw + m, y0 + tx[3] * 2 * hh + m];
+}
+/** 나무의 글 자리(px) — 글 상자에 TEXT_CLEAR만큼 둘레를 더해 */
+function zoneAt(x: number, y: number, hw: number, hh: number, tx: Rect, h: number): Rect {
+  return textAt(x, y, hw, hh, tx, TEXT_CLEAR * h);
+}
+/** 돌 글의 세로 띠(px, 둘레 포함) — 이 띠가 나무 글 자리에 들어가지 않는다. x에 놓였을 때 */
+function bandAt(x: number, hw: number, tx: Rect | null, h: number): [number, number] {
+  const m = TEXT_CLEAR * h;
+  return tx ? [x - hw + tx[0] * 2 * hw - m, x - hw + tx[2] * 2 * hw + m] : [x - hw, x + hw];
+}
+/** 짝 옆 자리 — 가운데가 짝(o)의 dir 쪽, 둘 중 좁은 쪽 폭의 over만큼 가로로 포개지는 곳 */
+function besideX(o: Body, hw: number, over: number, dir: number): number {
+  return o.x + dir * (o.hw + hw - over * 2 * Math.min(o.hw, hw));
+}
+/** 겹침 양 후보 — 글이 고른 양부터, 글자에 막히면 35%까지 내려 본다 */
+function oversFrom(over: number): number[] {
+  const a = PAIR_OVER[0] + (PAIR_OVER[1] - PAIR_OVER[0]) * over;
+  return [a, (a + PAIR_OVER[0]) / 2, PAIR_OVER[0]];
+}
+function shuffled<T>(list: readonly T[]): T[] {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
 }
 function overlapArea(a: Rect, b: Rect): number {
   return Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0])) * Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1]));
@@ -298,33 +363,158 @@ function zonesOf(bodies: Iterable<Body>): Rect[] {
   for (const b of bodies) if (b.kind === 'tree' && b.zone) out.push(b.zone);
   return out;
 }
-/** 구름이 제 자리(home)에서 헤매며 닿을 수 있는 곳 전부(px) */
-function wanderRect(b: Body, home: Pt2, w: number, h: number): Rect {
-  const [rx, ry] = floatR(b, w, h), x = home[0] * w, y = home[1] * h;
-  return [x - b.hw - rx, y - b.hh - ry, x + b.hw + rx, y + b.hh + ry];
+/** 구름의 글줄이 제 자리(home)에서 헤매며 닿을 수 있는 곳 전부(px, 둘레 포함). 짝을 따라 떠다니는 구름은 짝의 헤맴을 탄다 */
+function lettersWander(b: Body, home: Pt2, w: number, h: number): Rect {
+  const [rx, ry] = floatR(b.lead ?? b, w, h), x = home[0] * w, y = home[1] * h;
+  const t = b.tx ? textAt(x, y, b.hw, b.hh, b.tx, TEXT_CLEAR * h) : [x - b.hw, y - b.hh, x + b.hw, y + b.hh];
+  return [t[0] - rx, t[1] - ry, t[2] + rx, t[3] + ry];
 }
-/** 이 제 자리가 나무 글 자리에 얼마나 걸리나(px²). 0이면 헤매는 동안 한 번도 안 닿는다 */
-function homeHits(b: Body, home: Pt2, w: number, h: number, zones: Rect[]): number {
-  const r = wanderRect(b, home, w, h);
-  return zones.reduce((s, z) => s + overlapArea(r, z), 0);
+// ─── 읽힘 — 섞인 자리의 글자 (2026-09-29) ───────────────────────────────
+/**
+ * 섞인 자리에서 글자와 바탕의 대비 하한(WCAG 큰 글자 3:1). 몸은 남의 글 위로도 걸치지만(섞여 비친다), 이보다 낮아지는
+ * 짝이면 글자가 그 몸을 비킨다. 노랑 구름이 파랑 나무에 뚫리자 곱해진 자리가 거의 검정이 되어 검은 구름 글자가 묻혔다
+ * (벽에서 봤다). 디자이너가 둘 중 골랐다 — 읽힐 때만 겹침(추천) / 글자는 어떤 몸도 피함.
+ * 섞는 방식은 층마다 다르다(app.css '벽의 풍경', BLEND): 뒤 나무 · 가운데 돌은 어둡게, 앞 구름은 하드 라이트. 위에 올라간
+ * 쪽의 방식으로 잰다. 확정한 성격별 색(각 여덟 짝)으로 벽에서 겹치는 조합을 모두 재서 골랐다 — 모두 곱하기 74% ·
+ * 모두 어둡게 82% · 이 층 나눔 62%가 읽혔다. 층 나눔은 구름이 채도 높은 나무에 묻히지 않는 대신 구름 밑 글자가 구름 색에
+ * 물든다 — 그런 자리를 이 규칙이 비킨다
+ */
+const LEGIBLE = 3;
+/** 층의 차례(겹 안의 DOM 차례와 같다 — layered) · 층마다 섞는 방식(채널 하나: 아래 cb, 위 cs). 떠다니는 말은 섞지 않는다 */
+const RANK: Record<Kind, number> = { tree: 0, stone: 1, float: 2, cloud: 3 };
+const hardLight = (cb: number, cs: number) => (cs <= 0.5 ? cb * 2 * cs : cb + (2 * cs - 1) - cb * (2 * cs - 1));
+const BLEND: Record<Kind, (cb: number, cs: number) => number> = {
+  tree: Math.min, stone: Math.min, cloud: hardLight, float: (_cb, cs) => cs
+};
+/** 나무의 몸 폭 — 폰 판 아래로 이어 쌓은 단은 마지막 단의 1.3배까지 넓어진다(cloud.ts treeFor) */
+const TREE_BASE = 1.3;
+function rgbOf(c: string): RGB {
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(c.trim());
+  if (!m) return [1, 1, 1];
+  const x = m[1].length === 3 ? m[1].split('').map((d) => d + d).join('') : m[1];
+  return [0, 2, 4].map((i) => parseInt(x.slice(i, i + 2), 16) / 255) as RGB;
+}
+function luminance(c: RGB): number {
+  const f = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+}
+/** a의 글자가 b의 몸과 섞여도 읽히나 — 섞인 글자색과 섞인 칠의 대비가 LEGIBLE 이상인가. 섞는 방식은 위에 올라간 쪽의 것
+    (BLEND). 같은 층끼리(나무 · 나무, 구름 · 구름)는 누가 위일지 모르니 두 차례 다 읽혀야 한다 */
+function legible(a: Body, b: Body): boolean {
+  const mix = (f: (cb: number, cs: number) => number, cb: RGB, cs: RGB): RGB => [f(cb[0], cs[0]), f(cb[1], cs[1]), f(cb[2], cs[2])];
+  const ok = (text: RGB, paper: RGB) => { const l1 = luminance(text), l2 = luminance(paper); return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05) >= LEGIBLE; };
+  const aTop = () => ok(mix(BLEND[a.kind], b.bg, a.fg), mix(BLEND[a.kind], b.bg, a.bg));      // a가 위: a의 글자가 b의 칠 위
+  const aUnder = () => ok(mix(BLEND[b.kind], a.fg, b.bg), mix(BLEND[b.kind], a.bg, b.bg));    // a가 아래: b의 칠이 a의 글자 위
+  return RANK[a.kind] > RANK[b.kind] ? aTop() : RANK[a.kind] < RANK[b.kind] ? aUnder() : aTop() && aUnder();
+}
+/** 글 자리(px, 둘레 m) · 몸(px) — 나무는 바닥까지 이어 쌓은 단까지, 돌은 윤곽의 테두리 */
+function lettersOf(b: Body, m: number): Rect | null {
+  return b.tx ? textAt(b.x, b.y, b.hw, b.hh, b.tx, m) : null;
+}
+function bodyOf(b: Body, h: number): Rect {
+  if (b.kind === 'tree') return [b.x - b.hw * TREE_BASE, b.y - b.hh, b.x + b.hw * TREE_BASE, h];
+  if (b.poly) {
+    let l = Infinity, r = -Infinity, t = Infinity, d = -Infinity;
+    for (const [x, y] of b.poly) { l = Math.min(l, x); r = Math.max(r, x); t = Math.min(t, y); d = Math.max(d, y); }
+    return [b.x + l, b.y + t, b.x + r, b.y + d];
+  }
+  return [b.x - b.hw, b.y - b.hh, b.x + b.hw, b.y + b.hh];
 }
 /**
- * 구름의 제 자리 — 벽 위 70% 안에서, 헤매도 그 밖으로 안 나가는 곳 중 **다른 구름의 자리에서 가장 먼 곳**(빈자리).
+ * 이 자리에서 a가 o와 부딪치나 — 글자끼리(letters), 또는 곱해져 읽히지 않는 글자와 몸. [a에서 비켜야 할 네모, o의 네모]의 쌍들.
+ * 둘레(TEXT_CLEAR)는 o 쪽에만 둔다
+ */
+function clashes(a: Body, o: Body, h: number, letters = true): [Rect, Rect][] {
+  const m = TEXT_CLEAR * h, out: [Rect, Rect][] = [];
+  const la = lettersOf(a, 0), lo = lettersOf(o, m);
+  if (letters && la && lo && overlapArea(la, lo) > 0) out.push([la, lo]);
+  if (la && !legible(a, o)) { const bo = bodyOf(o, h), g: Rect = [bo[0] - m, bo[1] - m, bo[2] + m, bo[3] + m]; if (overlapArea(la, g) > 0) out.push([la, g]); }
+  if (lo && !legible(o, a)) { const ba = bodyOf(a, h); if (overlapArea(ba, lo) > 0) out.push([ba, lo]); }
+  return out;
+}
+function clashArea(a: Body, o: Body, h: number): number {
+  return clashes(a, o, h).reduce((s, [r, z]) => s + overlapArea(r, z), 0);
+}
+/** b를 덜 들어간 쪽으로 조금씩 옮겨 네모 R을 Z 밖으로 — 한 번에 옮기면 순간이동으로 보인다(LETTER_PUSH_S) */
+function pushOut(b: Body, R: Rect, Z: Rect, dt: number, share = 1) {
+  const l = R[2] - Z[0], r = Z[2] - R[0], u = R[3] - Z[1], d = Z[3] - R[1];
+  if (l <= 0 || r <= 0 || u <= 0 || d <= 0) return;
+  const pen = Math.min(l, r, u, d), k = Math.min(1, dt / LETTER_PUSH_S) * 0.5 * pen * share;
+  if (pen === l) b.x -= k; else if (pen === r) b.x += k; else if (pen === u) b.y -= k; else b.y += k;
+}
+/** 이 제 자리에서 구름이 나무와 부딪치는 양(px²) — 글자끼리 · 읽히지 않는 글자와 몸. 헤매는 동안 닿는 것은 그때그때
+    비킨다(cloudOffTrees). 처음엔 헤매며 닿을 수 있는 곳 전체를 비켰다 — 나무 키를 크기로 잇자 키 큰 나무들의 글이 벽
+    가운데를 막아 구름이 모두 그 위로 밀렸고, 여섯 번 띄워 나무가 구름을 뚫은 판이 없었다(디자이너 — "나무가 구름을
+    관통할 수 있게, 구름이 곳곳에") */
+function homeHits(b: Body, home: Pt2, w: number, h: number, bodies: Iterable<Body>): number {
+  const at: Body = { ...b, x: home[0] * w, y: home[1] * h };
+  let hit = 0;
+  for (const t of bodies) if (t.kind === 'tree') hit += clashArea(at, t, h);
+  return hit;
+}
+/** 헤매던 구름이 나무와 부딪치면(글자끼리 · 읽히지 않는 글자와 몸) 덜 들어간 쪽으로 조금씩 떼어 놓는다. 나머지는 나무가
+    구름을 뚫고 지나간다 — 곱해진다 */
+function cloudOffTrees(b: Body, bodies: Body[], h: number, dt: number) {
+  for (const t of bodies) if (t.kind === 'tree') for (const [R, Z] of clashes(b, t, h)) pushOut(b, R, Z, dt);
+}
+/**
+ * 구름의 짝(PAIR_ODDS) — 짝이 없는 구름 옆에 붙어 같이 떠다닌다. 겹침 양을 글이 고른 값부터 35%까지 내려 가며, 조금 위나
+ * 아래로도 비껴 보고, 글자끼리 안 닿는 첫 자리. 찾으면 b의 lead · rel과 home을 적는다. 못 찾으면 그대로 둔다(빈자리로 간다).
+ * 나무 끝에 걸터앉는 짝도 있었다(같은 날) — 나무 키를 크기로 잇자 구름 자리까지 닿는 나무가 많아져 벽의 구름이 모두 나무
+ * 끝에 모였다. 디자이너가 걷고 "나무가 구름을 관통하게, 구름이 곳곳에" 두었다 — 구름은 빈자리로 흩어지고, 거기 솟은 나무가
+ * 구름을 뚫고 지나가며 곱해진다(글자끼리만 비킨다)
+ */
+function pairCloud(b: Body, w: number, h: number, taken: Body[], over: number): void {
+  const m = TEXT_CLEAR * h;
+  const words = (q: Body, x: number, y: number): Rect => (q.tx ? textAt(x, y, q.hw, q.hh, q.tx, m) : [x - q.hw, y - q.hh, x + q.hw, y + q.hh]);
+  // 짝은 하나씩 — 이미 짝이 있는 구름은 뺀다
+  const cands = shuffled(taken.filter((o) => o.kind === 'cloud' && o.home && !o.lead && !taken.some((q) => q.lead === o)));
+  for (const ov of oversFrom(over)) for (const o of cands) for (const dir of shuffled([1, -1])) {
+    // 짝의 헤맴을 같이 탄다 — 짝의 반지름으로 벽 위 82% 안에 드는지 본다. 조금 위나 아래로 비껴 봉우리끼리도 겹친다
+    const [rx, ry] = floatR(o, w, h), ox = o.home![0] * w, oy = o.home![1] * h;
+    for (const f of [0, -0.3, 0.3, -0.6, 0.6]) {
+      const dx = besideX(o, b.hw, ov, dir) - o.x, dy = f * (o.hh + b.hh), x = ox + dx, y = oy + dy;
+      if (x - b.hw - rx < 0 || x + b.hw + rx > w || y - b.hh - ry < CLOUD_MARGIN * h || y + b.hh + ry > CLOUD_ZONE * h) continue;
+      const mine = words(b, x, y), sweep: Rect = [mine[0] - rx, mine[1] - ry, mine[2] + rx, mine[3] + ry];
+      // 짝과 글자끼리 · 읽히지 않는 글자와 몸이 안 닿고, 나무 · 돌 곁 · 다른 구름의 글줄에도 안 걸리는 자리
+      if (clashes({ ...b, x, y }, { ...o, x: ox, y: oy }, h).length || homeHits(b, [x / w, y / h], w, h, taken) > 0 || stoneHits(b, [x / w, y / h], w, h, taken) > 0 ||
+        taken.some((q) => q !== o && q.kind === 'cloud' && q.home && overlapArea(sweep, lettersWander(q, q.home, w, h)) > 0)) continue;
+      b.lead = o; b.rel = [dx, dy]; b.home = [x / w, y / h];
+      return;
+    }
+  }
+}
+/** 구름이 지금 가 있을 곳 — 짝 구름을 따라가는 구름은 짝의 헤맴 + 떨어진 거리 */
+function cloudTarget(b: Body, w: number, h: number, sec: number): Pt2 {
+  if (b.lead) { const [x, y] = floatAt(b.lead, w, h, sec); return [x + b.rel[0], y + b.rel[1]]; }
+  return floatAt(b, w, h, sec);
+}
+/** 이 제 자리에서 헤매는 구름 전체가 돌 곁(돌 · 돌이 바닥까지 떨어질 길 + CLOUD_STONE_GAP)에 얼마나 걸리나(px²) */
+function stoneHits(b: Body, home: Pt2, w: number, h: number, bodies: Iterable<Body>): number {
+  const [rx, ry] = floatR(b.lead ?? b, w, h), x = home[0] * w, y = home[1] * h, g = CLOUD_STONE_GAP * h;
+  const r: Rect = [x - b.hw - rx, y - b.hh - ry, x + b.hw + rx, y + b.hh + ry];
+  let hit = 0;
+  for (const s of bodies) if (s.kind === 'stone') hit += overlapArea(r, [s.x - s.hw - g, s.y - s.hh - g, s.x + s.hw + g, h]);
+  return hit;
+}
+/**
+ * 구름의 제 자리 — 벽 위 82% 안에서, 헤매도 그 밖으로 안 나가는 곳 중 **다른 구름의 자리에서 가장 먼 곳**(빈자리).
  * 서른 번 뽑아 가장 먼 것을 고른다. 처음엔 '안 겹치는 첫 자리'였는데 열 개를 띄우니 가운데로 몰리고 오른쪽이
  * 비었다(2026-09-29) — 빈 곳부터 채운다. 자리가 모자라면 겹친다(오버프린트라 조금은 겹쳐도 된다, 디자이너).
  * 자리는 벽에 대한 비율로 둔다 — 창이 바뀌어도 같은 곳이다.
- * 헤매는 영역이 나무의 글 자리에 걸리는 곳은 빈자리보다 먼저 거른다(TEXT_CLEAR) — 걸리지 않는 곳이 하나도 없을 때만 덜 걸리는 곳
+ * 글줄이 나무의 글 자리에 걸리는 곳(TEXT_CLEAR) · 헤매다 돌 곁에 닿는 곳(CLOUD_STONE_GAP)은 빈자리보다 먼저 거른다 — 걸리지
+ * 않는 곳이 하나도 없을 때만 덜 걸리는 곳
  */
 function cloudHome(b: Body, w: number, h: number, taken: Body[]): Pt2 {
   const [rx, ry] = floatR(b, w, h);
   const x0 = b.hw + rx, x1 = w - b.hw - rx;
   const y0 = b.hh + ry + CLOUD_MARGIN * h, y1 = CLOUD_ZONE * h - b.hh - ry;
-  const others = taken.filter((o) => o !== b && o.kind === 'cloud' && o.home), zones = zonesOf(taken);
+  const others = taken.filter((o) => o !== b && o.kind === 'cloud' && o.home);
   let best: Pt2 = [0.5, 0.5], most = -Infinity;
   for (let t = 0; t < 30; t++) {
     const x = x1 < x0 ? w / 2 : x0 + Math.random() * (x1 - x0);
     const y = y1 < y0 ? (y0 + y1) / 2 : y0 + Math.random() * (y1 - y0);
-    const home: Pt2 = [x / w, y / h], hit = homeHits(b, home, w, h, zones);
+    const home: Pt2 = [x / w, y / h], hit = homeHits(b, home, w, h, taken) + stoneHits(b, home, w, h, taken);
     // 두 상자가 얼마나 떨어졌나 — 1이면 가장자리가 맞닿는다
     const apart = hit > 0 ? -hit : Math.min(1e9, ...others.map((o) => Math.max(Math.abs(o.home![0] * w - x) / (o.hw + b.hw), Math.abs(o.home![1] * h - y) / (o.hh + b.hh))));
     if (apart > most) { most = apart; best = home; }
@@ -392,47 +582,75 @@ function boxSide(): number {
  *  돌은 위쪽 3분의 1 어딘가에서 멈춘 채 나타나 떨어진다 — 다른 돌과 가로로 안 겹치는 자리를 찾아본다.
  *  나무는 바닥에 선다 — 다른 나무와 한자리에 포개지지 않는 가로 자리를 찾아본다.
  *  구름은 제 자리(cloudHome)를 받아 그 헤맴의 지금 자리에 나타난다 — 벽을 가로지르며 들어오지 않는다.
- *  나무의 글 자리(TEXT_CLEAR)는 모두가 비킨다: 나무는 다른 나무의 글 · 돌의 띠 · 구름의 헤매는 영역을, 돌은 나무 글의 띠를,
- *  떠다니는 말은 나무 글의 기둥을 피해 자리를 고른다. 여럿을 뽑아 걸리지 않는 첫 자리, 없으면 가장 덜 걸리는 자리.
- *  u = 구름의 글자 한 칸(px) — 헤매는 영역의 크기가 거기 걸려 있다. tx = 나무의 글 상자(상자에 대한 비율) */
-function spawn(r: number, hw: number, hh: number, kind: Kind, w: number, h: number, taken: Body[], tall: number, u: number, tx: Rect | null): Body {
-  const heavy = kind === 'stone', zones = zonesOf(taken);
+ *  글자끼리는 겹치지 않게 고른다(TEXT_CLEAR): 나무는 다른 나무의 글 · 돌 글의 띠 · 구름 글줄이 헤매는 곳을, 돌은 제 글의
+ *  띠가 나무 글에 안 걸리게, 떠다니는 말은 나무 글의 기둥을 피해. 여럿을 뽑아 걸리지 않는 첫 자리, 없으면 가장 덜 걸리는 자리.
+ *  글 둘에 하나꼴(o.pair < PAIR_ODDS)은 그보다 먼저 짝 옆 자리를 찾는다 — 돌은 나무 옆, 나무는 돌 옆, 구름은 짝 구름 옆
+ *  (pairCloud). 좁은 쪽 폭의 PAIR_OVER만큼(o.over가 고른다) 포개지되 글자는 비키는 자리.
+ *  u = 구름의 글자 한 칸(px) — 헤매는 영역의 크기가 거기 걸려 있다. tx = 글 상자(상자에 대한 비율) */
+function spawn(r: number, hw: number, hh: number, kind: Kind, w: number, h: number, taken: Body[],
+  o: { tall: number; u: number; tx: Rect | null; pair: number; over: number; bg: RGB; fg: RGB }): Body {
+  const { tall, u, tx, over } = o, heavy = kind === 'stone', zones = zonesOf(taken), seek = o.pair < PAIR_ODDS;
   const still = { held: false, heavy, a: 0, va: 0, r, hw, hh, poly: null, kind, tall, home: null,
-    sway: Math.random() * Math.PI * 2, flutter: Math.random(), u: 0, beadR: 0, beads: [], chars: [], side: 0, tx, zone: null };
+    sway: Math.random() * Math.PI * 2, flutter: Math.random(), u: 0, chars: [], side: 0, tx, zone: null,
+    lead: null, rel: [0, 0] as Pt2, bg: o.bg, fg: o.fg };
   if (kind === 'tree') {
     const y = h - Math.max(tall * h, 2 * hh) + hh;
+    const at = (x: number): Body => ({ ...still, x, y, vx: 0, vy: 0, zone: tx ? zoneAt(x, y, hw, hh, tx, h) : null });
+    // 이 자리에서 부딪치는 양 — 다른 나무와(글자끼리 · 읽히지 않는 글자와 몸) · 돌과(stoneTreeBands) · 구름 글줄이 헤매는
+    // 곳과 글자끼리. 0이어야 한다
+    const hitAt = (x: number) => {
+      const me = at(x), z = me.zone;
+      let hit = 0;
+      if (z) for (const q of taken) {
+        if (q.kind === 'tree') hit += clashArea(me, q, h);
+        else if (q.kind === 'stone') for (const [a, c] of stoneTreeBands(q, me, h)) hit += spanOverlap(a[0], a[1], c[0], c[1]) * (z[3] - z[1]);
+        else if (q.kind === 'cloud' && q.home) hit += overlapArea(z, lettersWander(q, q.home, w, h));
+      }
+      return hit;
+    };
+    // 짝 — 돌 옆에 좁은 쪽 폭의 35~60%만큼 걸쳐 선다
+    if (seek) for (const ov of oversFrom(over)) for (const s of shuffled(taken.filter((q) => q.kind === 'stone'))) for (const dir of shuffled([1, -1])) {
+      const x = besideX(s, hw, ov, dir);
+      if (x >= hw && x <= w - hw && hitAt(x) === 0) return at(x);
+    }
     let bx = w / 2, least = Infinity;
     for (let t = 0; t < 40 && least > 0; t++) {
-      const x = hw + Math.random() * Math.max(1, w - hw * 2), z = tx ? zoneAt(x, y, hw, hh, tx, h) : null;
-      let hit = 0;
-      if (z) for (const o of taken) {
-        if (o.kind === 'tree' && o.zone) hit += overlapArea(z, o.zone);
-        else if (o.kind === 'stone') hit += spanOverlap(z[0], z[2], o.x - o.hw, o.x + o.hw) * (z[3] - z[1]);
-        else if (o.kind === 'cloud' && o.home) hit += overlapArea(z, wanderRect(o, o.home, w, h));
-      }
+      const x = hw + Math.random() * Math.max(1, w - hw * 2), hit = hitAt(x);
       // 글 자리가 안 걸리는 것이 먼저, 그다음 다른 나무와 한자리에 포개지지 않기
-      const crowd = taken.some((o) => o.kind === 'tree' && Math.abs(o.x - x) < (o.hw + hw) * TREE_SPREAD) ? 1 : 0;
+      const crowd = taken.some((q) => q.kind === 'tree' && Math.abs(q.x - x) < (q.hw + hw) * TREE_SPREAD) ? 1 : 0;
       const score = hit > 0 ? 2 + hit : crowd;
       if (score < least) { least = score; bx = x; }
     }
-    return { ...still, x: bx, y, vx: 0, vy: 0, zone: tx ? zoneAt(bx, y, hw, hh, tx, h) : null };
+    return at(bx);
   }
   if (kind === 'cloud') {
     const b: Body = { ...still, u, x: 0, y: 0, vx: 0, vy: 0 };
-    b.home = cloudHome(b, w, h, taken);
-    [b.x, b.y] = floatAt(b, w, h, performance.now() / 1000);
+    if (seek) pairCloud(b, w, h, taken, over);
+    if (!b.home) b.home = cloudHome(b, w, h, taken);
+    [b.x, b.y] = cloudTarget(b, w, h, performance.now() / 1000);
     return b;
   }
   if (heavy) {
-    // 나무 글의 띠 밖이 먼저, 그다음 다른 돌과 가로로 안 겹치는 자리(겹치면 그 위에 쌓인다)
+    const y = hh + Math.random() * Math.max(1, h / 3 - hh);
+    // 나무와 가로로 떨어져 있어야 할 띠가 걸리는 양(stoneTreeBands) · 다른 돌 위인가(그러면 그 위에 쌓인다)
+    const trees = taken.filter((q) => q.kind === 'tree');
+    const inText = (x: number) => { const me: Body = { ...still, x, y, vx: 0, vy: 0 }; let s = 0;
+      for (const t of trees) for (const [a, c] of stoneTreeBands(me, t, h)) s += spanOverlap(a[0], a[1], c[0], c[1]);
+      return s; };
+    const onStone = (x: number) => taken.some((q) => q.heavy && Math.abs(q.x - x) < q.hw + hw);
+    // 짝 — 나무 옆에 좁은 쪽 폭의 35~60%만큼 걸쳐 바닥에 앉는다
+    if (seek) for (const ov of oversFrom(over)) for (const t of shuffled(trees)) for (const dir of shuffled([1, -1])) {
+      const x = besideX(t, hw, ov, dir);
+      if (x >= hw && x <= w - hw && !inText(x) && !onStone(x)) return { ...still, x, y, vx: 0, vy: 0 };
+    }
+    // 나무 글의 띠 밖이 먼저, 그다음 다른 돌과 가로로 안 겹치는 자리
     let bx = w / 2, least = Infinity;
     for (let t = 0; t < 40 && least > 0; t++) {
-      const x = hw + Math.random() * Math.max(1, w - hw * 2);
-      const hit = zones.reduce((s, z) => s + spanOverlap(x - hw, x + hw, z[0], z[2]), 0);
-      const score = hit > 0 ? 2 + hit : taken.every((b) => !b.heavy || Math.abs(b.x - x) >= b.hw + hw) ? 0 : 1;
+      const x = hw + Math.random() * Math.max(1, w - hw * 2), hit = inText(x);
+      const score = hit > 0 ? 2 + hit : onStone(x) ? 1 : 0;
       if (score < least) { least = score; bx = x; }
     }
-    return { ...still, x: bx, y: hh + Math.random() * Math.max(1, h / 3 - hh), vx: 0, vy: 0 };
+    return { ...still, x: bx, y, vx: 0, vy: 0 };
   }
   const speed = SPEED_MIN + Math.random() * (SPEED_MAX - SPEED_MIN);
   const angle = Math.random() * Math.PI * 2;
@@ -471,7 +689,7 @@ function step(bodies: Body[], w: number, h: number, dt: number, sec: number) {
   const zones = zonesOf(bodies);
   for (const b of bodies) {
     if (b.held || b.kind === 'tree') continue;
-    if (b.kind === 'cloud') { drift(b, w, h, dt, sec, bodies, zones); continue; }
+    if (b.kind === 'cloud') { drift(b, w, h, dt, sec, bodies); continue; }
     if (b.heavy) {
       // 흔들림은 늘 제자리(0)로 돌아온다
       b.va += (-WOBBLE_K * b.a - WOBBLE_DAMP * b.va) * dt;
@@ -505,7 +723,7 @@ function step(bodies: Body[], w: number, h: number, dt: number, sec: number) {
     for (let j = i + 1; j < bodies.length; j++) {
       const a = bodies[i], b = bodies[j];
       // 구름은 무엇과도 부딪치지 않고 겹쳐 지나간다(곱하기) — 다른 구름의 글자만 비킨다
-      if (a.kind === 'cloud' || b.kind === 'cloud') { if (a.kind === b.kind) cloudsApart(a, b, dt); continue; }
+      if (a.kind === 'cloud' || b.kind === 'cloud') { if (a.kind === b.kind) cloudsApart(a, b, h, dt); continue; }
       // 나무는 무엇과도 부딪치지 않는다 — 돌은 그 앞에 서고, 구름 · 떠다니는 말은 겹쳐 지나간다.
       // 떠다니는 말을 머리에 튕기게 했더니 나무 머리들과 벽 끝 사이에 끼어 제자리에서 초당 600px씩
       // 튀었다(2026-09-28, 재서 알았다)
@@ -533,27 +751,40 @@ function step(bodies: Body[], w: number, h: number, dt: number, sec: number) {
   // 나무의 글 자리는 비워 둔다(TEXT_CLEAR) — 돌은 띠 밖으로 미끄러져 나가고, 떠다니는 말은 기둥에 튕긴다
   if (zones.length) for (const b of bodies) {
     if (b.held) continue;
-    if (b.heavy) stoneOffText(b, zones, w, h, dt);
+    if (b.heavy) stoneOffText(b, bodies, w, h, dt);
     else if (b.kind === 'float') floaterOffText(b, zones, w, h);
   }
 }
 
 /**
- * 돌이 나무 글의 세로 띠에 들어와 있으면 가까운 쪽으로(벽에 막히면 반대쪽으로) 미끄러져 나간다. 한 번에 옮기면 순간이동으로
- * 보이니 말이 돌 밑에서 빠지는 빠르기(SLIP_OUT)로. 떨어질 자리는 띠 밖에서 골랐으니 여기 걸리는 것은 밀리거나 받침에서
- * 떨어진 돌이다
+ * 돌(s)과 나무(t)가 가로로 떨어져 있어야 할 띠들 — [돌의 띠, 나무의 띠](px). 돌은 바닥까지 떨어지고 나무는 바닥에서 서니
+ * 가로로 겹치면 곧 겹친다(떨어지는 동안에도). 글끼리는 늘(돌 글의 세로 띠 ↔ 나무 글 자리), 곱해져 읽히지 않는 짝이면 글과
+ * 몸도(나무 글 ↔ 돌 몸 · 돌 글 ↔ 나무 몸)
  */
-function stoneOffText(b: Body, zones: Rect[], w: number, h: number, dt: number) {
+function stoneTreeBands(s: Body, t: Body, h: number): [[number, number], [number, number]][] {
+  if (!t.zone) return [];
+  const z: [number, number] = [t.zone[0], t.zone[2]], band = bandAt(s.x, s.hw, s.tx, h), m = TEXT_CLEAR * h;
+  const out: [[number, number], [number, number]][] = [[band, z]];
+  if (!legible(t, s)) { const b = bodyOf(s, h); out.push([[b[0], b[2]], z]); }
+  if (!legible(s, t)) out.push([band, [t.x - t.hw * TREE_BASE - m, t.x + t.hw * TREE_BASE + m]]);
+  return out;
+}
+
+/**
+ * 돌이 나무와 떨어져 있어야 할 띠(stoneTreeBands)에 들어와 있으면 가까운 쪽으로(벽에 막히면 반대쪽으로) 미끄러져 나간다.
+ * 한 번에 옮기면 순간이동으로 보이니 말이 돌 밑에서 빠지는 빠르기(SLIP_OUT)로. 떨어질 자리는 띠 밖에서 골랐으니 여기
+ * 걸리는 것은 밀리거나 받침에서 떨어진 돌이다. 그 밖의 몸은 나무 위로 걸쳐도 된다(곱해진다)
+ */
+function stoneOffText(b: Body, bodies: Body[], w: number, h: number, dt: number) {
   const P = outline(b);
   let l = Infinity, r = -Infinity;
   for (const p of P) { l = Math.min(l, p[0]); r = Math.max(r, p[0]); }
-  for (const z of zones) {
-    const x0 = b.x + l, x1 = b.x + r;
-    if (spanOverlap(x0, x1, z[0], z[2]) <= 0) continue;
-    const toL = x1 - z[0], toR = z[2] - x0;
+  for (const t of bodies) if (t.kind === 'tree') for (const [[x0, x1], [z0, z1]] of stoneTreeBands(b, t, h)) {
+    if (spanOverlap(x0, x1, z0, z1) <= 0) continue;
+    const toL = x1 - z0, toR = z1 - x0;
     let dir = toL <= toR ? -1 : 1;
-    if (dir < 0 && x0 - toL < 0) dir = 1;
-    else if (dir > 0 && x1 + toR > w) dir = -1;
+    if (dir < 0 && b.x + l - toL < 0) dir = 1;
+    else if (dir > 0 && b.x + r + toR > w) dir = -1;
     b.x += dir * Math.min(dir < 0 ? toL : toR, SLIP_OUT * h * dt);
     if (b.vx * dir < 0) b.vx = 0;
   }
@@ -579,48 +810,57 @@ function floaterOffText(b: Body, zones: Rect[], w: number, h: number) {
 /**
  * 구름 한 걸음 — 제 자리 둘레를 헤매는 지금 자리(floatAt)를 느슨하게(FLOAT_FOLLOW) 따라간다. 남의 글자에서
  * 밀려났으면 같은 박자로 스르르 돌아온다. 크게 보였다 내려앉은 글도 붙잡혔던 자리에서 이 길로 이어 간다.
- * 벽 위 70% 안에서만 다닌다(창이 줄었을 때를 위해 한 번 더 막는다).
+ * 벽 위 82% 안에서만 다닌다(창이 줄었을 때를 위해 한 번 더 막는다).
  * 새 나무가 서서 헤매는 영역이 그 글 자리에 걸리면 걸리지 않는 새 자리로 옮긴다 — 같은 박자로 스르르. 그런 자리가 없으면
  * 그대로 둔다(프레임마다 자리를 바꿔 쫓아다니지 않게).
  */
-function drift(b: Body, w: number, h: number, dt: number, sec: number, bodies: Body[], zones: Rect[]) {
+function drift(b: Body, w: number, h: number, dt: number, sec: number, bodies: Body[]) {
+  // 짝 구름이 벽을 떠났으면 빈자리로 옮겨 제 헤맴을 이어 간다
+  if (b.lead && !bodies.includes(b.lead)) { b.lead = null; b.home = cloudHome(b, w, h, bodies); }
   if (!b.home) b.home = cloudHome(b, w, h, bodies);
-  if (zones.length && homeHits(b, b.home, w, h, zones) > 0) {
+  // 새 나무의 글이 제 자리에 걸리거나 새 돌이 곁에 떨어지면 걸리지 않는 새 자리로 스르르 옮긴다(없으면 그대로)
+  const bad = (home: Pt2) => homeHits(b, home, w, h, bodies) + stoneHits(b, home, w, h, bodies);
+  if (!b.lead && bad(b.home) > 0) {
     const next = cloudHome(b, w, h, bodies);
-    if (homeHits(b, next, w, h, zones) === 0) b.home = next;
+    if (bad(next) === 0) b.home = next;
   }
-  const [tx, ty] = floatAt(b, w, h, sec), k = 1 - Math.exp(-dt / (FLOAT_FOLLOW * hold()));
+  const [tx, ty] = cloudTarget(b, w, h, sec), k = 1 - Math.exp(-dt / (FLOAT_FOLLOW * hold()));
   b.x += (tx - b.x) * k;
   b.y += (ty - b.y) * k;
+  cloudOffTrees(b, bodies, h, dt);
+  // 짝 구름을 따라가는 구름의 제 자리 — 다른 구름이 빈자리를 고를 때 본다
+  if (b.lead?.home) b.home = [b.lead.home[0] + b.rel[0] / w, b.lead.home[1] + b.rel[1] / h];
   const top = b.hh + CLOUD_MARGIN * h, bottom = CLOUD_ZONE * h - b.hh;
   b.y = bottom < top ? (top + bottom) / 2 : Math.min(bottom, Math.max(top, b.y));
 }
 
 /**
- * 두 구름 — 튕기지 않고 겹쳐 지나간다. 한 구름의 구슬이 상대 글자 한 자의 둥근 자리(LETTER_CLEAR)에
- * 닿을 때만, 가장 깊이 닿은 곳에서 반대로 조금씩 떼어 놓는다. 글자 자리를 네모로 잡으면 휜 글은 상자가
- * 구름을 거의 덮어 겹침이 안 생겼다 — 한 자씩 잡는다. 작은 구름의 구슬도 같이 센다(작은 구름이 남의
- * 글자에 닿으면 구름째 비킨다).
+ * 두 구름 — 튕기지 않고 겹쳐 지나간다. 한 구름의 글자 한 자가 상대 글자 한 자의 둥근 자리(LETTER_APART)에 닿을 때만,
+ * 가장 깊이 닿은 곳에서 반대로 조금씩 떼어 놓는다. 글자 자리를 네모로 잡으면 휜 글은 상자가 구름을 거의 덮어 겹침이
+ * 안 생겼다 — 한 자씩 잡는다. 처음엔 구슬이 남의 글자를 비켰다 — 오버프린트(PAIR_ODDS)부터는 몸이 남의 글 위로도
+ * 걸치고(곱해도 글자가 읽힌다) 글자끼리 비킨다 — 곱해져 읽히지 않는 짝이면(LEGIBLE) 글줄과 몸도. 짝지어 같이 떠다니는
+ * 둘은 그렇게 비켜 자리를 잡았으니 건너뛴다.
  */
-function cloudsApart(a: Body, b: Body, dt: number) {
+function cloudsApart(a: Body, b: Body, h: number, dt: number) {
+  if (a.lead === b || b.lead === a) return;
   if (Math.abs(a.x - b.x) > a.hw + b.hw || Math.abs(a.y - b.y) > a.hh + b.hh) return;
-  for (const [p, q] of [[a, b], [b, a]] as const) {        // p의 구슬 ↔ q의 글자
-    const rc = LETTER_CLEAR * q.u + p.beadR;
-    let best = 0, nx = 0, ny = 0;
-    for (const c of q.chars) {
-      const cx = q.x + c[0], cy = q.y + c[1];
-      for (const d of p.beads) {
-        const dx = p.x + d[0] - cx, dy = p.y + d[1] - cy;
-        if (dx > rc || dx < -rc || dy > rc || dy < -rc) continue;
-        const dd = Math.hypot(dx, dy), pen = rc - dd;
-        if (pen > best) { best = pen; nx = dx / (dd || 1); ny = dy / (dd || 1); }
-      }
+  // 곱해져 읽히지 않는 짝이면 글줄과 몸도 떼어 놓는다(반씩)
+  for (const [R, Z] of clashes(a, b, h, false)) { pushOut(a, R, Z, dt, 0.5); pushOut(b, Z, R, dt, 0.5); }
+  const rc = LETTER_APART * Math.max(a.u, b.u);
+  let best = 0, nx = 0, ny = 0;
+  for (const c of a.chars) {
+    const cx = a.x + c[0], cy = a.y + c[1];
+    for (const d of b.chars) {
+      const dx = b.x + d[0] - cx, dy = b.y + d[1] - cy;
+      if (dx > rc || dx < -rc || dy > rc || dy < -rc) continue;
+      const dd = Math.hypot(dx, dy), pen = rc - dd;
+      if (pen > best) { best = pen; nx = dx / (dd || 1); ny = dy / (dd || 1); }
     }
-    if (best <= 0) continue;
-    const k = Math.min(1, dt / LETTER_PUSH_S) * 0.5 * best;
-    if (!p.held) { p.x += nx * k; p.y += ny * k; }
-    if (!q.held) { q.x -= nx * k; q.y -= ny * k; }
   }
+  if (best <= 0) return;
+  const k = Math.min(1, dt / LETTER_PUSH_S) * 0.5 * best;
+  if (!a.held) { a.x -= nx * k; a.y -= ny * k; }
+  if (!b.held) { b.x += nx * k; b.y += ny * k; }
 }
 
 /** 몸의 윤곽 — 가운데 기준 px. 돌은 제 다각형, 말은 상자 */
@@ -1074,11 +1314,12 @@ export default function WallSimulation() {
       // 상자에 대한 비율(0~1)로 넘긴다 — 한 변(side)이 창과 함께 바뀌기 때문이다
       const fr = ([x, y]: readonly [number, number]): Pt2 => [x / cloud.w, y / cloud.h];
       const poly = cloud.stone ? convexHull(cloud.stone.pts).map(fr) : undefined;
-      const kind = kindOf(cloud), t = cloud.tree, bd = cloud.beads;
+      const kind = kindOf(cloud), t = cloud.tree, bd = cloud.beads, colors = colorsOf(msg);
       m.set(msg.id, {
         w: box.w, h: box.h + box.tail, heavy: kind === 'stone', kind, poly,
-        ...(t ? { tall: tallOf(msg.text), tx: [cloud.text.x / cloud.w, cloud.text.y / cloud.h, (cloud.text.x + cloud.text.w) / cloud.w, (cloud.text.y + cloud.text.h) / cloud.h] as Rect } : {}),
-        ...(bd ? { beads: [...bd.body, ...bd.lets.flat()].map(fr), chars: bd.chars.map(fr), unit: box.unit, beadR: bd.r, cw: cloud.w, bob: cloud.persona.bead?.bob ?? 0 } : {})
+        tx: textBox(cloud), pair: seed01(msg.text + '|pair'), over: seed01(msg.text + '|over'), bg: rgbOf(colors.bg), fg: rgbOf(colors.text),
+        ...(t ? { tall: tallOf(msg) } : {}),
+        ...(bd ? { chars: bd.chars.map(fr), unit: box.unit, cw: cloud.w, bob: cloud.persona.bead?.bob ?? 0 } : {})
       });
     }
     sizesRef.current = m;
@@ -1112,12 +1353,12 @@ export default function WallSimulation() {
         // 크기를 몰라 떠다니는 말로 먼저 놓였던 몸은 제 종류를 알게 되면 다시 놓는다 — 나무는 글 자리를 보고 서야 한다
         if (!b || (b.kind !== kind && !b.held)) {
           if (b) map.delete(id);
-          map.set(id, (b = spawn(rOf(id), hw, hh, kind, w, h, [...map.values()], f?.tall ?? 0, side * (f?.unit ?? 0), f?.tx ?? null)));
-        } else { b.r = rOf(id); b.hw = hw; b.hh = hh; b.heavy = kind === 'stone'; b.kind = kind; b.tall = f?.tall ?? 0; b.tx = f?.tx ?? null; }   // 창 크기가 바뀌면 같이 바뀐다
+          map.set(id, (b = spawn(rOf(id), hw, hh, kind, w, h, [...map.values()],
+            { tall: f?.tall ?? 0, u: side * (f?.unit ?? 0), tx: f?.tx ?? null, pair: f?.pair ?? 1, over: f?.over ?? 0, bg: f?.bg ?? [1, 1, 1], fg: f?.fg ?? [0, 0, 0] })));
+        } else { b.r = rOf(id); b.hw = hw; b.hh = hh; b.heavy = kind === 'stone'; b.kind = kind; b.tall = f?.tall ?? 0; b.tx = f?.tx ?? null; b.bg = f?.bg ?? b.bg; b.fg = f?.fg ?? b.fg; }   // 창 크기가 바뀌면 같이 바뀐다
         b.poly = poly;
-        if (kind === 'cloud' && f?.beads && b.side !== side) {
-          b.side = side; b.u = side * (f.unit ?? 0); b.beadR = b.u * (f.beadR ?? 0);
-          b.beads = f.beads.map(off); b.chars = (f.chars ?? []).map(off);
+        if (kind === 'cloud' && f?.chars && b.side !== side) {
+          b.side = side; b.u = side * (f.unit ?? 0); b.chars = f.chars.map(off);
         }
         // 크기를 몰라 떠다니는 말로 먼저 놓였던 구름(벽이 막 켜진 첫 프레임들) — 자리를 여기서 받는다. 다른 구름의
         // 자리를 보고 고른다: 모르고 고르면 한데 포개져 서로 글자를 비키느라 밀치며 두 배로 빨라졌다(2026-09-29, 재서 알았다)
@@ -1161,10 +1402,9 @@ export default function WallSimulation() {
 
   // 겹 안의 차례 — 키 큰 나무가 맨 뒤, 그다음 작은 나무 · 돌 · 떠다니는 말 · 구름(맨 앞, 곱하기)
   const layered = useMemo(() => {
-    const rank = { tree: 0, stone: 1, float: 2, cloud: 3 } as const;
     return shown
-      .map((msg) => ({ msg, kind: kindOf(cloudOf(msg).cloud), tall: tallOf(msg.text) }))
-      .sort((a, b) => rank[a.kind] - rank[b.kind] || (a.kind === 'tree' ? b.tall - a.tall : 0))
+      .map((msg) => ({ msg, kind: kindOf(cloudOf(msg).cloud), tall: tallOf(msg) }))
+      .sort((a, b) => RANK[a.kind] - RANK[b.kind] || (a.kind === 'tree' ? b.tall - a.tall : 0))
       .map((x) => x.msg);
   }, [shown]);
 
@@ -1324,24 +1564,30 @@ export const WallShowMessage = memo(function WallShowMessage({ msg, land }: { ms
 
 // ─── Shared style derivation ─────────────────────────────────────────
 
+/** 한 글의 칠 · 글자색 — 벽이 그리는 색 그대로(물리 계산의 읽힘도 이것으로 잰다) */
+function colorsOf(msg: StoredMessage): { bg: string; text: string } {
+  const tone = msg.tone;
+  let pal;
+  if (!tone) {
+    pal = moods[3];
+  } else {
+    const mood = moods[tone.paletteIdx];
+    if (mood) pal = mood;
+    else {
+      const legacy = legacyPalettes[tone.paletteIdx];
+      pal = legacy ? { bg: legacy.bg, text: legacy.text } : moods[3];
+    }
+  }
+  return { bg: tone?.backgroundColor ?? pal.bg, text: tone?.textColor ?? pal.text };
+}
+
 function useDerivedStyle(msg: StoredMessage) {
   return useMemo(() => {
-    const tone = msg.tone;
-    let pal;
-    if (!tone) {
-      pal = moods[3];
-    } else {
-      const mood = moods[tone.paletteIdx];
-      if (mood) pal = mood;
-      else {
-        const legacy = legacyPalettes[tone.paletteIdx];
-        pal = legacy ? { bg: legacy.bg, text: legacy.text } : moods[3];
-      }
-    }
+    const tone = msg.tone, { bg, text } = colorsOf(msg);
     const fontFamily = tone ? fontMap[tone.font] : fontMap.botong;
     return {
-      bg: tone?.backgroundColor ?? pal.bg,
-      text: tone?.textColor ?? pal.text,
+      bg,
+      text,
       fontFamily,
       wght: tone?.wght ?? 400,
       scaleX: tone?.tone ?? 1.0,

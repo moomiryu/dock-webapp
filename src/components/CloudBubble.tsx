@@ -1,5 +1,5 @@
 import { cloneElement, isValidElement, useEffect, useId, useMemo, useRef, type CSSProperties, type ReactElement, type ReactNode } from 'react';
-import { AMP, DRIFT, T1, T2, type Circle, type Cloud, type Tree } from '../lib/cloud';
+import { AMP, DRIFT, T1, T2, photoWave, type Circle, type Cloud, type Tree } from '../lib/cloud';
 import type { Boxed } from '../lib/fit';
 
 /**
@@ -35,6 +35,8 @@ import type { Boxed } from '../lib/fit';
  * ── 띠 구름 (다정한, 2026-09-30) ───────────────────────────────────────
  * 사진에서 딴 윤곽 하나(cloud.ts · photoFor)를 한 색으로 칠한다 — 번지지도 숨 쉬지도 않는다. 상자는 몸통이고
  * 꼬리는 상자 밖으로 그려진다(.cloud-art는 overflow: visible — 나무의 밑동과 같다). 행간 1.3 · 글은 가운데.
+ * 봉우리가 부풀고 꼬리가 흐른다(cloud.ts · photoWave, 2026-09-30) — FRAME_MS마다 윤곽을 다시 그린다. 움직임을 끈 사람 ·
+ * still(4/5 설명 장의 시연)에서는 멈춘다.
  * 09-28의 구슬 구름(한 크기 구슬 · 곁의 작은 구름)은 걷었다.
  *
  * ── 새 · 박쥐 (유머있는, 2026-09-29) ───────────────────────────────────
@@ -45,6 +47,15 @@ import type { Boxed } from '../lib/fit';
 const K = 100;
 /** 픽셀 구름을 다시 찍는 간격. 12fps면 계단이 옮겨 가는 것이 보이되 파이에 짐이 안 된다 */
 const PIXEL_MS = 80;
+/** 띠 구름의 윤곽을 다시 그리는 간격 — 30fps. 봉우리가 6초에 한 번 부풀 만큼 느려서 더 촘촘할 까닭이 없고, 벽의 구름 여럿을 파이가 그린다 */
+const FRAME_MS = 33;
+
+/** --t-hold(초) — 단위를 보고 읽는다: 빌드가 700ms를 .7s로 고쳐 적는다(WallSimulation · hold, PhaseColor · tokenMs와 같은 까닭) */
+function holdS(): number {
+  if (typeof document === 'undefined') return 0.7;
+  const v = getComputedStyle(document.documentElement).getPropertyValue('--t-hold').trim();
+  return (parseFloat(v) || 0) * (v.endsWith('ms') ? 0.001 : 1) || 0.7;
+}
 
 interface Props {
   cloud: Cloud;
@@ -197,6 +208,25 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   const stoneD = useMemo(() => (stone ? stonePath(stone.pts, pr.stone?.round ?? 0) : ''), [stone, pr.stone?.round]);
   const tree = cloud.tree, photo = cloud.photo;
   const photoD = useMemo(() => (photo ? 'M' + photo.pts.map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join('L') + 'Z' : ''), [photo]);
+  // 띠 구름의 움직임 — 요소를 직접(React 바깥). 시작 박자는 구름마다(글 상자 · 띠 번호에서) 달라 벽의 구름이 한 박자로 안 움직인다
+  const photoRef = useRef<SVGPathElement>(null);
+  const motion = pr.photo?.motion;
+  useEffect(() => {
+    const el = photoRef.current;
+    if (!photo || !motion || quiet || !el) return;
+    const phase = (cloud.text.w * 7.31 + cloud.text.h * 3.17 + photo.id.charCodeAt(photo.id.length - 1) * 1.7) % (Math.PI * 2);
+    const wave = photoWave(photo, cloud.w, motion, phase), hold = holdS(), t0 = performance.now();
+    let last = -Infinity, raf = 0;
+    const tick = (now: number) => {
+      if (now - last >= FRAME_MS) {
+        last = now;
+        el.setAttribute('d', 'M' + wave((now - t0) / 1000, hold).map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join('L') + 'Z');
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [photo, motion, quiet, cloud.w, cloud.text.w, cloud.text.h]);
   const creature = cloud.creature, shape = creature ? (pose && creature.poses[pose]) || creature.poses.rest : null;
   // 나무 · 구슬 구름은 글 배치를 형상이 정한다(cloud.ts의 layout — 다시 나눈 줄 · 줄마다 자간 · 한 자씩의 자리).
   // 줄 맞춤은 가운데 — 나무 · 뭉게구름은 가운데 맞춘 줄을 품게 지었다
@@ -240,7 +270,7 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
         ) : tree ? (
           <path d={treePath(tree, !!reach)} fill={color} />
         ) : photo ? (
-          <path d={photoD} fill={color} />
+          <path ref={photoRef} d={photoD} fill={color} />
         ) : shape ? (
           <g fill={color}>
             {shape.polys.map((P, i) => <path key={'p' + i} d={'M' + P.map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join('L') + 'Z'} />)}

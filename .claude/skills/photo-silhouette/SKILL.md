@@ -92,6 +92,9 @@ https://commons.wikimedia.org/w/api.php?action=query&generator=categorymembers&g
   `Cloud`에 필드. 같은 글은 `cloudForTone`이 기억해 둔다
 - 그리기: `CloudBubble` — 윤곽 하나를 한 색으로. `.cloud-art`는 `overflow: visible`이라 상자 밖도 그려진다
 - 벽: `WallSimulation`의 `kindOf` · 크기 표(글자 자리 · 뻗는 범위) · `bodyOf`(읽힘은 뻗는 부분까지)
+- 움직임: 사진 형상도 움직일 수 있다(구름 — `photoWave`). **바깥 법선으로만** 밀면 글이 어느 순간에도 안 깨진다. 값은
+  움직이는 견본(독립 HTML, 브라우저로 연다)의 격자로 고른다 — 형상 PNG는 앱에서 찍고 윤곽만 JS로 움직인다. 움직이는 동안
+  여러 순간 윤곽을 읽어 글 + 여백이 안인지 재고, 느린 기계 흉내(CPU 4배)로 벽의 초당 프레임을 잰다
 - 확인: 글 200개(밖 0 · 벽 글자 · 짓는 ms · 몇 장이 쓰이나) · `npx tsc --noEmit` · `npm run build` ·
   `node scripts/audit-a11y.mjs`(위반 0) · `peek`로 폰 390의 4/5 · 5/5와 벽 1920×1080. 벽의 가짜 글은 브라우저의
   `localStorage['megafont.mock.messages.v1']`에 넣는다(실제 Firestore가 아니다). `e2e-dock.mjs`는 **돌리지 않는다**

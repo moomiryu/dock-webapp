@@ -127,6 +127,10 @@ export interface Persona {
     pick: number;
     /** 휜 배치(아치 · 미소, 옛 글의 부채꼴) — 아치 · 미소의 가장 긴 줄의 반지름(줄 길이의 배수) · 부채꼴이 두르는 각(도) */
     arc: { bow: number; fan: number };
+    /** 움직임(photoWave) — 봉우리: 바깥으로만 부푸는 폭(u) · 한 바퀴(--t-hold 배수). 꼬리: 늘었다 줄었다(꼬리 길이의 몫) ·
+        끝의 나부낌(u) · 한 바퀴(--t-hold 배수). 움직이는 견본 격자(봉우리 · 꼬리 · 둘 다 × 약 · 중 · 강)에서 디자이너가
+        봉우리 강 · 꼬리 약을 골랐다(2026-09-30) */
+    motion: { billow: number; billowTurn: number; stretch: number; tip: number; tailTurn: number };
   };
   /** 유머있는 — 말투가 형상을 가른다: 귀여운 = 새, 시니컬한 = 박쥐(creatureFor). 기하 도형만(원 · 세모 · 띠 · 원호).
       몸은 글을 따르고, 붙는 것(꼬리 · 귀 · 날개)은 길이가 정해져 있다. 값의 근거는 design/landscape.md '새' · '박쥐' */
@@ -204,7 +208,8 @@ export const PERSONAS: Record<string, Persona> = {
   // 대신하면 읽어 내야 하는 모양이라 도형이 주인공이 됐다(디자이너). 원을 부풀리지 않아 lobe · fill · gap · spread는
   // 쓰이지 않는다. 행간 1.3(2026-09-30, 디자이너 — 나무와 같던 1.1에서 늘렸다). 고른 과정과 버린 것은 design/landscape.md '구름'.
   doran: { key: 'doran', edge: 'photo', lobe: [1.1, 1.6], fill: [0.5, 0.75], gap: 1.6, spread: [0, 0.9], sat: 0, blur: 0, lh: 1.3,
-    photo: { body: 0.4, tail: 0.5, cap: 18, thick: [1, 1.15, 1.3, 1.5], pick: 4, arc: { bow: 1.3, fan: 130 } } },
+    photo: { body: 0.4, tail: 0.5, cap: 18, thick: [1, 1.15, 1.3, 1.5], pick: 4, arc: { bow: 1.3, fan: 130 },
+      motion: { billow: 0.35, billowTurn: 9, stretch: 0.08, tip: 0.2, tailTurn: 14 } } },
   // 새 · 박쥐 (2026-09-29). 픽셀 구름 → 나비(시안) → 말투가 가른다: 귀여운 = 새, 시니컬한 = 박쥐. 기하 도형만.
   // 원을 부풀리지 않아 lobe · fill · gap · spread · cell은 쓰이지 않는다(cell은 옛 픽셀 구름의 격자 — 그리는 코드가 남아 있다).
   // 새: 몸 원 · 머리 0.55R · 꼬리 4u(글이 두 방향 중 하나). 박쥐: 한 몸, 귀 · 아래 끝 · 날개는 두 줄 견본에서 잰 길이 그대로.
@@ -1306,6 +1311,44 @@ function photoFor(pr: Persona, rule: 'B' | 'C', tb: { x0: number; y0: number; x1
     w: (f.bx1 - f.bx0) * f.upp, h: (f.by1 - f.by0) * f.upp,
     text: { x: tx, y: ty, w: TW, h: TH },
     ...(layout ? { layout } : {})
+  };
+}
+
+/**
+ * 띠 구름의 움직임 — 실제 구름처럼 봉우리가 부풀었다 가라앉고 꼬리가 바람에 흐른다(2026-09-30, 디자이너).
+ * 봉우리: 둘레를 따라 흐르는 두 물결의 합을 0~1로 — 윤곽의 점을 **바깥 법선으로만** 민다. 안으로는 한 번도 안 들어가서
+ * 글 + 여백이 어느 순간에도 깨지지 않는다(구슬 구름의 '커지기만 한다'와 같은 뜻). 위를 향한 점일수록 크게, 평평한 밑은 거의
+ * 안 움직인다. 꼬리(몸통 상자 밖): 몸통 끝을 축으로 늘었다 줄었다, 끝으로 갈수록 크게 위아래로 나부낀다 — 몸통 밖이라
+ * 글에 닿지 않는다. 돌려주는 함수는 (초, --t-hold 초) → 그 순간의 윤곽(u). phase = 구름마다 다른 시작(벽의 구름이
+ * 한 박자로 움직이지 않게)
+ */
+export function photoWave(photo: Photo, w: number, m: NonNullable<Persona['photo']>['motion'], phase: number): (t: number, hold: number) => Pt[] {
+  const P = photo.pts, n = P.length;
+  let area = 0;
+  for (let i = 0; i < n; i++) { const [x1, y1] = P[i], [x2, y2] = P[(i + 1) % n]; area += x1 * y2 - x2 * y1; }
+  const sg = area > 0 ? 1 : -1;
+  const len = [0];
+  for (let i = 1; i <= n; i++) { const [a, b] = P[i - 1], [c, d] = P[i % n]; len.push(len[i - 1] + Math.hypot(c - a, d - b)); }
+  const per = len[n] || 1, lo = photo.x0, hi = photo.x1;
+  const at = P.map(([x, y], i) => {
+    const [px, py] = P[(i - 1 + n) % n], [nx, ny] = P[(i + 1) % n];
+    const tl = Math.hypot(nx - px, ny - py) || 1, tx = (nx - px) / tl, ty = (ny - py) / tl;
+    const ox = sg * ty, oy = -sg * tx;                                 // 바깥 법선
+    const tail = x < 0 ? -x / Math.max(1e-6, -lo) : x > w ? (x - w) / Math.max(1e-6, hi - w) : 0;
+    return { x, y, s: len[i] / per, ox, oy, up: Math.min(1, Math.max(0.12, -oy)), tail, side: x < 0 ? -1 : x > w ? 1 : 0 };
+  });
+  return (t, hold) => {
+    const wb = (2 * Math.PI) / (m.billowTurn * hold), wt = (2 * Math.PI) / (m.tailTurn * hold);
+    return at.map((f): Pt => {
+      const k = 0.5 + 0.5 * (0.6 * Math.sin(2 * Math.PI * 4 * f.s - wb * t + phase) + 0.4 * Math.sin(2 * Math.PI * 7 * f.s + 0.7 * wb * t + 1.3 + phase));
+      let x = f.x + f.ox * m.billow * k * f.up, y = f.y + f.oy * m.billow * k * f.up;
+      if (f.side) {
+        const edge = f.side < 0 ? 0 : w;
+        x = edge + (x - edge) * (1 + m.stretch * Math.sin(wt * t - 1.2 * f.tail + phase));
+        y += m.tip * f.tail * f.tail * Math.sin(0.8 * wt * t - 2.2 * f.tail + phase + 0.5);
+      }
+      return [x, y];
+    });
   };
 }
 

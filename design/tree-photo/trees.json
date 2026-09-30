@@ -1,0 +1,240 @@
+{
+ "note": "2026-09-30 격자로 고른 나무. alpha = alpha/<이름>.png(사진에서 뗀 것, 원본 사진을 긴 쪽 photo_long으로 줄여 crop[y0,y1,x0,x1]을 자른 자리). 모양 규칙은 scripts/trees/shape.py. 버드나무 제2의 나무는 같은 알파를 뒤집고(flip) · 가로로 늘이고(stretch) · 가닥 씨앗(seed)을 바꾼 것",
+ "alpha": {
+  "pine-764": {
+   "photo_long": 2000,
+   "crop": [
+    325,
+    1279,
+    410,
+    1554
+   ]
+  },
+  "pine-071": {
+   "photo_long": 2000,
+   "crop": [
+    668,
+    1524,
+    162,
+    985
+   ]
+  },
+  "pine-223": {
+   "photo_long": 2000,
+   "crop": [
+    115,
+    1122,
+    144,
+    1019
+   ]
+  },
+  "pine-656": {
+   "photo_long": 2000,
+   "crop": [
+    276,
+    1564,
+    85,
+    1213
+   ]
+  },
+  "pine-055": {
+   "photo_long": 2000,
+   "crop": [
+    164,
+    1284,
+    110,
+    1044
+   ]
+  },
+  "willow-155": {
+   "photo_long": 2000,
+   "crop": [
+    0,
+    1944,
+    43,
+    1504
+   ]
+  },
+  "willow-017": {
+   "photo_long": 2400,
+   "crop": [
+    116,
+    1804,
+    394,
+    1780
+   ]
+  }
+ },
+ "trees": [
+  {
+   "id": "pine-764",
+   "name": "소나무 764",
+   "species": "pine",
+   "alpha": "pine-764",
+   "fill": {
+    "frac": 0.004,
+    "r": 1
+   }
+  },
+  {
+   "id": "pine-071",
+   "name": "소나무 71 · 정이품송",
+   "species": "pine",
+   "alpha": "pine-071",
+   "fill": {
+    "frac": 0.004,
+    "r": 1
+   }
+  },
+  {
+   "id": "pine-223",
+   "name": "소나무 223",
+   "species": "pine",
+   "alpha": "pine-223",
+   "fill": {
+    "frac": 0.004,
+    "r": 1
+   }
+  },
+  {
+   "id": "pine-656",
+   "name": "소나무 656",
+   "species": "pine",
+   "alpha": "pine-656",
+   "fill": {
+    "frac": 0.03,
+    "r": 2
+   }
+  },
+  {
+   "id": "pine-055",
+   "name": "소나무 55 · 겐로쿠엔",
+   "species": "pine",
+   "alpha": "pine-055",
+   "fill": {
+    "frac": 0.004,
+    "r": 1
+   }
+  },
+  {
+   "id": "willow-155",
+   "name": "버드나무 155",
+   "species": "willow",
+   "alpha": "willow-155",
+   "fill": {
+    "frac": 0.004,
+    "r": 1
+   },
+   "drape": {
+    "L": 0.22,
+    "seed": 1
+   }
+  },
+  {
+   "id": "willow-017",
+   "name": "버드나무 017",
+   "species": "willow",
+   "alpha": "willow-017",
+   "fill": {
+    "frac": 0.004,
+    "r": 1
+   },
+   "drape": {
+    "L": 0.22,
+    "seed": 2
+   }
+  },
+  {
+   "id": "willow-155-f125",
+   "name": "버드나무 155-f125",
+   "species": "willow",
+   "alpha": "willow-155",
+   "fill": {
+    "frac": 0.004,
+    "r": 1
+   },
+   "drape": {
+    "L": 0.22,
+    "seed": 7,
+    "flip": true,
+    "stretch": 1.25
+   }
+  },
+  {
+   "id": "willow-155-s085",
+   "name": "버드나무 155-s085",
+   "species": "willow",
+   "alpha": "willow-155",
+   "fill": {
+    "frac": 0.004,
+    "r": 1
+   },
+   "drape": {
+    "L": 0.22,
+    "seed": 8,
+    "stretch": 0.85
+   }
+  },
+  {
+   "id": "willow-017-f120",
+   "name": "버드나무 017-f120",
+   "species": "willow",
+   "alpha": "willow-017",
+   "fill": {
+    "frac": 0.004,
+    "r": 1
+   },
+   "drape": {
+    "L": 0.22,
+    "seed": 9,
+    "flip": true,
+    "stretch": 1.2
+   }
+  },
+  {
+   "id": "willow-017-f",
+   "name": "버드나무 017-f",
+   "species": "willow",
+   "alpha": "willow-017",
+   "fill": {
+    "frac": 0.004,
+    "r": 1
+   },
+   "drape": {
+    "L": 0.22,
+    "seed": 10,
+    "flip": true
+   }
+  },
+  {
+   "id": "willow-155-f",
+   "name": "버드나무 155-f",
+   "species": "willow",
+   "alpha": "willow-155",
+   "fill": {
+    "frac": 0.004,
+    "r": 1
+   },
+   "drape": {
+    "L": 0.22,
+    "seed": 11,
+    "flip": true
+   }
+  },
+  {
+   "id": "willow-017-s090",
+   "name": "버드나무 017-s090",
+   "species": "willow",
+   "alpha": "willow-017",
+   "fill": {
+    "frac": 0.004,
+    "r": 1
+   },
+   "drape": {
+    "L": 0.22,
+    "seed": 12,
+    "stretch": 0.9
+   }
+  }
+ ]
+}

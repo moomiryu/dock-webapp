@@ -11,8 +11,8 @@ export type FontFamily = 'doran' | 'chabun' | 'botong' | 'ttoryeot' | 'deulseok'
 
 /**
  * 정렬 — 4/5에서 고른다. 셋은 모든 성격의 고전 정렬이고, 나머지는 성격마다 제 것이 있다
- * (2026-09-28, design/landscape.md): 당당한(나무) = 가운데 · 균등 배분 · 사다리꼴,
- * 다정한(구름) = 가운데 · 아치 · 부채꼴 · 미소, 차분한(돌) = 올려 걸기 · 중간 걸기 · 내려 걸기(R17).
+ * (2026-09-28, design/landscape.md): 당당한(나무) = 기본 · 사선 · 세로쓰기,
+ * 다정한(구름) = 가운데 · 아치 · 미소(부채꼴은 2026-09-30에 칸에서 뺐다 — 옛 글은 그대로 선다), 차분한(돌) = 올려 걸기 · 중간 걸기 · 내려 걸기(R17).
  * 목록은 cloud.ts의 arrangementsFor. 'contour'(윤곽 따라, R20)는 칸에서 뺐지만 되살릴 수 있게 둔다
  */
 export type Align = 'left' | 'center' | 'right' | 'distribute' | 'trapezoid' | 'arch' | 'fan' | 'smile' | 'hang-up' | 'hang-mid' | 'hang-down' | 'contour' | 'slant' | 'vertical';

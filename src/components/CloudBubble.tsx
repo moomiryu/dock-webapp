@@ -32,10 +32,10 @@ import type { Boxed } from '../lib/fit';
  * 숨 쉬지도 않는다. 행간은 1.1이라 글 상자에 --cloud-lh로 내려 준다(app.css). 사선 · 세로쓰기는
  * 한 자씩 자리를 받는다(layout.glyphs).
  *
- * ── 구슬 구름 (다정한, 2026-09-28) ─────────────────────────────────────
- * 한 크기 구슬(cloud.ts · beadFor)을 그대로 찍는다 — 번짐 필터도 숨도 없다. 알끼리 조금씩 겹쳐
- * 윤곽이 구슬 줄로 읽힌다. 곁의 작은 구름은 제 묶음(.cloud-let)이라 벽에서 따로 오르내릴 수 있다.
- * 행간 1.1 · 글은 가운데(나무와 같다).
+ * ── 띠 구름 (다정한, 2026-09-30) ───────────────────────────────────────
+ * 사진에서 딴 윤곽 하나(cloud.ts · photoFor)를 한 색으로 칠한다 — 번지지도 숨 쉬지도 않는다. 상자는 몸통이고
+ * 꼬리는 상자 밖으로 그려진다(.cloud-art는 overflow: visible — 나무의 밑동과 같다). 행간 1.3 · 글은 가운데.
+ * 09-28의 구슬 구름(한 크기 구슬 · 곁의 작은 구름)은 걷었다.
  *
  * ── 새 · 박쥐 (유머있는, 2026-09-29) ───────────────────────────────────
  * 말투가 가른다(cloud.ts · creatureFor) — 귀여운은 새(원 둘 · 부리 세모 · 꼬리 띠), 시니컬한은 박쥐(윤곽 하나).
@@ -61,6 +61,9 @@ interface Props {
   reach?: boolean;
   /** 새 · 박쥐의 자세 — 안 주면 폰의 자세(rest). 벽이 앉음(sit, 새만) · 날기(fly)를 고른다 */
   pose?: 'rest' | 'sit' | 'fly';
+  /** 글을 상자 한가운데로 — 띠 구름을 통째로 옮겨 글의 가운데를 상자의 가운데에 맞춘다(폰 미리보기 4/5 · 5/5).
+      구름의 실루엣과 별개로 글이 딱 중앙에 있게(2026-09-30, 디자이너). 띠 구름만 — 나무는 글이 머리에 서는 것이 모양의 뜻이다 */
+  centerText?: boolean;
   children?: ReactNode;
 }
 
@@ -134,7 +137,7 @@ function prefersStill(): boolean {
   return typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-export default function CloudBubble({ cloud, box, side, color, still, className, style, reach, pose, children }: Props) {
+export default function CloudBubble({ cloud, box, side, color, still, className, style, reach, pose, centerText, children }: Props) {
   const filterId = 'cloud' + useId().replace(/[^a-zA-Z0-9]/g, '');
   const quiet = still || prefersStill();
   const W = cloud.w * K, H = cloud.h * K;
@@ -157,7 +160,7 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   }, [cloud, quiet]);
 
   const art = useMemo(() => {
-    if (pr.edge === 'pixel' || cloud.stone || cloud.tree || cloud.beads || cloud.creature) return null;
+    if (pr.edge === 'pixel' || cloud.stone || cloud.tree || cloud.photo || cloud.creature) return null;
     return (
       <>
         {cloud.circles.map((c, i) => (
@@ -192,13 +195,13 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   const t = cloud.text;
   const stone = cloud.stone, hatch = pr.stone?.hatch;
   const stoneD = useMemo(() => (stone ? stonePath(stone.pts, pr.stone?.round ?? 0) : ''), [stone, pr.stone?.round]);
-  const tree = cloud.tree, beads = cloud.beads;
-  const bead = (p: readonly [number, number], i: number) => <circle key={i} cx={(p[0] * K).toFixed(1)} cy={(p[1] * K).toFixed(1)} r={((beads?.r ?? 0) * K).toFixed(1)} />;
+  const tree = cloud.tree, photo = cloud.photo;
+  const photoD = useMemo(() => (photo ? 'M' + photo.pts.map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join('L') + 'Z' : ''), [photo]);
   const creature = cloud.creature, shape = creature ? (pose && creature.poses[pose]) || creature.poses.rest : null;
   // 나무 · 구슬 구름은 글 배치를 형상이 정한다(cloud.ts의 layout — 다시 나눈 줄 · 줄마다 자간 · 한 자씩의 자리).
   // 줄 맞춤은 가운데 — 나무 · 뭉게구름은 가운데 맞춘 줄을 품게 지었다
   const lay = cloud.layout;
-  const kids = (tree || beads || lay) && isValidElement(children)
+  const kids = (tree || photo || lay) && isValidElement(children)
     ? cloneElement(children as ReactElement<{ align?: string; text?: string; lineTrack?: readonly number[]; glyphs?: unknown; glyphBox?: unknown }>, {
         align: lay?.align ?? 'center',
         ...(lay?.lines ? { text: lay.lines.join('\n') } : {}),
@@ -208,8 +211,9 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
     : children;
   return (
     <div
-      className={'cloud-bubble' + (tree ? ' is-tree' : '') + (beads ? ' is-bead' : '') + (className ? ' ' + className : '')}
-      style={{ width: `calc(${side} * ${box.w.toFixed(4)})`, height: `calc(${side} * ${box.h.toFixed(4)})`, ...(pr.lh ? { '--cloud-lh': pr.lh } : {}), ...style } as CSSProperties}
+      className={'cloud-bubble' + (tree ? ' is-tree' : '') + (photo ? ' is-photo' : '') + (className ? ' ' + className : '')}
+      style={{ width: `calc(${side} * ${box.w.toFixed(4)})`, height: `calc(${side} * ${box.h.toFixed(4)})`, ...(pr.lh ? { '--cloud-lh': pr.lh } : {}),
+        ...(centerText && photo ? { transform: `translate(${((0.5 - (t.x + t.w / 2) / cloud.w) * 100).toFixed(3)}%, ${((0.5 - (t.y + t.h / 2) / cloud.h) * 100).toFixed(3)}%)` } : {}), ...style } as CSSProperties}
     >
       <svg className="cloud-art" viewBox={`0 0 ${W.toFixed(1)} ${H.toFixed(1)}`} aria-hidden="true" focusable="false">
         {stone && !(hatch?.on && stone.hatch.length) ? (
@@ -235,11 +239,8 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
           </>
         ) : tree ? (
           <path d={treePath(tree, !!reach)} fill={color} />
-        ) : beads ? (
-          <g fill={color}>
-            <g className="cloud-body">{beads.body.map(bead)}</g>
-            {beads.lets.map((l, i) => <g key={i} className={`cloud-let l${i}`}>{l.map(bead)}</g>)}
-          </g>
+        ) : photo ? (
+          <path d={photoD} fill={color} />
         ) : shape ? (
           <g fill={color}>
             {shape.polys.map((P, i) => <path key={'p' + i} d={'M' + P.map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join('L') + 'Z'} />)}

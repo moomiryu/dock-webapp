@@ -95,7 +95,8 @@ export default function PhasePreview({ text, tone, onConfirm, onBack, onHome, bu
  <div className="proj-stage"><div className="sim">
   <div ref={frameRef} className="sim-frame is-wall" style={frame} aria-label={pick(T.frame, lang)}>
    <i ref={side} className="preview-side" aria-hidden />
-   <WallShowMessage key={run} msg={msg} land={null} startedAt={0} />
+   {/* 폰 미리보기는 글을 화면 한가운데에(2026-09-30, 디자이너) — 벽의 강조는 그대로 */}
+   <WallShowMessage key={run} msg={msg} land={null} startedAt={0} centerText />
   </div>
   {/* 보조 조작은 이것 하나. 테두리만 있는 작은 버튼이라 아래의 채움
       버튼(보내기)과 무게가 다르다 — 다음으로 가는 길과 섞이지 않는다. */}

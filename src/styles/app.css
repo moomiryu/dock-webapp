@@ -3718,7 +3718,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    scaleY 0.75)은 누르기 전 높이로 자리를 잡아, 칸이 그만큼 아래로 자라고 눌린 글은 그 가운데 —
    곧 글 자리보다 (1 − scaleY) × 높이 ÷ 2 아래 — 에 섰다(네 줄에서 11px). 칸을 글 자리 크기에
    묶으면 넘친 몫이 위아래로 고르게 나가 눌린 글이 글 자리 한가운데 선다. */
-.cloud-bubble.is-tree .cloud-text, .cloud-bubble.is-bead .cloud-text{ grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
+.cloud-bubble.is-tree .cloud-text, .cloud-bubble.is-photo .cloud-text{ grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
 /* 한 글자씩 펄럭이려면 글자마다 제 상자가 있어야 한다(인라인 글자는 transform을 안 받는다) */
 .voice-bubble .ch{ display: inline-block; }
 /* 구름의 휜 배치(아치 · 부채꼴 · 미소) — 글 상자 안에 한 자씩 제 가운데 자리로(VoiceBubble glyphs).

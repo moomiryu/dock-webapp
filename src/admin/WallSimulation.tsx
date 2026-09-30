@@ -193,6 +193,8 @@ type Body = {
   bg: RGB; fg: RGB;
   /** 나무 — 새가 앉는 끝(꼭대기 · 단 끝, 상자에 대한 비율). 새 · 박쥐 — 앉음 · 날기 · 몸짓의 상태 */
   perch: Pt2[] | null; cr: CrState | null;
+  /** 구름 — 꼬리까지 합친 가로 범위(상자 폭에 대한 비율, 0~1 밖으로 나간다). 크기는 몸통(상자)으로 재고, 읽힘은 꼬리까지 */
+  ext?: Pt2;
 };
 type RGB = [number, number, number];
 type Pt2 = [number, number];
@@ -210,8 +212,8 @@ type Size = {
   bg?: RGB; fg?: RGB;
   /** 나무 — 새가 앉는 끝(상자에 대한 비율). 새 · 박쥐 — 형상(형상 단위) */
   perch?: Pt2[]; cr?: CrGeo;
-  /** 구름 — 글자 가운데, 글자 한 칸(한 변의 비율) · 상자 폭 · 작은 구름 오르내림 (u) */
-  chars?: Pt2[]; unit?: number; cw?: number; bob?: number;
+  /** 구름 — 글자 가운데, 글자 한 칸(한 변의 비율) · 상자 폭(u) · 꼬리까지 합친 가로 범위(상자 폭에 대한 비율) */
+  chars?: Pt2[]; unit?: number; cw?: number; ext?: Pt2;
 };
 
 // ─── 나무 (당당한) — 벽 아래에 선다 (2026-09-28, design/landscape.md '나무') ─────────
@@ -293,8 +295,6 @@ const FLUTTER_EVERY = 14;
 const FLUTTER_PASS = 3;
 const FLUTTER_U = 0.3;
 const FLUTTER_WIDTH = 1.1;
-/** 곁의 작은 구름이 오르내리는 한 번(--t-hold 배수). 폭은 cloud.ts의 bead.bob */
-const BOB = 4;
 /** 두 구름의 글자 한 자끼리 떨어지는 거리(u, 가운데 사이) — 글자의 둥근 자리 0.55 둘 + 틈 0.15. 몸은 겹쳐 지나가되(곱하기)
     글자끼리는 안 닿는다. 오버프린트 전에는 구슬이 남의 글자에서 0.7u(0.55 + 0.15) 떨어졌다 */
 const LETTER_APART = 1.25;
@@ -328,7 +328,7 @@ function scaleOf(cloud: Cloud): number {
   return cloud.creature ? CREATURE_SCALE : 1;
 }
 function kindOf(cloud: Cloud): Kind {
-  return cloud.stone ? 'stone' : cloud.tree ? 'tree' : cloud.beads ? 'cloud' : cloud.creature ? cloud.creature.kind : 'float';
+  return cloud.stone ? 'stone' : cloud.tree ? 'tree' : cloud.photo ? 'cloud' : cloud.creature ? cloud.creature.kind : 'float';
 }
 /** 나무에서 새가 앉는 끝 — 상자에 대한 비율. 예리한은 꼭대기 · 단마다 밑변의 양 끝(벽이 바닥까지 이은 단까지), 온화한은 맨 위 원의 꼭대기.
     온화한의 아래 원들은 윗 원 안에 반쯤 들어가 앉을 턱이 없다 */
@@ -487,6 +487,8 @@ function lettersOf(b: Body, m: number): Rect | null {
 }
 function bodyOf(b: Body, h: number): Rect {
   if (b.kind === 'tree') return [b.x - b.hw * TREE_BASE, b.y - b.hh, b.x + b.hw * TREE_BASE, h];
+  // 띠 구름 — 꼬리는 상자(몸통) 밖으로 뻗는다. 남의 글자를 덮어 읽히지 않게 되는지는 꼬리까지 따진다(2026-09-30)
+  if (b.ext) return [b.x - b.hw + b.ext[0] * 2 * b.hw, b.y - b.hh, b.x - b.hw + b.ext[1] * 2 * b.hw, b.y + b.hh];
   if (b.poly) {
     let l = Infinity, r = -Infinity, t = Infinity, d = -Infinity;
     for (const [x, y] of b.poly) { l = Math.min(l, x); r = Math.max(r, x); t = Math.min(t, y); d = Math.max(d, y); }
@@ -1060,12 +1062,10 @@ function stoneAndFloater(s: Body, f: Body, h: number, dt: number) {
 }
 
 // ─── 구름의 움직임 — 요소를 직접 (React 바깥) ────────────────────────────
-/** 한 구름에서 움직일 요소 — 본 구름의 구슬(놓인 cy · 자리 x, u) · 한 자씩의 글자(자리 x, u) · 작은 구름 */
+/** 한 구름에서 움직일 요소 — 한 자씩의 글자(자리 x, u). 구슬 구름 때는 구슬 · 곁의 작은 구름도 움직였다(09-30에 걷었다) */
 type CloudDom = {
   el: HTMLElement; k: number; on: boolean;
-  beads: { c: SVGCircleElement; cy: number; x: number }[];
   chars: { e: HTMLElement; x: number }[];
-  lets: SVGGElement[];
 };
 function cloudDomOf(cache: Map<string, CloudDom>, id: string, el: HTMLElement, f: Size): CloudDom {
   const had = cache.get(id);
@@ -1074,19 +1074,17 @@ function cloudDomOf(cache: Map<string, CloudDom>, id: string, el: HTMLElement, f
   const k = svg && f.cw ? svg.viewBox.baseVal.width / f.cw : 100;            // 화판 단위 / u
   const d: CloudDom = {
     el, k, on: false,
-    beads: [...el.querySelectorAll<SVGCircleElement>('.cloud-body circle')].map((c) => ({ c, cy: Number(c.getAttribute('cy')), x: Number(c.getAttribute('cx')) / k })),
     // 글자는 cloud.ts의 chars와 같은 차례다(띄어쓰기 빼고 줄 차례) — 자리는 거기서 읽는다
-    chars: [...el.querySelectorAll<HTMLElement>('.ch')].map((e, i) => ({ e, x: (f.chars?.[i]?.[0] ?? 0) * (f.cw ?? 0) })),
-    lets: [...el.querySelectorAll<SVGGElement>('.cloud-let')]
+    chars: [...el.querySelectorAll<HTMLElement>('.ch')].map((e, i) => ({ e, x: (f.chars?.[i]?.[0] ?? 0) * (f.cw ?? 0) }))
   };
   cache.set(id, d);
   return d;
 }
 /**
- * 펄럭임 · 작은 구름의 오르내림 한 프레임.
+ * 펄럭임 한 프레임.
  * 펄럭임은 FLUTTER_EVERY마다 한 번, 봉우리 하나가 왼쪽 밖에서 오른쪽 밖으로 FLUTTER_PASS에 지나가며
- * 그 자리의 글자와 구슬을 FLUTTER_U 올렸다 내린다. 지나가는 동안만 요소를 건드린다.
- * 작은 구름은 저마다 BOB 주기로 오르내린다(서로 위상이 다르다). 펄럭임은 평소엔 꺼 둔다(FLUTTER_ON).
+ * 그 자리의 글자를 FLUTTER_U 올렸다 내린다. 지나가는 동안만 요소를 건드린다. 평소엔 꺼 둔다(FLUTTER_ON).
+ * 구슬 구름 때는 구슬도 같이 오르고 곁의 작은 구름이 오르내렸다 — 띠 구름은 사진 윤곽 하나라 글자만(2026-09-30)
  */
 function cloudFrame(d: CloudDom, b: Body, f: Size, sec: number) {
   const H = hold(), every = FLUTTER_EVERY * H, pass = FLUTTER_PASS * H, cw = f.cw ?? 0;
@@ -1094,11 +1092,9 @@ function cloudFrame(d: CloudDom, b: Body, f: Size, sec: number) {
   if (on || d.on) {
     const c = -1.5 + (cw + 3) * (tt / pass);
     const wave = (x: number) => (on ? -FLUTTER_U * Math.exp(-(((x - c) / FLUTTER_WIDTH) ** 2)) : 0);
-    for (const p of d.beads) p.c.setAttribute('cy', (p.cy + wave(p.x) * d.k).toFixed(1));
     for (const q of d.chars) q.e.style.transform = on ? `translateY(${(wave(q.x) * b.u).toFixed(2)}px)` : '';
     d.on = on;
   }
-  d.lets.forEach((g, i) => g.setAttribute('transform', `translate(0 ${((f.bob ?? 0) * d.k * Math.sin((sec / (BOB * H)) * Math.PI * 2 + b.sway + i * 2.1)).toFixed(1)})`));
 }
 function prefersReducedMotion(): boolean {
   return typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1696,13 +1692,13 @@ export default function WallSimulation() {
       // 상자에 대한 비율(0~1)로 넘긴다 — 한 변(side)이 창과 함께 바뀌기 때문이다
       const fr = ([x, y]: readonly [number, number]): Pt2 => [x / cloud.w, y / cloud.h];
       const poly = cloud.stone ? convexHull(cloud.stone.pts).map(fr) : undefined;
-      const kind = kindOf(cloud), t = cloud.tree, bd = cloud.beads, colors = colorsOf(msg), scale = scaleOf(cloud);
+      const kind = kindOf(cloud), t = cloud.tree, ph = cloud.photo, colors = colorsOf(msg), scale = scaleOf(cloud);
       m.set(msg.id, {
         w: box.w * scale, h: (box.h + box.tail) * scale, scale, heavy: kind === 'stone', kind, poly,
         tx: textBox(cloud), pair: seed01(msg.text + '|pair'), over: seed01(msg.text + '|over'), bg: rgbOf(colors.bg), fg: rgbOf(colors.text),
         ...(t ? { tall: tallOf(msg), perch: perchesOf(cloud) } : {}),
         ...(cloud.creature ? { cr: crGeoOf(cloud) } : {}),
-        ...(bd ? { chars: bd.chars.map(fr), unit: box.unit, cw: cloud.w, bob: cloud.persona.bead?.bob ?? 0 } : {})
+        ...(ph ? { chars: ph.chars.map(fr), unit: box.unit, cw: cloud.w, ext: [ph.x0 / cloud.w, ph.x1 / cloud.w] as Pt2 } : {})
       });
     }
     sizesRef.current = m;
@@ -1744,6 +1740,7 @@ export default function WallSimulation() {
         if (kind === 'cloud' && f?.chars && b.side !== side) {
           b.side = side; b.u = side * (f.unit ?? 0); b.chars = f.chars.map(off);
         }
+        if (kind === 'cloud') b.ext = f?.ext;
         // 크기를 몰라 떠다니는 말로 먼저 놓였던 구름(벽이 막 켜진 첫 프레임들) — 자리를 여기서 받는다. 다른 구름의
         // 자리를 보고 고른다: 모르고 고르면 한데 포개져 서로 글자를 비키느라 밀치며 두 배로 빨라졌다(2026-09-29, 재서 알았다)
         if (kind === 'cloud' && !b.home) {
@@ -1935,7 +1932,7 @@ const WallBlock = memo(function WallBlock({ msg, ghost, onEl }: { msg: StoredMes
 
 /* 말풍선 때는 물결이 30초에 걸쳐 잦아들어 잔상의 세기에 닿았다(calmAt).
    구름은 강조와 잔상이 같은 숨(중)을 쉰다 — 크기만 내려앉는다. */
-export const WallShowMessage = memo(function WallShowMessage({ msg, land }: { msg: StoredMessage; land: Land | null; startedAt: number }) {
+export const WallShowMessage = memo(function WallShowMessage({ msg, land, centerText }: { msg: StoredMessage; land: Land | null; startedAt: number; centerText?: boolean }) {
   const { bg, text, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
   const { lines, cloud, box } = useMemo(() => cloudOf(msg), [msg]);
 
@@ -1947,7 +1944,7 @@ export const WallShowMessage = memo(function WallShowMessage({ msg, land }: { ms
   return (
     <div className={`wall-show${landing ? ' is-landing' : ''}`}>
       <div className="wall-show-box" style={boxStyle}>
-        <CloudBubble cloud={cloud} box={box} side="var(--big-side)" color={bg}>
+        <CloudBubble cloud={cloud} box={box} side="var(--big-side)" color={bg} centerText={centerText}>
           <VoiceBubble text={lines.join('\n')} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght}
             width={scaleX} slant={skew} align={msg.tone?.align} size={msg.tone?.size} manner={msg.tone?.manner}
           speed={msg.tone?.speed} weightPos={msg.tone?.weight}

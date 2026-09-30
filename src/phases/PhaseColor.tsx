@@ -40,6 +40,7 @@ const T = {
     slant: { ko: '사선', en: 'Diagonal' },
     vertical: { ko: '세로쓰기', en: 'Vertical' },
     arch: { ko: '아치', en: 'Arch' },
+    /* 부채꼴 — 칸에서 뺐다(2026-09-30, 디자이너). 옛 글은 그대로 부채꼴로 선다 — 되살리면 이 말을 쓴다 */
     fan: { ko: '부채꼴', en: 'Fan' },
     smile: { ko: '미소', en: 'Smile' },
     /* 차분한(돌) — 포스터 넷(R17~R20). 이름은 일단 원론적인 이름으로(2026-09-28, 디자이너) */
@@ -52,8 +53,8 @@ const T = {
 
 /*
  * 정렬 잣대의 선택지는 성격이 정한다(cloud.ts · arrangementsFor, 2026-09-28). 차분한 · 유머있는은
- * 고전적인 셋(왼쪽 · 가운데 · 오른쪽), 당당한(나무)은 가운데 · 균등 배분 · 사다리꼴, 다정한(구름)은
- * 가운데 · 아치 · 부채꼴 · 미소. 고르면 미리보기의 형상이 그 자리에서 바뀐다 — 정렬이 곧 실루엣이다.
+ * 고전적인 셋(왼쪽 · 가운데 · 오른쪽), 당당한(나무)은 기본 · 사선 · 세로쓰기, 다정한(구름)은
+ * 가운데 · 아치 · 미소(부채꼴은 2026-09-30에 뺐다). 고르면 미리보기의 형상이 그 자리에서 바뀐다 — 정렬이 곧 실루엣이다.
  * 값은 tone.align으로 저장되고 벽까지 간다.
  */
 interface Props {
@@ -163,7 +164,7 @@ function ColorDemo({ lines, tone, cloud, box, from, pairs }: {
         return () => { window.clearTimeout(t); window.clearInterval(iv); };
     }, []);
     const m = pairs[i % pairs.length];
-    return <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={m.bg} still>
+    return <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={m.bg} still centerText>
      <VoiceBubble text={lines.join('\n')} bg={m.bg} color={m.text} fontFamily={fontMap[tone.font]} font={tone.font}
        weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size} manner={tone.manner}
        speed={tone.speed} weightPos={tone.weight}
@@ -339,7 +340,7 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext, returni
    {/* 제목과 안내는 첫 장으로 옮겼다(2026-09-28) — 3/5처럼 고르는 장은 위가
        미리보기, 아래가 조정판이다. 무엇을 하는 자리인지는 첫 장이 말한다 */}
    <div className="color-stage" style={{ '--color-area': area } as CSSProperties}>
-    <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={bg}>
+    <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={bg} centerText>
      <VoiceBubble text={lines.join('\n')} bg={bg} color={fg} fontFamily={fontMap[tone.font]} font={tone.font}
        weight={tone.wght} width={tone.tone} slant={tone.slnt} align={align} size={tone.size} manner={tone.manner}
        speed={tone.speed} weightPos={tone.weight}

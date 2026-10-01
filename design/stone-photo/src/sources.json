@@ -1,0 +1,60 @@
+{
+ "note": "위키미디어 공용에서 받은 CC0 · 공공 저작물(2026-10-01). 라이선스는 공용 API로 받은 파일 정보 그대로. 사진은 긴 쪽 1600으로 줄여 저장 — 고를 때는 긴 쪽 3840에서 1600으로 줄여 뗐다.",
+ "sources": [
+  {
+   "file": "stone-a.jpg",
+   "title": "File:Findling.2.Torgauer.Strasse.3-6.Naturdenkmal.7-7F.jpg",
+   "license": "CC0",
+   "artist": "Membeth",
+   "page": "https://commons.wikimedia.org/wiki/File:Findling.2.Torgauer.Strasse.3-6.Naturdenkmal.7-7F.jpg",
+   "size": [
+    4608,
+    3072
+   ]
+  },
+  {
+   "file": "stone-b.jpg",
+   "title": "File:Findling.Heinrich-Lassen-Park.kleiner.Spielplatz.jpg",
+   "license": "CC0",
+   "artist": "Membeth",
+   "page": "https://commons.wikimedia.org/wiki/File:Findling.Heinrich-Lassen-Park.kleiner.Spielplatz.jpg",
+   "size": [
+    4608,
+    3072
+   ]
+  },
+  {
+   "file": "stone-c.jpg",
+   "title": "File:Plage de Chiliadou, Eubée. Grece.jpg",
+   "license": "CC0",
+   "artist": "Jebulon",
+   "page": "https://commons.wikimedia.org/wiki/File:Plage_de_Chiliadou,_Eub%C3%A9e._Grece.jpg",
+   "size": [
+    6000,
+    3644
+   ]
+  },
+  {
+   "file": "stone-d.jpg",
+   "title": "File:Naturdenkmal Findling am Borsigdamm 1 Berlin-Tegel 2025-06-28 06.jpg",
+   "license": "CC0",
+   "artist": "Leonhard Lenz",
+   "page": "https://commons.wikimedia.org/wiki/File:Naturdenkmal_Findling_am_Borsigdamm_1_Berlin-Tegel_2025-06-28_06.jpg",
+   "size": [
+    8144,
+    5424
+   ]
+  },
+  {
+   "file": "stone-moon.jpg",
+   "title": "File:AS17-140-21493+AS17-140-21497.jpg",
+   "license": "Public domain",
+   "artist": "Eugene A. CernanPhotomontage by Eric Hartwell",
+   "page": "https://commons.wikimedia.org/wiki/File:AS17-140-21493%2BAS17-140-21497.jpg",
+   "size": [
+    5334,
+    2992
+   ]
+  }
+ ]
+}

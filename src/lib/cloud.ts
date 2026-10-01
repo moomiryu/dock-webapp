@@ -163,11 +163,14 @@ export interface Persona {
     pick: number;
     /** 휜 배치(아치 · 미소, 옛 글의 부채꼴) — 아치 · 미소의 가장 긴 줄의 반지름(줄 길이의 배수) · 부채꼴이 두르는 각(도) */
     arc: { bow: number; fan: number };
-    /** 움직임(photoWave) — 봉우리: 바깥으로만 부푸는 폭(u) · 한 바퀴(--t-hold 배수). 꼬리: 늘었다 줄었다(꼬리 길이의 몫) ·
-        끝의 나부낌(u) · 한 바퀴(--t-hold 배수). 움직이는 견본 격자(봉우리 · 꼬리 · 둘 다 × 약 · 중 · 강)에서 디자이너가
-        봉우리 강 · 꼬리 약을 골랐다(2026-09-30). 꼬리는 2026-10-01에 껐다(0) — 끝으로 갈수록 크게 물결치는 몸짓이 뱀의
-        문법이다. 혹의 사슬이 된 꼬리도 봉우리처럼 바깥으로만 부푼다. 꼬리를 어떻게 움직일지는 따로 고른다 */
-    motion: { billow: number; billowTurn: number; stretch: number; tip: number; tailTurn: number };
+    /** 움직임(photoWave) — 봉우리: 바깥으로만 부푸는 폭(u) · 한 바퀴(--t-hold 배수). 움직이는 견본 격자(봉우리 · 꼬리 · 둘 다 ×
+        약 · 중 · 강)에서 디자이너가 봉우리 강을 골랐다(2026-09-30).
+        꼬리 — 움직이는 견본 여섯 칸(design/landscape-cloud-photo-tail-motion.html)에서 디자이너가 ② + ④를 골랐다(2026-10-01).
+        swell = 혹이 뿌리에서 끝으로 차례로 부푸는 폭(그 자리 꼬리 두께의 몫, 봉우리의 billow를 넘지 않게) · 한 바퀴. drift = 떨어진 조각이 끝 너머로 떠났다
+        돌아오는 거리(u, 몸통에 가장 가까운 조각 — 먼 조각일수록 더) · 한 바퀴. 고르지 않은 칸: ③ 꼬리 길이가 숨쉼 · ⑤ 조각이
+        둥실 · ⑥ 조각이 흩어지고 다시 돋음. stretch · tip(꼬리가 늘었다 줄고 끝이 위아래로 나부낌)은 0 — 끝으로 갈수록 크게
+        물결치는 몸짓이 뱀의 문법이다(2026-10-01에 껐다) */
+    motion: { billow: number; billowTurn: number; swell: number; swellTurn: number; drift: number; driftTurn: number; stretch: number; tip: number; tailTurn: number };
   };
   /** 유머있는 — 말투가 형상을 가른다: 귀여운 = 새, 시니컬한 = 박쥐(creatureFor). 기하 도형만(원 · 세모 · 띠 · 원호).
       몸은 글을 따르고, 붙는 것(꼬리 · 귀 · 날개)은 길이가 정해져 있다. 값의 근거는 design/landscape.md '새' · '박쥐' */
@@ -251,7 +254,7 @@ export const PERSONAS: Record<string, Persona> = {
   // 쓰이지 않는다. 행간 1.3(2026-09-30, 디자이너 — 나무와 같던 1.1에서 늘렸다). 고른 과정과 버린 것은 design/landscape.md '구름'.
   doran: { key: 'doran', edge: 'photo', lobe: [1.1, 1.6], fill: [0.5, 0.75], gap: 1.6, spread: [0, 0.9], sat: 0, blur: 0, lh: 1.3,
     photo: { body: 0.4, tail: 1, cap: 18, thick: [1, 1.15, 1.3, 1.5], pick: 4, arc: { bow: 1.3, fan: 130 },
-      motion: { billow: 0.35, billowTurn: 9, stretch: 0, tip: 0, tailTurn: 14 } } },
+      motion: { billow: 0.35, billowTurn: 9, swell: 0.14, swellTurn: 10, drift: 0.6, driftTurn: 14, stretch: 0, tip: 0, tailTurn: 14 } } },
   // 새 · 박쥐 (2026-09-29). 픽셀 구름 → 나비(시안) → 말투가 가른다: 귀여운 = 새, 시니컬한 = 박쥐. 기하 도형만.
   // 원을 부풀리지 않아 lobe · fill · gap · spread · cell은 쓰이지 않는다(cell은 옛 픽셀 구름의 격자 — 그리는 코드가 남아 있다).
   // 새: 몸 원 · 머리 0.55R · 꼬리 4u(글이 두 방향 중 하나). 박쥐: 한 몸, 귀 · 아래 끝 · 날개는 두 줄 견본에서 잰 길이 그대로.
@@ -364,11 +367,12 @@ export interface Photo {
   /** 어느 띠인가(cloudPhoto.data.ts) */
   id: string;
   pts: Pt[];
-  /** 꼬리 끝 너머 떨어진 조각(2026-10-01) — 윤곽 여럿. 몸통과 같은 색으로 칠하고 움직이지 않는다 */
+  /** 꼬리 끝 너머 떨어진 조각(2026-10-01) — 윤곽 여럿. 몸통과 같은 색으로 칠하고, 끝 너머로 떠났다 돌아온다(photoWave) */
   extra?: Pt[][];
   /** 글자 한 자씩의 가운데(띄어쓰기 빼고, 줄 차례대로) — 벽에서 남의 구름 글자가 이 자리를 비켜 간다 */
   chars: Pt[];
-  /** 꼬리 · 떨어진 조각까지 합친 가로 범위(u, 몸통 상자 기준) — 벽이 읽힘을 따질 때 꼬리도 몸으로 친다 */
+  /** 꼬리 · 떨어진 조각까지 합친 가로 범위(u, 몸통 상자 기준) — 조각이 떠가는 데까지(driftReach). 벽이 읽힘을 따질 때 꼬리도
+      몸으로 친다 */
   x0: number; x1: number;
 }
 
@@ -1583,50 +1587,119 @@ function photoFor(pr: Persona, rule: 'B' | 'C', tb: { x0: number; y0: number; x1
     f = g; got = b2;
   }
   const { pts, extra, tx, ty } = got, xs = [...pts, ...extra.flat()].map((q) => q[0]);
+  // 조각이 끝 너머로 떠가는 데까지 가로 범위에 넣는다(photoWave — 가장 먼 조각이 가는 거리 + 부풀어 커지는 만큼). 벽이 읽힘을
+  // 따질 때 그 자리도 몸으로 친다
+  const bw = (f.bx1 - f.bx0) * f.upp, half = (r: Pt[]) => { const cx = r.reduce((a, q) => a + q[0], 0) / r.length; return Math.max(...r.map((q) => Math.abs(q[0] - cx))); };
+  const reach = (side: number) => {
+    const rs = extra.filter((r) => pieceSide(r, bw) === side);
+    return rs.length ? driftReach(p.motion, rs.length - 1) + p.motion.swell * Math.max(...rs.map(half)) : 0;
+  };
   return {
     persona: pr, rule, circles: [], spikes: [],
-    photo: { id: f.s.id, pts, ...(extra.length ? { extra } : {}), chars: chars.map(([x, y]): Pt => [x - tb.x0 + tx, y - tb.y0 + ty]), x0: Math.min(...xs), x1: Math.max(...xs) },
+    photo: { id: f.s.id, pts, ...(extra.length ? { extra } : {}), chars: chars.map(([x, y]): Pt => [x - tb.x0 + tx, y - tb.y0 + ty]), x0: Math.min(...xs) - reach(-1), x1: Math.max(...xs) + reach(1) },
     w: (f.bx1 - f.bx0) * f.upp, h: (f.by1 - f.by0) * f.upp,
     text: { x: tx, y: ty, w: TW, h: TH },
     ...(layout ? { layout } : {})
   };
 }
 
+type PhotoMotion = NonNullable<Persona['photo']>['motion'];
+/** 0 → 1 → 0, 한 바퀴 = 1 */
+const bump = (c: number) => (1 - Math.cos(2 * Math.PI * c)) / 2;
+const ease = (u: number) => u * u * (3 - 2 * u);
+/** 꼬리 움직임의 꼴 — 얼마나 · 몇 박자는 PERSONAS.doran.photo.motion, 여기는 모양(견본 landscape-cloud-photo-tail-motion.html과 같다).
+    SWELL_LAG = 부풂이 꼬리 하나를 지나는 동안 도는 바퀴(1.2 — 한 번에 혹 한두 개가 부푼다) · SWELL_ROOT = 부풂이 뿌리에서 자라나는
+    구간(꼬리 길이의 몫 — 몸통과 이어지는 자리가 꺾이지 않게) · DRIFT_FAR = 조각이 하나 멀수록 더 가는 몫 · DRIFT_LAG = 하나 멀수록
+    늦는 박자(바퀴) · DRIFT_RISE = 떠가며 오르는 높이(간 거리의 몫) */
+const SWELL_LAG = 1.2, SWELL_ROOT = 0.15, DRIFT_FAR = 0.4, DRIFT_LAG = 0.08, DRIFT_RISE = 0.2;
+/** 떨어진 조각이 몸통의 어느 쪽인가(-1 왼쪽 · 1 오른쪽) — 조각의 가운데를 몸통 상자(폭 w)의 가운데로 가른다 */
+function pieceSide(r: readonly Pt[], w: number): number {
+  return r.reduce((a, q) => a + q[0], 0) / r.length < w / 2 ? -1 : 1;
+}
+/** 몸통에서 i째(0 = 가장 가까운) 조각이 끝 너머로 떠가는 가장 먼 거리(u) */
+function driftReach(m: PhotoMotion, i: number): number {
+  return m.drift * (1 + DRIFT_FAR * i);
+}
+
 /**
- * 띠 구름의 움직임 — 실제 구름처럼 봉우리가 부풀었다 가라앉고 꼬리가 바람에 흐른다(2026-09-30, 디자이너).
+ * 띠 구름의 움직임 — 실제 구름처럼 봉우리가 부풀었다 가라앉는다(2026-09-30, 디자이너).
  * 봉우리: 둘레를 따라 흐르는 두 물결의 합을 0~1로 — 윤곽의 점을 **바깥 법선으로만** 민다. 안으로는 한 번도 안 들어가서
  * 글 + 여백이 어느 순간에도 깨지지 않는다(구슬 구름의 '커지기만 한다'와 같은 뜻). 위를 향한 점일수록 크게, 평평한 밑은 거의
- * 안 움직인다. 꼬리(몸통 상자 밖): 몸통 끝을 축으로 늘었다 줄었다, 끝으로 갈수록 크게 위아래로 나부낀다 — 몸통 밖이라
- * 글에 닿지 않는다(2026-10-01부터 꺼 둠 — stretch · tip 0). 돌려주는 함수는 (초, --t-hold 초) → 그 순간의 윤곽(u). phase =
- * 구름마다 다른 시작(벽의 구름이 한 박자로 움직이지 않게). 떨어진 조각(extra)은 여기서 움직이지 않는다
+ * 안 움직인다.
+ * 꼬리(몸통 상자 밖, 2026-10-01): 혹의 사슬은 부풂이 뿌리에서 끝으로 한 혹씩 지나간다 — 그 자리 꼬리 두께의 몫만큼(봉우리의
+ * 폭까지), 역시 바깥으로만. 떨어진 조각(extra)은 그 부풂을 이어받아 커졌다 작아지고, 끝 너머로 떠났다 돌아온다. 꼬리를 늘였다 줄이고 끝을
+ * 위아래로 나부끼던 움직임(stretch · tip)은 꺼 두었다(뱀의 몸짓). 모두 몸통 밖이라 글에 닿지 않는다.
+ * 돌려주는 함수는 (초, --t-hold 초) → 그 순간의 윤곽들(u) — 첫째가 띠, 나머지가 조각(photo.extra 차례). phase = 구름마다 다른
+ * 시작(벽의 구름이 한 박자로 움직이지 않게)
  */
-export function photoWave(photo: Photo, w: number, m: NonNullable<Persona['photo']>['motion'], phase: number): (t: number, hold: number) => Pt[] {
-  const P = photo.pts, n = P.length;
+export function photoWave(photo: Photo, w: number, m: PhotoMotion, phase: number): (t: number, hold: number) => Pt[][] {
+  const P = photo.pts, n = P.length, E = photo.extra ?? [];
   let area = 0;
   for (let i = 0; i < n; i++) { const [x1, y1] = P[i], [x2, y2] = P[(i + 1) % n]; area += x1 * y2 - x2 * y1; }
   const sg = area > 0 ? 1 : -1;
   const len = [0];
   for (let i = 1; i <= n; i++) { const [a, b] = P[i - 1], [c, d] = P[i % n]; len.push(len[i - 1] + Math.hypot(c - a, d - b)); }
-  const per = len[n] || 1, lo = photo.x0, hi = photo.x1;
+  // 꼬리 끝은 띠 · 조각의 실제 끝으로 잰다 — photo.x0 · x1은 조각이 떠갈 자리까지 넣어 더 넓다
+  const xs = [...P, ...E.flat()].map((q) => q[0]);
+  const per = len[n] || 1, lo = Math.min(0, ...xs), hi = Math.max(w, ...xs);
+  const tailOf = (x: number) => (x < 0 ? -x / Math.max(1e-6, -lo) : x > w ? (x - w) / Math.max(1e-6, hi - w) : 0);
+  // 그 자리 꼬리의 두께(u) — 세로줄이 윤곽을 자르는 맨 위와 맨 아래. 혹이 제 크기만큼 부푼다. 변을 가로 칸(0.25u)에 미리
+  // 나눠 두고 그 칸의 변만 본다 — 모든 변을 보면 느린 기계(CPU 4배)에서 구름 하나 짓는 데 18ms까지 걸렸다
+  const CELL = 0.25, cells = new Map<number, number[]>();
+  for (let i = 0; i < n; i++) {
+    const a = P[i][0], b = P[(i + 1) % n][0];
+    for (let c = Math.floor(Math.min(a, b) / CELL); c <= Math.floor(Math.max(a, b) / CELL); c++) {
+      const l = cells.get(c);
+      if (l) l.push(i); else cells.set(c, [i]);
+    }
+  }
+  const thick = (x: number) => {
+    let top = Infinity, bot = -Infinity;
+    for (const i of cells.get(Math.floor(x / CELL)) ?? []) {
+      const [x1, y1] = P[i], [x2, y2] = P[(i + 1) % n];
+      if (x1 === x2 || (x1 - x) * (x2 - x) > 0) continue;
+      const y = y1 + ((y2 - y1) * (x - x1)) / (x2 - x1);
+      top = Math.min(top, y); bot = Math.max(bot, y);
+    }
+    return bot > top ? bot - top : 0;
+  };
   const at = P.map(([x, y], i) => {
     const [px, py] = P[(i - 1 + n) % n], [nx, ny] = P[(i + 1) % n];
     const tl = Math.hypot(nx - px, ny - py) || 1, tx = (nx - px) / tl, ty = (ny - py) / tl;
     const ox = sg * ty, oy = -sg * tx;                                 // 바깥 법선
-    const tail = x < 0 ? -x / Math.max(1e-6, -lo) : x > w ? (x - w) / Math.max(1e-6, hi - w) : 0;
-    return { x, y, s: len[i] / per, ox, oy, up: Math.min(1, Math.max(0.12, -oy)), tail, side: x < 0 ? -1 : x > w ? 1 : 0 };
+    const tail = tailOf(x);
+    return { x, y, s: len[i] / per, ox, oy, up: Math.min(1, Math.max(0.12, -oy)), tail, side: x < 0 ? -1 : x > w ? 1 : 0, th: tail > 0 && m.swell ? thick(x) : 0 };
   });
+  // 떨어진 조각 — 가운데 · 어느 쪽 · 같은 쪽에서 몸통에 몇째로 가까운가(0부터)
+  const bits = E.map((r) => {
+    const cx = r.reduce((a, q) => a + q[0], 0) / r.length, cy = r.reduce((a, q) => a + q[1], 0) / r.length;
+    return { r, cx, cy, side: pieceSide(r, w), tail: tailOf(cx) };
+  });
+  const nth = bits.map((b) => bits.filter((c) => c.side === b.side && c.side * c.cx < b.side * b.cx).length);
   return (t, hold) => {
-    const wb = (2 * Math.PI) / (m.billowTurn * hold), wt = (2 * Math.PI) / (m.tailTurn * hold);
-    return at.map((f): Pt => {
+    const wb = (2 * Math.PI) / (m.billowTurn * hold), wt = (2 * Math.PI) / (m.tailTurn * hold), cyc = phase / (2 * Math.PI);
+    const swell = (q: number) => bump(t / (m.swellTurn * hold) - SWELL_LAG * q + cyc);
+    const ring = at.map((f): Pt => {
       const k = 0.5 + 0.5 * (0.6 * Math.sin(2 * Math.PI * 4 * f.s - wb * t + phase) + 0.4 * Math.sin(2 * Math.PI * 7 * f.s + 0.7 * wb * t + 1.3 + phase));
       let x = f.x + f.ox * m.billow * k * f.up, y = f.y + f.oy * m.billow * k * f.up;
       if (f.side) {
+        if (f.th) {                                                    // 혹이 차례로 — 밑을 향한 쪽은 덜 부푼다(밑이 평평히 남게)
+          // 봉우리(billow)보다 크게는 안 부푼다 — 키 큰 띠(b04 · b10 · b11)는 몸통 밖도 7~8u로 두꺼워 두께의 몫이 1u(벽 21px)를 넘었다
+          const push = Math.min(m.billow, m.swell * f.th) * ease(Math.min(1, f.tail / SWELL_ROOT)) * swell(f.tail) * (0.35 + 0.65 * Math.max(0, -f.oy));
+          x += f.ox * push; y += f.oy * push;
+        }
         const edge = f.side < 0 ? 0 : w;
         x = edge + (x - edge) * (1 + m.stretch * Math.sin(wt * t - 1.2 * f.tail + phase));
         y += m.tip * f.tail * f.tail * Math.sin(0.8 * wt * t - 2.2 * f.tail + phase + 0.5);
       }
       return [x, y];
     });
+    // 조각 — 사슬의 부풂을 이어받아 커졌다 작아지고, 끝 너머로 떠났다 돌아온다(먼 조각일수록 멀리 · 늦게)
+    return [ring, ...bits.map((b, j) => {
+      const sc = 1 + m.swell * swell(b.tail), d = bump(t / (m.driftTurn * hold) - DRIFT_LAG * nth[j] + cyc) * driftReach(m, nth[j]);
+      const dx = b.side * d, dy = -DRIFT_RISE * d;
+      return b.r.map(([x, y]): Pt => [b.cx + (x - b.cx) * sc + dx, b.cy + (y - b.cy) * sc + dy]);
+    })];
   };
 }
 

@@ -146,17 +146,28 @@ export function nextMoodIndex(current: number): number {
   return (current + 1) % moods.length;
 }
 
-// ─── 성격마다 여덟 짝 (2026-09-29, 디자이너 확정) ─────────────────────────
+// ─── 성격마다 여덟 짝 (2026-09-29, 디자이너 확정 · 2026-10-01 공통 잉크로 다시) ───────────
 //
 // 위의 열 짝(moods)은 성격이 생기기 전에 외벽의 무드(때와 장소)로 만든 목록이라, 네 성격이 같이 돌았다 —
 // 거기서 '당당한 색'을 고르려니 기준이 없었다(디자이너 — "가물가물"). 성격마다 **색의 구조**를 먼저 나누고
 // 그 안에서 여덟 짝을 골랐다. 형상에서 사물이 아니라 행동을 가져온 것과 같다(design/landscape.md '색').
-//   당당한 — 표지의 원색 + 검정 글자(모두 밝은 칠. 벽의 맨 뒤 가장 넓은 칠이라 무엇이 뚫고 지나가도 글이 산다)
-//   차분한 — 짙은 칠 + 흰(노랑) 글자, 밝은 둘은 돌빛 · 연청
-//   다정한 — 리소 잉크의 따뜻한 칠 + 남색 글자
-//   유머있는 — 형광 + 보색 충돌
-// 계열 사이에 너무 닮은 칠이 없게 모든 칠 사이의 색 거리(ΔE2000)를 재서 골랐다 — 서로 다른 성격끼리 가장 가까운
-// 둘이 12.9(차분 연청 · 다정 라벤더), 칠과 글자의 대비는 서른두 짝 모두 5.0 이상. 원칙은 위와 같다(풀채도, 한쪽은 극단).
+//
+// 2026-10-01 다시 짰다. 서른두 짝을 한 장('가')에 모아 보니 당당 · 유머가 지나치게 셌고(칠의 진하기, OKLCH C 평균 —
+// 유머 0.215 · 당당 0.172 · 다정 0.126 · 차분 0.073), 벽에서 겹쳐 찍어도 조화가 안 났다 — 서른두 칠을 따로 골라
+// 겹친 자리의 색도 제각각이었다. 그래서 **모든 칠을 같은 잉크 열 통**에서 만들고(노랑 #FFE600 · 주황 #FF8A3D ·
+// 빨강 #F4605F · 분홍 #F2609F · 보라 #9C7BE0 · 파랑 #4F8FE0 · 하늘 #3DBDE8 · 초록 #2FA866 · 먹 · 종이 — 리소의 드럼처럼),
+// 성격은 그 잉크를 찍는 방식으로 가른다:
+//   당당한 — 잉크 한 통을 '중간' 진하기로(색상 · 밝기는 두고 진하기만 0.7배, 노랑은 0.68배, 흰은 미색) + 검정 글자
+//   차분한 — 잉크 위에 먹을 한 번 더 찍은 짙은 칠 + 흰(남색만 노랑) 글자, 밝은 둘은 돌빛 · 연청
+//   다정한 — 따뜻한 잉크를 종이에 연하게 + 남색 글자
+//   유머있는 — 두 잉크를 겹친 칠이나 연한 칠 + 보색 글자, 당당과 같은 '중간'만큼 눌렀다
+// 진하기는 당당 0.098 · 유머 0.092 · 다정 0.113 · 차분 0.061, 칠과 글자의 대비는 서른두 짝 모두 5.3 이상.
+// 이름과 색상은 지켰고 유머의 전기 파랑만 '일렉트릭'이 됐다(디자이너). 위 옛 짝의 '풀채도' 원칙은 여기서 푼다
+// (디자이너 — 당당 · 유머를 누르기로). 고른 길: 당당은 같은 소나무 여덟 그루에 네 단계(지금 · 조금 · 중간 · 많이)를
+// 입혀 '중간', 노랑은 그 위로 다섯 단계에서 '+++'(그보다 노라면 다시 혼자 앞으로 나온다), 흰은 같은 줄의 미색.
+// '많이'는 노랑과 미색이 붙어 버렸다. 치른 값: 다른 성격끼리 가장 닮은 칠이 12.9에서 7.4로 가까워졌다(당당 빨강 ·
+// 다정 코랄) — 벽에서는 나무와 구름, 검정과 남색 글자가 가른다. 벽의 섞는 법(app.css '벽의 겹침')은 새 색으로
+// 다시 견줘 보고 지금 그대로 뒀다(디자이너 — 섞지 않음 · 지금 · 모두 어둡게 · 모두 곱하기 중 "지금이 제일 낫다").
 // 이름은 4/5 룰렛 창에 뜬다(2026-09-29, 디자이너 — '가' 한 자 대신 "실제 색 이름을") — 위 옛 짝의 '이름은 UI에 뜨지 않는다'는
 // 여기엔 해당하지 않는다. 낭독 이름도 같다. 옛 글은 제가 고른 칠 · 글자색(hex)을 그대로 들고 있다.
 export interface ColorPair {
@@ -168,28 +179,28 @@ export interface ColorPair {
 const cp = (id: string, ko: string, en: string, bg: string, text: string): ColorPair => ({ id, name: { ko, en }, bg, text });
 export const ATTITUDE_COLORS: Record<string, readonly ColorPair[]> = {
   ttoryeot: [
-    cp('yellow', '노랑', 'Yellow', '#FFFF00', '#000000'), cp('white', '흰', 'White', '#FFFFFF', '#000000'),
-    cp('red', '빨강', 'Red', '#FF2D2D', '#000000'), cp('blue', '파랑', 'Blue', '#2F8CFF', '#000000'),
-    cp('green', '초록', 'Green', '#00A651', '#000000'), cp('orange', '주황', 'Orange', '#FF7A00', '#000000'),
-    cp('violet', '보라', 'Violet', '#8A5CFF', '#000000'), cp('sky', '하늘', 'Sky', '#33C9FF', '#000000')
+    cp('yellow', '노랑', 'Yellow', '#F6E67B', '#000000'), cp('white', '흰', 'White', '#F0E9DB', '#000000'),
+    cp('red', '빨강', 'Red', '#DC7671', '#000000'), cp('blue', '파랑', 'Blue', '#6590C8', '#000000'),
+    cp('green', '초록', 'Green', '#59A173', '#000000'), cp('orange', '주황', 'Orange', '#E99768', '#000000'),
+    cp('violet', '보라', 'Violet', '#9883C9', '#000000'), cp('sky', '하늘', 'Sky', '#6CB9D7', '#000000')
   ],
   chabun: [
-    cp('navy', '남색', 'Navy', '#1E2A52', '#FFD93D'), cp('forest', '짙은 초록', 'Forest', '#0E4D2E', '#FFFFFF'),
-    cp('crimson', '진홍', 'Crimson', '#7A0A2A', '#FFFFFF'), cp('teal', '청록', 'Teal', '#004E5A', '#FFFFFF'),
-    cp('plum', '보라', 'Plum', '#3B1470', '#FFFFFF'), cp('ink', '먹', 'Ink', '#2B2B2B', '#FFFFFF'),
-    cp('stone', '돌빛', 'Stone', '#CFC8BA', '#2B2B2B'), cp('mist', '연청', 'Mist', '#A9C8E8', '#1E2A52')
+    cp('navy', '남색', 'Navy', '#1E3655', '#FFE600'), cp('forest', '짙은 초록', 'Forest', '#134329', '#FFFFFF'),
+    cp('crimson', '진홍', 'Crimson', '#801420', '#FFFFFF'), cp('teal', '청록', 'Teal', '#07513C', '#FFFFFF'),
+    cp('plum', '보라', 'Plum', '#3E315A', '#FFFFFF'), cp('ink', '먹', 'Ink', '#2B2B2B', '#FFFFFF'),
+    cp('stone', '돌빛', 'Stone', '#CCC1BA', '#2B2B2B'), cp('mist', '연청', 'Mist', '#B5D0F2', '#1E3655')
   ],
   doran: [
-    cp('coral', '코랄', 'Coral', '#FF8E91', '#1E2A52'), cp('bubblegum', '버블검', 'Bubblegum', '#F984CA', '#1E2A52'),
-    cp('sunflower', '해바라기', 'Sunflower', '#FFB511', '#1E2A52'), cp('apricot', '살구', 'Apricot', '#FFCB8E', '#1E2A52'),
-    cp('orchid', '난초', 'Orchid', '#C77DDB', '#14183A'), cp('peach', '복숭아', 'Peach', '#FFA38A', '#1E2A52'),
-    cp('lavender', '라벤더', 'Lavender', '#C8B3FF', '#1E2A52'), cp('blush', '연분홍', 'Blush', '#FFC7D6', '#1E2A52')
+    cp('coral', '코랄', 'Coral', '#F78D8C', '#1E3655'), cp('bubblegum', '버블검', 'Bubblegum', '#F690BC', '#1E3655'),
+    cp('sunflower', '해바라기', 'Sunflower', '#FFA400', '#1E3655'), cp('apricot', '살구', 'Apricot', '#FFCAA8', '#1E3655'),
+    cp('orchid', '난초', 'Orchid', '#BE80C7', '#142438'), cp('peach', '복숭아', 'Peach', '#FB9376', '#1E3655'),
+    cp('lavender', '라벤더', 'Lavender', '#C9B6EE', '#1E3655'), cp('blush', '연분홍', 'Blush', '#FAC7DD', '#1E3655')
   ],
   deulseok: [
-    cp('neon-green', '형광 초록', 'Neon green', '#00FF88', '#000000'), cp('hot-pink', '핫핑크', 'Hot pink', '#FF0080', '#000000'),
-    cp('electric', '전기 파랑', 'Electric blue', '#0033FF', '#FFEE00'), cp('lime', '라임', 'Lime', '#A6FF00', '#6600FF'),
-    cp('aqua', '아쿠아', 'Aqua', '#00FFD5', '#6600FF'), cp('cyan', '시안', 'Cyan', '#00F0FF', '#6600FF'),
-    cp('magenta', '마젠타', 'Magenta', '#F000FF', '#000000'), cp('ice', '얼음', 'Ice', '#C4FFF9', '#6600FF')
+    cp('neon-green', '형광 초록', 'Neon green', '#81BA99', '#000000'), cp('hot-pink', '핫핑크', 'Hot pink', '#DB779E', '#000000'),
+    cp('electric', '일렉트릭', 'Electric', '#3A50A5', '#FFE600'), cp('lime', '라임', 'Lime', '#C1CC65', '#1F2D80'),
+    cp('aqua', '아쿠아', 'Aqua', '#83BBB6', '#1F2D80'), cp('cyan', '시안', 'Cyan', '#9ED2E5', '#1F2D80'),
+    cp('magenta', '마젠타', 'Magenta', '#86437F', '#FFE600'), cp('ice', '얼음', 'Ice', '#CFE0DB', '#1F2D80')
   ]
 };
 /** 이 성격이 고르는 여덟 짝. 성격을 모르는 글(옛 서체 키)은 당당한의 짝으로 */

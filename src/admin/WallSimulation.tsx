@@ -770,6 +770,17 @@ const CALM_DROP_H = 70 / 1080;
 const SWEEP_AHEAD = 450 / 1080;
 const SWEEP_ROLL: readonly [number, number] = [6, 10];
 const SWEEP_WIND = 260 / 1080;
+/** 새 · 박쥐는 쓸리지 않고 날아간다(디자이너 — "날갯짓하면서 날아가게") — 큰 돌 앞 이만큼(벽 높이의 비율) 안에 들면 가까운
+    새부터 날아올라(먼 새일수록 이 초 안에서 늦게, 무작위를 섞어) 오른쪽 위 화면 밖으로. 처음 빠르기(오른쪽, 위 — 박쥐는 떨어지며 시작한다) ·
+    오른쪽으로 붙는 가속 · 가장 빠른 빠르기(벽 높이 / 초, / 초²) · 솟는 빠르기가 잦아들어 머무는 값(벽 높이 / 초)과 그 빠르기
+    (1 / 초 — 박쥐는 이 값으로 떨어지다 솟는다) */
+const FLEE_AHEAD = 700 / 1080;
+const FLEE_DELAY = 0.6;
+const FLEE_V0: readonly [number, number] = [0.1, 0.35];
+const FLEE_PUSH = 0.5;
+const FLEE_MAX = 0.8;
+const FLEE_CLIMB = 0.12;
+const FLEE_EASE = 1.2;
 
 type Calm = {
   id: string; phase: 'enter' | 'hold' | 'exit' | 'return'; t0: number;
@@ -810,14 +821,34 @@ function calmSpot(C: Calm, map: Map<string, Body>, hw: number, w: number, h: num
   }
   return best ? (best[0] + best[1]) / 2 : w * (0.25 + 0.5 * Math.random());
 }
-/** 풍경을 등장 전 자리로 — 휩쓸렸던 몸은 제자리 · 제 각도로, 돌은 물리 몸도 되돌려 잠재운다. 등장 중에 들어온 몸은 지워서
-    다음 프레임에 다시 놓이게 한다(제자리가 없다) */
-function calmRestore(C: Calm, W: StoneWorld, map: Map<string, Body>) {
+/** 새 · 박쥐가 날아간다 — 저마다 늦는 만큼(c.t0까지)은 제자리에 앉아 있다가 날갯짓하며 오른쪽 위로(b.sv = 날아올랐나).
+    큰 돌 가까이(제 폭 둘 안)에서 날아오르면 큰 돌보다 조금 빨리 앞질러 난다 — 큰 돌은 맨 처음이 가장 빨라 벽 왼쪽 끝의
+    새가 덮였다(새는 풍경과 한 겹이라 큰 돌 뒤에 그려진다). edge = 큰 돌의 오른쪽 끝(px) · edgeV = 그 빠르기(px/초).
+    앉을 자리(c.spot)는 그대로 둔다 — 복귀 때 제자리로 돌아와 앉는다. 화면 밖으로 나가면 away */
+function fleeStep(b: Body, w: number, h: number, dt: number, now: number, edge: number, edgeV: number) {
+  const c = b.cr!;
+  if (now < c.t0) return;
+  const near = Math.max(0, Math.min(1, 1 - (b.x - b.hw - edge) / (4 * b.hw)));
+  if (!b.sv) {
+    b.sv = 1; c.mode = 'fly'; c.face = 1;
+    b.vx = FLEE_V0[0] * h; b.vy = (c.geo.kind === 'bat' ? 0.5 : -1) * FLEE_V0[1] * h;
+  }
+  b.vx = Math.max(Math.min(FLEE_MAX * h, b.vx + FLEE_PUSH * h * dt), near * 1.15 * edgeV);
+  b.vy += (-FLEE_CLIMB * h - b.vy) * Math.min(1, FLEE_EASE * dt);
+  // 나는 동안의 작은 오르내림 — 평소의 날기(creatureStep)와 같은 폭 · 박자
+  const f = 2 * Math.PI * 1.2, bob = 0.02 * h * f * Math.cos(f * (now - c.t0));
+  b.x += b.vx * dt; b.y += (b.vy + bob) * dt;
+  if (b.x - b.hw > w + 40 || b.y + b.hh < -40) b.away = true;
+}
+/** 풍경을 등장 전 자리로 — 휩쓸렸던 몸은 제자리 · 제 각도로, 돌은 물리 몸도 되돌려 잠재운다. 날아간 새 · 박쥐는 제자리에 다시
+    앉는다. 등장 중에 들어온 몸은 지워서 다음 프레임에 다시 놓이게 한다(제자리가 없다). now = 초 */
+function calmRestore(C: Calm, W: StoneWorld, map: Map<string, Body>, now: number) {
   for (const [id, b] of [...map]) {
     const p = C.snap?.get(id);
     if (id === C.id) continue;
     if (!p) { if (b.swept || b.away) { if (b.mb) Matter.Composite.remove(W.engine.world, b.mb); map.delete(id); } continue; }
     b.x = p.x; b.y = p.y; b.a = p.a; b.swept = false; b.away = false; b.sv = 0; b.free = false;
+    if (b.cr) { b.vx = b.vy = 0; b.cr.mode = 'perch'; b.cr.until = now + perchFor(b.cr.geo); }
     if (b.mb) {
       Matter.Composite.remove(W.engine.world, b.mb);
       Matter.Composite.add(W.engine.world, b.mb);
@@ -863,15 +894,26 @@ function calmStep(C: Calm, W: StoneWorld, map: Map<string, Body>, f: Size | unde
     }
     placeStone(g.mb, g.mc, x, giantGroundY(g, h), 0, true);
     if (C.phase === 'exit' && x - g.hw > w + 40) {
-      calmRestore(C, W, map);
+      calmRestore(C, W, map, now);
       C.phase = 'return'; C.t0 = now;
     }
   }
   // 휩쓸림 — 큰 돌 앞에 든 것부터(등장 절반이 지나면 모두) 오른쪽 밖으로. 돌은 미끄럽게 굴러, 나머지는 바람에 밀리듯
   if ((C.phase === 'enter' || C.phase === 'hold') && g) {
-    const front = g.mb.bounds.max.x + SWEEP_AHEAD * h, late = C.phase === 'hold' || t > CALM_IN / 2;
+    const edge = g.mb.bounds.max.x, front = edge + SWEEP_AHEAD * h, late = C.phase === 'hold' || t > CALM_IN / 2;
+    // 큰 돌 오른쪽 끝의 빠르기(px/초) — 등장의 감속 곡선(easeOut3)을 미분한 것
+    const edgeV = C.phase === 'enter' ? ((w / 2 + g.hw) * 3 * (1 - Math.min(1, t / CALM_IN)) ** 2) / CALM_IN : 0;
     for (const [id, b] of map) {
       if (id === C.id || b.away) continue;
+      // 새 · 박쥐 — 큰 돌이 닿기 전에 날아오른다. 가까운 새부터 — 늦는 만큼은 큰 돌에서 먼 만큼(날던 새는 곧장)
+      if (b.cr) {
+        if (!b.swept && (late || b.x - b.hw < front + FLEE_AHEAD * h)) {
+          const far = Math.max(0, Math.min(1, (b.x - b.hw - edge) / (FLEE_AHEAD * h)));
+          b.swept = true; b.sv = 0; b.cr.t0 = now + (b.cr.mode === 'fly' ? 0 : FLEE_DELAY * far * (0.5 + 0.5 * Math.random()));
+        }
+        if (b.swept) fleeStep(b, w, h, dt, now, edge, edgeV);
+        continue;
+      }
       if (!b.swept && (late || b.x - b.hw < front)) {
         b.swept = true; b.sv = 0;
         if (b.mb) {
@@ -2040,7 +2082,7 @@ export default function WallSimulation() {
       const moving = !prefersReducedMotion();
       // 차분한의 발화 — 앞 발화가 아직 안 끝났으면 풍경부터 되돌리고, 큰 돌 · 휩쓸림 · 복귀를 걷는다
       const undo = calmUndoRef.current;
-      if (undo) { calmRestore(undo, world, map); const ob = map.get(undo.id); if (ob) ob.parked = false; calmUndoRef.current = null; }
+      if (undo) { calmRestore(undo, world, map, t / 1000); const ob = map.get(undo.id); if (ob) ob.parked = false; calmUndoRef.current = null; }
       const C = calmRef.current;
       if (C) {
         calmStep(C, world, map, sizesRef.current.get(C.id), side, w, h, dt, t / 1000);

@@ -168,7 +168,7 @@ function ColorDemo({ lines, tone, cloud, box, from, pairs }: {
         return () => { window.clearTimeout(t); window.clearInterval(iv); };
     }, []);
     const m = pairs[i % pairs.length];
-    return <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={m.bg} still centerText>
+    return <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={m.bg} still centerText floor>
      <VoiceBubble text={lines.join('\n')} bg={m.bg} color={m.text} fontFamily={fontMap[tone.font]} font={tone.font}
        weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size} manner={tone.manner}
        speed={tone.speed} weightPos={tone.weight}
@@ -301,14 +301,14 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext, returni
     const ALIGNS = arrangementsFor(tone.font);
     const [align, setAlign] = useState<Align>(tone.align && ALIGNS.includes(tone.align) ? tone.align : defaultAlign(tone.font));
     const current = { ...tone, align, backgroundColor: bg, textColor: fg };
-    // 줄은 정렬이 정한다 — 나무의 기본 · 사선은 8자, 그 밖은 12자(cloud.ts · linesFor)
+    // 줄은 한 줄 12자 — 모든 성격이 같다(cloud.ts · linesFor)
     const lines = linesFor(text, current);
     // 벽과 같은 구름이어야 미리보기가 거짓말이 아니다 — 씨앗은 글 자체(cloud.ts). 정렬이 형상을 바꾸므로 고른 정렬로 짓는다
     const cloud = cloudForTone(lines, current);
     const box = bubbleAt(lines, cloudShape(cloud), fillFromLegacySize(tone.size));
     /* 무대 한 변 — 벽 비율 그대로면 폰에서 너무 작아, 말풍선이 무대 폭 · 높이에 3/5와 같은
        크기감으로 들어차게 늘린다(fit.ts · phoneSide, 2026-09-29). 첫 장 시연과 고르는 장이 같이 쓴다 */
-    const area = phoneSide(AREA, box.w, box.h, fillFromLegacySize(tone.size));
+    const area = phoneSide(AREA, box.w, box.h, fillFromLegacySize(tone.size), !!cloud.tree);   // 나무는 무대 안에(수관이 잘리지 않게)
     /* 두 장(2026-09-28, 3/5와 같은 흐름): 'intro' = 설명과 시연 · 'work' = 고르는 장.
        moved는 한 번이라도 넘긴 뒤인지 — 처음 들어올 때는 둘째 장이 움직이지 않고 숨어 있다.
        첫 장은 앞으로 들어올 때만 선다(2026-09-29, 사용자) — 뒤로가기에서는 과정 미리보기가
@@ -344,7 +344,7 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext, returni
    {/* 제목과 안내는 첫 장으로 옮겼다(2026-09-28) — 3/5처럼 고르는 장은 위가
        미리보기, 아래가 조정판이다. 무엇을 하는 자리인지는 첫 장이 말한다 */}
    <div className="color-stage" style={{ '--color-area': area } as CSSProperties}>
-    <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={bg} centerText>
+    <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={bg} centerText floor>
      <VoiceBubble text={lines.join('\n')} bg={bg} color={fg} fontFamily={fontMap[tone.font]} font={tone.font}
        weight={tone.wght} width={tone.tone} slant={tone.slnt} align={align} size={tone.size} manner={tone.manner}
        speed={tone.speed} weightPos={tone.weight}

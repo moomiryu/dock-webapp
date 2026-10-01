@@ -93,22 +93,24 @@ def to_edge(m, sh, cap=0.3):
     return out
 
 
-def tree(t, Hd=480):
-    """trees.json의 한 항목 → (칠, 그늘) 벽 크기 판"""
+def tree(t, Hd=480, px=1.0, drape_on=True):
+    """trees.json의 한 항목 → (칠, 그늘) 키 Hd의 판. px = 벽 1px이 이 판의 몇 px인가 — 결(뭉개기 · 가닥 굵기)은 벽 px로
+    고른 값이라, 앱에 싣는 큰 판(export.py, 키 1280 = 벽 480의 2.67배)은 그만큼 키워서 짓는다.
+    drape_on = False면 버드나무를 늘어뜨리기 전의 수관 그대로(앱이 글마다 새로 늘어뜨린다 — treeGL · TreeArt)"""
     a = load_alpha(t['alpha'])
     f = t.get('fill', {'frac': 0.004, 'r': 1})
     if 'drape' in t:
-        dp = t['drape']; Hw = Hd * S
-        m = fill_holes(at(a, Hw, 0.9 * S), f['frac'], r=f['r'] * S)
+        dp = t['drape']; Hw = Hd * S; s = max(1, round(S * px))
+        m = fill_holes(at(a, Hw, 0.9 * S * px), f['frac'], r=round(f['r'] * S * px))
         st = dp.get('stretch', 1.0)
         if st != 1.0: m = (cv2.resize(m.astype(np.float32), (int(m.shape[1] * st), Hw), interpolation=cv2.INTER_LINEAR) > 0.5).astype(np.uint8)
         if dp.get('flip'): m = m[:, ::-1].copy()
-        out = drape(m, dp['seed'], S, Lmax=dp['L'])
+        out = drape(m, dp['seed'], s, Lmax=dp['L']) if drape_on else m
         d = cv2.resize(out.astype(np.float32), (max(1, round(out.shape[1] / S)), Hd), interpolation=cv2.INTER_AREA)
         m = (d > 0.5).astype(np.uint8)
     else:
         r = max(1, round(f['r'] * Hd / 480)) if f['r'] else 0
-        m = fill_holes(at(a, Hd), f['frac'], r)
+        m = fill_holes(at(a, Hd, 0.9 * px), f['frac'], r)
     return m, to_edge(m, rim(m))
 
 

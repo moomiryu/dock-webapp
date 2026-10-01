@@ -1,5 +1,6 @@
 import { cloneElement, isValidElement, useEffect, useId, useMemo, useRef, type CSSProperties, type ReactElement, type ReactNode } from 'react';
-import { AMP, DRIFT, T1, T2, photoWave, type Circle, type Cloud, type Tree } from '../lib/cloud';
+import { AMP, DRIFT, T1, T2, photoWave, type Circle, type Cloud } from '../lib/cloud';
+import TreeArt from './TreeArt';
 import type { Boxed } from '../lib/fit';
 
 /**
@@ -26,10 +27,10 @@ import type { Boxed } from '../lib/fit';
  * 오른쪽 아래 빗금은 칠하지 않고 **오려 낸다**(mask) — 뒤에 있는 것이 그대로
  * 비쳐 벽에서도 폰에서도 '틈'이 된다. 시스템이 새 색을 만들지 않는다.
  *
- * ── 나무 (당당한, 2026-09-28, 09-29 다시) ─────────────────────────────
- * 실루엣 하나(cloud.ts · treeFor) — 예리한은 이등변 삼각형의 단, 온화한은 같은 원. 기둥 · 줄무늬는
- * 없다. 단 · 원을 path 하나로 합쳐 칠한다 — 따로 그리면 단 사이 이음매가 가늘게 비쳤다(격자). 번지지도
- * 숨 쉬지도 않는다. 행간은 1.1이라 글 상자에 --cloud-lh로 내려 준다(app.css). 사선 · 세로쓰기는
+ * ── 나무 (당당한, 2026-09-28, 09-30 사진으로) ─────────────────────────
+ * 사진에서 뗀 한 그루(cloud.ts · treeFor)를 캔버스에 그린다(TreeArt · treeGL) — 칠 한 색, 덩이 밑 그늘은 빗금으로
+ * 오려 내고, 바람에 잎이 살랑이고 수관이 흔들린다. 상자는 수관과 줄기 윗부분이고 줄기는 상자 밖으로 바닥까지 이어진다 —
+ * 벽은 바닥에 세우고 폰은 무대 밑이 자른다. 행간은 1.1이라 글 상자에 --cloud-lh로 내려 준다(app.css). 사선 · 세로쓰기는
  * 한 자씩 자리를 받는다(layout.glyphs).
  *
  * ── 띠 구름 (다정한, 2026-09-30) ───────────────────────────────────────
@@ -68,13 +69,15 @@ interface Props {
   still?: boolean;
   className?: string;
   style?: CSSProperties;
-  /** 벽의 나무 — 폰 판 아래로 바닥까지 잇는 단(원)도 그린다(tree.more). 상자 밖으로 내려가고, 화면 밑이 자른다 */
-  reach?: boolean;
   /** 새 · 박쥐의 자세 — 안 주면 폰의 자세(rest). 벽이 앉음(sit, 새만) · 날기(fly)를 고른다 */
   pose?: 'rest' | 'sit' | 'fly';
   /** 글을 상자 한가운데로 — 띠 구름을 통째로 옮겨 글의 가운데를 상자의 가운데에 맞춘다(폰 미리보기 4/5 · 5/5).
       구름의 실루엣과 별개로 글이 딱 중앙에 있게(2026-09-30, 디자이너). 띠 구름만 — 나무는 글이 머리에 서는 것이 모양의 뜻이다 */
   centerText?: boolean;
+  /** 나무를 무대 바닥에 세운다(폰 4/5 — 무대가 grid라야 한다). 밑동이 바닥에 닿게 올리고, 나무가 무대보다 크면 꼭대기를 무대 위
+      끝에 맞추고 줄기를 바닥에서 자른다(2026-10-01, 디자이너 — '무대 바닥에 서고 줄기는 잘림'). 나무가 글에 맞춰 작아지자
+      무대 가운데에 놓인 나무가 공중에 떴다 */
+  floor?: boolean;
   children?: ReactNode;
 }
 
@@ -136,19 +139,11 @@ function stonePath(pts: readonly (readonly [number, number])[], r: number): stri
   return d + 'Z';
 }
 
-/** 나무의 실루엣 — 단(삼각형 · 목에서 벌어지는 네모)과 원을 한 path로. 모두 같은 방향으로 돌아 겹친 곳이 비지 않는다 */
-function treePath(tree: Tree, reach: boolean): string {
-  const f = (v: number) => (v * K).toFixed(1);
-  return (reach ? [...tree.tiers, ...tree.more] : tree.tiers).map((q) => q.kind === 'tri'
-    ? 'M' + q.pts.map((p) => `${f(p[0])},${f(p[1])}`).join('L') + 'Z'
-    : `M${f(q.cx - q.r)},${f(q.cy)}a${f(q.r)},${f(q.r)} 0 1,1 ${f(2 * q.r)},0a${f(q.r)},${f(q.r)} 0 1,1 ${f(-2 * q.r)},0Z`).join('');
-}
-
 function prefersStill(): boolean {
   return typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-export default function CloudBubble({ cloud, box, side, color, still, className, style, reach, pose, centerText, children }: Props) {
+export default function CloudBubble({ cloud, box, side, color, still, className, style, pose, centerText, floor, children }: Props) {
   const filterId = 'cloud' + useId().replace(/[^a-zA-Z0-9]/g, '');
   const quiet = still || prefersStill();
   const W = cloud.w * K, H = cloud.h * K;
@@ -243,9 +238,11 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
     <div
       className={'cloud-bubble' + (tree ? ' is-tree' : '') + (photo ? ' is-photo' : '') + (className ? ' ' + className : '')}
       style={{ width: `calc(${side} * ${box.w.toFixed(4)})`, height: `calc(${side} * ${box.h.toFixed(4)})`, ...(pr.lh ? { '--cloud-lh': pr.lh } : {}),
+        ...(floor && tree ? { alignSelf: 'end', marginBottom: `max(0px, min(calc(${side} * ${((tree.full - cloud.h) * box.unit).toFixed(4)}), calc(100cqh - ${side} * ${box.h.toFixed(4)})))` } : {}),
         ...(centerText && photo ? { transform: `translate(${((0.5 - (t.x + t.w / 2) / cloud.w) * 100).toFixed(3)}%, ${((0.5 - (t.y + t.h / 2) / cloud.h) * 100).toFixed(3)}%)` } : {}), ...style } as CSSProperties}
     >
-      <svg className="cloud-art" viewBox={`0 0 ${W.toFixed(1)} ${H.toFixed(1)}`} aria-hidden="true" focusable="false">
+      {tree && <TreeArt cloud={cloud} unit={box.unit} color={color} quiet={quiet} hold={holdS()} />}
+      {!tree && <svg className="cloud-art" viewBox={`0 0 ${W.toFixed(1)} ${H.toFixed(1)}`} aria-hidden="true" focusable="false">
         {stone && !(hatch?.on && stone.hatch.length) ? (
           /* 빗금이 꺼진 돌(cloud.ts · hatch.on) — 오려 낼 것 없이 면 하나 */
           <path d={stoneD} fill={color} />
@@ -267,8 +264,6 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
             </defs>
             <path d={stoneD} fill={color} mask={`url(#${filterId}m)`} />
           </>
-        ) : tree ? (
-          <path d={treePath(tree, !!reach)} fill={color} />
         ) : photo ? (
           <path ref={photoRef} d={photoD} fill={color} />
         ) : shape ? (
@@ -292,7 +287,7 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
             </g>
           </>
         )}
-      </svg>
+      </svg>}
       {/* 글은 제 자리에 앉는다 — 구름이 비대칭이라 한가운데가 아니다 */}
       <div className="cloud-text" style={{
         left: `${((t.x / cloud.w) * 100).toFixed(3)}%`, top: `${((t.y / cloud.h) * 100).toFixed(3)}%`,

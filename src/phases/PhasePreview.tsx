@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from '
 import StepHeader from '../components/StepHeader';
 import { BIG_SIDE_MAX_VW, BIG_SIDE_VH, WallShowMessage } from '../admin/WallSimulation';
 import type { StoredMessage } from '../lib/firebase';
+import { personaFor } from '../lib/cloud';
 import { fillFromLegacySize, phoneSide } from '../lib/fit';
 import { pick, useLang } from '../lib/lang';
 import type { ToneState } from '../types';
@@ -77,7 +78,9 @@ export default function PhasePreview({ text, tone, onConfirm, onBack, onHome, bu
         if (frameRef.current) ro.observe(frameRef.current);
         return () => ro.disconnect();
     }, [msg]);
-    const frame = { '--big-side': shape ? phoneSide(base, shape.w, shape.h, fillFromLegacySize(tone.size)) : base } as CSSProperties;
+    // 나무는 무대 안에(긴 글의 나무가 넓어져 수관 양옆이 잘렸다 — fit.ts phoneSide)
+    const tree = personaFor(tone.font).edge === 'tree';
+    const frame = { '--big-side': shape ? phoneSide(base, shape.w, shape.h, fillFromLegacySize(tone.size), tree) : base } as CSSProperties;
     return <div className="z-frame preview-screen"><StepHeader at={5} back={{ label: pick(T.back, lang), onClick: () => { if (!busy) onBack(); } }}
       onHome={() => { if (!busy) onHome(); }} />
  {/* 여기가 마지막이라는 것을 말로 해 둔다. 이 뒤(도킹)에는 '이전'이 없다 —

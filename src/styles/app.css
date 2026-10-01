@@ -3702,6 +3702,10 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    구름에 없다. 구름은 제 숨(6s·9.7s)을 쉰다. */
 .cloud-bubble{ position: relative; }
 .cloud-art{ position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+/* 사진 나무(당당한, TreeArt) — 상자를 채우는 자리에 캔버스 하나. 캔버스는 나무 전체(상자 밑의 줄기까지)와 바람에 밀린 잎의
+   여유만큼 상자 밖으로 크다 — 자리 · 크기는 TreeArt가 재서 적는다 */
+.tree-art{ position: absolute; inset: 0; pointer-events: none; }
+.tree-art canvas{ position: absolute; display: block; }
 /* 글은 제 자리(cloud.text)에 앉는다 — 구름이 비대칭이라 한가운데가 아니다 */
 .cloud-text{ position: absolute; display: grid; place-items: center; }
 .cloud-bubble .message-line-fill{ background: none; padding-inline: 0; }
@@ -3745,7 +3749,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .wall-field{ position: absolute; inset: 0; isolation: isolate; }
 .wall-block.is-tree, .wall-block.is-stone{ mix-blend-mode: darken; }
 .wall-block.is-cloud{ mix-blend-mode: hard-light; }
-/* 나무는 처음 나타날 때만 종이가 펴지듯 — 바닥(모양 밑으로 쌓은 단의 끝, --tree-ext)을 축으로 뒤로 누운 90°에서 곧게.
+/* 나무는 처음 나타날 때만 종이가 펴지듯 — 바닥(상자 밑으로 이어지는 줄기의 끝, --tree-ext)을 축으로 뒤로 누운 90°에서 곧게.
    그 밖에는 가만히 선다. 원근은 벽 높이의 2.5배 앞에서 보는 것(견본과 같은 비).
    펴지기는 벽이 나무를 **처음 자리에 세운 순간**(data-placed, WallSimulation)에 시작한다 — 붙자마자 시작하면
    벽이 뜨는 동안(글꼴 · 목록을 받는 사이) 다 펴져 버려 아무도 못 봤다. 그 전에는 누운 채 보이지 않는다 */

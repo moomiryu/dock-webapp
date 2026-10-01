@@ -105,6 +105,10 @@ export interface Boxed {
 export interface BoxShape {
   body(tw: number, th: number, u: number): { w: number; h: number };
   tail(u: number): number;
+  /** 크기 칸이 정한 글자(UNIT_TOP × 크기)에 곱하는 수 — 나무가 1.4(cloud.ts) */
+  scale?: number;
+  /** 영역 한 변에 맞춰 줄이지 않는다(cap을 안 건다) — 벽 바닥에 서는 나무 */
+  free?: boolean;
 }
 
 /**
@@ -129,6 +133,12 @@ export interface BoxShape {
 export const UNIT_TOP = 0.074;
 
 /**
+ * 벽에서 한 변(최대 영역)이 벽 높이의 얼마인가 — WallSimulation의 잔상 한 변(--echo-side, 37.2vh). 나무는 키가 벽 높이의
+ * 비율로 정해져서(크기 막대 = 키) 글자 칸(u)과 벽 높이를 이을 때 이 값을 쓴다(cloud.ts treeFor)
+ */
+export const WALL_SIDE = 0.372;
+
+/**
  * 그 크기 칸에서 이 글이 쓰는 치수.
  *
  * 도형 함수는 전부 글자 한 칸(u)에 정비례한다 — 늘어나는 건 가운데뿐이고
@@ -144,8 +154,8 @@ export function bubbleAt(lines: readonly string[], shape: BoxShape, fill: number
   const rows = Math.max(1, lines.length);
   const at1 = shape.body(longest, rows * LINE_HEIGHT, 1);
   const tail1 = shape.tail(1);
-  const cap = Math.min(1 / at1.w, 1 / (at1.h + tail1));
-  const unit = Math.min(UNIT_TOP * fill, cap);
+  const cap = shape.free ? Infinity : Math.min(1 / at1.w, 1 / (at1.h + tail1));
+  const unit = Math.min(UNIT_TOP * fill * (shape.scale ?? 1), cap);
   return { unit, w: at1.w * unit, h: at1.h * unit, tail: tail1 * unit };
 }
 
@@ -179,12 +189,16 @@ export function fillFromLegacySize(size: number | undefined): number {
  *
  * base: 지금의 한 변(CSS 길이). w · h: 말풍선의 폭 · 높이가 한 변의 몇 배인가(box.w · box.h).
  * 돌려주는 값은 CSS 길이다 — cqw · cqh는 그 한 변을 쓰는 무대(컨테이너)에 대어 풀린다.
+ * contain: 무대보다 커지지 않게(폭 · 높이 PHONE_MAX) — 사진 나무(2026-09-30). 긴 글의 나무는 벽에서 키가 자라 한 변보다
+ * 넓어지는데, base와 큰 쪽을 고르면 폰 무대에서 수관 양옆이 잘렸다(60자 · 소나무 764). 짧은 글은 그대로다.
  */
 export const PHONE_TOP = 0.9;
-export function phoneSide(base: string, w: number, h: number, fill: number): string {
+export const PHONE_MAX = 0.96;
+export function phoneSide(base: string, w: number, h: number, fill: number, contain = false): string {
   if (!(w > 0) || !(h > 0)) return base;
-  const k = (PHONE_TOP * fill * 100).toFixed(3);
-  return `max(${base}, min(calc(${k}cqw / ${w.toFixed(4)}), calc(${k}cqh / ${h.toFixed(4)})))`;
+  const k = (PHONE_TOP * fill * 100).toFixed(3), m = (PHONE_MAX * 100).toFixed(1);
+  const grown = `max(${base}, min(calc(${k}cqw / ${w.toFixed(4)}), calc(${k}cqh / ${h.toFixed(4)})))`;
+  return contain ? `min(${grown}, calc(${m}cqw / ${w.toFixed(4)}), calc(${m}cqh / ${h.toFixed(4)}))` : grown;
 }
 
 /**

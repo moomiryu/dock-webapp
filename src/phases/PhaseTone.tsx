@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
 import SnapSwitch, { tick } from '../components/SnapSwitch';
-import { MANNER, SIZE_WORDS, SPEED_WORDS, STOPS, WEIGHT_WORDS, fontMap, formFor, hasWeightAxis, legacyFields, opticalFix, sizeAt, sizePos, snap, stopAt } from '../lib/palettes';
+import { useSoften } from '../components/VoiceBubble';
+import { MANNER, SIZE_WORDS, SPEED_WORDS, STOPS, WEIGHT_WORDS, fontMap, formFor, hasWeightAxis, legacyFields, mannerDefault, mannerOrder, opticalFix, sizeAt, sizePos, snap, stopAt } from '../lib/palettes';
 import { DEFAULT_TONE, type PartialTone } from '../lib/tone';
 import { foldLines } from '../lib/fit';
 import { pick, useLang } from '../lib/lang';
@@ -228,17 +229,21 @@ function MannerSwitch({ font, at, onPick }: { font: string; at: number; onPick: 
        오른쪽 위의 보조 말은 뺐다 — 두 말이 늘 칸 안에 보인다. 판이 자석처럼
        붙는 손맛은 공용 스위치(components/SnapSwitch)가 맡는다 — 언어 창과 같다. */
     const lang = useLang();
-    const labels = pick(MANNER[font].labels, lang) as unknown as readonly [string, string];
+    const names = pick(MANNER[font].labels, lang) as unknown as readonly [string, string];
+    /* 칸의 차례와 저장되는 값의 차례가 다를 수 있다(당당한: 예리한이 앞, 값은 1) — palettes.ts · MANNER */
+    const order = mannerOrder(font);
+    const labels = [names[order[0]], names[order[1]]] as const;
     return <div className="tslider">
      <span className="tslider-name" id="tswitch-name">{pick(T.manner, lang)}</span>
-     <SnapSwitch labels={labels} at={at ? 1 : 0} onPick={onPick} labelledBy="tswitch-name" />
+     <SnapSwitch labels={labels} at={order.indexOf(at ? 1 : 0)} onPick={(i) => onPick(order[i])} labelledBy="tswitch-name" />
     </div>;
 }
 
 export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, returning = false }: Props) {
     /* 막대 자리가 없는 초안(슬라이더 전에 만든 것)은 가운데('보통')에서 시작한다 */
     const [tone, setTone] = useState<PartialTone>(() => {
-        const t = { ...initialTone, speed: initialTone.speed ?? 0.5, weight: initialTone.weight ?? 0.5 };
+        /* 말투가 비어 오면(옛 초안) 앞 칸으로 채운다 — 칸은 예리한을 가리키는데 글은 온화한(빈 값)으로 서는 일이 없게 */
+        const t = { ...initialTone, speed: initialTone.speed ?? 0.5, weight: initialTone.weight ?? 0.5, manner: initialTone.manner ?? mannerDefault(initialTone.font) };
         return { ...t, ...legacyFields(t) };
     });
     const lang = useLang();
@@ -323,7 +328,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
      * 가져간다.
      */
     /** 지금 견본에 보이는 것. 비교 중일 때만 다듬기 전이 선다 */
-    const shown = compare ? { ...DEFAULT_TONE, font: tone.font } : tone;
+    const shown = compare ? { ...DEFAULT_TONE, font: tone.font, manner: mannerDefault(tone.font) } : tone;
     const fill = shown.size / 60;
     /**
      * 제일 긴 줄이 **글자 크기 1px당 몇 px인가.** 재서 안다.
@@ -372,6 +377,8 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
        크기 그대로다. 넓어진 폭 = 줄 폭 × 장평 + 기울기가 밀어낸 몫(1em × tan).
        세로 비율은 1 이하라 높이는 늘 들어온다. */
     const form = formFor(shown);
+    /* 온화한(당당한)의 둥근 모서리 — 벽 · 4/5와 같은 것(VoiceBubble · useSoften) */
+    useSoften(glyph, !!form.soft);
     const tanS = Math.tan((form.slant * Math.PI) / 180);
     const byLine = Math.min((USE.w / shape.w) * fill, USE.w / (shape.w * form.scaleX + tanS)).toFixed(2);
     const byHeight = ((USE.h / shape.h) * fill).toFixed(2);
@@ -517,7 +524,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
       onChange={v => set({ speed: v })} />
     {hasWeightAxis(tone.font)
       ? <Slider name={pick(T.weight, lang)} words={pick(WEIGHT_WORDS, lang)} value={weight} onChange={v => set({ weight: v })} />
-      : <MannerSwitch font={tone.font} at={tone.manner ?? 0} onPick={i => set({ manner: i })} />}
+      : <MannerSwitch font={tone.font} at={tone.manner ?? mannerDefault(tone.font)} onPick={i => set({ manner: i })} />}
 
     {/* '다음'이 패널 안에 있다. 밖에 두면 패널과 버튼 사이에 흰 띠가 한 겹
         더 생겨, 이 화면에 색이 바뀌는 경계가 둘이 된다. 하나면 된다 —

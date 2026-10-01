@@ -295,9 +295,12 @@ export function personaFor(font?: string): Persona {
    대체 서체(Pretendard 0.864)로 그려진 채 잰 값이다 — 킷은 화면에 오른 글자만 받아 오므로, 잴 때는
    그 글자를 먼저 화면에 올리고 기다려야 한다. 나무의 머리는 글에 바짝 붙어 이 표가 곧 여백이다.
    같은 날 본명조(차분한)도 같은 방법으로 쟀다: 한글 0.966 · 0.970(굵기 300 · 445 · 600 모두), 띄어쓰기 0.31 —
-   표의 0.989는 2% 넓었다. 돌의 넘치기(R18)가 줄 끝을 파고드는 깊이가 이 표에 걸려 있어 0.97로 고쳤다. */
+   표의 0.989는 2% 넓었다. 돌의 넘치기(R18)가 줄 끝을 파고드는 깊이가 이 표에 걸려 있어 0.97로 고쳤다.
+   2026-10-01 당당한이 아침 Medium으로 갈렸다. 같은 방법(100px, 글자를 먼저 올리고 기다림)으로 쟀다 —
+   한글 고정폭 0.92 · 띄어쓰기 0.30. 둥켈을 함께 재서 0.678 · 0.116이 그대로 나와 방법을 확인했다.
+   아침에는 폭 축이 없어 아래 TTORYEOT_WIDE와 advanceFor의 보간은 이제 쓰이지 않는다(wdth가 안 온다). */
 const ADVANCE: Record<string, { hangul: number; space: number }> = {
-  ttoryeot: { hangul: 0.678, space: 0.116 },
+  ttoryeot: { hangul: 0.92, space: 0.3 },
   chabun: { hangul: 0.97, space: 0.31 },
   doran: { hangul: 1, space: 0.35 },
   deulseok: { hangul: 0.79, space: 0.177 },

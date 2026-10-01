@@ -2304,7 +2304,7 @@ export const WallShowMessage = memo(function WallShowMessage({ msg, land, center
         <CloudBubble cloud={cloud} box={box} side="var(--big-side)" color={bg} centerText={centerText}>
           <VoiceBubble text={lines.join('\n')} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght}
             width={scaleX} slant={skew} align={msg.tone?.align} size={msg.tone?.size} manner={msg.tone?.manner}
-          speed={msg.tone?.speed} weightPos={msg.tone?.weight}
+          speed={msg.tone?.speed} weightPos={msg.tone?.weight} soften={!landing}
             fontSize={`calc(var(--big-side) * ${box.unit.toFixed(4)})`} />
         </CloudBubble>
       </div>

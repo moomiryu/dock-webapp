@@ -25,13 +25,17 @@ export const palettes: Palette[] = [
 // 되었다(tone.ts). 키는 안 바꾼다 — 사흘치 글이 벽에 떠 있는 동안 키를
 // 바꾸면 그 글들이 서체를 잃는다.
 //
-//   ttoryeot 당당한   → dunkel-sans-variable          (Adobe 킷 qgd6cda)
+//   ttoryeot 당당한   → sandoll-achim 500             (Adobe 킷 qgd6cda)
 //   chabun   차분한   → source-han-serif-kr-variable  (Adobe 킷 qgd6cda)
 //   doran    다정한   → 마포 다카포                    (우리 파일)
 //   deulseok 유머있는 → Handjet 2.004                  (우리 파일)
 //
+// 2026-10-01: 당당한이 둥켈산스에서 **산돌 아침 Medium**으로 갈렸다(디자이너).
+// 둥켈은 면 채움이 0.60이라 벽에서 다른 셋(0.10~0.18)을 덮었다. 아침 Medium은
+// 0.23 — 당당함은 남고 덮지는 않는다. 킷에는 300 · 500 · 700이 다 있다.
+//
 // 네 서체가 가진 축은 제각각이다 (파일의 fvar를 직접 읽어 확인했다):
-//   당당한   wdth 700~1000 · GLAT 0~1000   ← 무게 축이 없다
+//   당당한   없음 — 정적 굵기 셋         ← 말투는 둥글기와 자간이 맡는다
 //   차분한   wght 250~900                  ← 그것뿐
 //   유머있는 wght 100~900 · ELSH 0~16 · ELGR 1~2
 //   다정한   없음                          ← 굵기 한 벌
@@ -42,14 +46,14 @@ export const palettes: Palette[] = [
 // 올리면 당당한·차분한 둘이 한꺼번에 사라질 수 있다. 차분한은 본명조가
 // 받아 주고(index.html의 CDN), 당당한은 UI 얼굴로 떨어진다.
 export const fontMap: Record<string, string> = {
-  ttoryeot: '"dunkel-sans-variable", "Pretendard Variable", sans-serif',
+  ttoryeot: '"sandoll-achim", "Pretendard Variable", sans-serif',
   chabun: '"source-han-serif-kr-variable", "Noto Serif KR Variable", serif',
   doran: '"Mapo Dacapo", "Pretendard Variable", sans-serif',
   deulseok: '"Handjet", "Pretendard Variable", sans-serif',
   // 옛 Firestore 문서가 아직 벽에 있다. 없어진 서체를 가리키게 두면 그 글만
   // UI 얼굴로 떨어지므로, 제일 가까운 새 칸으로 보낸다.
   botong: '"Pretendard Variable", sans-serif',
-  gothic: '"dunkel-sans-variable", "Pretendard Variable", sans-serif',
+  gothic: '"sandoll-achim", "Pretendard Variable", sans-serif',
   mono: '"Pretendard Variable", sans-serif',
   myeongjo: '"source-han-serif-kr-variable", "Noto Serif KR Variable", serif',
   song: '"Handjet", "Pretendard Variable", sans-serif'
@@ -84,9 +88,16 @@ export const fontMap: Record<string, string> = {
 /* 2026-09-25: scale을 사용자가 정한 **크기감 비율**로 바꿨다 — 둥켈을 1로
    두고 핸드젯 0.93 · 본명조 0.73 · 다카포 0.77. 위 설명의 22.5·22·23·28과
    평균 나누기는 그 전 값(0.942 · 0.921 · 0.963 · 1.173)의 내력이다. 2/5 이름,
-   3/5 견본, 4/5, 벽이 모두 이 값을 곱한다. shift는 그대로다. */
+   3/5 견본, 4/5, 벽이 모두 이 값을 곱한다. shift는 그대로다.
+   2026-10-01: 당당한이 아침 Medium이 되며 다시 쟀다(100px). 한글이 고정폭 0.92em이라
+   둥켈(0.678)보다 한 줄이 1.36배 길다. scale 0.8은 한 글자 몫(0.92 × 0.8 = 0.74)을 다른 셋
+   (본명조 0.71 · 다카포 0.77 · 핸드젯 0.73)에 맞춘 값이다 — 디자이너가 굵기를 고른 격자도 이 크기였다.
+   잉크 높이로 맞추면 1.04가 나와(아침 0.89em, 둥켈 0.93em) 두 잣대가 갈린다. 0.8 · 0.9 · 1.04를
+   세로 75% · 100%와 한 장에 놓고 디자이너가 0.8 · 100%로 정했다(같은 날) — 길이와 높이가
+   둘 다 다른 셋 안에 드는 칸이 그것 하나였다.
+   shift는 같은 방법(잉크의 세로 중심, 아래로 +)으로 쟀다 — 둥켈을 함께 재서 0.0175(표 0.0172)로 방법을 확인했다. */
 export const opticalFix: Record<string, { scale?: number; shift?: number }> = {
-  ttoryeot: { scale: 1, shift: 0.0172 },       // 당당한   둥켈산스
+  ttoryeot: { scale: 0.8, shift: -0.0042 },    // 당당한   아침 Medium
   chabun: { scale: 0.73, shift: 0.0227 },      // 차분한   본명조
   doran: { scale: 0.77, shift: -0.0187 },      // 다정한   다카포
   deulseok: { scale: 0.93, shift: -0.0211 }    // 유머있는 핸드젯
@@ -117,11 +128,14 @@ export const opticalFix: Record<string, { scale?: number; shift?: number }> = {
  *
  * 당당한의 사다리가 이렇게 짧은 것은 보정이 모자라서가 아니라 **이 서체에
  * 무게 축이 없어야 맞기 때문**이다. 안내서도 당당한에는 무게 대신
- * 말투(GLAT)를 두었다. 성격별 축으로 가는 일이 끝나면 이 줄은 없어진다.
+ * 말투(GLAT)를 두었다.
+ *
+ * 2026-10-01: 당당한의 줄을 뺐다 — 서체가 아침 Medium(정적 500)으로 갈렸다.
+ * 위 둥켈 이야기는 그 줄이 있던 까닭으로 남긴다. 옛 글(wght 700)도 이제 획을
+ * 덧대지 않고 아침 500 그대로 선다(formFor).
  */
 const STROKE_LADDER: Record<string, Record<number, number>> = {
-  doran: { 300: 0, 400: 0.015, 500: 0.03, 600: 0.045, 700: 0.06 },
-  ttoryeot: { 300: 0, 400: 0.002, 500: 0.004, 600: 0.006, 700: 0.008 }
+  doran: { 300: 0, 400: 0.015, 500: 0.03, 600: 0.045, 700: 0.06 }
 };
 
 /**
@@ -184,11 +198,22 @@ export const graphics: string[] = [
  * 차분한(본명조)은 wght 250~900을 제대로 갖고 있으므로 무게를 그대로 묻는다.
  * 다정한(다카포)은 축이 없어 획(-webkit-text-stroke)으로 대신 답한다 —
  * 그건 opticalStroke가 이미 하고 있다.
+ *
+ * 2026-10-01: 당당한이 아침 Medium이 되어 GLAT 축이 없어졌다. 말투는 이제
+ * **둥글기와 자간**이 맡는다(디자이너, 격자로 골랐다):
+ *   예리한  아침 그대로 · 자간 −0.02em
+ *   온화한  바깥 모서리 0.025em · 안쪽 구석 0.02em 둥글게 · 자간 +0.02em
+ *          (둥글기는 VoiceBubble의 useSoften — 화면 픽셀 68 아래에서는 끈다)
+ * 자간을 양쪽으로 0.02씩만 벌린 것은 어느 쪽도 어색하지 않으면서, 둥글기가
+ * 안 보이는 작은 글자에서도 말투가 갈리게 하려는 것이다.
  */
-/* 이름은 두 언어로 든다(2026-09-26, 영문판). 쓰는 곳이 지금 언어를 고른다 */
-export const MANNER: Record<string, { labels: Pair<[string, string]>; axes: [string, string] }> = {
-  // 차례는 안내서가 적어 둔 차례다 — 온화한이 먼저, 예리한이 나중.
-  ttoryeot: { labels: { ko: ['온화한', '예리한'], en: ['Gentle', 'Sharp'] }, axes: ['"GLAT" 1000', '"GLAT" 0'] },
+/* 이름은 두 언어로 든다(2026-09-26, 영문판). 쓰는 곳이 지금 언어를 고른다.
+   labels · axes는 **저장되는 값**(manner 0 · 1)의 차례다. 화면에 서는 차례는 order —
+   값의 뜻을 바꾸면 벽에 떠 있는 글의 말투와 나무가 뒤집힌다. */
+export const MANNER: Record<string, { labels: Pair<[string, string]>; axes?: [string, string]; order?: [number, number] }> = {
+  // 값의 차례는 안내서 그대로(0 = 온화한, 1 = 예리한 — 나무도 이 뜻으로 고른다, cloud.ts).
+  // 화면은 예리한이 먼저다(2026-10-01, 디자이너) — 처음 들어오면 아침 원래 모양으로 선다.
+  ttoryeot: { labels: { ko: ['온화한', '예리한'], en: ['Gentle', 'Sharp'] }, order: [1, 0] },
   deulseok: {
     // 시니컬한의 ELSH는 **8.8**이다. 0.8로 적혀 있었다(2026-09-20에 안내서와
     // 대조해 고쳤다) — 0.8이면 획이 거의 사라져 글자가 점선으로 흩어진다.
@@ -200,6 +225,11 @@ export const MANNER: Record<string, { labels: Pair<[string, string]>; axes: [str
 /** 이 서체가 무게 축을 실제로 갖고 있는가 — 없으면 말투를 묻는다 */
 export const hasWeightAxis = (font: string) => !(font in MANNER);
 
+/** 말투 칸이 화면에 서는 차례 — 저장되는 값(0 · 1)을 앞 칸부터 */
+export const mannerOrder = (font: string): [number, number] => MANNER[font]?.order ?? [0, 1];
+/** 처음 들어왔을 때 골라져 있는 말투 — 앞 칸의 값 */
+export const mannerDefault = (font: string) => mannerOrder(font)[0];
+
 /**
  * 이 서체에 넘길 font-variation-settings 한 줄.
  *
@@ -208,7 +238,7 @@ export const hasWeightAxis = (font: string) => !(font in MANNER);
  */
 export function variationFor(font: string, wght: number, manner = 0): string {
   const m = MANNER[font];
-  if (m) return m.axes[manner ? 1 : 0];
+  if (m) return m.axes?.[manner ? 1 : 0] ?? 'normal';
   return `"wght" ${wght}`;
 }
 
@@ -219,14 +249,21 @@ export function variationFor(font: string, wght: number, manner = 0): string {
    함수를 거친다. 값은 사용자가 정했다(작업 지침 8번).
 
      성격 · 서체              속도 왼쪽            가운데              오른쪽
-     당당한 · 둥켈산스        진중한 폭1000 세로75% 보통 폭700 세로75%  거침없는 폭700 세로100%
+     당당한 · 아침(500)       진중한               보통                 거침없는
      유머있는 · 핸드젯(840)   능청능청 가로121%     보통                 재잘재잘 가로88%
                               세로75%
      차분한 · 본명조(자간-25) 느긋한 세로86%       보통                 날렵한 가로88%
      다정한 · 다카포          느긋한 가로138%      보통                 날렵한 가로84%
 
      무게  차분한 wght 250 · 445 · 900   다정한 획 0 · 0.1pt · 0.2pt(12pt 기준)
-     말투  당당한 GLAT 1000 · 0          유머있는 ELSH 12/ELGR 1.75 · 0.8/1
+     말투  당당한 온화한(둥글게 · 자간 +0.02) · 예리한(자간 −0.02)
+           유머있는 ELSH 12/ELGR 1.75 · 0.8/1
+
+   당당한의 진중한은 둥켈의 폭 축(1000)으로 넓어졌었다. 아침에는 폭 축이 없어
+   2026-10-01부터 그 차이를 뺐다 — 무엇으로 대신할지는 격자로 정한다(디자이너).
+   진중한 · 보통의 세로 75%도 같은 날 뺐다(디자이너) — 키가 큰 둥켈을 다른 셋 높이로
+   맞추던 눌림이라, 키가 낮은 아침에 걸면 혼자 납작했다(글자 높이 0.70, 다른 셋 0.89~1.12).
+   그래서 당당한의 속도 줄은 지금 기울기(거침없는 쪽)만 움직인다.
 
    기울기는 속도 가운데에서 0, 오른쪽 끝에서 18도 — 그 사이를 이어서 기운다
    (12~18도로 세기를 조절, 사용자 결정). 모든 값은 세 지점 사이를 곧게 잇는다.
@@ -236,7 +273,7 @@ export function variationFor(font: string, wght: number, manner = 0): string {
 export const SLANT_MAX = 18;
 type Three = [number, number, number];
 const SPEED: Record<string, { sx: Three; sy: Three; wdth?: Three }> = {
-  ttoryeot: { sx: [1, 1, 1], sy: [0.75, 0.75, 1], wdth: [1000, 700, 700] },
+  ttoryeot: { sx: [1, 1, 1], sy: [1, 1, 1] },
   deulseok: { sx: [1.21, 1, 0.88], sy: [0.75, 1, 1] },
   chabun: { sx: [1, 1, 0.88], sy: [0.86, 1, 1] },
   doran: { sx: [1.38, 1, 0.84], sy: [1, 1, 1] }
@@ -248,6 +285,10 @@ const DORAN_STROKE: Three = [0, 0.1 / 12, 0.2 / 12];
 const HANDJET_WGHT = 840;
 /** 차분한은 늘 자간 -25 */
 const CHABUN_TRACK = '-0.025em';
+/** 당당한은 아침 Medium 한 벌 — 옛 글(wght 700)도 이 굵기로 선다 */
+const ACHIM_WGHT = 500;
+/** 당당한의 말투 자간 — 저장 값 차례(0 = 온화한 +0.02 · 1 = 예리한 −0.02). 격자 ⑤(2026-10-01, 디자이너) */
+const TTORYEOT_TRACK = ['0.02em', '-0.02em'] as const;
 
 /** 세 지점(0 · 0.5 · 1) 사이를 곧게 잇는다 */
 export const along = (t: number, [l, m, r]: Three) => {
@@ -308,8 +349,11 @@ export interface Form {
   stroke: string;
   letterSpacing: string;
   weight: number;
-  /** 둥켈산스의 폭 축(700~1000). 구름이 글자폭을 셀 때 쓴다. 다른 서체는 없음 */
+  /** 둥켈산스의 폭 축(700~1000)이 들던 자리. 2026-10-01 당당한이 아침으로 갈리며 비었다 —
+      구름(cloud.ts)이 글자폭을 셀 때 아직 받는 자리라 남겨 둔다. 지금은 어느 서체도 채우지 않는다 */
   wdth?: number;
+  /** 온화한(당당한) — 모서리를 둥글게 깎는다(VoiceBubble · useSoften) */
+  soft?: boolean;
 }
 
 type FormInput = { font: string; tone?: number; slnt?: number; wght?: number; manner?: number; speed?: number; weight?: number };
@@ -319,13 +363,17 @@ type FormInput = { font: string; tone?: number; slnt?: number; wght?: number; ma
  */
 export function formFor(t: FormInput): Form {
   const font = t.font;
-  const track = font === 'chabun' ? CHABUN_TRACK : '0';
+  /* 당당한 — 말투가 자간과 둥글기를 정한다. 말투가 없는 옛 글은 0(온화한)이다 — 나무도 그렇게 고른다(cloud.ts) */
+  const bold = font === 'ttoryeot';
+  const sharp = t.manner === 1;
+  const track = font === 'chabun' ? CHABUN_TRACK : bold ? TTORYEOT_TRACK[sharp ? 1 : 0] : '0';
+  const soft = bold && !sharp;
   if (t.speed === undefined || t.speed === null || !SPEED[font]) {
-    const wght = t.wght ?? 400;
+    const wght = bold ? ACHIM_WGHT : t.wght ?? 400;
     return {
       scaleX: t.tone ?? 1, scaleY: 1, slant: Math.abs(t.slnt ?? 0),
       variation: variationFor(font, wght, t.manner ?? 0),
-      stroke: opticalStroke(font, wght), letterSpacing: track, weight: wght
+      stroke: opticalStroke(font, wght), letterSpacing: track, weight: wght, soft
     };
   }
   const s = t.speed;
@@ -335,13 +383,11 @@ export function formFor(t: FormInput): Form {
   let variation = '';
   let stroke = '0';
   let weight = 400;
-  let wdth: number | undefined;
-  if (font === 'ttoryeot') {
-    wdth = Math.round(along(s, row.wdth!));
-    variation = `"wdth" ${wdth}, ${MANNER.ttoryeot.axes[t.manner ? 1 : 0]}`;
+  if (bold) {
+    weight = ACHIM_WGHT;
   } else if (font === 'deulseok') {
     weight = HANDJET_WGHT;
-    variation = `"wght" ${HANDJET_WGHT}, ${MANNER.deulseok.axes[t.manner ? 1 : 0]}`;
+    variation = `"wght" ${HANDJET_WGHT}, ${MANNER.deulseok.axes![t.manner ? 1 : 0]}`;
   } else if (font === 'chabun') {
     weight = Math.round(along(w, CHABUN_WGHT));
     variation = `"wght" ${weight}`;
@@ -350,13 +396,13 @@ export function formFor(t: FormInput): Form {
   }
   return {
     scaleX: along(s, row.sx), scaleY: along(s, row.sy), slant,
-    variation, stroke, letterSpacing: track, weight, wdth
+    variation, stroke, letterSpacing: track, weight, soft
   };
 }
 
 /**
  * 새 표를 모르는 곳을 위한 옛 칸 — 표가 계산한 모양을 옛 칸(tone · slnt · wght)
- * 으로도 적어 둔다. 세로 비율과 둥켈의 폭 축은 옛 칸에 자리가 없어 빠진다.
+ * 으로도 적어 둔다. 세로 비율은 옛 칸에 자리가 없어 빠진다.
  */
 export function legacyFields(t: FormInput) {
   const f = formFor(t);

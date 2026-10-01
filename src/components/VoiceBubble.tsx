@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { fitFontSize } from '../lib/fit';
 import { formFor, opticalFix } from '../lib/palettes';
 import type { Glyph } from '../lib/cloud';
@@ -37,6 +37,8 @@ interface Props {
     /** 한 자씩 놓은 자리(em)와 글 상자 — 구름의 휜 배치(cloud.ts beadArcFor). 있으면 줄 대신 이것을 그린다 */
     glyphs?: readonly Glyph[];
     glyphBox?: { w: number; h: number };
+    /** false면 온화한의 둥근 모서리를 끈다 — 벽의 강조가 제 크기로 내려앉는 동안(작아지면 획이 깎인다) */
+    soften?: boolean;
 }
 /**
  * 상자를 채우는 글자 크기 — 재서 정한다.
@@ -97,7 +99,7 @@ function fitToBox(el: HTMLElement): number {
  * max를 씌워야 바닥이 진짜 바닥이 된다 — 안쪽 clamp에 넣으면 뒤따르는
  * 곱셈이 다시 깎는다.
  */
-export default function VoiceBubble({ text, bg, color, fontFamily, font, weight, width = 1, slant = 0, fontSize, align: alignIn = 'center', size = 44, manner = 0, fill, speed, weightPos, perChar, lineTrack, glyphs, glyphBox, children }: Props) {
+export default function VoiceBubble({ text, bg, color, fontFamily, font, weight, width = 1, slant = 0, fontSize, align: alignIn = 'center', size = 44, manner = 0, fill, speed, weightPos, perChar, lineTrack, glyphs, glyphBox, soften = true, children }: Props) {
     /* 글 맞춤은 셋뿐이다 — 나머지 정렬은 형상(cloud.ts)이 줄 · 자리로 이미 풀어 넘긴다 */
     const align = alignIn === 'left' || alignIn === 'right' ? alignIn : 'center';
     /* 모양은 서체별 표 하나가 정한다(2026-09-25). 3/5 견본 · 4/5 · 미리보기 ·
@@ -111,6 +113,9 @@ export default function VoiceBubble({ text, bg, color, fontFamily, font, weight,
        셋 다 이 한 줄을 지나므로 여기서 한 번만 곱한다. */
     const optic = opticalFix[font ?? '']?.scale ?? 1;
     const body = useRef<HTMLDivElement>(null);
+    /* 둥글기는 글자 층에만 건다 — 말풍선 면과 나무는 CloudBubble이 따로 그린다 */
+    const letters = useRef<HTMLDivElement>(null);
+    useSoften(letters, soften && !!f.soft);
     const [filled, setFilled] = useState(24);
     /* 상자가 420ms에 걸쳐 줄어드는 동안 계속 다시 잰다. 프레임마다 아홉 번씩
        재는 건 과하니 rAF로 한 프레임에 한 번으로 묶는다. useLayoutEffect라
@@ -137,13 +142,13 @@ export default function VoiceBubble({ text, bg, color, fontFamily, font, weight,
   {glyphs && glyphBox ? (
    /* 휜 배치 — 한 자씩 제 자리 · 제 기울기로. 장평 · 세로 비율도 글자마다 건다(줄 전체를 누르면 호가 찌그러진다).
       안쪽 .ch는 벽의 펄럭임이 움직이는 자리다 — 자리 · 기울기는 바깥이 들고 있어 서로 안 덮는다 */
-   <div className="voice-bubble-text line-bubble-text is-arc" style={{ width: `${glyphBox.w.toFixed(4)}em`, height: `${glyphBox.h.toFixed(4)}em` }}>
+   <div ref={letters} className="voice-bubble-text line-bubble-text is-arc" style={{ width: `${glyphBox.w.toFixed(4)}em`, height: `${glyphBox.h.toFixed(4)}em` }}>
     {glyphs.map((g, i) => <span key={i} className="arc-glyph" style={{ left: `${g.x.toFixed(4)}em`, top: `${g.y.toFixed(4)}em`,
       transform: `translate(-50%, -50%) rotate(${g.a.toFixed(4)}rad) scale(${f.scaleX}, ${f.scaleY})${f.slant ? ` skewX(${-f.slant}deg)` : ''}` }}><span className="ch">{g.c}</span></span>)}
     {children}
    </div>
   ) : (
-  <div className="voice-bubble-text line-bubble-text" style={{ textAlign: align, transform: `scale(${f.scaleX}, ${f.scaleY})`, transformOrigin: align }}>
+  <div ref={letters} className="voice-bubble-text line-bubble-text" style={{ textAlign: align, transform: `scale(${f.scaleX}, ${f.scaleY})`, transformOrigin: align }}>
    {text.split('\n').map((line, i) => <div className="message-line" key={i}><span className="message-line-fill"><span style={{ ...lean, ...trackStyle(lineTrack?.[i], f.letterSpacing) }}>{perChar ? (line ? Array.from(line).map((c, j) => (c.trim() ? <span key={j} className="ch">{c}</span> : c)) : '\u200b') : line.split(/([A-Za-z0-9][A-Za-z0-9 .,!?'-]*)/g).map((part, j) => /[A-Za-z0-9]/.test(part) ? <span key={j} lang="en">{part}</span> : part || '\u200b')}</span></span></div>)}
    {children}
   </div>
@@ -155,4 +160,81 @@ export default function VoiceBubble({ text, bg, color, fontFamily, font, weight,
 function trackStyle(t: number | undefined, base: string): CSSProperties {
     if (!t) return {};
     return { letterSpacing: `${(t + (parseFloat(base) || 0)).toFixed(4)}em`, marginRight: `${(-t).toFixed(4)}em` };
+}
+
+/* ─── 온화한의 둥근 모서리 (2026-10-01, 디자이너 — 격자로 골랐다) ──────────────
+   당당한(아침 Medium)의 온화한은 글자 모서리를 깎는다. 두 단계다:
+     열기 — 반경만큼 안으로 깎았다가 같은 만큼 되살린다. 곧은 변은 제자리로 돌아오고
+            바깥 모서리와 획 끝만 둥글어진다(0.025em). 굵기도 속공간도 그대로다.
+     닫기 — 거꾸로 불렸다가 되깎는다. 획이 만나는 안쪽 구석만 둥글어진다(0.02em).
+   버린 것: 한 번 번지고 문턱(0.5)을 넘기는 방식 — 0.03em에서 '해' · '게'의 속이 메워져
+   녹은 덩어리가 됐다(디자이너: "offset 없이"). 열기 0.03em — Medium의 가로획이 0.065em이라
+   사선 획(ㄱ · ㅅ)이 깎여 나갔다. 깎는 문턱을 0.85에서 0.97로 올린 것도 같은 까닭이다
+   (번짐으로 흉내 낸 깎기는 문턱이 낮을수록 얇은 획을 먼저 잃는다).
+
+   화면 픽셀로 68px보다 작은 글자에는 걸지 않는다. 픽셀 위에서 깎는 일이라 획이 1~2px이면
+   획 자체가 깎인다 — 제일 먼저 받침 'ㅄ'의 ㅅ이 끊긴다. 화면배율 3(폰)에서 0.5px씩 찍어 보니
+   22.5px(화면 67.5)에서 끊기고 23px(69)부터 온전했다. 세로 75% 눌림이 있어도 경계가 같아서,
+   크기는 글자 칸 자신의 눌림을 빼고 잰다. 그 아래에선 둥근 모서리가 1.7px도 안 돼 잘 안 보인다 —
+   작은 글자에서는 자간(palettes.ts · TTORYEOT_TRACK)이 말투를 말한다. */
+const SOFT_OPEN = 0.025;
+const SOFT_CLOSE = 0.02;
+const SOFT_MIN_PX = 68;
+/** 깎는 문턱과 그 자리 — 정규분포 0.97 지점은 표준편차의 1.881배 */
+const SOFT_T = 0.97;
+const SOFT_Z = 1.881;
+/** 문턱의 가파름 — 클수록 가장자리가 또렷하다 */
+const SOFT_K = 20;
+
+let softDefs: SVGSVGElement | null = null;
+/** 글자 크기(px, 정수로 묶는다)마다 필터 하나 — 번짐 반경이 px라 크기마다 따로 둔다 */
+function softFilter(px: number): string {
+    const q = Math.round(px);
+    const id = `mf-soft-${q}`;
+    if (!softDefs) {
+        softDefs = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        softDefs.setAttribute('aria-hidden', 'true');
+        softDefs.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none';
+        document.body.appendChild(softDefs);
+    }
+    if (!softDefs.querySelector('#' + id)) {
+        const cut = (t: number) => `<feComponentTransfer><feFuncA type="linear" slope="${SOFT_K}" intercept="${0.5 - SOFT_K * t}"/></feComponentTransfer>`;
+        const a = ((SOFT_OPEN * q) / SOFT_Z).toFixed(3);
+        const b = ((SOFT_CLOSE * q) / SOFT_Z).toFixed(3);
+        const f = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+        f.id = id;
+        for (const [k, v] of Object.entries({ x: '-10%', y: '-30%', width: '120%', height: '160%', 'color-interpolation-filters': 'sRGB' })) f.setAttribute(k, v);
+        f.innerHTML =
+            `<feGaussianBlur stdDeviation="${a}"/>${cut(SOFT_T)}<feGaussianBlur stdDeviation="${a}"/>${cut(1 - SOFT_T)}` +
+            `<feGaussianBlur stdDeviation="${b}"/>${cut(1 - SOFT_T)}<feGaussianBlur stdDeviation="${b}"/>${cut(SOFT_T)}`;
+        softDefs.appendChild(f);
+    }
+    return `url(#${id})`;
+}
+
+/**
+ * 온화한이면 그 글자 층에 둥근 모서리를 건다(3/5 견본도 이것을 쓴다).
+ *
+ * 글자 크기는 calc로 오는 곳이 많아 그려진 뒤 잰다. 68px 문턱은 화면에 실제로 선
+ * 크기로 본다 — 조상의 확대 · 축소(부모의 높이 비율)와 화면배율까지 곱한다. 글자 칸
+ * 자신의 장평 · 세로 비율은 빼고 잰다(위 설명).
+ */
+export function useSoften(ref: RefObject<HTMLElement>, on: boolean) {
+    useLayoutEffect(() => {
+        const el = ref.current;
+        if (!el || !on) return;
+        let wait = 0;
+        const apply = () => {
+            wait = 0;
+            const px = parseFloat(getComputedStyle(el).fontSize) || 0;
+            const up = el.parentElement;
+            const h = up?.offsetHeight ?? 0;
+            const shown = up && h ? up.getBoundingClientRect().height / h : 1;
+            el.style.filter = px * shown * (window.devicePixelRatio || 1) >= SOFT_MIN_PX ? softFilter(px) : '';
+        };
+        apply();
+        const ro = new ResizeObserver(() => { if (!wait) wait = requestAnimationFrame(apply); });
+        ro.observe(el);
+        return () => { ro.disconnect(); if (wait) cancelAnimationFrame(wait); el.style.filter = ''; };
+    }, [ref, on]);
 }

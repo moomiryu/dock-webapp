@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import StepHeader from '../components/StepHeader';
 import { tick } from '../components/SnapSwitch';
-import { fontMap, formFor, opticalFix } from '../lib/palettes';
+import { fontMap, formFor, mannerDefault, opticalFix } from '../lib/palettes';
 import { DEFAULT_TONE, STYLE_OPTIONS, type PartialTone } from '../lib/tone';
 import { pick, useLang, type Pair } from '../lib/lang';
 import type { ToneState } from '../types';
@@ -54,7 +54,7 @@ interface Props {
  */
 /** 3/5 기본형(막대 가운데 · 말투 첫째 칸)의 글자 모양 — palettes.ts · formFor */
 function faceOf(font: string): CSSProperties {
-  const f = formFor({ font, speed: 0.5, weight: 0.5, manner: 0 });
+  const f = formFor({ font, speed: 0.5, weight: 0.5, manner: mannerDefault(font) });
   return {
     fontFamily: fontMap[font],
     fontWeight: f.weight,
@@ -209,7 +209,14 @@ export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Prop
             strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         <button className="primary-action" disabled={!font}
-          onClick={() => font && onNext({ ...(initialTone ?? DEFAULT_TONE), font })}>{pick(T.next, lang)}</button>
+          onClick={() => {
+            if (!font) return;
+            /* 성격이 바뀌면 말투는 그 성격의 앞 칸에서 시작한다(당당한은 예리한 — palettes.ts · mannerDefault).
+               같은 성격으로 돌아온 길이면 고른 말투를 그대로 둔다 */
+            const base = initialTone ?? DEFAULT_TONE;
+            const keep = initialTone?.font === font && base.manner !== undefined;
+            onNext({ ...base, font, manner: keep ? base.manner : mannerDefault(font) });
+          }}>{pick(T.next, lang)}</button>
       </div>
     </div>
   );

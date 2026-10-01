@@ -9,9 +9,9 @@ import { count, pick, useLang } from '../lib/lang';
 const T = {
     label: { ko: '완료', en: 'Done' },
     title: { ko: '발화 종료', en: 'Speech ended' },
-    /* 이 문단은 세로로 쌓는 칸(app.css .done-after, flex)이라 글과 굵은 조각이
-       늘 따로 선다. 한 문장으로 옮기면 'and'에서 끊겨 보여서, 영어는 두 문장으로
-       나눠 그 자리가 문장 사이가 되게 한다 */
+    /* 한 문단이다(2026-10-01). 전에는 세로로 쌓는 칸(flex)이라 앞 마디와 굵은
+       마디가 12 떨어진 두 덩이로 서서, 한 문장이 안내 두 줄로 읽혔다. 이제
+       줄바꿈만 하고 행간으로 붙는다. 영어는 그때 나눈 두 문장 그대로 둔다 */
     after: {
         ko: <>메아리처럼 화면을 맴돌며,<br /><b>{STAY_DAYS}일 후에 사라집니다.</b></>,
         en: <>Like an echo, it will drift around the screen. <b>It disappears after {count(STAY_DAYS, 'day', 'days')}.</b></>
@@ -111,7 +111,10 @@ function FeedbackForm() {
             aria-labelledby="feedback-title" aria-describedby="feedback-desc"
             placeholder={pick(T.fbHolder, lang)}
             onChange={e => { setText(e.target.value); setError(null); }} />
+          {/* 1/5의 입력칸 아래 행과 같은 짜임 — 왼쪽 글자 수, 오른쪽 손짓.
+              한도는 maxLength가 지키므로 낭독기에는 숫자를 따로 읽히지 않는다 */}
           <div className="feedback-foot">
+            <span className="feedback-count" aria-hidden>{text.length}<span>/{FEEDBACK_MAX}</span></span>
             {error && <span className="feedback-error" role="alert">{error}</span>}
             <button type="submit" className="feedback-send" disabled={!trimmed || state === 'busy'}
               aria-busy={state === 'busy'}>{pick(state === 'busy' ? T.sending : T.send, lang)}</button>

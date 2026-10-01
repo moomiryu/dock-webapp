@@ -1,7 +1,8 @@
-import { LINE_HEIGHT, foldLines, type BoxShape } from './fit';
+import { LINE_HEIGHT, SIZE_FILLS, UNIT_TOP, foldLines, fillFromLegacySize, type BoxShape } from './fit';
 import { formFor, opticalFix } from './palettes';
 import type { Align } from '../types';
 import { CLOUD_PHOTOS, type PhotoShape } from './cloudPhoto.data';
+import { STONE_PHOTOS, type StoneShape } from './stonePhoto.data';
 
 /**
  * 발화 배경 — 구름.
@@ -96,6 +97,10 @@ export interface Persona {
     contour: { inset: number; gap: number; slope: number; start: number; grow: number; fill: number };
     /** 밑면 — 무게중심 좌우로 밑면이 되는 폭(돌 폭의 비율) · 글 + 여백에서 비켜 지나는 거리(u). flatBase */
     base: { half: number; clear: number };
+    /** 사진 돌(2026-10-01, photoStoneFor · stonePhoto.data.ts) — 있으면 위의 기하 돌 대신 이것을 짓는다(윤곽 따라만 기하 돌로).
+        pick = 벽 글자를 안 줄이는 돌이 이보다 적으면 긴 쪽이 가장 짧은 몇 가지에서 고르나 · grid = 돌을 글 축으로 돌려 놓고
+        자리를 찾는 칸 격자(긴 쪽 칸 수) · spot = 가장 큰 자리의 몇 배에 글을 앉히나(구름과 같은 3% 여유) */
+    photo?: { pick: number; grid: number; spot: number };
   };
   /** 줄 높이(글자 크기의 배수). 없으면 LINE_HEIGHT(1.5). 글에 바짝 붙는 형상(나무)이 좁힌다 */
   lh?: number;
@@ -203,7 +208,10 @@ export const PERSONAS: Record<string, Persona> = {
       // 둘 다 없이는 윗 윤곽이 길어 글이 한두 줄로 위에만 얹히고 몸 아래가 비었다(4/5에서 글 여섯으로 봄)
       contour: { inset: 0.45, gap: 1, slope: 35, start: 0.5, grow: 1.04, fill: 1.1 },
       // 밑면 — 무게중심 좌우 돌 폭의 20%씩(밑면이 폭의 40% 이상). 벽 바닥에 꼭짓점으로 서던 것을 변으로 앉힌다(2026-09-29)
-      base: { half: 0.2, clear: 0.05 } } },
+      base: { half: 0.2, clear: 0.05 },
+      // 사진 돌(2026-10-01) — 위의 기하 돌(꼭짓점 · 깨기 · 넘치기 · 걸기의 곧은 윗변 · 밑면)은 이것을 지우면 되살아난다.
+      // 걸기 셋은 글만 기운다(hang의 각도 그대로) — 돌은 사진 윤곽 그대로(디자이너, 격자 landscape-stone-photo-text.png)
+      photo: { pick: 4, grid: 160, spot: 0.97 } } },
   // 띠 구름 (2026-09-30). 꽃 → 옛 뭉게구름 → 구슬 구름(09-28, 기하)을 거쳐 **사진에서 딴 구름**으로 — 기하 도형이 풍경을
   // 대신하면 읽어 내야 하는 모양이라 도형이 주인공이 됐다(디자이너). 원을 부풀리지 않아 lobe · fill · gap · spread는
   // 쓰이지 않는다. 행간 1.3(2026-09-30, 디자이너 — 나무와 같던 1.1에서 늘렸다). 고른 과정과 버린 것은 design/landscape.md '구름'.
@@ -413,6 +421,8 @@ interface Options {
   manner?: number;
   /** 4/5 정렬 — 나무 · 구름은 이것으로 글 배치와 제 모양을 바꾼다(arrangementsFor) */
   align?: Align;
+  /** 크기 막대(fit.ts SIZE_FILLS 사이) — 나무가 제 키를 이것으로 정한다 */
+  fill?: number;
 }
 
 /**
@@ -452,7 +462,7 @@ export function defaultAlign(font: string | undefined): Align {
  * 조율 값 그대로 구름을 만든다 — 서체별 표(palettes.ts · formFor)가 계산한
  * 장평·세로·기울기·폭 축·자간을 넘긴다. 4/5와 벽이 같은 이 함수를 쓴다.
  */
-export function cloudForTone(lines: readonly string[], tone: (Parameters<typeof formFor>[0] & { align?: Align }) | null | undefined, o: Pick<Options, 'seed' | 'minDiameter'> = {}): Cloud {
+export function cloudForTone(lines: readonly string[], tone: (Parameters<typeof formFor>[0] & { align?: Align; size?: number }) | null | undefined, o: Pick<Options, 'seed' | 'minDiameter'> = {}): Cloud {
   // 같은 글 · 같은 조율이면 같은 구름이다(씨앗이 글) — 한 번 지은 것을 둔다. 벽은 1초마다 열두 글의 구름을 다시 묻는데,
   // 나무는 품을 크기를 찾느라 한 번에 수 ms가 든다(2026-09-29)
   const key = JSON.stringify([lines, tone, o]), had = MADE.get(key);
@@ -461,7 +471,8 @@ export function cloudForTone(lines: readonly string[], tone: (Parameters<typeof 
   if (!tone) c = cloudFor(lines, undefined, o);
   else {
     const f = formFor(tone);
-    c = cloudFor(lines, tone.font, { ...o, scaleX: f.scaleX, scaleY: f.scaleY, slant: f.slant, wdth: f.wdth, track: parseFloat(f.letterSpacing) || 0, manner: tone.manner, align: tone.align });
+    c = cloudFor(lines, tone.font, { ...o, scaleX: f.scaleX, scaleY: f.scaleY, slant: f.slant, wdth: f.wdth, track: parseFloat(f.letterSpacing) || 0, manner: tone.manner, align: tone.align,
+      fill: fillFromLegacySize(tone.size) });
   }
   if (MADE.size >= 300) MADE.delete(MADE.keys().next().value!);
   MADE.set(key, c);
@@ -495,8 +506,13 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
   const TW = Math.max(0.5, ...widths), TH = Math.max(1, lines.length) * LH;
   const boxes = widths.map((w, i) => ({ x0: (TW - w) / 2, x1: (TW + w) / 2, yc: (i + 0.5) * LH }));
   const rule: 'B' | 'C' = boxes.length <= 2 ? 'B' : 'C';
-  if (pr.edge === 'stone' && pr.stone) return stoneFor(pr, rule, TW, TH, R, o.align === 'hang-up' || o.align === 'hang-mid' || o.align === 'hang-down' || o.align === 'contour' ? o.align : 'center', widths, LH, o.align,
-      o.align === 'contour' ? { lines, font, optic, scaleX, wdth: o.wdth, track: o.track ?? 0 } : undefined);
+  if (pr.edge === 'stone' && pr.stone) {
+    const mode = o.align === 'hang-up' || o.align === 'hang-mid' || o.align === 'hang-down' || o.align === 'contour' ? o.align : 'center';
+    // 사진 돌 — 칸이 생기기 전의 옛 글(가운데 돌)도 사진 돌로 선다: 기울지 않고 넘치지 않는다(디자이너, 2026-10-01)
+    if (pr.stone.photo && mode !== 'contour') return photoStoneFor(pr, rule, TW, TH, R, mode, o.fill ?? SIZE_FILLS[2]);
+    return stoneFor(pr, rule, TW, TH, R, mode, widths, LH, o.align,
+      mode === 'contour' ? { lines, font, optic, scaleX, wdth: o.wdth, track: o.track ?? 0 } : undefined);
+  }
   if (pr.edge === 'tree' && pr.tree) return treeFor(pr, rule, lines, font, optic, scaleX, o, LH);
   if (pr.edge === 'photo' && pr.photo) {
     if (o.align === 'arch' || o.align === 'fan' || o.align === 'smile') {
@@ -827,6 +843,121 @@ function stoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () =>
     w: Math.max(...xs) + e - minX, h: Math.max(...ys) + e - minY,
     text: { x: tcx - TW / 2 - minX, y: tcy - TH / 2 - minY, w: TW, h: TH },
     ...(hang ? { layout: { align: 'left' as const, rotate: ang } } : {})
+  };
+}
+
+// ─── 차분한 — 사진에서 딴 돌 (2026-10-01) ─────────────────────────────
+// 위키미디어 CC0 · 공공 사진에서 뗀 돌 다섯(design/stone-photo, 윤곽은 stonePhoto.data.ts) — 날 선 깨진 돌, 밑은 바닥에 평평하게.
+// 고른 과정과 버린 것은 design/landscape.md '돌'. 값은 PERSONAS.chabun.stone.photo.
+
+/** 돌 s(flip = 좌우 뒤집기)를 −ang 돌려 놓은 판(글 축)의 칸 격자 — 칸 c(돌 단위: 키 = 1), 판의 왼쪽 위(x0 · y0), 안전하지 않은
+    칸(제 칸과 네 이웃이 다 안이 아닌 칸)의 누적합, 무게중심(칸). 같은 돌 · 같은 각도는 한 번만 짓는다 */
+type StoneGrid = { W: number; H: number; c: number; x0: number; y0: number; sat: Int32Array; cx: number; cy: number };
+const STONE_GRIDS = new Map<string, StoneGrid>();
+function stoneGrid(s: StoneShape, flip: boolean, ang: number, N: number): StoneGrid {
+  const key = `${s.id}|${flip ? 1 : 0}|${ang.toFixed(4)}|${N}`, had = STONE_GRIDS.get(key);
+  if (had) return had;
+  const ca = Math.cos(-ang), sa = Math.sin(-ang);
+  const Q = s.pts.map(([x, y]): Pt => { const X = (flip ? 1 - x : x) * s.aspect; return [X * ca - y * sa, X * sa + y * ca]; });
+  const xs = Q.map((q) => q[0]), ys = Q.map((q) => q[1]);
+  const x0 = Math.min(...xs), y0 = Math.min(...ys), c = Math.max(Math.max(...xs) - x0, Math.max(...ys) - y0) / N;
+  const W = Math.ceil((Math.max(...xs) - x0) / c), H = Math.ceil((Math.max(...ys) - y0) / c), inn = new Uint8Array(W * H);
+  let mx = 0, my = 0, n = 0;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (inPolygon(x0 + (x + 0.5) * c, y0 + (y + 0.5) * c, Q)) { inn[y * W + x] = 1; mx += x + 0.5; my += y + 0.5; n++; }
+  }
+  const at = (x: number, y: number) => (x < 0 || y < 0 || x >= W || y >= H ? 0 : inn[y * W + x]);
+  const sat = new Int32Array((W + 1) * (H + 1));
+  for (let y = 0; y < H; y++) {
+    let row = 0;
+    for (let x = 0; x < W; x++) {
+      row += at(x, y) && at(x - 1, y) && at(x + 1, y) && at(x, y - 1) && at(x, y + 1) ? 0 : 1;
+      sat[(y + 1) * (W + 1) + x + 1] = sat[y * (W + 1) + x + 1] + row;
+    }
+  }
+  const g = { W, H, c, x0, y0, sat, cx: mx / Math.max(1, n), cy: my / Math.max(1, n) };
+  if (STONE_GRIDS.size >= 120) STONE_GRIDS.delete(STONE_GRIDS.keys().next().value!);
+  STONE_GRIDS.set(key, g);
+  return g;
+}
+
+type StoneFit = { s: StoneShape; flip: boolean; k: number; cx: number; cy: number; long: number };
+/** 글 + 여백 네모(가로 ÷ 세로 = asp, 높이 RH u)가 각도 ang으로 드는 가장 큰 자리의 spot배, 무게중심에 가장 가까운 곳 —
+    k = 돌 단위 → u, (cx, cy) = 네모 가운데(돌 단위), long = 돌의 긴 쪽(u). 없으면 null. shrink = 그만큼 칸을 줄여 잡는다
+    (= 돌이 커진다) — 실제 윤곽에 걸렸을 때 다시 맞추는 몫 */
+function stoneFit(s: StoneShape, flip: boolean, ang: number, asp: number, RH: number, p: NonNullable<NonNullable<Persona['stone']>['photo']>, shrink = 0): StoneFit | null {
+  const g = stoneGrid(s, flip, ang, p.grid), W1 = g.W + 1;
+  const out = (x: number, y: number, w: number, h: number) => g.sat[(y + h) * W1 + x + w] - g.sat[y * W1 + x + w] - g.sat[(y + h) * W1 + x] + g.sat[y * W1 + x];
+  const fits = (h: number) => {
+    const w = Math.round(h * asp);
+    if (w < 1 || w > g.W || h > g.H) return false;
+    for (let y = 0; y + h <= g.H; y++) for (let x = 0; x + w <= g.W; x++) if (!out(x, y, w, h)) return true;
+    return false;
+  };
+  let lo = 0, hi = g.H + 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (fits(m)) lo = m; else hi = m; }
+  if (lo < 2) return null;
+  const h = Math.max(2, Math.floor(lo * p.spot) - shrink), w = Math.max(1, Math.round(h * asp));
+  let bx = -1, by = -1, bd = Infinity;
+  for (let y = 0; y + h <= g.H; y++) for (let x = 0; x + w <= g.W; x++) {
+    if (out(x, y, w, h)) continue;
+    const d = (x + w / 2 - g.cx) ** 2 + (y + h / 2 - g.cy) ** 2;
+    if (d < bd) { bd = d; bx = x; by = y; }
+  }
+  if (bx < 0) return null;
+  const tx = g.x0 + (bx + w / 2) * g.c, ty = g.y0 + (by + h / 2) * g.c, cb = Math.cos(ang), sb = Math.sin(ang), k = RH / (h * g.c);
+  return { s, flip, k, cx: tx * cb - ty * sb, cy: tx * sb + ty * cb, long: Math.max(s.aspect, 1) * k };
+}
+
+/**
+ * 차분한의 사진 돌 — 글이 먼저다(구름 · 나무와 같은 길, 2026-10-01 디자이너가 격자로 골랐다).
+ *
+ * 걸기 셋(올려 · 중간 · 내려)은 **글만 기운다** — 기하 돌처럼 윗변을 글과 나란히 자르면 사진 돌의 윗선이 톱으로 켠 듯
+ * 평평해진다(디자이너). 글 + 여백(PAD) 네모를 그 각도로 기울여 돌마다(다섯 × 좌우) 넣어 보고, 네모가 겨우 드는 크기로
+ * 돌을 맞춘다. 고르기: 걸기 세 각도 모두에서 벽 글자를 안 줄이는(긴 쪽 ≤ 1 ÷ (UNIT_TOP × 크기)) 돌 가운데 글이 씨앗으로
+ * 하나 — 그런 돌이 pick보다 적으면 가장 긴 쪽이 가장 짧은 pick가지에서. 세 각도로 고르니 4/5에서 칸을 바꿔도 돌은 그대로고
+ * 기울기만 바뀐다.
+ * 자리는 무게중심에 가장 가까운 곳, 줄은 걸기처럼 왼끝 맞춤. 칸이 생기기 전의 옛 글(가운데)은 0°, 제 줄 맞춤 그대로.
+ * 칸 격자는 실제 윤곽보다 거칠다 — 지은 뒤 네모의 둘레를 실제 윤곽으로 확인하고, 걸리면 한 칸씩 줄여 다시 맞춘다.
+ * 그리기 · 벽은 기하 돌과 같다 — 곧은 변으로 이은 다각형(Stone.pts)이고 밑면은 y = 바닥인 곧은 변 하나다.
+ */
+function photoStoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number, mode: 'center' | 'hang-up' | 'hang-mid' | 'hang-down', fill: number): Cloud {
+  const s = pr.stone!, p = s.photo!;
+  const ang = mode === 'center' ? 0 : ((mode === 'hang-up' ? s.hang.up : mode === 'hang-mid' ? s.hang.mid : s.hang.down) * Math.PI) / 180;
+  const RW = TW + 2 * PAD, RH = TH + 2 * PAD, cap = 1 / (UNIT_TOP * fill);
+  // 돌마다 걸기 세 각도에 다 넣어 보고 그중 가장 긴 쪽으로 견준다 — 0°로만 고르니 올려 걸기(−12°)에서 커지는 돌이 걸려
+  // 보통 크기의 긴 글 19/200이 벽 글자를 89%까지 줄였다(2026-10-01, 재서). 세 각도 모두로 고르니 칸을 바꿔도 돌은 그대로다
+  const angs = [s.hang.up, s.hang.mid, s.hang.down].map((d) => (d * Math.PI) / 180);
+  const each: (StoneFit & { worst: number })[] = [];
+  for (const sh of STONE_PHOTOS) for (const flip of [false, true]) {
+    const fs = angs.map((a) => stoneFit(sh, flip, a, RW / RH, RH, p));
+    if (fs.every((f) => f)) each.push({ ...fs[1]!, worst: Math.max(...fs.map((f) => f!.long)) });
+  }
+  const ok = each.filter((f) => f.worst <= cap);
+  const pool = ok.length >= p.pick ? ok : [...each].sort((a, b) => a.worst - b.worst || a.s.id.localeCompare(b.s.id)).slice(0, p.pick);
+  const chosen = pool[Math.floor(R() * pool.length)] ?? { s: STONE_PHOTOS[0], flip: false };
+  // 고른 돌에 그 칸의 각도로 — 실제 윤곽으로 둘레를 확인하고 걸리면 한 칸씩 줄여 다시
+  const build = (f: StoneFit) => {
+    const P = f.s.pts.map(([x, y]): Pt => [(f.flip ? 1 - x : x) * f.s.aspect * f.k, y * f.k]);
+    const cx = f.cx * f.k, cy = f.cy * f.k, ca = Math.cos(ang), sa = Math.sin(ang);
+    const rim = rimOf(-RW / 2, -RH / 2, RW / 2, RH / 2, 24).map(([u, v]): Pt => [cx + u * ca - v * sa, cy + u * sa + v * ca]);
+    return { f, P, cx, cy, fits: rim.every(([x, y]) => inPolygon(x, y, P)) };
+  };
+  let f = stoneFit(chosen.s, chosen.flip, ang, RW / RH, RH, p) ?? stoneFit(chosen.s, chosen.flip, 0, RW / RH, RH, p)!;
+  let got = build(f);
+  for (let k = 1; !got.fits && k <= 8; k++) {
+    const g = stoneFit(chosen.s, chosen.flip, ang, RW / RH, RH, p, k);
+    if (!g) break;
+    f = g; got = build(g);
+  }
+  // 상자 — 기하 돌처럼 가장자리가 잘리지 않게 조금 넉넉히
+  const e = 0.05, mv = ([x, y]: Pt): Pt => [x + e, y + e], pts = got.P.map(mv);
+  return {
+    persona: pr, rule, circles: [], spikes: [],
+    stone: { pts, hatch: s.hatch.on ? hatchBands(pts, got.cx + e, got.cy + e, s.hatch) : [] },
+    w: f.s.aspect * f.k + 2 * e, h: f.k + 2 * e,
+    text: { x: got.cx + e - TW / 2, y: got.cy + e - TH / 2, w: TW, h: TH },
+    ...(mode !== 'center' ? { layout: { align: 'left' as const, rotate: ang } } : {})
   };
 }
 

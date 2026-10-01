@@ -249,7 +249,8 @@ export function variationFor(font: string, wght: number, manner = 0): string {
    함수를 거친다. 값은 사용자가 정했다(작업 지침 8번).
 
      성격 · 서체              속도 왼쪽            가운데              오른쪽
-     당당한 · 아침(500)       진중한               보통                 거침없는
+     당당한 · 아침(500)       진중한 가로115%      보통                 거침없는
+                              자간 +0.06
      유머있는 · 핸드젯(840)   능청능청 가로121%     보통                 재잘재잘 가로88%
                               세로75%
      차분한 · 본명조(자간-25) 느긋한 세로86%       보통                 날렵한 가로88%
@@ -263,7 +264,10 @@ export function variationFor(font: string, wght: number, manner = 0): string {
    2026-10-01부터 그 차이를 뺐다 — 무엇으로 대신할지는 격자로 정한다(디자이너).
    진중한 · 보통의 세로 75%도 같은 날 뺐다(디자이너) — 키가 큰 둥켈을 다른 셋 높이로
    맞추던 눌림이라, 키가 낮은 아침에 걸면 혼자 납작했다(글자 높이 0.70, 다른 셋 0.89~1.12).
-   그래서 당당한의 속도 줄은 지금 기울기(거침없는 쪽)만 움직인다.
+   진중한은 같은 날 격자로 다시 골랐다(디자이너): 장평 125% · 자간 +0.12em · 세로 85% · 굵기 700 ·
+   장평 115%+자간 +0.06em · 굵기 700+자간 +0.08em · 장평 115%+세로 90%를 한 장에 놓고
+   **장평 115% + 자간 +0.06em**(넓게 + 띄워 — 글줄 길이 1.24, 농도 0.93). 자간은 말투의 자간
+   (TTORYEOT_TRACK) 위에 더한다. 거침없는 쪽(기울기 18°)은 그대로 두었다.
 
    기울기는 속도 가운데에서 0, 오른쪽 끝에서 18도 — 그 사이를 이어서 기운다
    (12~18도로 세기를 조절, 사용자 결정). 모든 값은 세 지점 사이를 곧게 잇는다.
@@ -273,7 +277,7 @@ export function variationFor(font: string, wght: number, manner = 0): string {
 export const SLANT_MAX = 18;
 type Three = [number, number, number];
 const SPEED: Record<string, { sx: Three; sy: Three; wdth?: Three }> = {
-  ttoryeot: { sx: [1, 1, 1], sy: [1, 1, 1] },
+  ttoryeot: { sx: [1.15, 1, 1], sy: [1, 1, 1] },
   deulseok: { sx: [1.21, 1, 0.88], sy: [0.75, 1, 1] },
   chabun: { sx: [1, 1, 0.88], sy: [0.86, 1, 1] },
   doran: { sx: [1.38, 1, 0.84], sy: [1, 1, 1] }
@@ -287,8 +291,10 @@ const HANDJET_WGHT = 840;
 const CHABUN_TRACK = '-0.025em';
 /** 당당한은 아침 Medium 한 벌 — 옛 글(wght 700)도 이 굵기로 선다 */
 const ACHIM_WGHT = 500;
-/** 당당한의 말투 자간 — 저장 값 차례(0 = 온화한 +0.02 · 1 = 예리한 −0.02). 격자 ⑤(2026-10-01, 디자이너) */
-const TTORYEOT_TRACK = ['0.02em', '-0.02em'] as const;
+/** 당당한의 말투 자간(em) — 저장 값 차례(0 = 온화한 +0.02 · 1 = 예리한 −0.02). 격자 ⑤(2026-10-01, 디자이너) */
+const TTORYEOT_TRACK = [0.02, -0.02] as const;
+/** 당당한의 속도 자간(em) — 진중한 쪽 끝에서 +0.06, 보통부터는 0. 말투 자간 위에 더한다(2026-10-01, 디자이너) */
+const TTORYEOT_SLOW_TRACK: Three = [0.06, 0, 0];
 
 /** 세 지점(0 · 0.5 · 1) 사이를 곧게 잇는다 */
 export const along = (t: number, [l, m, r]: Three) => {
@@ -366,7 +372,9 @@ export function formFor(t: FormInput): Form {
   /* 당당한 — 말투가 자간과 둥글기를 정한다. 말투가 없는 옛 글은 0(온화한)이다 — 나무도 그렇게 고른다(cloud.ts) */
   const bold = font === 'ttoryeot';
   const sharp = t.manner === 1;
-  const track = font === 'chabun' ? CHABUN_TRACK : bold ? TTORYEOT_TRACK[sharp ? 1 : 0] : '0';
+  /* 당당한의 자간 = 말투 자간 + 속도 자간(진중한 쪽에서만, 옛 글은 속도가 없어 0) */
+  const boldTrack = (s?: number) => `${(TTORYEOT_TRACK[sharp ? 1 : 0] + (s === undefined ? 0 : along(s, TTORYEOT_SLOW_TRACK))).toFixed(4)}em`;
+  const track = font === 'chabun' ? CHABUN_TRACK : bold ? boldTrack(t.speed ?? undefined) : '0';
   const soft = bold && !sharp;
   if (t.speed === undefined || t.speed === null || !SPEED[font]) {
     const wght = bold ? ACHIM_WGHT : t.wght ?? 400;

@@ -61,7 +61,7 @@ def stamp(dst, src, cx, bottom):
 
 
 def rebuild(vid):
-    """→ (지금 앱에 보이는 판, 새 판, 쪽마다 기록)"""
+    """→ (지금 앱에 보이는 판, 꼬리를 다시 지은 판, 쪽마다 기록)"""
     m = np.load(os.path.join(BAND, f'{vid}_mask.npz'))['m'].astype(np.uint8)
     rng = np.random.default_rng(int(vid[1:]) * 97 + 5)
     Tm = m.sum(0).max()

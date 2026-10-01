@@ -151,7 +151,9 @@ export interface Persona {
   photo?: {
     /** 몸통 — 글 자리에서 좌우로, 두께가 가장 두꺼운 곳의 이 몫 아래로 떨어지기 전까지. 그 밖은 꼬리 */
     body: number;
-    /** 꼬리를 옆으로 누르는 배수 — 1은 몸통 폭의 125~163%로 과했고, 0.35는 작은 덩이가 톱니처럼 뾰족해졌다(격자) */
+    /** 꼬리를 옆으로 누르는 배수. 2026-09-30 격자에서 0.5(1은 몸통 폭의 125~163%로 과했고, 0.35는 작은 덩이가 톱니처럼
+        뾰족해졌다). 2026-10-01부터 1 — 꼬리를 혹의 사슬로 다시 지으면서(scripts/clouds/tail.py) 0.5배 누른 길이를 자료에
+        미리 넣었다. 누르면 둥근 혹이 옆으로 찌그러진다 */
     tail: number;
     /** 몸통의 긴 쪽 상한(u) — 넘으면 벽 한 칸에 맞추느라 글이 작아진다(보통 크기의 한계 18.5u에서 여유를 둔다) */
     cap: number;
@@ -163,7 +165,8 @@ export interface Persona {
     arc: { bow: number; fan: number };
     /** 움직임(photoWave) — 봉우리: 바깥으로만 부푸는 폭(u) · 한 바퀴(--t-hold 배수). 꼬리: 늘었다 줄었다(꼬리 길이의 몫) ·
         끝의 나부낌(u) · 한 바퀴(--t-hold 배수). 움직이는 견본 격자(봉우리 · 꼬리 · 둘 다 × 약 · 중 · 강)에서 디자이너가
-        봉우리 강 · 꼬리 약을 골랐다(2026-09-30) */
+        봉우리 강 · 꼬리 약을 골랐다(2026-09-30). 꼬리는 2026-10-01에 껐다(0) — 끝으로 갈수록 크게 물결치는 몸짓이 뱀의
+        문법이다. 혹의 사슬이 된 꼬리도 봉우리처럼 바깥으로만 부푼다. 꼬리를 어떻게 움직일지는 따로 고른다 */
     motion: { billow: number; billowTurn: number; stretch: number; tip: number; tailTurn: number };
   };
   /** 유머있는 — 말투가 형상을 가른다: 귀여운 = 새, 시니컬한 = 박쥐(creatureFor). 기하 도형만(원 · 세모 · 띠 · 원호).
@@ -247,8 +250,8 @@ export const PERSONAS: Record<string, Persona> = {
   // 대신하면 읽어 내야 하는 모양이라 도형이 주인공이 됐다(디자이너). 원을 부풀리지 않아 lobe · fill · gap · spread는
   // 쓰이지 않는다. 행간 1.3(2026-09-30, 디자이너 — 나무와 같던 1.1에서 늘렸다). 고른 과정과 버린 것은 design/landscape.md '구름'.
   doran: { key: 'doran', edge: 'photo', lobe: [1.1, 1.6], fill: [0.5, 0.75], gap: 1.6, spread: [0, 0.9], sat: 0, blur: 0, lh: 1.3,
-    photo: { body: 0.4, tail: 0.5, cap: 18, thick: [1, 1.15, 1.3, 1.5], pick: 4, arc: { bow: 1.3, fan: 130 },
-      motion: { billow: 0.35, billowTurn: 9, stretch: 0.08, tip: 0.2, tailTurn: 14 } } },
+    photo: { body: 0.4, tail: 1, cap: 18, thick: [1, 1.15, 1.3, 1.5], pick: 4, arc: { bow: 1.3, fan: 130 },
+      motion: { billow: 0.35, billowTurn: 9, stretch: 0, tip: 0, tailTurn: 14 } } },
   // 새 · 박쥐 (2026-09-29). 픽셀 구름 → 나비(시안) → 말투가 가른다: 귀여운 = 새, 시니컬한 = 박쥐. 기하 도형만.
   // 원을 부풀리지 않아 lobe · fill · gap · spread · cell은 쓰이지 않는다(cell은 옛 픽셀 구름의 격자 — 그리는 코드가 남아 있다).
   // 새: 몸 원 · 머리 0.55R · 꼬리 4u(글이 두 방향 중 하나). 박쥐: 한 몸, 귀 · 아래 끝 · 날개는 두 줄 견본에서 잰 길이 그대로.
@@ -361,9 +364,11 @@ export interface Photo {
   /** 어느 띠인가(cloudPhoto.data.ts) */
   id: string;
   pts: Pt[];
+  /** 꼬리 끝 너머 떨어진 조각(2026-10-01) — 윤곽 여럿. 몸통과 같은 색으로 칠하고 움직이지 않는다 */
+  extra?: Pt[][];
   /** 글자 한 자씩의 가운데(띄어쓰기 빼고, 줄 차례대로) — 벽에서 남의 구름 글자가 이 자리를 비켜 간다 */
   chars: Pt[];
-  /** 꼬리까지 합친 가로 범위(u, 몸통 상자 기준) — 벽이 읽힘을 따질 때 꼬리도 몸으로 친다 */
+  /** 꼬리 · 떨어진 조각까지 합친 가로 범위(u, 몸통 상자 기준) — 벽이 읽힘을 따질 때 꼬리도 몸으로 친다 */
   x0: number; x1: number;
 }
 
@@ -1527,7 +1532,8 @@ function photoFit(s: PhotoShape, k: number, asp: number, RH: number, bodyAt: num
  * 그런 장이 pick장보다 적으면 몸통이 가장 짧은 pick장에서. '가장 짧은 넷'만 후보로 두었더니 글 200개가 12장 중 5장만
  * 썼다(2026-09-30, 재서) — 글자가 안 줄어드는 한 넓게 고른다.
  * 띠마다 두께 배수(thick)를 차례로 대 보고 몸통이 상한 안에 드는 첫째(가장 덜 두툼한)를 쓴다 — 모두 넘으면 가장 짧은 것.
- * 꼬리(몸통 밖)는 옆으로 tail배 눌러 짧게 한다. tb = 글 상자(u) · chars = 그 좌표의 글자 가운데.
+ * 꼬리(몸통 밖)는 옆으로 tail배 눌러 짧게 한다(2026-10-01부터 1 — 자료에 미리 넣었다). 꼬리 끝 너머 떨어진 조각(extra)도
+ * 같은 자리 옮김으로 따라온다. tb = 글 상자(u) · chars = 그 좌표의 글자 가운데.
  * 칸 격자(폭 256)는 실제 윤곽보다 거칠다 — 지은 뒤 글 + 여백 네모의 둘레를 **실제 윤곽**으로 확인하고, 걸리면 한 칸씩 줄여
  * 다시 맞춘다(칸만 믿었을 때 글 200개 중 5~15개가 칸 사이 홈 · 누른 꼬리에 모서리가 걸렸다).
  * 격자로 고른 과정: 옆으로 퍼진 조각(해안선 같아 구름으로 안 읽혔다) → 세로로 쌓은 탑(한 톤이면 돌처럼 읽혔다) → 가로로
@@ -1552,19 +1558,22 @@ function photoFor(pr: Persona, rule: 'B' | 'C', tb: { x0: number; y0: number; x1
   let f = pool[Math.floor(R() * pool.length)];
   // 윤곽 — 칸 좌표를 두께만큼 늘이고, 몸통 밖(꼬리)은 옆으로 눌러, 몸통 상자 왼쪽 위를 원점으로 u에
   const build = (g: PhotoFit) => {
-    const pts = g.s.pts.map(([x, y]): Pt => {
+    const at = ([x, y]: readonly [number, number]): Pt => {
       const xx = x < g.bx0 ? g.bx0 + (x - g.bx0) * p.tail : x > g.bx1 ? g.bx1 + (x - g.bx1) * p.tail : x;
       return [(xx - g.bx0) * g.upp, (y * g.k - g.by0) * g.upp];
-    });
+    };
+    const pts = g.s.pts.map(at), extra = (g.s.extra ?? []).map((r) => r.map(at));
     const tx = (g.rx - g.bx0) * g.upp + PAD, ty = (g.ry - g.by0) * g.upp + PAD;
     const x0 = tx - PAD, y0 = ty - PAD, x1 = tx + TW + PAD, y1 = ty + TH + PAD;
+    // 둘레를 변마다 60점으로 — 20점은 점 사이 밑선의 잔 홈을 놓쳤다(2026-10-01, 꼬리를 다시 지은 판이 칸 격자에서 촘촘해져
+    // 글 상자가 밑선에 더 붙어 앉자 글 200개 중 4~10개가 걸렸다)
     let fits = true;
-    for (let i = 0; i < 20 && fits; i++) {
-      const t = i / 20;
+    for (let i = 0; i < 60 && fits; i++) {
+      const t = i / 60;
       for (const [x, y] of [[x0 + (x1 - x0) * t, y0], [x1, y0 + (y1 - y0) * t], [x1 - (x1 - x0) * t, y1], [x0, y1 - (y1 - y0) * t]])
         if (!inPolygon(x, y, pts)) { fits = false; break; }
     }
-    return { pts, tx, ty, fits };
+    return { pts, extra, tx, ty, fits };
   };
   let got = build(f);
   for (let shrink = 1; !got.fits && shrink <= 8; shrink++) {
@@ -1573,10 +1582,10 @@ function photoFor(pr: Persona, rule: 'B' | 'C', tb: { x0: number; y0: number; x1
     const b2 = build(g);
     f = g; got = b2;
   }
-  const { pts, tx, ty } = got, xs = pts.map((q) => q[0]);
+  const { pts, extra, tx, ty } = got, xs = [...pts, ...extra.flat()].map((q) => q[0]);
   return {
     persona: pr, rule, circles: [], spikes: [],
-    photo: { id: f.s.id, pts, chars: chars.map(([x, y]): Pt => [x - tb.x0 + tx, y - tb.y0 + ty]), x0: Math.min(...xs), x1: Math.max(...xs) },
+    photo: { id: f.s.id, pts, ...(extra.length ? { extra } : {}), chars: chars.map(([x, y]): Pt => [x - tb.x0 + tx, y - tb.y0 + ty]), x0: Math.min(...xs), x1: Math.max(...xs) },
     w: (f.bx1 - f.bx0) * f.upp, h: (f.by1 - f.by0) * f.upp,
     text: { x: tx, y: ty, w: TW, h: TH },
     ...(layout ? { layout } : {})
@@ -1588,8 +1597,8 @@ function photoFor(pr: Persona, rule: 'B' | 'C', tb: { x0: number; y0: number; x1
  * 봉우리: 둘레를 따라 흐르는 두 물결의 합을 0~1로 — 윤곽의 점을 **바깥 법선으로만** 민다. 안으로는 한 번도 안 들어가서
  * 글 + 여백이 어느 순간에도 깨지지 않는다(구슬 구름의 '커지기만 한다'와 같은 뜻). 위를 향한 점일수록 크게, 평평한 밑은 거의
  * 안 움직인다. 꼬리(몸통 상자 밖): 몸통 끝을 축으로 늘었다 줄었다, 끝으로 갈수록 크게 위아래로 나부낀다 — 몸통 밖이라
- * 글에 닿지 않는다. 돌려주는 함수는 (초, --t-hold 초) → 그 순간의 윤곽(u). phase = 구름마다 다른 시작(벽의 구름이
- * 한 박자로 움직이지 않게)
+ * 글에 닿지 않는다(2026-10-01부터 꺼 둠 — stretch · tip 0). 돌려주는 함수는 (초, --t-hold 초) → 그 순간의 윤곽(u). phase =
+ * 구름마다 다른 시작(벽의 구름이 한 박자로 움직이지 않게). 떨어진 조각(extra)은 여기서 움직이지 않는다
  */
 export function photoWave(photo: Photo, w: number, m: NonNullable<Persona['photo']>['motion'], phase: number): (t: number, hold: number) => Pt[] {
   const P = photo.pts, n = P.length;

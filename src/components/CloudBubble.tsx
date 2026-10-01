@@ -36,8 +36,9 @@ import type { Boxed } from '../lib/fit';
  * ── 띠 구름 (다정한, 2026-09-30) ───────────────────────────────────────
  * 사진에서 딴 윤곽 하나(cloud.ts · photoFor)를 한 색으로 칠한다 — 번지지도 숨 쉬지도 않는다. 상자는 몸통이고
  * 꼬리는 상자 밖으로 그려진다(.cloud-art는 overflow: visible — 나무의 밑동과 같다). 행간 1.3 · 글은 가운데.
- * 봉우리가 부풀고 꼬리가 흐른다(cloud.ts · photoWave, 2026-09-30) — FRAME_MS마다 윤곽을 다시 그린다. 움직임을 끈 사람 ·
- * still(4/5 설명 장의 시연)에서는 멈춘다.
+ * 봉우리가 부푼다(cloud.ts · photoWave, 2026-09-30) — FRAME_MS마다 윤곽을 다시 그린다. 움직임을 끈 사람 ·
+ * still(4/5 설명 장의 시연)에서는 멈춘다. 꼬리는 2026-10-01부터 혹의 사슬 + 떨어진 조각(extra, 같은 path에 이어 칠하고
+ * 움직이지 않는다) — 꼬리가 물결치며 흐르던 움직임은 껐다(뱀의 몸짓이었다).
  * 09-28의 구슬 구름(한 크기 구슬 · 곁의 작은 구름)은 걷었다.
  *
  * ── 새 · 박쥐 (유머있는, 2026-09-29) ───────────────────────────────────
@@ -202,7 +203,10 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   const stone = cloud.stone, hatch = pr.stone?.hatch;
   const stoneD = useMemo(() => (stone ? stonePath(stone.pts, pr.stone?.round ?? 0) : ''), [stone, pr.stone?.round]);
   const tree = cloud.tree, photo = cloud.photo;
-  const photoD = useMemo(() => (photo ? 'M' + photo.pts.map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join('L') + 'Z' : ''), [photo]);
+  const ring = (r: readonly (readonly [number, number])[]) => 'M' + r.map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join('L') + 'Z';
+  // 꼬리 끝 너머 떨어진 조각(2026-10-01)은 같은 path에 이어 칠한다 — 움직이지 않으니 한 번만 만든다
+  const extraD = useMemo(() => (photo?.extra ?? []).map(ring).join(''), [photo]);
+  const photoD = useMemo(() => (photo ? ring(photo.pts) + extraD : ''), [photo, extraD]);
   // 띠 구름의 움직임 — 요소를 직접(React 바깥). 시작 박자는 구름마다(글 상자 · 띠 번호에서) 달라 벽의 구름이 한 박자로 안 움직인다
   const photoRef = useRef<SVGPathElement>(null);
   const motion = pr.photo?.motion;
@@ -215,13 +219,13 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
     const tick = (now: number) => {
       if (now - last >= FRAME_MS) {
         last = now;
-        el.setAttribute('d', 'M' + wave((now - t0) / 1000, hold).map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join('L') + 'Z');
+        el.setAttribute('d', ring(wave((now - t0) / 1000, hold)) + extraD);
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [photo, motion, quiet, cloud.w, cloud.text.w, cloud.text.h]);
+  }, [photo, extraD, motion, quiet, cloud.w, cloud.text.w, cloud.text.h]);
   const creature = cloud.creature, shape = creature ? (pose && creature.poses[pose]) || creature.poses.rest : null;
   // 나무 · 구슬 구름은 글 배치를 형상이 정한다(cloud.ts의 layout — 다시 나눈 줄 · 줄마다 자간 · 한 자씩의 자리).
   // 줄 맞춤은 가운데 — 나무 · 뭉게구름은 가운데 맞춘 줄을 품게 지었다

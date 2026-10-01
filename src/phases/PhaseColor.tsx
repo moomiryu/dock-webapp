@@ -19,8 +19,9 @@ const T = {
     /* 색과 함께 정렬 방식도 고르게 되면서 '담기'로 묶었다(2026-09-28, 디자이너 문구).
        '포장'은 "말을 포장한다(미화)"로 먼저 읽혀서 버렸다 */
     title: { ko: '발화를 어떻게 담아볼까요?', en: 'How would you like to hold your line?' },
-    lead: { ko: <>발화가 지닌 태도를 떠올리며,<br />정렬 방식과 색을 골라 말을 담을 그릇을 그려봐요.</>,
-      en: <>Think of the attitude your line carries,<br />then pick an alignment and a colour to draw the vessel that holds it.</> },
+    /* '정렬 방식'은 '모양'이 됐다(2026-10-01, 디자이너 — 이 화면의 이름은 전부 '모양'으로) */
+    lead: { ko: <>발화가 지닌 태도를 떠올리며,<br />모양과 색을 골라 말을 담을 그릇을 그려봐요.</>,
+      en: <>Think of the attitude your line carries,<br />then pick a shape and a colour to draw the vessel that holds it.</> },
     /* 룰렛 오른쪽 ▲▼의 낭독 이름 */
     prevColour: { ko: '이전 색', en: 'Previous colour' },
     nextColour: { ko: '다음 색', en: 'Next colour' },
@@ -29,8 +30,9 @@ const T = {
     start: { ko: '화면을 누르면 시작해요', en: 'Tap the screen to start' },
     /* 조정판의 두 잣대 — 3/5의 [이름 | 잣대] 줄과 같은 꼴(2026-09-28) */
     colour: { ko: '색', en: 'Colour' },
-    align: { ko: '정렬', en: 'Align' },
-    /* 정렬 스위치 칸의 말 — 3/5 말투 스위치처럼 칸 안에 짧은 말로 */
+    /* 2026-10-01까지 '정렬'(디자이너 — 고르면 실루엣이 바뀌니 '모양'). 값(tone.align)과 코드의 이름은 그대로 */
+    align: { ko: '모양', en: 'Shape' },
+    /* 모양 스위치 칸의 말 — 3/5 말투 스위치처럼 칸 안에 짧은 말로 */
     left: { ko: '왼쪽', en: 'Left' },
     center: { ko: '가운데', en: 'Centre' },
     right: { ko: '오른쪽', en: 'Right' },
@@ -43,10 +45,12 @@ const T = {
     /* 부채꼴 — 칸에서 뺐다(2026-09-30, 디자이너). 옛 글은 그대로 부채꼴로 선다 — 되살리면 이 말을 쓴다 */
     fan: { ko: '부채꼴', en: 'Fan' },
     smile: { ko: '미소', en: 'Smile' },
-    /* 차분한(돌) — 포스터 넷(R17~R20). 이름은 일단 원론적인 이름으로(2026-09-28, 디자이너) */
-    'hang-up': { ko: '올려 걸기', en: 'Hang up' },
-    'hang-mid': { ko: '중간 걸기', en: 'Hang level' },
-    'hang-down': { ko: '내려 걸기', en: 'Hang down' },
+    /* 차분한(돌) — 2026-09-28엔 포스터 넷(R17~R20)의 원론적인 이름(올려 · 중간 · 내려 걸기). 사진 돌에서는 글만 기울고 돌을
+       자르지 않아 '걸기'가 안 맞았다 → 올리기 · 기본 · 내리기(2026-10-01, 디자이너 — 선례는 스프레드시트 '텍스트 회전'의
+       위로 · 아래로 기울이기. 가운데는 나무의 가운데와 같은 '기본'). 값(hang-up …)은 그대로 */
+    'hang-up': { ko: '올리기', en: 'Tilt up' },
+    'hang-mid': { ko: '기본', en: 'Basic' },
+    'hang-down': { ko: '내리기', en: 'Tilt down' },
     /* 칸에서 뺐다(2026-09-28) — 되살리면 이 말을 쓴다 */
     contour: { ko: '윤곽 따라', en: 'Contour' }
 };

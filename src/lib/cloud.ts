@@ -108,9 +108,10 @@ export interface Persona {
   /** 당당한 — 사진 나무(treeFor · treePhoto.data.ts, 2026-09-30). 말투가 종을 고른다: 예리한 = 소나무, 온화한 = 버드나무.
       값의 근거는 design/landscape.md '나무' */
   tree?: {
-    /** 사선 배열 — 줄의 기울기(도, 시계 방향) · 한 줄마다 시작이 읽는 쪽으로 밀리는 거리(글자 높이의 배수) */
+    /** 사선 배열(R24) — 글자 자리가 그리는 사선의 각도(도, 시계 방향. 글자는 돌리지 않는다) · 다음 줄 머리까지의
+        세로 거리(글자 높이의 배수). 줄 머리는 한 세로선에 선다 */
     slant: number;
-    stagger: number;
+    pitch: number;
     /** 글자 배수 — 크기 막대가 고른 글자(UNIT_TOP × 크기)의 몇 배로 나무에 앉나 */
     text: number;
     /** 끄트머리 잘리게(R18) — 줄 끝이 윤곽 밖으로 나가도 되는 깊이(u) · 그 밖의 둘레가 칠 위에 남기는 여백(u) */
@@ -218,7 +219,7 @@ export const PERSONAS: Record<string, Persona> = {
   // (09-30 — 기하는 조형적 당위가 없고 주인공처럼 보였다). 원(lobe · fill · gap · spread)은 쓰이지 않는다. 행간 1.1은 박스에서
   // 고른 값 그대로. 고른 과정과 버린 것은 design/landscape.md '나무'.
   ttoryeot: { key: 'ttoryeot', edge: 'tree', lobe: [1.25, 1.85], fill: [0.6, 0.8], gap: 1.9, spread: [0.2, 0.9], sat: 0, blur: 0, lh: 1.1,
-    tree: { slant: 18, stagger: 1, text: 1.4, bleed: 0.3, gap: 0.2, tall: [0.2, 0.6], jitter: 0.05, grow: 1.03, maxGrow: 3, stem: 0.12, lift: 0.42,
+    tree: { slant: 24, pitch: 1.6, text: 1.4, bleed: 0.3, gap: 0.2, tall: [0.2, 0.6], jitter: 0.05, grow: 1.03, maxGrow: 3, stem: 0.12, lift: 0.42,
       flip: 0.5, stretch: { lo: 0.75, hi: 1.4, ref: 2, pow: 0.35, step: 0.1 }, drape: 0.22,   // 폭 늘이기 강(격자 — 없음 · 약 · 중 · 강)
       hug: { lo: 1.15, hi: 1.15, pow: 1, fit: 1.3 }, trunk: { lo: 0, hi: 0.2, pow: 1, from: 0.3, to: 0.9, max: 5 }, maxTall: 0.6,
       hatch: { period: 5 / 401.76, width: 1.7 / 401.76 },
@@ -1221,8 +1222,9 @@ function treeWidths(asp: number, st: NonNullable<Persona['tree']>['stretch']): n
  * 당당한의 나무 — 사진에서 뗀 한 그루에 글이 든다(2026-09-30, 디자이너가 격자로 골랐다).
  *
  * 글: 크기 막대가 고른 글자의 text배(1.4 — '여백이 커서 글이 작다', 1.3~1.6을 세 배열로 보고). 한 줄 12자(앱 전체와 같다 —
- * 사진 수관이 옆으로 넓다). 배열 셋 — 기본: 줄 가운데 맞춤. 사선: 줄마다 slant°(18 — 60°는 고개를 꺾어 읽었다) 기울고, 다음
- * 줄은 왼쪽 아래로 한 행간, 시작은 읽는 쪽으로 stagger × 글자 높이씩 밀린다. 세로쓰기: 오른쪽 줄부터, 한 자씩 위에서 아래로.
+ * 사진 수관이 옆으로 넓다). 배열 셋 — 기본: 줄 가운데 맞춤. 사선(R24, 2026-10-04 — 메뉴판 캡처): 글자는 똑바로 선 채 한 자씩
+ * 아래에 놓여 줄이 slant°(24)의 사선을 그리고, 줄 머리는 한 세로선, 다음 줄은 pitch(1.6) × 글자 높이 아래. 전에는 글자째
+ * 18° 돌리고 줄 머리가 오른쪽 아래로 비켜 섰다(60°는 고개를 꺾어 읽었다). 세로쓰기: 오른쪽 줄부터, 한 자씩 위에서 아래로.
  * 끄트머리 잘리게(R18): 줄 끝(기본 · 사선은 앞뒤, 세로쓰기는 위아래)은 윤곽 밖으로 bleed만큼 나가 벽에 묻혀도 되고, 그 밖의
  * 둘레는 gap만큼 칠 위에 남는다. 수관 안쪽 빈 틈으로 나가는 것도 된다(디자이너 — 실루엣이 재밌다).
  *
@@ -1268,18 +1270,20 @@ function treeFor(pr: Persona, rule: 'B' | 'C', lines: readonly string[], font: s
       foot.push([x1 - gw - p, e, x1 + p, len - e]);
     });
   } else if (mode === 'slant') {
-    const th = (t.slant * Math.PI) / 180, d: Pt = [Math.cos(th), Math.sin(th)], n: Pt = [-Math.sin(th), Math.cos(th)];
+    // R24: 글자는 돌리지 않는다(a = 0). 글자 가운데의 가로 자리 k만큼 tan × k 내려 놓아 줄이 사선을 그린다.
+    // 줄 머리는 x = 0 한 세로선, 다음 줄은 pitch × 글자 높이 아래(격자 18 · 24 · 30° × 1.6 · 2.2 · 2.8에서 디자이너가 24° · 1.6).
+    // 마지막 줄(두 줄 이상일 때)은 오른 끝 정렬 — 끝을 가장 긴 줄의 끝(TW)에 맞추고, 높이는 같은 사선 레일(y0 + x × tan)을 따른다(디자이너)
+    const tn = Math.tan((t.slant * Math.PI) / 180);
     L.forEach((l, i) => {
-      const o0: Pt = [n[0] * i * LH + d[0] * i * t.stagger * gh, n[1] * i * LH + d[1] * i * t.stagger * gh];
+      const y0 = i * t.pitch * gh;
       const mine: Rect4[] = [];
-      let s = 0;
+      let s = i === L.length - 1 && L.length > 1 ? TW - l.len : 0;
       l.cs.forEach((c, j) => {
         const k = s + l.av[j] / 2;
         if (c.trim()) {
-          const q = { c, x: o0[0] + d[0] * k + (n[0] * gh) / 2, y: o0[1] + d[1] * k + (n[1] * gh) / 2, a: th, w: l.av[j], h: gh };
+          const q = { c, x: k, y: y0 + k * tn + gh / 2, a: 0, w: l.av[j], h: gh };
           placed.push(q);
-          const hw = (Math.abs(q.w * Math.cos(th)) + Math.abs(q.h * Math.sin(th))) / 2, hh = (Math.abs(q.w * Math.sin(th)) + Math.abs(q.h * Math.cos(th))) / 2;
-          mine.push([q.x - hw, q.y - hh, q.x + hw, q.y + hh]);
+          mine.push([q.x - q.w / 2, q.y - q.h / 2, q.x + q.w / 2, q.y + q.h / 2]);
         }
         s += l.av[j];
       });

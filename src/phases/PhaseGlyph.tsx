@@ -184,7 +184,7 @@ export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Prop
 
                 모양은 **3/5의 기본형** 그대로다(2026-09-25) — 막대 셋이 가운데
                 ('보통'), 말투는 첫째 칸. 당당한은 폭 700 · 세로 75%, 유머있는은
-                굵기 840, 차분한은 무게 620 · 자간 −25(2026-10-04, 그전 445), 다정한은 획 0.1pt. 여기서
+                굵기 840, 차분한은 무게 620 · 자간 −25(2026-10-04, 그전 445), 다정한은 획 0.46pt(2026-10-04, 그전 0.1pt). 여기서
                 고르고 3/5로 넘어가도 글자 모양이 바뀌지 않는다. */}
             <span className="style-card-name" aria-hidden style={faceOf(s.val)}>
               {name}

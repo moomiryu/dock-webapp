@@ -263,7 +263,8 @@ export function variationFor(font: string, wght: number, manner = 0): string {
      차분한 · 본명조(자간-25) 느긋한 세로86%       보통                 날렵한 가로88%
      다정한 · 다카포          느긋한 가로138%      보통                 날렵한 가로84%
 
-     무게  차분한 wght 250 · 445 · 900   다정한 획 0 · 0.1pt · 0.2pt(12pt 기준)
+     무게  차분한 wght 500 · 620 · 900 + 끝에서 획 0.0093em('1000쯤', 2026-10-04 — 그전 250 · 445 · 900)
+           다정한 획 0 · 0.1pt · 0.2pt(12pt 기준)
      말투  당당한 온화한(둥글게 · 자간 +0.02) · 예리한(자간 −0.02)
            유머있는 ELSH 12/ELGR 1.75 · 0.8/1
 
@@ -289,7 +290,13 @@ const SPEED: Record<string, { sx: Three; sy: Three; wdth?: Three }> = {
   chabun: { sx: [1, 1, 0.88], sy: [0.86, 1, 1] },
   doran: { sx: [1.38, 1, 0.84], sy: [1, 1, 1] }
 };
-const CHABUN_WGHT: Three = [250, 445, 900];
+/** 차분한의 무게 — 2026-10-04 250 · 445 · 900에서 올렸다(디자이너). 가장 가는 글이 벽에서 너무 얇아 안 읽혔다: 빗금 결(돌)의
+    검은 틈 2.3px 옆에서 가장 작은 글의 획이 0.47px. 격자 넷(지금 · 325 · 400 · 500) 중 500 · 620 · 900 — 가운데는 전처럼
+    가늘게 + 0.3 × (900 − 가늘게). 900은 본명조의 끝이라 그 위는 획을 덧댄다(CHABUN_STROKE) */
+const CHABUN_WGHT: Three = [500, 620, 900];
+/** 차분한 '1000쯤' — 가장 굵게에서만 같은 색 획을 덧댄다(다정한과 같은 장치, 가운데까지는 0). 본명조를 재서 무게 100 ≈ 획 평균
+    +0.0093em — 900 · 1000쯤 · 1100쯤 · 1200쯤을 벽 16 · 22px와 46px(속공간)에 놓고 디자이너가 1000쯤(2026-10-04) */
+const CHABUN_STROKE: Three = [0, 0, 0.0093];
 /** 다카포 획 덧대기 — 12pt에서 0 · 0.1 · 0.2pt, 글자 크기에 비례하므로 em으로 */
 const DORAN_STROKE: Three = [0, 0.1 / 12, 0.2 / 12];
 /** 핸드젯은 두께 840에 고정 */
@@ -430,6 +437,7 @@ export function formFor(t: FormInput): Form {
   } else if (font === 'chabun') {
     weight = Math.round(along(w, CHABUN_WGHT));
     variation = `"wght" ${weight}`;
+    stroke = along(w, CHABUN_STROKE).toFixed(4) + 'em';
   } else if (font === 'doran') {
     stroke = along(w, DORAN_STROKE).toFixed(4) + 'em';
   }

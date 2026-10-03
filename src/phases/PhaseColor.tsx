@@ -3,7 +3,7 @@ import StepHeader from '../components/StepHeader';
 import SnapSwitch from '../components/SnapSwitch';
 import VoiceBubble from '../components/VoiceBubble';
 import CloudBubble from '../components/CloudBubble';
-import { arrangementsFor, cloudForTone, cloudShape, defaultAlign, linesFor } from '../lib/cloud';
+import { arrangementsFor, cloudForTone, cloudShape, defaultAlign, linesFor, stoneWhole } from '../lib/cloud';
 import { bubbleAt, fillFromLegacySize } from '../lib/fit';
 import { fontMap } from '../lib/palettes';
 import { colorsFor, type ColorPair } from '../lib/palettes-v2';
@@ -304,7 +304,8 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext, returni
     // 줄은 한 줄 12자 — 모든 성격이 같다(cloud.ts · linesFor)
     const lines = linesFor(text, current);
     // 벽과 같은 구름이어야 미리보기가 거짓말이 아니다 — 씨앗은 글 자체(cloud.ts). 정렬이 형상을 바꾸므로 고른 정렬로 짓는다
-    const cloud = cloudForTone(lines, current);
+    // 돌은 배까지 한 덩이로(cloud.ts stoneWhole, 2026-10-04 디자이너) — 무대에 바닥이 없어 밑이 곧게 잘려 보였다
+    const cloud = stoneWhole(cloudForTone(lines, current));
     const box = bubbleAt(lines, cloudShape(cloud), fillFromLegacySize(tone.size));
     /* 무대 한 변 — 벽 비율 그대로면 폰에서 너무 작아, 말풍선이 무대 폭 · 높이에 3/5와 같은
        크기감으로 들어차게 늘린다(fit.ts · phoneSide, 2026-09-29). 첫 장 시연과 고르는 장이 같이 쓴다 */

@@ -101,7 +101,7 @@ export interface Persona {
     /** 사진 돌(2026-10-01, photoStoneFor · stonePhoto.data.ts) — 있으면 위의 기하 돌 대신 이것을 짓는다(윤곽 따라만 기하 돌로).
         pick = 벽 글자를 안 줄이는 돌이 이보다 적으면 긴 쪽이 가장 짧은 몇 가지에서 고르나 · grid = 돌을 글 축으로 돌려 놓고
         자리를 찾는 칸 격자(긴 쪽 칸 수) · spot = 가장 큰 자리의 몇 배에 글을 앉히나(구름과 같은 3% 여유) */
-    photo?: { pick: number; grid: number; spot: number };
+    photo?: { pick: number; grid: number; spot: number; tex?: StoneTex };
   };
   /** 줄 높이(글자 크기의 배수). 없으면 LINE_HEIGHT(1.5). 글에 바짝 붙는 형상(나무)이 좁힌다 */
   lh?: number;
@@ -249,7 +249,17 @@ export const PERSONAS: Record<string, Persona> = {
       base: { half: 0.2, clear: 0.05 },
       // 사진 돌(2026-10-01) — 위의 기하 돌(꼭짓점 · 깨기 · 넘치기 · 걸기의 곧은 윗변 · 밑면)은 이것을 지우면 되살아난다.
       // 걸기 셋은 글만 기운다(hang의 각도 그대로) — 돌은 사진 윤곽 그대로(디자이너, 격자 landscape-stone-photo-text.png)
-      photo: { pick: 4, grid: 160, spot: 0.97 } } },
+      photo: { pick: 4, grid: 160, spot: 0.97,
+        // 빗금 결(2026-10-04, 디자이너 — 격자 design/landscape-stone-tex-*.png). 원본 사진의 어두운 35%를 나무 빗금 그대로(／),
+        // 작은 조각은 걷고(강과 중 사이), 줄은 손으로 그은 듯 '미세'하게 흔들고, 빗금 틈은 글자 획의 1.6배를 넘지 않는다('가').
+        // 빛은 벽에 하나(오른쪽 위) — 돌이 기울면 그늘이 빛을 따라 다른 면으로 옮겨 간다('다', 배까지)
+        tex: { q: 0.35, lo: 0.05, hi: 0.55, gamma: 1.2,
+          blur: 3.75 / 401.76, edge: 0.05, edgeGrain: 1.2 / 401.76, drop: 0.0225,
+          light: [0.6, -0.8], turn: 0.9,
+          hatch: { period: 5 / 401.76, gap: 3.3 / 401.76, ink: 1.6, wob: [0.7 / 401.76, 0.2 / 401.76, 0.1], grain: [6 / 401.76, 0.7 / 401.76, 4 / 401.76] },
+          outline: { amp: 0.8 / 401.76, step: 2 / 401.76, grain: [4 / 401.76, 1 / 401.76] },
+          fade: [0.5, 1.3],
+          stroke: [[250, 0.0459], [550, 0.0689], [900, 0.1014]] } } } },
   // 띠 구름 (2026-09-30). 꽃 → 옛 뭉게구름 → 구슬 구름(09-28, 기하)을 거쳐 **사진에서 딴 구름**으로 — 기하 도형이 풍경을
   // 대신하면 읽어 내야 하는 모양이라 도형이 주인공이 됐다(디자이너). 원을 부풀리지 않아 lobe · fill · gap · spread는
   // 쓰이지 않는다. 행간 1.3(2026-09-30, 디자이너 — 나무와 같던 1.1에서 늘렸다). 고른 과정과 버린 것은 design/landscape.md '구름'.
@@ -335,6 +345,29 @@ export interface Stone {
   pts: Pt[];
   /** 오른쪽 아래 안쪽 빗금의 띠들 */
   hatch: Quad[];
+  /** 사진 돌의 결(2026-10-04, StoneArt) — 어느 돌 · 좌우 뒤집음 · 밑변의 높이(u, 벽이 붙이는 배는 이 아래) ·
+      글 줄의 자리(글 상자 안 [왼 · 위 · 오른 · 아래], u — 빗금을 걷는 곳) · 글자 한 em(u) · 글자 획의 평균 굵기(u — 빗금 틈이 이를 넘지 않게) */
+  photo?: { id: string; flip: boolean; base: number; lines: readonly (readonly [number, number, number, number])[]; em: number; ink: number };
+}
+/**
+ * 차분한 돌의 빗금 결(2026-10-04, 디자이너가 격자로 골랐다 — design/landscape.md '돌'의 결). 길이는 벽 한 변(401.76px)에 대한 몫,
+ * 나무 빗금과 같은 결(StoneArt)
+ */
+export interface StoneTex {
+  /** 그늘 양 — 쉬는 자세의 돌 윗부분에서 어두운 몫 · 밝기의 바닥 · 꼭대기(돌 안 밝기의 몫 — 그 위는 맨 칠) · 어두움의 굽음 */
+  q: number; lo: number; hi: number; gamma: number;
+  /** 그늘을 뭉개는 폭 · 그늘 테두리를 거칠게 하는 잡음(세기 · 결의 폭) · 작은 그늘 조각을 걷고 작은 틈을 메우는 크기(돌 넓이의 몫) */
+  blur: number; edge: number; edgeGrain: number; drop: number;
+  /** 벽의 빛이 오는 쪽(화면, 아래가 +) · 돌이 돌면 빛을 보는 정도가 바뀐 만큼 밝기가 바뀌는 세기((꼭대기 − 바닥)의 배수) */
+  light: readonly [number, number]; turn: number;
+  /** 빗금 — 줄 간격(x + y) · 가장 굵은 검은 틈(x + y) · 글자 획에 대한 틈의 한도(배) · 흔들림(줄 자리 · 잔 결 · 굵기 몫)과 그 결의 폭 */
+  hatch: { period: number; gap: number; ink: number; wob: readonly [number, number, number]; grain: readonly [number, number, number] };
+  /** 윤곽의 구불구불 — 미는 폭 · 점 사이 · 결의 폭(낮은 · 잔) */
+  outline: { amp: number; step: number; grain: readonly [number, number] };
+  /** 글 둘레에서 빗금이 사라지는 자리(em) — 이 안은 없고 · 이만큼 더 가면 그대로 */
+  fade: readonly [number, number];
+  /** 본명조 획의 평균 굵기(em) — 무게마다(잉크 넓이 × 2 ÷ 둘레로 쟀다) */
+  stroke: readonly (readonly [number, number])[];
 }
 /**
  * 당당한의 사진 나무(treePhoto.data.ts). 원점 = 구름 상자 왼쪽 위, u 단위. 상자(w · h)는 수관과 줄기 윗부분까지 — 나무 전체
@@ -485,6 +518,8 @@ interface Options {
   align?: Align;
   /** 크기 막대(fit.ts SIZE_FILLS 사이) — 나무가 제 키를 이것으로 정한다 */
   fill?: number;
+  /** 글자의 굵기(formFor의 무게 · 덧댄 획 em) — 돌의 빗금 틈이 글자 획보다 굵지 않게(StoneTex.hatch.ink) */
+  ink?: { weight: number; stroke: number };
 }
 
 /**
@@ -534,7 +569,7 @@ export function cloudForTone(lines: readonly string[], tone: (Parameters<typeof 
   else {
     const f = formFor(tone);
     c = cloudFor(lines, tone.font, { ...o, scaleX: f.scaleX, scaleY: f.scaleY, slant: f.slant, wdth: f.wdth, track: (parseFloat(f.letterSpacing) || 0) + (f.advExtra ?? 0), manner: tone.manner, weightPos: tone.weight, align: tone.align,
-      fill: fillFromLegacySize(tone.size) });
+      fill: fillFromLegacySize(tone.size), ink: { weight: f.weight, stroke: parseFloat(f.stroke) || 0 } });
   }
   if (MADE.size >= 300) MADE.delete(MADE.keys().next().value!);
   MADE.set(key, c);
@@ -571,7 +606,15 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
   if (pr.edge === 'stone' && pr.stone) {
     const mode = o.align === 'hang-up' || o.align === 'hang-mid' || o.align === 'hang-down' || o.align === 'contour' ? o.align : 'center';
     // 사진 돌 — 칸이 생기기 전의 옛 글(가운데 돌)도 사진 돌로 선다: 기울지 않고 넘치지 않는다(디자이너, 2026-10-01)
-    if (pr.stone.photo && mode !== 'contour') return photoStoneFor(pr, rule, TW, TH, R, mode, o.fill ?? SIZE_FILLS[2]);
+    if (pr.stone.photo && mode !== 'contour') {
+      // 결이 걷어 낼 글 줄 — 걸기는 왼끝 맞춤, 옛 가운데 돌은 가운데(VoiceBubble이 앉히는 그대로). 줄의 잉크 높이 ≈ 줄 높이의 0.6
+      const left = mode !== 'center', ink = o.ink ?? { weight: 620, stroke: 0 };
+      const rows = widths.map((w, i): readonly [number, number, number, number] => {
+        const x0 = left ? 0 : (TW - w) / 2;
+        return [x0, (i + 0.2) * LH, x0 + w, (i + 0.8) * LH];
+      });
+      return photoStoneFor(pr, rule, TW, TH, R, mode, o.fill ?? SIZE_FILLS[2], { rows, em: optic, ink });
+    }
     return stoneFor(pr, rule, TW, TH, R, mode, widths, LH, o.align,
       mode === 'contour' ? { lines, font, optic, scaleX, wdth: o.wdth, track: o.track ?? 0 } : undefined);
   }
@@ -983,7 +1026,8 @@ function stoneFit(s: StoneShape, flip: boolean, ang: number, asp: number, RH: nu
  * 칸 격자는 실제 윤곽보다 거칠다 — 지은 뒤 네모의 둘레를 실제 윤곽으로 확인하고, 걸리면 한 칸씩 줄여 다시 맞춘다.
  * 그리기 · 벽은 기하 돌과 같다 — 곧은 변으로 이은 다각형(Stone.pts)이고 밑면은 y = 바닥인 곧은 변 하나다.
  */
-function photoStoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number, mode: 'center' | 'hang-up' | 'hang-mid' | 'hang-down', fill: number): Cloud {
+function photoStoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number, mode: 'center' | 'hang-up' | 'hang-mid' | 'hang-down', fill: number,
+  txt?: { rows: readonly (readonly [number, number, number, number])[]; em: number; ink: { weight: number; stroke: number } }): Cloud {
   const s = pr.stone!, p = s.photo!;
   const ang = mode === 'center' ? 0 : ((mode === 'hang-up' ? s.hang.up : mode === 'hang-mid' ? s.hang.mid : s.hang.down) * Math.PI) / 180;
   const RW = TW + 2 * PAD, RH = TH + 2 * PAD, cap = 1 / (UNIT_TOP * fill);
@@ -1014,13 +1058,50 @@ function photoStoneFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: 
   }
   // 상자 — 기하 돌처럼 가장자리가 잘리지 않게 조금 넉넉히
   const e = 0.05, mv = ([x, y]: Pt): Pt => [x + e, y + e], pts = got.P.map(mv);
+  // 결(StoneArt) — 글자 획의 평균 굵기 = 본명조의 그 무게 + 덧댄 획(em) × em(u)
+  const tex = p.tex, sw = (w: number) => {
+    const T = tex?.stroke ?? [];
+    if (!T.length) return 0;
+    let i = 0;
+    while (i < T.length - 2 && w > T[i + 1][0]) i++;
+    const [w0, s0] = T[i], [w1, s1] = T[Math.min(i + 1, T.length - 1)];
+    return w1 === w0 ? s0 : s0 + ((s1 - s0) * (w - w0)) / (w1 - w0);
+  };
+  const photo = txt ? { id: f.s.id, flip: f.flip, base: f.k + e, lines: txt.rows, em: txt.em, ink: (sw(txt.ink.weight) + txt.ink.stroke) * txt.em } : undefined;
   return {
     persona: pr, rule, circles: [], spikes: [],
-    stone: { pts, hatch: s.hatch.on ? hatchBands(pts, got.cx + e, got.cy + e, s.hatch) : [] },
+    stone: { pts, hatch: s.hatch.on ? hatchBands(pts, got.cx + e, got.cy + e, s.hatch) : [], ...(photo ? { photo } : {}) },
     w: f.s.aspect * f.k + 2 * e, h: f.k + 2 * e,
     text: { x: got.cx + e - TW / 2, y: got.cy + e - TH / 2, w: TW, h: TH },
     ...(mode !== 'center' ? { layout: { align: 'left' as const, rotate: ang } } : {})
   };
+}
+
+/** 땅에 묻힌 아랫부분 — 윗선을 밑변에 비춰 뒤집고 돌 키의 이만큼으로 눌렀다(디자이너, 격자: 거울 20 · 35 · 50% · 둥근 배).
+    벽에서는 바닥이 돌의 윗부분하고만 닿고 아랫부분은 바닥을 지나 화면 아래에 묻힌다 — 바닥에 앉은 돌은 전처럼 밑이 곧게 붙고,
+    다른 돌에 얹히거나 구르면 아랫부분이 드러난다(디자이너 — "안 보이던 돌의 아랫부분이 보여지는 게 자연스럽잖아").
+    폰(4/5 · 5/5)에서는 바닥 없이 배까지 한 덩이로 선다(2026-10-04, 디자이너 — stoneWhole) */
+export const STONE_BELLY = 0.35;
+/** 돌의 윤곽(밑변이 가장 아래의 곧은 변) → 보이는 윗사슬(밑변 한 끝 → 윗선 → 다른 끝)과 땅에 묻힌 아랫부분. 밑변이 곧지
+    않으면(기하 돌 — photo를 지웠을 때) 아랫부분이 없다 */
+export function stoneBelly(pts: readonly (readonly [number, number])[]): { chain: Pt[]; belly: Pt[] } {
+  const n = pts.length, yb = Math.max(...pts.map((p) => p[1])), on = (p: readonly [number, number]) => p[1] > yb - 1e-3;
+  let i = 0;
+  while (i < n && !(on(pts[i]) && on(pts[(i + 1) % n]))) i++;
+  if (i === n) return { chain: pts.map((p): Pt => [p[0], p[1]]), belly: [] };
+  const chain: Pt[] = [];
+  for (let k = 1; k <= n; k++) { const p = pts[(i + k) % n]; chain.push([p[0], p[1]]); }
+  const belly = chain.slice(1, -1).reverse().map(([x, y]): Pt => [x, yb + (yb - y) * STONE_BELLY]);
+  return { chain, belly };
+}
+/** 배까지 다 그린 사진 돌 — 상자도 배까지 늘린다(폰 4/5 · 5/5, 2026-10-04 디자이너 — 바닥 없이 떠 있는 돌의 밑이 곧게 잘려
+    보였다). 벽의 돌은 이것을 쓰지 않는다 — 상자는 윗부분 그대로 바닥에 앉고 배는 상자 밑으로 그린다(WallSimulation · withBelly) */
+export function stoneWhole(cloud: Cloud): Cloud {
+  if (!cloud.stone?.photo) return cloud;
+  const { chain, belly } = stoneBelly(cloud.stone.pts);
+  if (!belly.length) return cloud;
+  const low = Math.max(...belly.map((p) => p[1]));
+  return { ...cloud, h: Math.max(cloud.h, low + 0.05), stone: { ...cloud.stone, pts: [...chain, ...belly] } };
 }
 
 /**

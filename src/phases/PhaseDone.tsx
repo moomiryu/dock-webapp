@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import MegafontFrame from '../components/MegafontFrame';
 import { FEEDBACK_MAX, submitFeedback } from '../lib/firebase';
-import { STAY_DAYS } from '../lib/wall';
-import { count, pick, useLang } from '../lib/lang';
+import { pick, useLang } from '../lib/lang';
 
 /* 이 화면의 말. 영어는 초안이다(2026-09-26, 영문판). 장치가 하는 말(합니다체)은
    영어에서도 차분한 평서문으로 둔다 */
@@ -12,9 +11,10 @@ const T = {
     /* 이 문단은 세로로 쌓는 칸(app.css .done-after, flex)이라 글과 굵은 조각이
        늘 따로 선다. 한 문장으로 옮기면 'and'에서 끊겨 보여서, 영어는 두 문장으로
        나눠 그 자리가 문장 사이가 되게 한다 */
+    /* 사라지는 날짜는 뺐다(2026-10-04, 디자이너) — 벽의 돌 · 나무는 최대 수(STONE_MAX · TREE_MAX)를 넘치면 사흘 전에도 빠진다 */
     after: {
-        ko: <>메아리처럼 화면을 맴돌며,<br /><b>{STAY_DAYS}일 후에 사라집니다.</b></>,
-        en: <>Like an echo, it will drift around the screen. <b>It disappears after {count(STAY_DAYS, 'day', 'days')}.</b></>
+        ko: <>메아리처럼 화면을 맴돕니다.</>,
+        en: <>Like an echo, it will drift around the screen.</>
     },
     anonT: { ko: '익명성', en: 'Anonymity' },
     anonD: { ko: '누가 썼는지는 남지 않습니다.', en: 'No record is kept of who wrote it.' },
@@ -37,8 +37,9 @@ interface Props {
 }
 /**
  * 발화 종료. 튜토리얼 마지막 장('그러면 끝입니다')이 여기로 왔다(2026-09-24).
- * 사라지는 날짜와 익명·삭제 원칙은 **다 하고 난 뒤**에 읽혀야 제 뜻이 선다 —
- * 시작도 전에 들으면 규칙 목록일 뿐이다. 3일은 wall.ts에서 받아 온다.
+ * 벽에 남는다는 말과 익명·삭제 원칙은 **다 하고 난 뒤**에 읽혀야 제 뜻이 선다 —
+ * 시작도 전에 들으면 규칙 목록일 뿐이다. 사라지는 날짜(3일)는 2026-10-04에 뺐다 — 벽의 돌 · 나무는
+ * 최대 수를 넘치면 그 전에도 빠진다(WallSimulation STONE_MAX · TREE_MAX).
  *
  * 불변성('보낸 뒤에는 수정할 수 없습니다')은 여기 두지 않는다. 행동 **전에**
  * 알아야 하는 것이라 5/5 확인 화면이 들고 있다 — 다 보낸 뒤에 말하면 늦다.

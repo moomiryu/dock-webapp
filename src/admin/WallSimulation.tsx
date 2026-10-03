@@ -11,7 +11,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import Matter from 'matter-js';
 import CloudBubble from '../components/CloudBubble';
-import { cloudForTone, cloudShape, convexHull, linesFor, personaFor, type Cloud, type Creature, type CreaturePose } from '../lib/cloud';
+import { stoneLean } from '../components/StoneArt';
+import { cloudForTone, cloudShape, convexHull, linesFor, personaFor, stoneBelly as stoneBellyOf, stoneWhole, type Cloud, type Creature, type CreaturePose } from '../lib/cloud';
 import { WALL_SIDE, bubbleAt, fillFromLegacySize, type Boxed } from '../lib/fit';
 import { fontMap } from '../lib/palettes';
 import { palettes as legacyPalettes } from '../lib/palettes';
@@ -95,6 +96,15 @@ const FLOAT_N = 12;
     모이면 바닥이 소란했다(같은 벽에 여덟 · 셋을 세워 봤다). 여섯으로 정했다가 여덟로 고쳤다(같은 날). 넘치면 오래된 나무부터
     잠시 빠지고 그 자리를 다른 성격의 글이 채운다 — 열둘을 갈아 끼울 때(rotate) 빠졌던 나무도 제 차례에 돌아온다 */
 const TREE_MAX = 8;
+/** 벽에 한 번에 서는 돌(차분한)의 최대 수(2026-10-04, 디자이너 — 큰 바위가 쌓이면 다른 것들이 가려졌다). **돌은 쌓이지 않는다** —
+    바닥에 나란히(STONE_OVERLAP만큼 겹쳐)만 선다. 2.5m 벽에 15%씩 겹쳐 세우면 가장 큰 돌만 다섯 · 보통 여덟 · 섞인 날 일곱
+    (견본 — 디자이너가 일곱으로). 일곱이 안 됐어도 바닥에 새 돌이 들어갈 빈 구간이 없으면 가장 오래된 돌부터 빠져 자리를 낸다
+    (floorFit — 남은 바닥으로 센다). 나무와 달리 돌은 갈아 끼우는 차례(rotate)를 타지 않는다 — 벽에 선 돌의 명단(stoneKeep)은 새
+    돌이 들어올 때만 바뀐다: 큰 돌이 풍경을 쓸어 내고 돌아올 때(calmRestore) 빠질 돌은 쓸려 나간 그대로 돌아오지 않고, 새 돌은 그
+    자리에 떨어진다. 자리가 남으면(처음 켤 때 · 사흘이 지나 빠졌을 때) 기다리던 돌 가운데 최근 것부터 채운다 */
+const STONE_MAX = 7;
+/** 처음 켤 때 · 빈자리를 채울 때 — 돌 폭(겹침을 뺀)의 합이 벽 폭의 이만큼까지(무작위로 서니 빈틈 몫을 남긴다) */
+const STONE_FILL = 0.85;
 /** 떠다니는 속도 — 초당 화면 높이의 몇 배인가. 읽을 수 있을 만큼 느리게 */
 const SPEED_MIN = 0.012;
 const SPEED_MAX = 0.032;
@@ -207,6 +217,10 @@ type Body = {
   mb?: Matter.Body | null; mc?: Pt2; mside?: number; free?: boolean;
   /** 차분한의 발화(calmStep) — 발화 중인 글의 돌을 물리 밖에 세워 둠 · 큰 돌에 휩쓸리는 중 · 화면 밖으로 나갔음 · 휩쓸리는 빠르기(px/초) */
   parked?: boolean; swept?: boolean; away?: boolean; sv?: number;
+  /** 돌 — 바닥에 빈 구간이 없어 서지 못하고 기다린다(쌓임 금지, floorFit). 벽이 명단에서 잠시 뺀다 */
+  noRoom?: boolean;
+  /** 돌 — 땅 밑에서 꾸물꾸물 올라오는 중(큰 돌이 나간 뒤, riseStep): 제자리 x · 시작 · 끝 높이(상자 가운데 px) · 각도 · 시작 시각(초) · 박자 */
+  rise?: { x: number; y0: number; y1: number; a: number; t0: number; ph: number };
 };
 type RGB = [number, number, number];
 type Pt2 = [number, number];
@@ -461,7 +475,8 @@ const LEGIBLE = 3;
 const RANK: Record<Kind, number> = { tree: 0, stone: 1, float: 2, bird: 2, bat: 2, cloud: 3 };
 const hardLight = (cb: number, cs: number) => (cs <= 0.5 ? cb * 2 * cs : cb + (2 * cs - 1) - cb * (2 * cs - 1));
 const BLEND: Record<Kind, (cb: number, cs: number) => number> = {
-  tree: Math.min, stone: Math.min, cloud: hardLight, float: (_cb, cs) => cs, bird: (_cb, cs) => cs, bat: (_cb, cs) => cs
+  // 돌은 섞지 않고 덮는다(2026-10-04, app.css — 그전엔 나무처럼 Math.min)
+  tree: Math.min, stone: (_cb, cs) => cs, cloud: hardLight, float: (_cb, cs) => cs, bird: (_cb, cs) => cs, bat: (_cb, cs) => cs
 };
 /** 나무의 몸 폭(상자 폭의 배수) — 사진 나무는 상자 폭이 곧 나무 폭이다(수관이 가장 넓다). 기하 나무 때는 폰 판 아래로
     이어 쌓은 단이 1.3배까지 넓어졌다 */
@@ -657,10 +672,8 @@ const STONE_BOUNCE = 0.02;
 const STONE_FRICTION: readonly [number, number] = [0.9, 1.5];
 const STONE_AIR = 0.02;
 const STONE_DENSITY = 0.004;
-/** 땅에 묻힌 아랫부분 — 윗선을 밑변에 비춰 뒤집고 돌 키의 이만큼으로 눌렀다(디자이너, 격자: 거울 20 · 35 · 50% · 둥근 배).
-    바닥은 돌의 윗부분하고만 닿고 아랫부분은 바닥을 지나 화면 아래에 묻힌다 — 바닥에 앉은 돌은 전처럼 밑이 곧게 붙고, 다른 돌에
-    얹히거나 구르면 아랫부분이 드러난다(디자이너 — "안 보이던 돌의 아랫부분이 보여지는 게 자연스럽잖아"). 돌끼리는 아랫부분까지 닿는다 */
-const STONE_BELLY = 0.35;
+/* 땅에 묻힌 아랫부분(배)의 깊이와 짓는 법은 cloud.ts(STONE_BELLY · stoneBelly) — 폰의 돌도 같은 배를 그린다(2026-10-04).
+   바닥은 돌의 윗부분하고만 닿고 아랫부분은 바닥을 지나 화면 아래에 묻힌다. 돌끼리는 아랫부분까지 닿는다 */
 /** 기대는 한도 — 평소엔 돌이 이 각도까지만 기대고, 넘어가려 하면 되돌리는 힘이 커진다(쌓여도 글이 뒤집히지 않게). 15 · 25 · 35°를
     견본에서 보고 골랐다(디자이너). 큰 돌에 휩쓸려 나가는 돌은 풀린다(free) — 화면 밖으로 나가는 중이다.
     글은 돌과 함께 돈다(디자이너) — 9/29의 '돌을 굴려 제 변으로 눕히기'를 버린 이유(벽이 글 각도를 바꾼다)를 이번에 디자이너가 풀었다 */
@@ -674,14 +687,33 @@ const STONE_STEP = 1000 / 60;
 type StoneWorld = { engine: Matter.Engine; walls: Matter.Body[]; w: number; h: number; acc: number;
   /** 옆벽을 걷었나(큰 돌이 풍경을 쓸어 낼 때 — 밀린 돌이 화면 밖으로 나가게) · 지금 세워진 벽이 어느 쪽인가 */
   open: boolean; built: boolean | null };
-/** 바닥 × 아랫부분 짝을 부딪힘 목록에서 뺀다 — 라이브러리는 몸 하나의 조각마다 거르는 칸이 없어서, 찾은 부딪힘을 한 번 거른다 */
+/** 돌끼리 겹쳐도 되는 깊이 — 두 돌 중 좁은 돌 폭의 몫(2026-10-04, 디자이너 — "10~15%까지는 겹쳐 있어도", 견본 12% 뒤 15%로).
+    바닥에 나란히 서며 가장자리가 겹친다. 각 돌의 글자 가장자리까지 거리의 STONE_OVERLAP_TEXT를 넘지 않는다 — 앞에 선 돌이 뒤 돌의
+    글자를 가리지 않게(stoneOverlapOf) */
+const STONE_OVERLAP = 0.15;
+const STONE_OVERLAP_TEXT = 0.6;
+/** 그 돌이 허용하는 겹침 깊이(px) — 폭의 STONE_OVERLAP과 글자까지 가로 거리의 STONE_OVERLAP_TEXT 중 작은 쪽. 짝은 둘 중 작은 쪽 */
+function stoneOverlapOf(hw: number, tx: Rect | null | undefined): number {
+  const gap = tx ? Math.min(tx[0], 1 - tx[2]) * 2 * hw : 0.2 * hw;
+  return Math.max(0, Math.min(STONE_OVERLAP * 2 * hw, STONE_OVERLAP_TEXT * gap));
+}
+/** 바닥 × 아랫부분 짝을 부딪힘 목록에서 뺀다 — 라이브러리는 몸 하나의 조각마다 거르는 칸이 없어서, 찾은 부딪힘을 한 번 거른다.
+    돌끼리는 허용한 겹침만큼 덜 깊게 고친다(STONE_OVERLAP) — 그 안이면 부딪힘이 아니다 */
 let BELLY_SKIP = false;
 function skipBellyOnFloor() {
   if (BELLY_SKIP) return;
   BELLY_SKIP = true;
   const find = Matter.Detector.collisions;
   const skip = (a: Matter.Body, b: Matter.Body) => (a.label === 'floor' && b.label === 'belly') || (b.label === 'floor' && a.label === 'belly');
-  Matter.Detector.collisions = (d: Matter.Detector) => find(d).filter((c) => !skip(c.bodyA, c.bodyB));
+  Matter.Detector.collisions = (d: Matter.Detector) => find(d).filter((c) => {
+    if (skip(c.bodyA, c.bodyB)) return false;
+    const A = c.bodyA.parent, B = c.bodyB.parent, la = A.plugin?.overlap, lb = B.plugin?.overlap;
+    if (A === B || typeof la !== 'number' || typeof lb !== 'number') return true;
+    const allow = Math.min(la, lb);
+    if (c.depth <= allow) return false;
+    (c as { depth: number }).depth -= allow;   // 라이브러리가 매 걸음 새로 셈하는 값이라 여기서 덜어도 다음 걸음에 남지 않는다
+    return true;
+  });
 }
 function stoneWorld(): StoneWorld {
   skipBellyOnFloor();
@@ -701,14 +733,8 @@ function stoneBounds(W: StoneWorld, w: number, h: number) {
 /** 돌의 윤곽(밑변이 가장 아래의 곧은 변) → 보이는 윗사슬(밑변 한 끝 → 윗선 → 다른 끝)과 땅에 묻힌 아랫부분. 밑변이 곧지
     않으면(기하 돌 — photo를 지웠을 때) 아랫부분이 없다 */
 function stoneBelly(pts: readonly (readonly [number, number])[]): { chain: Pt2[]; belly: Pt2[] } {
-  const n = pts.length, yb = Math.max(...pts.map((p) => p[1])), on = (p: readonly [number, number]) => p[1] > yb - 1e-3;
-  let i = 0;
-  while (i < n && !(on(pts[i]) && on(pts[(i + 1) % n]))) i++;
-  if (i === n) return { chain: pts.map((p): Pt2 => [p[0], p[1]]), belly: [] };
-  const chain: Pt2[] = [];
-  for (let k = 1; k <= n; k++) { const p = pts[(i + k) % n]; chain.push([p[0], p[1]]); }
-  const belly = chain.slice(1, -1).reverse().map(([x, y]): Pt2 => [x, yb + (yb - y) * STONE_BELLY]);
-  return { chain, belly };
+  const { chain, belly } = stoneBellyOf(pts), cp = ([x, y]: readonly [number, number]): Pt2 => [x, y];
+  return { chain: chain.map(cp), belly: belly.map(cp) };
 }
 /** 돌 한 개의 몸 — 윗부분 · 아랫부분 두 조각을 한 몸으로. 점은 상자 가운데 기준 px. 돌려주는 mc = 상자 가운데가 무게중심에서
     떨어진 거리(돌기 전) — 자리를 읽고 쓸 때 이만큼 돌려서 더한다 */
@@ -731,12 +757,35 @@ function stoneCenter(b: Body): Pt2 {
   return [m.position.x + dx * c - dy * s, m.position.y + dx * s + dy * c];
 }
 /** 돌들의 한 걸음 — 기대는 한도를 넘은 돌은 되돌리고(휩쓸려 나가는 돌은 빼고), 정해진 박자로 걷고, 자리 · 각도를 몸(Body)에 옮긴다 */
+/** 쌓임 금지의 지킴이 — 미끄러지는 빠르기(1080px에서 px/걸음) · 바닥에 닿았다고 치는 틈(px) */
+const OFF_SPEED = 3;
+const OFF_FLOOR = 3;
+/** 돌이 떨어지는 높이(벽 높이의 비율) — 제자리 바로 위에서(벽이 막 켜질 때 · 빈자리를 채울 때). 큰 돌이 나간 뒤에는 땅 밑에서 올라온다(riseStep) */
+const STONE_DROP = 70 / 1080;
+/**
+ * 쌓임 금지(2026-10-04, 디자이너 — "돌은 절대 쌓이면 안 된다"). 다른 돌 위에 올라앉아 멈춘 돌은 받치는 돌에서 먼 쪽으로 미끄러져
+ * 바닥으로 내려온다. 한 점이라도 바닥에 닿아 있으면(서로 기대어 모서리가 들린 돌) 그대로 둔다. 자리는 놓을 때 바닥에서 고르니
+ * (floorFit) 여기 걸리는 것은 밀리거나 부딪혀 올라간 돌이다
+ */
+function offStone(b: Body, bodies: Body[], W: StoneWorld) {
+  const m = b.mb, top = m?.parts.find((p) => p.label === 'top');
+  if (!m || !top || b.held || b.parked || b.away || b.swept) return;
+  if (top.bounds.max.y > W.h - OFF_FLOOR || Math.abs(m.velocity.y) > 1.5) return;   // 바닥에 닿아 있다 · 떨어지는 중
+  const under = bodies.find((q) => q !== b && q.heavy && q.mb && !q.away && q.mb.bounds.min.x < top.bounds.max.x && q.mb.bounds.max.x > top.bounds.min.x && q.mb.bounds.min.y > top.bounds.min.y);
+  if (!under) return;
+  let dir = Math.sign(b.x - under.x) || (b.x < W.w / 2 ? -1 : 1);
+  if (dir < 0 && top.bounds.min.x < 2) dir = 1;
+  if (dir > 0 && top.bounds.max.x > W.w - 2) dir = -1;
+  Matter.Sleeping.set(m, false);
+  Matter.Body.setVelocity(m, { x: dir * OFF_SPEED * (W.h / 1080), y: m.velocity.y });
+}
 function stepStones(W: StoneWorld, bodies: Body[], dt: number) {
   W.acc = Math.min(W.acc + dt * 1000, STONE_STEP * 3);
   while (W.acc >= STONE_STEP) {
     for (const b of bodies) {
       const m = b.mb;
       if (!m || m.isStatic || b.free) continue;
+      offStone(b, bodies, W);
       const a = Math.atan2(Math.sin(m.angle), Math.cos(m.angle));
       if (Math.abs(a) <= STONE_LEAN) continue;
       Matter.Body.setAngularVelocity(m, m.angularVelocity * 0.9 - (a - Math.sign(a) * STONE_LEAN) * STONE_RIGHT / 60);
@@ -761,10 +810,17 @@ const CALM_IN = 6.5;
 const CALM_BACK = 50 / 1080;
 const CALM_BACK_T = 1.0;
 const CALM_GLIDE = 5.5;
-/** 풍경이 제자리로 스며드는 시간(초) · 그 글의 돌이 떨어지는 때(복귀 시작부터, 초) · 떨어지는 높이(벽 높이의 비율) */
+/** 풍경이 제자리로 스며드는 시간(초) · 그 글의 돌이 땅 밑에서 올라오기 시작하는 때(복귀 시작부터, 초) */
 const CALM_RETURN = 1.6;
 const CALM_DROP = 1.2;
-const CALM_DROP_H = 70 / 1080;
+/** 돌이 땅 밑에서 올라오기(2026-10-04, 디자이너 — "위에서 떨어지지 말고 땅 아래에서 꾸물꾸물 나오게"). 걸리는 시간(초) ·
+    돌마다 늦는 만큼(초까지, 무작위) · 기우뚱(도) · 좌우로 꿈틀(1080px에서 px) · 오르다 멈칫하는 몫 — 오르는 동안 이것들이 잦아든다.
+    새 글의 돌은 CALM_DROP에 제 자리(C.spot)에서 같은 몸짓으로 */
+const CALM_RISE = 2.4;
+const CALM_RISE_LAG = 0.6;
+const RISE_TILT = 4;
+const RISE_SHIFT = 2.5;
+const RISE_HITCH = 0.08;
 /** 휩쓸림 — 큰 돌 앞 이만큼(벽 높이의 비율) 안에 들면 밀려나기 시작한다. 돌은 미끄럽게 굴러 나가는 빠르기(1080px에서 px/걸음,
     안쪽 → 바깥쪽), 구름 · 나무 · 새는 바람에 밀리듯 빨라진다(벽 높이 / 초²) */
 const SWEEP_AHEAD = 450 / 1080;
@@ -790,7 +846,25 @@ type Calm = {
   snap: Map<string, { x: number; y: number; a: number }> | null;
   /** 복귀의 스며듦(0~1) · 그 글의 돌을 떨어뜨렸나 · 끝났나(정리할 차례) */
   fade: number; dropped: boolean; done: boolean;
+  /** 돌아오지 않을 돌(STONE_MAX를 넘거나 바닥이 모자라 빠지는 가장 오래된 돌 — 등장할 때 정한다) · 그 명단을 벽에 알렸나 ·
+      그 글의 돌이 떨어질 자리(px, floorFit — 없으면 calmSpot) */
+  retire: string[]; kept: boolean; spot: number | null;
 };
+/**
+ * 새 돌이 들어올 때 — 빠질 돌과 떨어질 자리. 일곱(STONE_MAX)을 넘으면 가장 오래된 돌부터 빼고, 그래도 바닥에 들어갈 빈 구간이
+ * 없으면 하나씩 더 뺀다(남은 바닥으로 센다, 2026-10-04 디자이너). keep = 지금 벽의 돌 명단(최근 것부터), me = 새 돌(x는 아무것)
+ */
+function stonePlan(id: string, me: Body, keep: readonly string[], bodies: Map<string, Body>, w: number, h: number): { retire: string[]; spot: number | null } {
+  const alive = keep.filter((x) => x !== id), retire: string[] = [], had = keep.includes(id);
+  if (!had) while (alive.length + 1 > STONE_MAX) retire.push(alive.pop()!);
+  const trees = [...bodies.values()].filter((q) => q.kind === 'tree');
+  for (;;) {
+    const stones = alive.map((x) => bodies.get(x)).filter((q): q is Body => !!q && q.heavy && !q.away);
+    const spot = floorFit(me, stones, trees, w, h);
+    if (spot !== null || had || !alive.length) return { retire, spot };
+    retire.push(alive.pop()!);
+  }
+}
 const easeOut3 = (t: number) => 1 - (1 - t) ** 3;
 const easeInOut3 = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2);
 
@@ -809,10 +883,35 @@ function giantGroundY(g: NonNullable<Calm['giant']>, h: number): number {
   for (const v of top.vertices) low = Math.max(low, v.y);
   return h - (low - (g.mb.position.y + g.mc[1]));
 }
-/** 그 글의 돌이 떨어질 빈 바닥 — 등장 전 바닥에 앉아 있던 돌들의 폭을 피해 가장 넓은 틈의 가운데. 틈이 없으면 가운데쯤 아무 데나(얹힌다) */
+/**
+ * 바닥에 이 돌(me — x는 아무것이나)이 쌓이지 않고 설 자리(상자 가운데 x, px). 이웃 돌과는 허용한 겹침(STONE_OVERLAP)까지, 돌의 글은
+ * 나무 글과 같은 세로줄을 피한다(stoneTreeBands). 들어가고 남는 폭이 가장 작은 빈 구간의 한쪽 끝에 붙인다 — 넓은 빈자리를 덜
+ * 쪼개야 다음 돌도 선다(2026-10-04, '남은 바닥으로 센다' — 디자이너). 없으면 null
+ */
+function floorFit(me: Body, stones: Body[], trees: Body[], w: number, h: number): number | null {
+  const spans = stones.map((q): Pt2 => { const l = Math.min(stoneOverlapOf(q.hw, q.tx), stoneOverlapOf(me.hw, me.tx)); return [q.x - q.hw + l, q.x + q.hw - l]; })
+    .sort((a, b) => a[0] - b[0]);
+  const free: Pt2[] = [];
+  let at = 0;
+  for (const [a, b] of spans) { if (a > at) free.push([at, a]); at = Math.max(at, b); }
+  if (at < w) free.push([at, w]);
+  const inText = (x: number) => { const s: Body = { ...me, x, y: h - me.hh }; let o = 0; for (const t of trees) for (const [p, q] of stoneTreeBands(s, t, h)) o += spanOverlap(p[0], p[1], q[0], q[1]); return o; };
+  let best: number | null = null, slack = Infinity;
+  for (const [a, b] of free) {
+    if (b - a < 2 * me.hw) continue;
+    const ok: number[] = [];
+    for (let x = a + me.hw; x <= b - me.hw; x += 4) if (!inText(x)) ok.push(x);
+    if (!ok.length || b - a - 2 * me.hw >= slack) continue;
+    slack = b - a - 2 * me.hw; best = Math.random() < 0.5 ? ok[0] : ok[ok.length - 1];
+  }
+  return best;
+}
+/** 그 글의 돌이 떨어질 빈 바닥 — 등장 전 바닥에 앉아 있던 돌들의 폭을 피해 가장 넓은 틈의 가운데. 틈이 없으면 가운데쯤 아무 데나.
+    큰 돌이 들어올 때 floorFit으로 정한 자리(C.spot)가 있으면 그것을 쓴다 — 이것은 그 자리가 없을 때(나무 글에 막힌 벽)의 마지막 길 */
 function calmSpot(C: Calm, map: Map<string, Body>, hw: number, w: number, h: number): number {
   const spans: [number, number][] = [];
-  for (const [id, p] of C.snap ?? []) { const b = map.get(id); if (b?.heavy && p.y + b.hh > h - 8) spans.push([p.x - b.hw, p.x + b.hw]); }
+  // 옆 돌과는 허용한 겹침(STONE_OVERLAP)만큼 붙어 서도 된다
+  for (const [id, p] of C.snap ?? []) { const b = map.get(id); if (b?.heavy && p.y + b.hh > h - 8) { const l = stoneOverlapOf(b.hw, b.tx); spans.push([p.x - b.hw + l, p.x + b.hw - l]); } }
   spans.sort((a, b) => a[0] - b[0]);
   let best: [number, number] | null = null, at = 0;
   for (const [a, b] of [...spans, [w, w] as [number, number]]) {
@@ -846,20 +945,43 @@ function calmRestore(C: Calm, W: StoneWorld, map: Map<string, Body>, now: number
   for (const [id, b] of [...map]) {
     const p = C.snap?.get(id);
     if (id === C.id) continue;
+    // 넘치는 가장 오래된 돌 — 쓸려 나간 그대로 둔다(벽이 명단에서 빼면 지워진다, STONE_MAX)
+    if (C.retire.includes(id)) { b.away = true; if (b.mb) Matter.Composite.remove(W.engine.world, b.mb); continue; }
     if (!p) { if (b.swept || b.away) { if (b.mb) Matter.Composite.remove(W.engine.world, b.mb); map.delete(id); } continue; }
     b.x = p.x; b.y = p.y; b.a = p.a; b.swept = false; b.away = false; b.sv = 0; b.free = false;
     if (b.cr) { b.vx = b.vy = 0; b.cr.mode = 'perch'; b.cr.until = now + perchFor(b.cr.geo); }
     if (b.mb) {
       Matter.Composite.remove(W.engine.world, b.mb);
       Matter.Composite.add(W.engine.world, b.mb);
-      placeStone(b.mb, b.mc!, p.x, p.y, p.a);
-      Matter.Body.setVelocity(b.mb, { x: 0, y: 0 }); Matter.Body.setAngularVelocity(b.mb, 0);
+      // 제자리로 곧장 두지 않고 땅 밑(화면 아래 바깥)에서 올라온다(riseStep) — 올라오는 동안은 물리 밖(고정)
+      b.rise = { x: p.x, y0: W.h + b.hh + 12, y1: p.y, a: p.a, t0: now + CALM_RISE_LAG * Math.random(), ph: Math.random() * Math.PI * 2 };
+      Matter.Body.setStatic(b.mb, true);
+      placeStone(b.mb, b.mc!, p.x, b.rise.y0, p.a);
+      b.y = b.rise.y0;
       b.mb.friction = STONE_FRICTION[0]; b.mb.frictionStatic = STONE_FRICTION[1];
-      Matter.Sleeping.set(b.mb, true);
     }
   }
   if (C.giant) { Matter.Composite.remove(W.engine.world, C.giant.mb); C.giant = null; }
   W.open = false;
+}
+/** 땅 밑에서 꾸물꾸물 — 끝으로 갈수록 느려지며 오르고(멈칫하며), 좌우로 기우뚱 · 꿈틀이 잦아든다. 다 오르면 물리로 돌려보낸다.
+    아직 오르는 중이면 true */
+function riseStep(b: Body, now: number, h: number): boolean {
+  const r = b.rise!, m = b.mb;
+  if (!m) return true;                                   // 몸이 아직 없다(새 글의 돌 — 다음 프레임에 지어진다)
+  if (!m.isStatic) Matter.Body.setStatic(m, true);
+  const e = Math.max(0, Math.min(1, (now - r.t0) / CALM_RISE)), fall = 1 - e;
+  const up = Math.min(1, 1 - fall ** 3 + RISE_HITCH * Math.sin(2 * Math.PI * 3 * e) * fall);
+  const y = r.y0 + (r.y1 - r.y0) * up;
+  const a = r.a + ((RISE_TILT * Math.PI) / 180) * Math.sin(2 * Math.PI * 4.5 * e + r.ph) * fall ** 1.5;
+  const x = r.x + RISE_SHIFT * (h / 1080) * Math.sin(2 * Math.PI * 3.5 * e + 2 * r.ph) * fall;
+  placeStone(m, b.mc!, x, y, a);
+  if (e < 1) return true;
+  Matter.Body.setStatic(m, false);
+  Matter.Body.setVelocity(m, { x: 0, y: 0 }); Matter.Body.setAngularVelocity(m, 0);
+  Matter.Sleeping.set(m, true);
+  delete b.rise;
+  return false;
 }
 /**
  * 차분한 발화의 한 프레임 — 큰 돌을 짓고 정해진 길로 옮기고, 앞의 풍경을 쓸어 내고, 퇴장 · 복귀를 잇는다. 돌의 물리 걸음(step) 전에.
@@ -934,14 +1056,18 @@ function calmStep(C: Calm, W: StoneWorld, map: Map<string, Body>, f: Size | unde
       if (b.x - b.hw > w + 40) { b.away = true; if (b.mb) Matter.Composite.remove(W.engine.world, b.mb); }
     }
   }
-  // 복귀 — 풍경이 스며들고, 그 글의 돌이 빈 바닥에 떨어진다
+  // 복귀 — 풍경이 스며들고, 돌들은 땅 밑에서 올라온다. 그 글의 돌은 조금 늦게 제 자리(빈 바닥)에서
   if (C.phase === 'return') {
     C.fade = Math.min(1, t / CALM_RETURN);
     if (!C.dropped && t >= CALM_DROP && own) {
       C.dropped = true; own.parked = false; own.a = 0;
-      own.x = calmSpot(C, map, own.hw, w, h); own.y = h - own.hh - CALM_DROP_H * h;
+      const x = C.spot ?? calmSpot(C, map, own.hw, w, h);
+      own.x = x; own.y = h + own.hh + 12;
+      own.rise = { x, y0: own.y, y1: h - own.hh, a: 0, t0: now, ph: Math.random() * Math.PI * 2 };
     }
-    if (C.dropped && t >= Math.max(CALM_RETURN, CALM_DROP) + 0.4) C.done = true;
+    let rising = false;
+    for (const b of map.values()) if (b.rise && riseStep(b, now, h)) rising = true;
+    if (C.dropped && !rising && t >= CALM_RETURN + 0.4) C.done = true;
   }
 }
 
@@ -972,7 +1098,7 @@ function boxSide(): number {
  *  (pairCloud). 좁은 쪽 폭의 PAIR_OVER만큼(o.over가 고른다) 포개지되 글자는 비키는 자리.
  *  u = 구름의 글자 한 칸(px) — 헤매는 영역의 크기가 거기 걸려 있다. tx = 글 상자(상자에 대한 비율) */
 function spawn(r: number, hw: number, hh: number, kind: Kind, w: number, h: number, taken: Body[],
-  o: { tall: number; u: number; tx: Rect | null; pair: number; over: number; bg: RGB; fg: RGB; perch?: Pt2[]; cr?: CrGeo }): Body {
+  o: { tall: number; u: number; tx: Rect | null; pair: number; over: number; bg: RGB; fg: RGB; perch?: Pt2[]; cr?: CrGeo; wait?: boolean }): Body {
   const { tall, u, tx, over } = o, heavy = kind === 'stone', zones = zonesOf(taken), seek = o.pair < PAIR_ODDS;
   const still = { held: false, heavy, a: 0, va: 0, r, hw, hh, poly: null, kind, tall, home: null,
     sway: Math.random() * Math.PI * 2, flutter: Math.random(), u: 0, chars: [], side: 0, tx, zone: null,
@@ -1039,19 +1165,27 @@ function spawn(r: number, hw: number, hh: number, kind: Kind, w: number, h: numb
     return b;
   }
   if (heavy) {
-    const y = hh + Math.random() * Math.max(1, h / 3 - hh);
+    // 제자리 바로 위에서 떨어진다(STONE_DROP, 2026-10-04 — 쌓임 금지). 전에는 위쪽 3분의 1에서 떨어져 나무 글을 지나갔다
+    const y = h - hh - STONE_DROP * h;
     // 나무와 가로로 떨어져 있어야 할 띠가 걸리는 양(stoneTreeBands) · 다른 돌 위인가(그러면 그 위에 쌓인다)
     const trees = taken.filter((q) => q.kind === 'tree');
     const inText = (x: number) => { const me: Body = { ...still, x, y, vx: 0, vy: 0 }; let s = 0;
       for (const t of trees) for (const [a, c] of stoneTreeBands(me, t, h)) s += spanOverlap(a[0], a[1], c[0], c[1]);
       return s; };
-    const onStone = (x: number) => taken.some((q) => q.heavy && Math.abs(q.x - x) < q.hw + hw);
+    // 돌끼리는 허용한 겹침(STONE_OVERLAP)까지는 나란히 — 그보다 깊이 겹칠 자리만 '다른 돌 위'다
+    const lap = (q: Body) => Math.min(stoneOverlapOf(q.hw, q.tx), stoneOverlapOf(hw, still.tx));
+    const onStone = (x: number) => taken.some((q) => q.heavy && Math.abs(q.x - x) < q.hw + hw - lap(q));
     // 짝 — 나무 옆에 좁은 쪽 폭의 35~60%만큼 걸쳐 바닥에 앉는다
     if (seek) for (const ov of oversFrom(over)) for (const t of shuffled(trees)) for (const dir of shuffled([1, -1])) {
       const x = besideX(t, hw, ov, dir);
       if (x >= hw && x <= w - hw && !inText(x) && !onStone(x)) return { ...still, x, y, vx: 0, vy: 0 };
     }
-    // 나무 글의 띠 밖이 먼저, 그다음 다른 돌과 가로로 안 겹치는 자리
+    // 바닥의 빈 구간에서 — 쌓이지 않게(floorFit). 자리가 없으면(빈자리를 채울 때 바닥 폭을 넉넉히 셌는데도 무작위 자리가 쪼갰다)
+    // 예전 길: 나무 글의 띠 밖이 먼저, 그다음 다른 돌과 덜 겹치는 자리 — 올라앉으면 offStone이 바닥으로 내린다
+    const fit = floorFit({ ...still, x: 0, y, vx: 0, vy: 0 }, taken.filter((q) => q.heavy && !q.away), trees, w, h);
+    if (fit !== null) return { ...still, x: fit, y, vx: 0, vy: 0 };
+    // 바닥에 빈 구간이 없다 — 서지 않고 기다린다(쌓임 금지). 새 글부터 놓으니 기다리는 쪽은 오래된 돌이다. 발화 중인 돌은 예외(o.wait 없음)
+    if (o.wait) return { ...still, x: -2 * w, y, vx: 0, vy: 0, away: true, noRoom: true };
     let bx = w / 2, least = Infinity;
     for (let t = 0; t < 40 && least > 0; t++) {
       const x = hw + Math.random() * Math.max(1, w - hw * 2), hit = inText(x);
@@ -1063,7 +1197,7 @@ function spawn(r: number, hw: number, hh: number, kind: Kind, w: number, h: numb
     // 쌓였다(2026-10-01, 재서 알았다 — 겹침 깊이 35~91px)
     let by = y;
     for (let k = 0; k < taken.length; k++) {
-      const hit = taken.find((q) => q.heavy && Math.abs(q.x - bx) < q.hw + hw && Math.abs(q.y - by) < q.hh + hh + 8);
+      const hit = taken.find((q) => q.heavy && Math.abs(q.x - bx) < q.hw + hw - lap(q) && Math.abs(q.y - by) < q.hh + hh + 8);
       if (!hit) break;
       by = hit.y - hit.hh - hh - 8;
     }
@@ -1165,8 +1299,14 @@ function step(W: StoneWorld, bodies: Body[], w: number, h: number, dt: number, s
 function stoneTreeBands(s: Body, t: Body, h: number): [[number, number], [number, number]][] {
   if (!t.zone) return [];
   const z: [number, number] = [t.zone[0], t.zone[2]], band = bandAt(s.x, s.hw, s.tx, h), m = TEXT_CLEAR * h;
-  const out: [[number, number], [number, number]][] = [[band, z]];
-  if (!legible(t, s)) { const b = bodyOf(s, h); out.push([[b[0], b[2]], z]); }
+  // 높이까지 따진다(2026-10-04 — 쌓임 금지). 돌은 제자리 바로 위(STONE_DROP)에서 떨어지니, 나무 글이 그보다 높으면 그 밑 바닥에
+  // 서도 된다 — 같은 세로줄만으로 막으니 수관 넓은 나무 셋이 바닥 대부분을 막아 돌이 다른 돌 위에 놓였다
+  const top = s.y - s.hh - STONE_DROP * h, zv: [number, number] = [t.zone[1], t.zone[3]];
+  const text: [number, number] = s.tx ? [top + s.tx[1] * 2 * s.hh - m, s.y - s.hh + s.tx[3] * 2 * s.hh + m] : [top, s.y + s.hh];
+  const out: [[number, number], [number, number]][] = [];
+  if (spanOverlap(text[0], text[1], zv[0], zv[1]) > 0) out.push([band, z]);
+  if (!legible(t, s) && spanOverlap(top, s.y + s.hh, zv[0], zv[1]) > 0) { const b = bodyOf(s, h); out.push([[b[0], b[2]], z]); }
+  // 줄기는 바닥까지 — 높이로 비켜 갈 수 없다
   if (!legible(s, t)) out.push([band, [t.x - t.hw * TREE_BASE - m, t.x + t.hw * TREE_BASE + m]]);
   return out;
 }
@@ -1687,6 +1827,12 @@ export default function WallSimulation() {
   /** 차분한의 발화 — 큰 돌이 밀려와 풍경을 쓸어 낸다(calmStep). 그리는 큰 돌 · 그 요소 · 프레임 루프의 상태 · 앞 발화를 되돌릴 차례 ·
       끝났을 때의 정리(발화 상태를 비운다 — 아래 land의 정리와 같다) */
   const [calmMsg, setCalmMsg] = useState<{ msg: StoredMessage; G: number } | null>(null);
+  /** 벽에 선 돌의 명단(STONE_MAX, 최근 것부터) — 새 돌이 들어올 때(큰 돌이 돌아올 때)만 바뀐다. 프레임 루프 · 등장이 읽게 ref로도 */
+  const [stoneKeep, setStoneKeep] = useState<string[]>([]);
+  const stoneKeepRef = useRef<string[]>([]);
+  stoneKeepRef.current = stoneKeep;
+  /** 바닥에 자리가 없어 기다리는 돌 — 명단의 돌이 빠지면(사흘 · 큰 돌) 비우고 다시 해 본다 */
+  const noRoomRef = useRef(new Set<string>());
   const giantElRef = useRef<HTMLDivElement | null>(null);
   const calmRef = useRef<Calm | null>(null);
   const calmUndoRef = useRef<Calm | null>(null);
@@ -1860,6 +2006,15 @@ export default function WallSimulation() {
       if (C && (C.phase === 'enter' || C.phase === 'hold')) { C.phase = 'exit'; C.t0 = performance.now() / 1000; C.x0 = NaN; return; }
       if (C) return;
       const id = emphIdRef.current;
+      // 움직임을 줄인 벽의 돌 — 큰 돌 장면이 없어 내려앉을 때 명단에 든다(넘치는 가장 오래된 돌은 이때 빠진다, STONE_MAX)
+      const em = emphMsgRef.current;
+      if (id && em && personaFor(em.tone?.font).edge === 'stone') {
+        const { cloud, box } = cloudOf(em), sc = scaleOf(cloud), one = boxSide(), colors = colorsOf(em);
+        const me = { kind: 'stone', heavy: true, x: 0, y: 0, hw: (box.w * one * sc) / 2, hh: ((box.h + box.tail) * one * sc) / 2, tx: textBox(cloud),
+          bg: rgbOf(colors.bg), fg: rgbOf(colors.text) } as Body;
+        const { retire } = stonePlan(id, me, stoneKeepRef.current, bodiesRef.current, window.innerWidth, window.innerHeight);
+        setStoneKeep((k) => [id, ...k.filter((x) => x !== id && !retire.includes(x))].slice(0, STONE_MAX));
+      }
       // 그 글의 잔상이 지금 떠 있는 자리를 겨눈다. 도착할 때까지 붙잡아
       // 둔다(held) — 움직이는 과녁을 맞히려면 앞을 예측해야 하는데, 튕기는
       // 몸은 예측이 안 된다. 어차피 숨어 있으니 멈춘 것은 보이지 않는다.
@@ -1898,7 +2053,13 @@ export default function WallSimulation() {
       const { cloud, box } = cloudOf(msg);
       if (cloud.stone && !prefersReducedMotion()) {
         const one = boxSide(), G = Math.min((CALM_SIZE * window.innerWidth) / (box.w * one), (CALM_SIZE * window.innerHeight) / (box.h * one));
-        calmRef.current = { id: msg.id, phase: 'enter', t0: performance.now() / 1000, G, giant: null, x0: NaN, snap: null, fade: 0, dropped: false, done: false };
+        // 돌 명단 — 일곱을 넘거나 바닥에 새 돌이 들어갈 자리가 없으면 가장 오래된 돌부터 빠진다(stonePlan). 빠질 돌은 풍경이 돌아올 때
+        // 돌아오지 않고, 새 돌은 그렇게 난 자리에 떨어진다
+        const sc = scaleOf(cloud), colors = colorsOf(msg);
+        const me = { kind: 'stone', heavy: true, x: 0, y: 0, hw: (box.w * one * sc) / 2, hh: ((box.h + box.tail) * one * sc) / 2, tx: textBox(cloud),
+          bg: rgbOf(colors.bg), fg: rgbOf(colors.text) } as Body;
+        const { retire, spot } = stonePlan(msg.id, me, stoneKeepRef.current, bodiesRef.current, window.innerWidth, window.innerHeight);
+        calmRef.current = { id: msg.id, phase: 'enter', t0: performance.now() / 1000, G, giant: null, x0: NaN, snap: null, fade: 0, dropped: false, done: false, retire, kept: false, spot };
         setCalmMsg({ msg, G });
       } else { calmRef.current = null; setCalmMsg(null); }
       // EMPHASIS_MS는 상한이고, 세는 곳은 **꽂힌 순간**이다. 벽이 신호를 몇
@@ -1964,15 +2125,40 @@ export default function WallSimulation() {
     };
   }, []);
 
+  // 돌 명단(STONE_MAX) — 사흘이 지난 돌은 빼고, 자리가 남으면 기다리던 돌 가운데 최근 것부터 채운다. 큰 돌이 등장하는 중인
+  // 글은 채우지 않는다 — 풍경이 돌아올 때 들어간다(프레임 루프)
+  useEffect(() => {
+    setStoneKeep((k) => {
+      const stones = visible.filter((m) => personaFor(m.tone?.font).edge === 'stone');
+      const at = new Map(stones.map((m) => [m.id, m.createdAt])), calm = calmRef.current?.id;
+      // 바닥 폭 — 돌 폭(겹침을 뺀)의 합이 벽 폭의 STONE_FILL까지(쌓이지 않게 — 무작위로 서니 빈틈 몫을 남긴다)
+      const wide = (id: string) => { const m = stones.find((q) => q.id === id); if (!m) return 0; const { cloud, box } = cloudOf(m); return box.w * boxSide() * scaleOf(cloud) * (1 - STONE_OVERLAP); };
+      const next = k.filter((id) => at.has(id));
+      if (next.length < k.length) noRoomRef.current.clear();   // 사흘이 지나 빠진 돌이 있다 — 기다리던 돌이 다시 해 본다
+      let used = next.reduce((a, id) => a + wide(id), 0);
+      for (const m of stones) {
+        if (next.length >= STONE_MAX) break;
+        if (next.includes(m.id) || m.id === calm || noRoomRef.current.has(m.id)) continue;
+        const add = wide(m.id);
+        if (used + add > STONE_FILL * window.innerWidth) continue;
+        next.push(m.id); used += add;
+      }
+      next.sort((a, b) => (at.get(b) ?? 0) - (at.get(a) ?? 0));
+      return next.length === k.length && next.every((x, i) => x === k[i]) ? k : next;
+    });
+  }, [visible]);
+
   // 화면에 띄울 열두 개. 더 쌓이면 갈아 끼우되, **발화 중인 글은 반드시 남긴다** —
   // 그 잔상이 큰 상자가 내려앉을 자리이므로 없으면 갈 곳이 사라진다.
-  // 나무(당당한)는 TREE_MAX그루까지 — 발화 중인 글은 나무라도 늘 남기고 그 몫도 센다
+  // 나무(당당한)는 TREE_MAX그루까지 — 발화 중인 글은 나무라도 늘 남기고 그 몫도 센다. 돌(차분한)은 명단(stoneKeep)에 든 것만
   const shown = useMemo(() => {
     const isTree = (m: StoredMessage) => personaFor(m.tone?.font).edge === 'tree';
+    const isStone = (m: StoredMessage) => personaFor(m.tone?.font).edge === 'stone';
     const out: StoredMessage[] = [];
     let trees = 0;
     const put = (m: StoredMessage, force = false) => {
       if (out.some((x) => x.id === m.id)) return;
+      if (!force && isStone(m) && !stoneKeep.includes(m.id)) return;
       if (isTree(m)) { if (!force && trees >= TREE_MAX) return; trees++; }
       out.push(m);
     };
@@ -1984,7 +2170,7 @@ export default function WallSimulation() {
     const n = visible.length, start = n > FLOAT_N ? rotate : 0;
     for (let i = 0; out.length < FLOAT_N && i < n; i++) put(visible[(i + start) % n]);
     return out;
-  }, [visible, rotate, emphMsg, linger]);
+  }, [visible, rotate, emphMsg, linger, stoneKeep]);
 
   // 프레임마다 한 걸음 걷고 자리를 요소에 적는다. transform만 건드리므로
   // 레이아웃을 다시 계산하지 않는다 — 파이에서 이게 프레임을 지킨다.
@@ -2047,15 +2233,18 @@ export default function WallSimulation() {
           if (b) { if (b.mb) Matter.Composite.remove(world.engine.world, b.mb); map.delete(id); }
           map.set(id, (b = spawn(rOf(id), hw, hh, kind, w, h, [...map.values()],
             { tall: f?.tall ?? 0, u: side * (f?.unit ?? 0), tx: f?.tx ?? null, pair: f?.pair ?? 1, over: f?.over ?? 0, bg: f?.bg ?? [1, 1, 1], fg: f?.fg ?? [0, 0, 0],
-              perch: f?.perch, cr: f?.cr })));
+              perch: f?.perch, cr: f?.cr, wait: id !== calmRef.current?.id && id !== emphIdRef.current })));
+          // 바닥에 자리가 없는 돌 — 명단에서 잠시 빼고(다른 돌이 빠지면 다시 해 본다), 화면 밖에 둔다
+          if (b.noRoom) { noRoomRef.current.add(id); setStoneKeep((k) => k.filter((x) => x !== id)); }
         } else { b.r = rOf(id); b.hw = hw; b.hh = hh; b.heavy = kind === 'stone'; b.kind = kind; b.tall = f?.tall ?? 0; b.tx = f?.tx ?? null; b.bg = f?.bg ?? b.bg; b.fg = f?.fg ?? b.fg; b.perch = f?.perch ?? null; if (b.cr && f?.cr) b.cr.geo = f.cr; }   // 창 크기가 바뀌면 같이 바뀐다
         b.poly = poly;
-        if (kind === 'stone' && f?.chain && !b.parked) {
+        if (kind === 'stone' && f?.chain && !b.parked && !b.noRoom) {
           // 돌의 물리 몸 — 처음이거나 창 크기가 바뀌었으면 지금 자리 · 각도 그대로 다시 짓는다
           if (!b.mb || b.mside !== side) {
             const a = b.mb?.angle ?? 0, v = b.mb?.velocity;
             if (b.mb) Matter.Composite.remove(world.engine.world, b.mb);
             const { mb, mc } = stoneBodyOf(f.chain.map(off), (f.belly ?? []).map(off), b.x, b.y);
+            mb.plugin = { ...mb.plugin, overlap: stoneOverlapOf(hw, f.tx) };   // 돌끼리 겹쳐도 되는 깊이(STONE_OVERLAP)
             Matter.Body.setAngle(mb, a);
             if (v) Matter.Body.setVelocity(mb, v);
             b.mb = mb; b.mc = mc; b.mside = side;
@@ -2063,7 +2252,8 @@ export default function WallSimulation() {
             Matter.Composite.add(world.engine.world, mb);
           }
           // 붙잡힌 돌(큰 상자가 내려앉을 과녁)은 그 자리에 멈춘다
-          if (b.mb.isStatic !== b.held) Matter.Body.setStatic(b.mb, b.held);
+          const pinned = b.held || !!b.rise;   // 붙잡힌 돌 · 땅 밑에서 올라오는 돌(riseStep)
+          if (b.mb.isStatic !== pinned) Matter.Body.setStatic(b.mb, pinned);
           // 다른 규칙(새가 앉을 윗변 · 몰림 · 나무 글 비키기)이 보는 윤곽 — 돌이 기운 만큼 돌려 둔다
           if (poly && b.a) { const c = Math.cos(b.a), sn = Math.sin(b.a); b.poly = poly.map(([x, y]): Pt2 => [x * c - y * sn, x * sn + y * c]); }
         }
@@ -2086,6 +2276,13 @@ export default function WallSimulation() {
       const C = calmRef.current;
       if (C) {
         calmStep(C, world, map, sizesRef.current.get(C.id), side, w, h, dt, t / 1000);
+        // 풍경이 돌아왔다 — 새 돌이 명단에 들고, 쓸려 나간 가장 오래된 돌은 빠진다(STONE_MAX)
+        if (C.phase === 'return' && !C.kept) {
+          C.kept = true;
+          const { id, retire } = C;
+          if (retire.length) noRoomRef.current.clear();
+          setStoneKeep((k) => [id, ...k.filter((x) => x !== id && !retire.includes(x))].slice(0, STONE_MAX));
+        }
         if (C.done) { C.done = false; calmDoneRef.current(); }
       }
       step(world, [...map.values()], w, h, dt, t / 1000, !moving);
@@ -2124,10 +2321,12 @@ export default function WallSimulation() {
           cloudFrame(cloudDomOf(cloudDomRef.current, id, el, f), b, f, t / 1000);
         }
         el.style.transform = tf;
+        // 돌의 빗금 결 — 기운 만큼 그늘이 빛을 따라 옮겨 간다(StoneArt가 2° 넘게 바뀌었을 때만 다시 셈한다)
+        if (b.kind === 'stone') stoneLean(el, b.a ?? 0);
         // 차분한의 발화 — 쓸려 나간 몸은 숨기고, 복귀하는 동안 풍경이 스며든다. 그 글의 돌은 떨어지는 순간부터 보인다
         const Cn = calmRef.current;
         if (Cn) {
-          const op = b.away ? '0' : Cn.phase === 'return' && id !== Cn.id ? Cn.fade.toFixed(3) : '';
+          const op = b.away ? '0' : Cn.phase === 'return' && id !== Cn.id && b.kind !== 'stone' ? Cn.fade.toFixed(3) : '';
           if (el.style.opacity !== op) el.style.opacity = op;
           if (id === Cn.id) el.style.visibility = Cn.dropped ? 'visible' : '';
         } else if (el.style.opacity || el.style.visibility) { el.style.opacity = ''; el.style.visibility = ''; }
@@ -2291,7 +2490,11 @@ const WallBlock = memo(function WallBlock({ msg, ghost, onEl }: { msg: StoredMes
    구름은 강조와 잔상이 같은 숨(중)을 쉰다 — 크기만 내려앉는다. */
 export const WallShowMessage = memo(function WallShowMessage({ msg, land, centerText }: { msg: StoredMessage; land: Land | null; startedAt: number; centerText?: boolean }) {
   const { bg, text, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
-  const { lines, cloud, box } = useMemo(() => cloudOf(msg), [msg]);
+  // 돌은 배까지 한 덩이로(cloud.ts stoneWhole, 2026-10-04) — 바닥 없이 서는 큰 상자(폰 5/5 미리보기가 빌려 쓴다)
+  const { lines, cloud, box } = useMemo(() => {
+    const o = cloudOf(msg), whole = stoneWhole(o.cloud);
+    return whole === o.cloud ? o : { ...o, cloud: whole, box: bubbleAt(o.lines, cloudShape(whole), fillFromLegacySize(msg.tone?.size)) };
+  }, [msg]);
 
   const landing = land !== null;
   const boxStyle = land

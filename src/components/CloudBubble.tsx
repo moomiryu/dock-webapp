@@ -1,6 +1,7 @@
 import { cloneElement, isValidElement, useEffect, useId, useMemo, useRef, type CSSProperties, type ReactElement, type ReactNode } from 'react';
 import { AMP, DRIFT, T1, T2, photoWave, type Circle, type Cloud } from '../lib/cloud';
 import TreeArt from './TreeArt';
+import StoneArt from './StoneArt';
 import type { Boxed } from '../lib/fit';
 
 /**
@@ -26,6 +27,8 @@ import type { Boxed } from '../lib/fit';
  * 원이 아니라 다각형 하나(cloud.ts · stoneFor). 번지지도 숨 쉬지도 않는다.
  * 오른쪽 아래 빗금은 칠하지 않고 **오려 낸다**(mask) — 뒤에 있는 것이 그대로
  * 비쳐 벽에서도 폰에서도 '틈'이 된다. 시스템이 새 색을 만들지 않는다.
+ * 사진 돌(2026-10-01)은 2026-10-04부터 캔버스에 그린다(StoneArt) — 사진의 어두운 면을 나무와 같은 ／ 빗금으로(검은 줄은 --ink로 칠한다)
+ * 윤곽은 미세하게 구불구불, 벽에서 기울면 그늘이 빛을 따라 옮겨 간다. 윤곽 따라(기하 돌)는 그대로 SVG.
  *
  * ── 나무 (당당한, 2026-09-28, 09-30 사진으로) ─────────────────────────
  * 사진에서 뗀 한 그루(cloud.ts · treeFor)를 캔버스에 그린다(TreeArt · treeGL) — 칠 한 색, 덩이 밑 그늘은 빗금으로
@@ -200,7 +203,7 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
 
   const blur = pr.edge === 'pixel' ? (pr.cell ?? 0.5) * K * 0.08 : pr.blur * K;
   const t = cloud.text;
-  const stone = cloud.stone, hatch = pr.stone?.hatch;
+  const stone = cloud.stone, hatch = pr.stone?.hatch, stoneArt = !!(stone?.photo && pr.stone?.photo?.tex);
   const stoneD = useMemo(() => (stone ? stonePath(stone.pts, pr.stone?.round ?? 0) : ''), [stone, pr.stone?.round]);
   const tree = cloud.tree, photo = cloud.photo;
   const ring = (r: readonly (readonly [number, number])[]) => 'M' + r.map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join('L') + 'Z';
@@ -245,7 +248,8 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
         ...(centerText && photo ? { transform: `translate(${((0.5 - (t.x + t.w / 2) / cloud.w) * 100).toFixed(3)}%, ${((0.5 - (t.y + t.h / 2) / cloud.h) * 100).toFixed(3)}%)` } : {}), ...style } as CSSProperties}
     >
       {tree && <TreeArt cloud={cloud} unit={box.unit} color={color} quiet={quiet} hold={holdS()} />}
-      {!tree && <svg className="cloud-art" viewBox={`0 0 ${W.toFixed(1)} ${H.toFixed(1)}`} aria-hidden="true" focusable="false">
+      {stoneArt && <StoneArt cloud={cloud} unit={box.unit} color={color} />}
+      {!tree && !stoneArt && <svg className="cloud-art" viewBox={`0 0 ${W.toFixed(1)} ${H.toFixed(1)}`} aria-hidden="true" focusable="false">
         {stone && !(hatch?.on && stone.hatch.length) ? (
           /* 빗금이 꺼진 돌(cloud.ts · hatch.on) — 오려 낼 것 없이 면 하나 */
           <path d={stoneD} fill={color} />

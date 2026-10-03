@@ -19,6 +19,8 @@ import { palettes as legacyPalettes } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import { EMPHASIS_MS, STAY_MS } from '../lib/wall';
 import VoiceBubble from '../components/VoiceBubble';
+import WallGround from '../components/WallGround';
+import { groundPx } from '../lib/ground';
 import { SAMPLE_MESSAGES } from '../lib/samples';
 import {
   isFirebaseConfigured,
@@ -1230,6 +1232,11 @@ function cloudOf(msg: StoredMessage): { lines: string[]; cloud: Cloud; box: Boxe
 function boxSide(): number {
   return (window.innerHeight * ECHO_SIDE_VH) / 100;
 }
+/** 풍경의 높이(px) — 맨 아래 땅(lib/ground.ts)만큼 뺀다. 바닥선(돌이 앉고 나무가 서는 곳)이 곧 땅의 윗선이다.
+    글자 크기(boxSide)는 벽 전체 높이로 잰다 */
+function landHeight(): number {
+  return window.innerHeight - groundPx(window.innerHeight);
+}
 
 /** 마네킹 나무 하나(MANNEQUINS) — 씨앗 글이 모양을 고르고(글은 그리지 않는다) 키는 정해 준 대로. 나무 그림의 키(tree.full)는
     줄기 구간만 늘여 맞춘다(cloud.ts treeFor의 줄기 늘이기와 같은 방식). 짧은 씨앗 글이 고른 나무는 키가 낮아, 나무 글이 없을 때
@@ -2360,7 +2367,7 @@ export default function WallSimulation() {
         const { cloud, box } = cloudOf(em), sc = scaleOf(cloud), one = boxSide(), colors = colorsOf(em);
         const me = { kind: 'stone', heavy: true, x: 0, y: 0, hw: (box.w * one * sc) / 2, hh: ((box.h + box.tail) * one * sc) / 2, tx: textBox(cloud),
           bg: rgbOf(colors.bg), fg: rgbOf(colors.text) } as Body;
-        const { retire } = stonePlan(id, me, stoneKeepRef.current, bodiesRef.current, window.innerWidth, window.innerHeight);
+        const { retire } = stonePlan(id, me, stoneKeepRef.current, bodiesRef.current, window.innerWidth, landHeight());
         setStoneKeep((k) => [id, ...k.filter((x) => x !== id && !retire.includes(x))].slice(0, STONE_MAX));
       }
       // 그 글의 잔상이 지금 떠 있는 자리를 겨눈다. 발화 내내 붙잡아 두었다(holdIdRef) — 움직이는 과녁을 맞히려면 앞을
@@ -2408,7 +2415,7 @@ export default function WallSimulation() {
         const sc = scaleOf(cloud), colors = colorsOf(msg);
         const me = { kind: 'stone', heavy: true, x: 0, y: 0, hw: (box.w * one * sc) / 2, hh: ((box.h + box.tail) * one * sc) / 2, tx: textBox(cloud),
           bg: rgbOf(colors.bg), fg: rgbOf(colors.text) } as Body;
-        const { retire, spot } = stonePlan(msg.id, me, stoneKeepRef.current, bodiesRef.current, window.innerWidth, window.innerHeight);
+        const { retire, spot } = stonePlan(msg.id, me, stoneKeepRef.current, bodiesRef.current, window.innerWidth, landHeight());
         calmRef.current = { id: msg.id, phase: 'enter', t0: performance.now() / 1000 + wait, G, giant: null, x0: NaN, snap: null, fade: 0, dropped: false, done: false, retire, kept: false, spot };
         setCalmMsg({ msg, G });
       } else { calmRef.current = null; setCalmMsg(null); }
@@ -2573,7 +2580,7 @@ export default function WallSimulation() {
       const dt = Math.min(0.05, (t - prev) / 1000);
       prev = t;
       const w = window.innerWidth;
-      const h = window.innerHeight;
+      const h = landHeight();   // 풍경의 높이 — 맨 아래 땅만큼 뺀다
       const side = boxSide();
       // 원으로 치되 반지름은 **긴 쪽 절반**이다. 납작한 말풍선이 옆으로
       // 스칠 때 조금 일찍 튕기지만, 짧은 쪽으로 잡으면 겹쳐 지나간다.
@@ -2850,6 +2857,9 @@ export default function WallSimulation() {
       {/* 발화 — 검정 위에 큰 상자 하나 */}
       {emphMsg && !calmMsg && <WallShowMessage key={emphKey} msg={emphMsg} land={emphLand} startedAt={emphStart} />}
       {calmMsg && <WallCalmStone key={calmMsg.msg.id} msg={calmMsg.msg} G={calmMsg.G} elRef={giantElRef} />}
+
+      {/* 땅 — 맨 아래 띠와 사진 풀. 큰 돌 · 발화와 같은 층의 뒤에 놓여 그 위에 그려진다(풀이 돌 앞에 선다) */}
+      <WallGround />
 
       {showOverlay && (
         <div className="wall-overlay">

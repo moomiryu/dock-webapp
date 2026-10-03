@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import StepHeader from '../components/StepHeader';
 import { tick } from '../components/SnapSwitch';
-import { fontMap, formFor, mannerDefault, opticalFix } from '../lib/palettes';
+import { fontMap, formFor, hasWeightAxis, mannerDefault, opticalFix } from '../lib/palettes';
 import { DEFAULT_TONE, STYLE_OPTIONS, type PartialTone } from '../lib/tone';
 import { pick, useLang, type Pair } from '../lib/lang';
 import type { ToneState } from '../types';
@@ -211,11 +211,12 @@ export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Prop
         <button className="primary-action" disabled={!font}
           onClick={() => {
             if (!font) return;
-            /* 성격이 바뀌면 말투는 그 성격의 앞 칸에서 시작한다(당당한은 예리한 — palettes.ts · mannerDefault).
+            /* 성격이 바뀌면 말투는 그 성격의 앞 칸에서 시작한다(palettes.ts · mannerDefault). 말투가 없는 성격(무게를
+               묻는 성격 — 당당한도 2026-10-04부터)은 말투를 비워 둔다: 당당한의 새 글이 말투로 나무를 고른 옛 글과 갈린다.
                같은 성격으로 돌아온 길이면 고른 말투를 그대로 둔다 */
             const base = initialTone ?? DEFAULT_TONE;
             const keep = initialTone?.font === font && base.manner !== undefined;
-            onNext({ ...base, font, manner: keep ? base.manner : mannerDefault(font) });
+            onNext({ ...base, font, manner: hasWeightAxis(font) ? undefined : keep ? base.manner : mannerDefault(font) });
           }}>{pick(T.next, lang)}</button>
       </div>
     </div>

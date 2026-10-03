@@ -1,8 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
 import SnapSwitch, { tick } from '../components/SnapSwitch';
-import { useSoften } from '../components/VoiceBubble';
-import { MANNER, SIZE_WORDS, SPEED_WORDS, STOPS, WEIGHT_WORDS, fontMap, formFor, hasWeightAxis, legacyFields, mannerDefault, mannerOrder, opticalFix, sizeAt, sizePos, snap, stopAt } from '../lib/palettes';
+import { MANNER, SIZE_WORDS, SPEED_WORDS, fontMap, formFor, hasWeightAxis, legacyFields, mannerDefault, mannerOrder, opticalFix, sizeAt, sizePos, weightWordsFor } from '../lib/palettes';
 import { DEFAULT_TONE, type PartialTone } from '../lib/tone';
 import { foldLines } from '../lib/fit';
 import { pick, useLang } from '../lib/lang';
@@ -154,6 +153,10 @@ function Slider({ name, words, value, onChange }: {
     const [moving, setMoving] = useState(false);
     const live = useRef(value);
     live.current = value;
+    /* 칸 수는 말의 개수다 — 대개 다섯, 당당한의 무게는 셋(이사만루 Light · Medium · Bold, 2026-10-04) */
+    const STOPS = words.length;
+    const stopAt = (t: number) => Math.round(Math.min(1, Math.max(0, t)) * (STOPS - 1));
+    const snap = (t: number) => stopAt(t) / (STOPS - 1);
     const lastStop = useRef(stopAt(value));
     /** 손가락 자리 → 막대 자리(0~1) */
     const posAt = (x: number) => {
@@ -243,7 +246,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
     /* 막대 자리가 없는 초안(슬라이더 전에 만든 것)은 가운데('보통')에서 시작한다 */
     const [tone, setTone] = useState<PartialTone>(() => {
         /* 말투가 비어 오면(옛 초안) 앞 칸으로 채운다 — 칸은 예리한을 가리키는데 글은 온화한(빈 값)으로 서는 일이 없게 */
-        const t = { ...initialTone, speed: initialTone.speed ?? 0.5, weight: initialTone.weight ?? 0.5, manner: initialTone.manner ?? mannerDefault(initialTone.font) };
+        const t = { ...initialTone, speed: initialTone.speed ?? 0.5, weight: initialTone.weight ?? 0.5, manner: hasWeightAxis(initialTone.font) ? undefined : initialTone.manner ?? mannerDefault(initialTone.font) };
         return { ...t, ...legacyFields(t) };
     });
     const lang = useLang();
@@ -328,7 +331,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
      * 가져간다.
      */
     /** 지금 견본에 보이는 것. 비교 중일 때만 다듬기 전이 선다 */
-    const shown = compare ? { ...DEFAULT_TONE, font: tone.font, manner: mannerDefault(tone.font) } : tone;
+    const shown = compare ? { ...DEFAULT_TONE, font: tone.font, manner: hasWeightAxis(tone.font) ? undefined : mannerDefault(tone.font) } : tone;
     const fill = shown.size / 60;
     /**
      * 제일 긴 줄이 **글자 크기 1px당 몇 px인가.** 재서 안다.
@@ -377,8 +380,6 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
        크기 그대로다. 넓어진 폭 = 줄 폭 × 장평 + 기울기가 밀어낸 몫(1em × tan).
        세로 비율은 1 이하라 높이는 늘 들어온다. */
     const form = formFor(shown);
-    /* 온화한(당당한)의 둥근 모서리 — 벽 · 4/5와 같은 것(VoiceBubble · useSoften) */
-    useSoften(glyph, !!form.soft);
     const tanS = Math.tan((form.slant * Math.PI) / 180);
     const byLine = Math.min((USE.w / shape.w) * fill, USE.w / (shape.w * form.scaleX + tanS)).toFixed(2);
     const byHeight = ((USE.h / shape.h) * fill).toFixed(2);
@@ -523,7 +524,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
     <Slider name={pick(T.speed, lang)} words={pick(SPEED_WORDS[tone.font] ?? SIZE_WORDS, lang)} value={speed}
       onChange={v => set({ speed: v })} />
     {hasWeightAxis(tone.font)
-      ? <Slider name={pick(T.weight, lang)} words={pick(WEIGHT_WORDS, lang)} value={weight} onChange={v => set({ weight: v })} />
+      ? <Slider name={pick(T.weight, lang)} words={pick(weightWordsFor(tone.font), lang)} value={weight} onChange={v => set({ weight: v })} />
       : <MannerSwitch font={tone.font} at={tone.manner ?? mannerDefault(tone.font)} onPick={i => set({ manner: i })} />}
 
     {/* '다음'이 패널 안에 있다. 밖에 두면 패널과 버튼 사이에 흰 띠가 한 겹

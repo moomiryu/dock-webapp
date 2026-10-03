@@ -301,7 +301,7 @@ export function personaFor(font?: string): Persona {
    한글 고정폭 0.92 · 띄어쓰기 0.30. 둥켈을 함께 재서 0.678 · 0.116이 그대로 나와 방법을 확인했다.
    아침에는 폭 축이 없어 아래 TTORYEOT_WIDE와 advanceFor의 보간은 이제 쓰이지 않는다(wdth가 안 온다). */
 const ADVANCE: Record<string, { hangul: number; space: number }> = {
-  ttoryeot: { hangul: 0.92, space: 0.3 },
+  ttoryeot: { hangul: 0.92, space: 0.25 },   // 이사만루 Medium(10-04 — 한글은 아침과 같은 0.92, 띄어쓰기만 0.30 → 0.25)
   chabun: { hangul: 0.97, space: 0.31 },
   doran: { hangul: 1, space: 0.35 },
   deulseok: { hangul: 0.79, space: 0.177 },
@@ -479,6 +479,8 @@ interface Options {
   track?: number;
   /** 3/5 말투 — 나무가 머리를 고른다(1 = 예리한 · 0 = 온화한, palettes.ts의 MANNER와 같은 차례) */
   manner?: number;
+  /** 3/5 무게 막대 자리(0~1) — 2026-10-04부터 당당한은 말투 대신 무게가 나무를 고른다(treeFor) */
+  weightPos?: number;
   /** 4/5 정렬 — 나무 · 구름은 이것으로 글 배치와 제 모양을 바꾼다(arrangementsFor) */
   align?: Align;
   /** 크기 막대(fit.ts SIZE_FILLS 사이) — 나무가 제 키를 이것으로 정한다 */
@@ -531,7 +533,7 @@ export function cloudForTone(lines: readonly string[], tone: (Parameters<typeof 
   if (!tone) c = cloudFor(lines, undefined, o);
   else {
     const f = formFor(tone);
-    c = cloudFor(lines, tone.font, { ...o, scaleX: f.scaleX, scaleY: f.scaleY, slant: f.slant, wdth: f.wdth, track: parseFloat(f.letterSpacing) || 0, manner: tone.manner, align: tone.align,
+    c = cloudFor(lines, tone.font, { ...o, scaleX: f.scaleX, scaleY: f.scaleY, slant: f.slant, wdth: f.wdth, track: (parseFloat(f.letterSpacing) || 0) + (f.advExtra ?? 0), manner: tone.manner, weightPos: tone.weight, align: tone.align,
       fill: fillFromLegacySize(tone.size) });
   }
   if (MADE.size >= 300) MADE.delete(MADE.keys().next().value!);
@@ -1314,7 +1316,10 @@ function treeFor(pr: Persona, rule: 'B' | 'C', lines: readonly string[], font: s
   const flip = R() < t.flip;
   const fb = [Math.min(...foot.map((r) => r[0])), Math.min(...foot.map((r) => r[1])), Math.max(...foot.map((r) => r[2])), Math.max(...foot.map((r) => r[3]))];
   const widths = treeWidths((fb[2] - fb[0]) / Math.max(0.01, fb[3] - fb[1]), t.stretch);
-  const kin = TREE_PHOTOS.filter((s) => s.species === (o.manner === 1 ? 'pine' : 'willow'));
+  // 종 — 말투가 남은 옛 글은 말투로(1 = 예리한 = 소나무 · 0 = 온화한 = 버드나무). 2026-10-04부터 당당한은 말투 대신 무게를
+  // 묻고 무게가 고른다(디자이너): 가볍게 = 버드나무 · 무겁게 = 소나무 · 보통 = 세 번째 나무(아직 없다 — 들기 전까지 소나무)
+  const sp = typeof o.manner === 'number' ? (o.manner === 1 ? 'pine' : 'willow') : (o.weightPos ?? 0.5) < 0.25 ? 'willow' : 'pine';
+  const kin = TREE_PHOTOS.filter((s) => s.species === sp);
   // 글에 맞춤(hug) — 크기 막대는 글자만 정하고, 나무는 글이 겨우 드는 가장 작은 키 × hug(구름처럼 글이 틀을 정한다). 비교 중
   const H0 = t.hug ? Math.max(1, (fb[3] - fb[1]) * 1.2) : tall / unitK;
   // 글에 맞춤은 가장 작게 드는 키를 찾는다 — 이미 찾은 것보다 크게 드는 경우는 따지지 않는다(폭마다 · 나무마다 한계를 좁힌다.

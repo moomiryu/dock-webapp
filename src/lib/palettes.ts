@@ -25,7 +25,7 @@ export const palettes: Palette[] = [
 // 되었다(tone.ts). 키는 안 바꾼다 — 사흘치 글이 벽에 떠 있는 동안 키를
 // 바꾸면 그 글들이 서체를 잃는다.
 //
-//   ttoryeot 당당한   → sandoll-achim 500             (Adobe 킷 qgd6cda)
+//   ttoryeot 당당한   → 이사만루 Medium(Isamanru 500)  (우리 파일)
 //   chabun   차분한   → source-han-serif-kr-variable  (Adobe 킷 qgd6cda)
 //   doran    다정한   → 마포 다카포                    (우리 파일)
 //   deulseok 유머있는 → Handjet 2.004                  (우리 파일)
@@ -33,9 +33,12 @@ export const palettes: Palette[] = [
 // 2026-10-01: 당당한이 둥켈산스에서 **산돌 아침 Medium**으로 갈렸다(디자이너).
 // 둥켈은 면 채움이 0.60이라 벽에서 다른 셋(0.10~0.18)을 덮었다. 아침 Medium은
 // 0.23 — 당당함은 남고 덮지는 않는다. 킷에는 300 · 500 · 700이 다 있다.
+// 2026-10-04: 다시 **이사만루 Medium**으로 갈렸다(디자이너 — SM견출고딕의 '꽉 찬 네모꼴과 각'.
+// 견출은 웹 사용권을 얻을 길이 없어, 웹 사용권과 한글 11172자를 다 갖춘 후보 다섯 가운데서 골랐다).
+// 농도 0.42(아침 0.23 · 둥켈 0.60), 네모 채움 0.91(아침 0.88). 사용권 · 파일은 global.css.
 //
 // 네 서체가 가진 축은 제각각이다 (파일의 fvar를 직접 읽어 확인했다):
-//   당당한   없음 — 정적 굵기 셋         ← 말투는 둥글기와 자간이 맡는다
+//   당당한   없음 — 정적 굵기 셋(Light · Medium · Bold) ← 무게 막대 세 칸이 곧 이 셋이다(10-04)
 //   차분한   wght 250~900                  ← 그것뿐
 //   유머있는 wght 100~900 · ELSH 0~16 · ELGR 1~2
 //   다정한   없음                          ← 굵기 한 벌
@@ -46,14 +49,14 @@ export const palettes: Palette[] = [
 // 올리면 당당한·차분한 둘이 한꺼번에 사라질 수 있다. 차분한은 본명조가
 // 받아 주고(index.html의 CDN), 당당한은 UI 얼굴로 떨어진다.
 export const fontMap: Record<string, string> = {
-  ttoryeot: '"sandoll-achim", "Pretendard Variable", sans-serif',
+  ttoryeot: '"Isamanru", "Pretendard Variable", sans-serif',
   chabun: '"source-han-serif-kr-variable", "Noto Serif KR Variable", serif',
   doran: '"Mapo Dacapo", "Pretendard Variable", sans-serif',
   deulseok: '"Handjet", "Pretendard Variable", sans-serif',
   // 옛 Firestore 문서가 아직 벽에 있다. 없어진 서체를 가리키게 두면 그 글만
   // UI 얼굴로 떨어지므로, 제일 가까운 새 칸으로 보낸다.
   botong: '"Pretendard Variable", sans-serif',
-  gothic: '"sandoll-achim", "Pretendard Variable", sans-serif',
+  gothic: '"Isamanru", "Pretendard Variable", sans-serif',
   mono: '"Pretendard Variable", sans-serif',
   myeongjo: '"source-han-serif-kr-variable", "Noto Serif KR Variable", serif',
   song: '"Handjet", "Pretendard Variable", sans-serif'
@@ -95,9 +98,12 @@ export const fontMap: Record<string, string> = {
    잉크 높이로 맞추면 1.04가 나와(아침 0.89em, 둥켈 0.93em) 두 잣대가 갈린다. 0.8 · 0.9 · 1.04를
    세로 75% · 100%와 한 장에 놓고 디자이너가 0.8 · 100%로 정했다(같은 날) — 길이와 높이가
    둘 다 다른 셋 안에 드는 칸이 그것 하나였다.
-   shift는 같은 방법(잉크의 세로 중심, 아래로 +)으로 쟀다 — 둥켈을 함께 재서 0.0175(표 0.0172)로 방법을 확인했다. */
+   shift는 같은 방법(잉크의 세로 중심, 아래로 +)으로 쟀다 — 둥켈을 함께 재서 0.0175(표 0.0172)로 방법을 확인했다.
+   2026-10-04: 당당한이 이사만루 Medium이 되며 같은 잣대로 다시 쟀다. 0.7~1.0을 다른 셋 옆에 놓으면 글줄 길이와
+   글자 높이가 둘 다 다른 셋의 범위(길이 0.96~1.08 · 높이 0.89~1.12) 안에 드는 것은 0.85(길이 1.08 · 높이 0.93)
+   — 0.8은 높이가 0.88로 바로 밑이다. shift −0.0382(아침 −0.0042) — 이사만루는 잉크가 줄 가운데보다 위에 선다. */
 export const opticalFix: Record<string, { scale?: number; shift?: number }> = {
-  ttoryeot: { scale: 0.8, shift: -0.0042 },    // 당당한   아침 Medium
+  ttoryeot: { scale: 0.85, shift: -0.0382 },   // 당당한   이사만루 Medium
   chabun: { scale: 0.73, shift: 0.0227 },      // 차분한   본명조
   doran: { scale: 0.77, shift: -0.0187 },      // 다정한   다카포
   deulseok: { scale: 0.93, shift: -0.0211 }    // 유머있는 핸드젯
@@ -206,14 +212,15 @@ export const graphics: string[] = [
  *          (둥글기는 VoiceBubble의 useSoften — 화면 픽셀 68 아래에서는 끈다)
  * 자간을 양쪽으로 0.02씩만 벌린 것은 어느 쪽도 어색하지 않으면서, 둥글기가
  * 안 보이는 작은 글자에서도 말투가 갈리게 하려는 것이다.
+ *
+ * 2026-10-04: 당당한의 말투를 뺐다(디자이너 — 이사만루에는 둥켈처럼 자형 자체의
+ * 변수가 없다). 당당한은 이제 **무게**를 묻는다 — 이사만루 Light · Medium · Bold
+ * 세 칸(TTORYEOT_WEIGHT). 벽에 남은 옛 글(말투 0 · 1)은 그 말투로 나무를 고른다(cloud.ts).
  */
 /* 이름은 두 언어로 든다(2026-09-26, 영문판). 쓰는 곳이 지금 언어를 고른다.
    labels · axes는 **저장되는 값**(manner 0 · 1)의 차례다. 화면에 서는 차례는 order —
-   값의 뜻을 바꾸면 벽에 떠 있는 글의 말투와 나무가 뒤집힌다. */
+   값의 뜻을 바꾸면 벽에 떠 있는 글의 말투와 형상이 뒤집힌다. */
 export const MANNER: Record<string, { labels: Pair<[string, string]>; axes?: [string, string]; order?: [number, number] }> = {
-  // 값의 차례는 안내서 그대로(0 = 온화한, 1 = 예리한 — 나무도 이 뜻으로 고른다, cloud.ts).
-  // 화면은 예리한이 먼저다(2026-10-01, 디자이너) — 처음 들어오면 아침 원래 모양으로 선다.
-  ttoryeot: { labels: { ko: ['온화한', '예리한'], en: ['Gentle', 'Sharp'] }, order: [1, 0] },
   deulseok: {
     // 시니컬한의 ELSH는 **8.8**이다. 0.8로 적혀 있었다(2026-09-20에 안내서와
     // 대조해 고쳤다) — 0.8이면 획이 거의 사라져 글자가 점선으로 흩어진다.
@@ -266,8 +273,8 @@ export function variationFor(font: string, wght: number, manner = 0): string {
    맞추던 눌림이라, 키가 낮은 아침에 걸면 혼자 납작했다(글자 높이 0.70, 다른 셋 0.89~1.12).
    진중한은 같은 날 격자로 다시 골랐다(디자이너): 장평 125% · 자간 +0.12em · 세로 85% · 굵기 700 ·
    장평 115%+자간 +0.06em · 굵기 700+자간 +0.08em · 장평 115%+세로 90%를 한 장에 놓고
-   **장평 115% + 자간 +0.06em**(넓게 + 띄워 — 글줄 길이 1.24, 농도 0.93). 자간은 말투의 자간
-   (TTORYEOT_TRACK) 위에 더한다. 거침없는 쪽(기울기 18°)은 그대로 두었다.
+   **장평 115% + 자간 +0.06em**(넓게 + 띄워 — 글줄 길이 1.24, 농도 0.93). 자간은 무게가 더하는
+   자간(TTORYEOT_WEIGHT) 위에 더한다. 거침없는 쪽(기울기 18°)은 그대로 두었다.
 
    기울기는 속도 가운데에서 0, 오른쪽 끝에서 18도 — 그 사이를 이어서 기운다
    (12~18도로 세기를 조절, 사용자 결정). 모든 값은 세 지점 사이를 곧게 잇는다.
@@ -289,11 +296,27 @@ const DORAN_STROKE: Three = [0, 0.1 / 12, 0.2 / 12];
 const HANDJET_WGHT = 840;
 /** 차분한은 늘 자간 -25 */
 const CHABUN_TRACK = '-0.025em';
-/** 당당한은 아침 Medium 한 벌 — 옛 글(wght 700)도 이 굵기로 선다 */
-const ACHIM_WGHT = 500;
-/** 당당한의 말투 자간(em) — 저장 값 차례(0 = 온화한 +0.02 · 1 = 예리한 −0.02). 격자 ⑤(2026-10-01, 디자이너) */
-const TTORYEOT_TRACK = [0.02, -0.02] as const;
-/** 당당한의 속도 자간(em) — 진중한 쪽 끝에서 +0.06, 보통부터는 0. 말투 자간 위에 더한다(2026-10-01, 디자이너) */
+/** 당당한의 바탕 굵기 — 이사만루 Medium(2026-10-04, 그전엔 아침 Medium). 막대가 없는 옛 글(wght 700)도 이 굵기로 선다 */
+const TTORYEOT_WGHT = 500;
+/**
+ * 당당한의 무게(2026-10-04, 디자이너) — 막대 세 칸이 이사만루 Light · Medium · Bold다. 굵기가 따로 된 파일 세 벌이라
+ * 칸 사이를 녹여 잇지는 못한다. 견본 셋(획 덧대기 · 겹쳐 바꾸기 · 칸마다 툭툭)을 끌어 보고 **획 덧대기**를 골랐다:
+ * 칸 사이에서는 가는 쪽 굵기에 획을 덧대 다음 칸의 획 두께까지 굵히고, 칸에 닿는 순간 진짜 굵기로 바뀐다.
+ *   stroke — 다음 칸까지 덧댈 획(em). 'ㅣ' 세로획 · 'ㅡ' 가로획 두께 차이의 평균(L 0.104 · 0.092 / M 0.139 · 0.123 /
+ *            B 0.196 · 0.168em) — 획은 바깥으로 반씩 붙으므로 두께가 그만큼 는다
+ *   track  — 다음 칸까지 더할 자간(em). Light · Medium은 한글 0.92em, Bold만 0.95em이라 Bold로 가는 동안 폭을
+ *            이어 둔다(안 그러면 칸에 닿는 순간 줄이 툭 넓어진다). 칸에 닿으면 0으로 돌아간다
+ * 겹쳐 바꾸기는 넘어가는 동안 윤곽 가장자리가 반투명하게 번져 버렸다.
+ */
+const TTORYEOT_WEIGHT = { wght: [300, 500, 700], stroke: [0.033, 0.051], track: [0, 0.03] } as const;
+/** 당당한 무게 막대 자리(0 · 0.5 · 1) → 굵기 · 덧댈 획(em) · 더할 자간(em) · 그 굵기가 실제로 더하는 글자폭(em, 구름의 셈용) */
+function boldWeight(w: number) {
+  const x = Math.min(1, Math.max(0, w));
+  if (x >= 1) return { wght: 700, stroke: 0, track: 0, adv: 0.03 };
+  const s = x < 0.5 ? 0 : 1, u = (x - s * 0.5) / 0.5;
+  return { wght: TTORYEOT_WEIGHT.wght[s], stroke: u * TTORYEOT_WEIGHT.stroke[s], track: u * TTORYEOT_WEIGHT.track[s], adv: 0 };
+}
+/** 당당한의 속도 자간(em) — 진중한 쪽 끝에서 +0.06, 보통부터는 0. 무게 자간 위에 더한다(2026-10-01, 디자이너) */
 const TTORYEOT_SLOW_TRACK: Three = [0.06, 0, 0];
 
 /** 세 지점(0 · 0.5 · 1) 사이를 곧게 잇는다 */
@@ -323,6 +346,12 @@ export const WEIGHT_WORDS: Pair<Five> = {
   ko: ['매우 가볍게', '가볍게', '보통', '무겁게', '매우 무겁게'],
   en: ['Very light', 'Light', 'Regular', 'Heavy', 'Very heavy']
 };
+/** 당당한의 무게 막대는 세 칸이다(2026-10-04, 디자이너) — 이사만루 Light · Medium · Bold. 막대는 말의 개수만큼 칸을 낸다 */
+const BOLD_WEIGHT_WORDS: Pair<[string, string, string]> = {
+  ko: ['가볍게', '보통', '무겁게'],
+  en: ['Light', 'Regular', 'Heavy']
+};
+export const weightWordsFor = (font: string): Pair<readonly string[]> => (font === 'ttoryeot' ? BOLD_WEIGHT_WORDS : WEIGHT_WORDS);
 const LEISURE: Pair<Five> = {
   ko: ['매우 느긋한', '느긋한', '보통', '날렵한', '매우 날렵한'],
   en: ['Very leisurely', 'Leisurely', 'Regular', 'Nimble', 'Very nimble']
@@ -358,8 +387,8 @@ export interface Form {
   /** 둥켈산스의 폭 축(700~1000)이 들던 자리. 2026-10-01 당당한이 아침으로 갈리며 비었다 —
       구름(cloud.ts)이 글자폭을 셀 때 아직 받는 자리라 남겨 둔다. 지금은 어느 서체도 채우지 않는다 */
   wdth?: number;
-  /** 온화한(당당한) — 모서리를 둥글게 깎는다(VoiceBubble · useSoften) */
-  soft?: boolean;
+  /** 굵기가 글자폭을 실제로 넓히는 몫(em) — 당당한 Bold(0.95em)만 0.03. 자간이 아니라 서체가 넓다. 구름의 글 폭 셈에만 쓴다 */
+  advExtra?: number;
 }
 
 type FormInput = { font: string; tone?: number; slnt?: number; wght?: number; manner?: number; speed?: number; weight?: number };
@@ -369,19 +398,14 @@ type FormInput = { font: string; tone?: number; slnt?: number; wght?: number; ma
  */
 export function formFor(t: FormInput): Form {
   const font = t.font;
-  /* 당당한 — 말투가 자간과 둥글기를 정한다. 말투가 없는 옛 글은 0(온화한)이다 — 나무도 그렇게 고른다(cloud.ts) */
   const bold = font === 'ttoryeot';
-  const sharp = t.manner === 1;
-  /* 당당한의 자간 = 말투 자간 + 속도 자간(진중한 쪽에서만, 옛 글은 속도가 없어 0) */
-  const boldTrack = (s?: number) => `${(TTORYEOT_TRACK[sharp ? 1 : 0] + (s === undefined ? 0 : along(s, TTORYEOT_SLOW_TRACK))).toFixed(4)}em`;
-  const track = font === 'chabun' ? CHABUN_TRACK : bold ? boldTrack(t.speed ?? undefined) : '0';
-  const soft = bold && !sharp;
+  const track = font === 'chabun' ? CHABUN_TRACK : '0';
   if (t.speed === undefined || t.speed === null || !SPEED[font]) {
-    const wght = bold ? ACHIM_WGHT : t.wght ?? 400;
+    const wght = bold ? TTORYEOT_WGHT : t.wght ?? 400;
     return {
       scaleX: t.tone ?? 1, scaleY: 1, slant: Math.abs(t.slnt ?? 0),
       variation: variationFor(font, wght, t.manner ?? 0),
-      stroke: opticalStroke(font, wght), letterSpacing: track, weight: wght, soft
+      stroke: opticalStroke(font, wght), letterSpacing: track, weight: wght
     };
   }
   const s = t.speed;
@@ -391,8 +415,15 @@ export function formFor(t: FormInput): Form {
   let variation = '';
   let stroke = '0';
   let weight = 400;
+  let letterSpacing = track;
+  let advExtra: number | undefined;
   if (bold) {
-    weight = ACHIM_WGHT;
+    /* 무게 세 칸 · 칸 사이는 획 덧대기(TTORYEOT_WEIGHT). 자간 = 무게 자간 + 속도 자간(진중한 쪽에서만) */
+    const b = boldWeight(w);
+    weight = b.wght;
+    stroke = b.stroke.toFixed(4) + 'em';
+    letterSpacing = (b.track + along(s, TTORYEOT_SLOW_TRACK)).toFixed(4) + 'em';
+    advExtra = b.adv || undefined;
   } else if (font === 'deulseok') {
     weight = HANDJET_WGHT;
     variation = `"wght" ${HANDJET_WGHT}, ${MANNER.deulseok.axes![t.manner ? 1 : 0]}`;
@@ -404,7 +435,7 @@ export function formFor(t: FormInput): Form {
   }
   return {
     scaleX: along(s, row.sx), scaleY: along(s, row.sy), slant,
-    variation, stroke, letterSpacing: track, weight, soft
+    variation, stroke, letterSpacing, weight, ...(advExtra ? { advExtra } : {})
   };
 }
 

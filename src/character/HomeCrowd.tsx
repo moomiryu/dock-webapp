@@ -370,7 +370,7 @@ export default function HomeCrowd() {
                 <circle className="w-eye w-eye-look" fill="currentColor" cx={EYE_LOOK.cx} cy={EYE_LOOK.cy} r={EYE_LOOK.r} />
                 <circle className="w-eye w-eye-wide" fill="currentColor" cx={EYE_WIDE.cx} cy={EYE_WIDE.cy} r={EYE_WIDE.r} />
                 <path className="w-eye w-eye-shut" d={EYE_SHUT} fill="none" stroke="currentColor" strokeWidth="20" strokeLinecap="round" />
-                <path className="w-eye w-eye-smile" d={EYE_SMILE} fill="none" stroke="currentColor" strokeWidth="24" strokeLinecap="round" />
+                <path className="w-eye w-eye-smile" d={EYE_SMILE.d} transform={EYE_SMILE.transform} fill="currentColor" />
               </g>
               {/* 정면으로 돌 때만 보이는 반대쪽 눈. 같은 한 벌을 옮겨 놓은
                   것이라 표정도 저절로 따라온다 */}
@@ -379,7 +379,7 @@ export default function HomeCrowd() {
                 <circle className="w-eye w-eye-look" fill="currentColor" cx={EYE_LOOK.cx} cy={EYE_LOOK.cy} r={EYE_LOOK.r} />
                 <circle className="w-eye w-eye-wide" fill="currentColor" cx={EYE_WIDE.cx} cy={EYE_WIDE.cy} r={EYE_WIDE.r} />
                 <path className="w-eye w-eye-shut" d={EYE_SHUT} fill="none" stroke="currentColor" strokeWidth="20" strokeLinecap="round" />
-                <path className="w-eye w-eye-smile" d={EYE_SMILE} fill="none" stroke="currentColor" strokeWidth="24" strokeLinecap="round" />
+                <path className="w-eye w-eye-smile" d={EYE_SMILE.d} transform={EYE_SMILE.transform} fill="currentColor" />
               </g>
             </g>
             </g>

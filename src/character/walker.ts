@@ -11,6 +11,7 @@
  * 그것이었다. 읽는 쪽이 하나면 작가가 그림을 고치는 순간 화면도 같이 바뀐다.
  */
 import walkSrc from '../../by_moomiryu/Renewal_v1/Character/people/Character_walk_v3.svg?raw';
+import happySrc from '../../by_moomiryu/Renewal_v1/Character/eye/eye_happy.svg?raw';
 
 const pick = (re: RegExp, what: string) => {
   const m = walkSrc.match(re);
@@ -107,5 +108,18 @@ export const EYE_LOOK = { cx: 90.29, cy: 147.4, r: 36.32 };
 export const EYE_WIDE = { cx: 100.29, cy: 147.4, r: 18 };
 /** 깜빡인다 */
 export const EYE_SHUT = 'M 68 146 Q 100.29 170 132 146';
-/** 웃는다 */
-export const EYE_SMILE = 'M 66 138 Q 100.29 188 134 138';
+/**
+ * 웃는다 — 작가가 그린 큰 메가폰트의 웃는 눈(Character/eye/eye_happy.svg) 왼눈을 옮겨 온다: 흰자 안에 위로 볼록한
+ * 아치(끝이 둥근 띠). 그 흰자(반지름 86.21)를 이 흰자로 줄여 놓는다. 걷기처럼 작가의 파일에서 읽으므로 작가가 고치면 같이 바뀐다.
+ * 2026-10-04까지는 아래로 볼록한 선(∪)이었다 — 디자이너 "웃는 눈은 지금의 반대 버전"
+ */
+export const EYE_SMILE = (() => {
+  const white = happySrc.match(/<circle[^>]*cx="([\d.]+)"[^>]*cy="([\d.]+)"[^>]*r="([\d.]+)"/);
+  const arches = [...happySrc.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map((m) => m[1]);
+  if (!white || !arches.length) throw new Error('eye_happy.svg에서 웃는 눈을 못 찾았다');
+  const [cx, cy, r] = white.slice(1).map(Number);
+  // 두 눈 중 화판 왼쪽 눈의 아치 — 시작 x가 작은 쪽
+  const d = arches.sort((a, b) => parseFloat(a.slice(1)) - parseFloat(b.slice(1)))[0];
+  const k = EYE_WHITE.r / r;
+  return { d, transform: `translate(${EYE_WHITE.cx} ${EYE_WHITE.cy}) scale(${k.toFixed(4)}) translate(${-cx} ${-cy})` };
+})();

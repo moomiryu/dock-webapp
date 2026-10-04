@@ -112,6 +112,10 @@ export interface Persona {
         세로 거리(글자 높이의 배수). 줄 머리는 한 세로선에 선다 */
     slant: number;
     pitch: number;
+    /** 휘기 · 기울이기(2026-10-04) — 구름의 아치 · 돌의 올리기에서 값째 빌렸다(디자이너): 휘기의 반지름(가장 긴 줄의 배수,
+        줄마다 한 줄 높이씩 안쪽 원) · 기울기(도, −가 오른쪽 위. 왼끝 맞춘 줄을 덩어리째) */
+    bow: number;
+    tilt: number;
     /** 글자 배수 — 크기 막대가 고른 글자(UNIT_TOP × 크기)의 몇 배로 나무에 앉나 */
     text: number;
     /** 끄트머리 잘리게(R18) — 줄 끝이 윤곽 밖으로 나가도 되는 깊이(u) · 그 밖의 둘레가 칠 위에 남기는 여백(u) */
@@ -221,7 +225,7 @@ export const PERSONAS: Record<string, Persona> = {
   // (09-30 — 기하는 조형적 당위가 없고 주인공처럼 보였다). 원(lobe · fill · gap · spread)은 쓰이지 않는다. 행간 1.1은 박스에서
   // 고른 값 그대로. 고른 과정과 버린 것은 design/landscape.md '나무'.
   ttoryeot: { key: 'ttoryeot', edge: 'tree', lobe: [1.25, 1.85], fill: [0.6, 0.8], gap: 1.9, spread: [0.2, 0.9], sat: 0, blur: 0, lh: 1.1,
-    tree: { slant: 24, pitch: 1.6, text: 1.4, bleed: 0.3, gap: 0.2, tall: [0.2, 0.6], jitter: 0.05, grow: 1.03, maxGrow: 3, stem: 0.12, lift: 0.42,
+    tree: { slant: 24, pitch: 1.6, bow: 1.3, tilt: -12, text: 1.4, bleed: 0.3, gap: 0.2, tall: [0.2, 0.6], jitter: 0.05, grow: 1.03, maxGrow: 3, stem: 0.12, lift: 0.42,
       flip: 0.5, stretch: { lo: 0.75, hi: 1.4, ref: 2, pow: 0.35, step: 0.1 }, drape: 0.22,   // 폭 늘이기 강(격자 — 없음 · 약 · 중 · 강)
       hug: { lo: 1.15, hi: 1.15, pow: 1, fit: 1.3 }, trunk: { lo: 0, hi: 0.2, pow: 1, from: 0.3, to: 0.9, max: 5 }, maxTall: 0.6,
       hatch: { period: 5 / 401.76, width: 1.7 / 401.76 },
@@ -556,9 +560,10 @@ interface Options {
  * 나무 · 구름은 제 정렬만 준다(2026-09-28 디자이너 — 나무는 '양끝 정렬의 정도', 구름은 '다정함과 어울리는 휜 배치').
  */
 const ARRANGEMENTS: Record<string, readonly Align[]> = {
-  // 나무 — 기본 · 사선 · 세로쓰기(2026-09-29, 디자이너 레퍼런스). 균등 배분 · 사다리꼴(09-28)은 실루엣이 하나가 되며 뺐다 —
-  // 그 옛 글은 기본으로 선다
-  ttoryeot: ['center', 'slant', 'vertical'],
+  // 나무 — 기본 · 휘기 · 기울이기(2026-10-04, 디자이너 — 구름의 아치 · 돌의 올리기를 한 칸씩 빌렸다). 사선 · 세로쓰기(09-29)는
+  // '너무 복잡한 인상'이라 칸에서 뺐다 — 그 옛 글은 treeFor가 그대로 사선 · 세로쓰기로 세운다. 균등 배분 · 사다리꼴(09-28)은
+  // 실루엣이 하나가 되며 뺐고(10-04 사진 나무로 균등 배분을 다시 견줘 봤지만 짧은 끝줄이 갈라져 버렸다) 그 옛 글은 기본으로 선다
+  ttoryeot: ['center', 'arch', 'hang-up'],
   // 차분한 — 걸기 셋으로 한정했다(2026-09-28, 디자이너 — "올려 걸기, 중간 걸기, 내려 걸기만"). 가운데 칸은 없다 —
   // 가운데 돌(늘 넘침, R18)은 칸이 생기기 전의 옛 글에만 선다. 윤곽 따라(R20, contourText)는 칸에서 뺐지만 되살릴 수
   // 있게 코드를 둔다(빗금처럼). 세로쓰기(R19)는 다른 태도용으로 남겨 둔다
@@ -1339,6 +1344,8 @@ function treeWidths(asp: number, st: NonNullable<Persona['tree']>['stretch']): n
  * 사진 수관이 옆으로 넓다). 배열 셋 — 기본: 줄 가운데 맞춤. 사선(R24, 2026-10-04 — 메뉴판 캡처): 글자는 똑바로 선 채 한 자씩
  * 아래에 놓여 줄이 slant°(24)의 사선을 그리고, 줄 머리는 한 세로선, 다음 줄은 pitch(1.6) × 글자 높이 아래. 전에는 글자째
  * 18° 돌리고 줄 머리가 오른쪽 아래로 비켜 섰다(60°는 고개를 꺾어 읽었다). 세로쓰기: 오른쪽 줄부터, 한 자씩 위에서 아래로.
+ * 2026-10-04 칸이 기본 · 휘기 · 기울이기로 바뀌었다(ARRANGEMENTS) — 휘기: 줄이 원호를 따라 휜다(구름의 아치). 기울이기: 왼끝
+ * 맞춘 줄이 덩어리째 기운다(돌의 올리기). 사선 · 세로쓰기는 그 칸으로 올라간 옛 글만 쓴다.
  * 끄트머리 잘리게(R18): 줄 끝(기본 · 사선은 앞뒤, 세로쓰기는 위아래)은 윤곽 밖으로 bleed만큼 나가 벽에 묻혀도 되고, 그 밖의
  * 둘레는 gap만큼 칠 위에 남는다. 수관 안쪽 빈 틈으로 나가는 것도 된다(디자이너 — 실루엣이 재밌다).
  *
@@ -1353,7 +1360,7 @@ function treeWidths(asp: number, st: NonNullable<Persona['tree']>['stretch']): n
  * 밖으로 이어져 무대 밑이 자른다. 벽은 나무 전체(full)를 바닥에서 세운다. 그리는 일(칠 · 빗금 · 바람)은 CloudBubble.
  */
 function treeFor(pr: Persona, rule: 'B' | 'C', lines: readonly string[], font: string | undefined, optic: number, scaleX: number, o: Options, LH: number, R: () => number): Cloud {
-  const t = pr.tree!, mode = o.align === 'slant' || o.align === 'vertical' ? o.align : 'basic';
+  const t = pr.tree!, mode = o.align === 'slant' || o.align === 'vertical' || o.align === 'arch' || o.align === 'hang-up' ? o.align : 'basic';
   const adv = advanceFor(BY_FONT[font ?? ''] ?? font ?? '', o.wdth), tr = o.track ?? 0;
   const lh = pr.lh ?? LINE_HEIGHT, gh = LH / lh;           // 글자 높이 (u) — 세로 비율까지
   const gw = optic * scaleX;                                // 세로쓰기 한 줄의 폭 — 글자 칸 1em (u)
@@ -1405,6 +1412,27 @@ function treeFor(pr: Persona, rule: 'B' | 'C', lines: readonly string[], font: s
       mine.forEach((r, j) => {
         zones.push(r);
         foot.push([r[0] + (j === 0 ? e : -p), r[1] - p, r[2] + (j === mine.length - 1 ? -e : p), r[3] + p]);
+      });
+    });
+  } else if (mode === 'arch' || mode === 'hang-up') {
+    // 휘기 · 기울이기(2026-10-04): 구름의 아치 · 돌의 올리기를 값째 빌렸다(t.bow · t.tilt). 휘기는 가장 긴 줄 × bow 반지름의
+    // 원에서 줄마다 한 줄 높이씩 안쪽 원, 기울이기는 왼끝 맞춘 줄을 덩어리째 tilt°. 글자는 제 줄을 따라 돈다
+    const ang = (t.tilt * Math.PI) / 180, ca = Math.cos(ang), sa = Math.sin(ang), R0 = Math.max(TW * t.bow, 4), TH = L.length * LH;
+    L.forEach((l, i) => {
+      const ink = l.cs.map((c, j) => (c.trim() ? j : -1)).filter((j) => j >= 0), e = Math.min(b, 0.2 * l.len);
+      const r = R0 - i * LH, a0 = -l.len / r / 2;
+      let s = 0;
+      l.cs.forEach((c, j) => {
+        const k = s + l.av[j] / 2;
+        s += l.av[j];
+        if (!c.trim()) return;
+        let x: number, y: number, a: number;
+        if (mode === 'arch') { a = a0 + k / r; x = r * Math.sin(a); y = R0 - r * Math.cos(a) + LH / 2; }
+        else { const u = k - TW / 2, v = i * LH + LH / 2 - TH / 2; a = ang; x = u * ca - v * sa; y = u * sa + v * ca; }
+        placed.push({ c, x, y, a, w: l.av[j], h: gh });
+        const hw = (Math.abs(l.av[j] * Math.cos(a)) + Math.abs(gh * Math.sin(a))) / 2, hh = (Math.abs(l.av[j] * Math.sin(a)) + Math.abs(gh * Math.cos(a))) / 2;
+        zones.push([x - hw, y - hh, x + hw, y + hh]);
+        foot.push([x - hw + (j === ink[0] ? e : -p), y - hh - p, x + hw + (j === ink[ink.length - 1] ? -e : p), y + hh + p]);
       });
     });
   } else {
@@ -1471,7 +1499,7 @@ function treeFor(pr: Persona, rule: 'B' | 'C', lines: readonly string[], font: s
   const kT = Math.min(tk.max, room, 1 + more / Math.max(1e-6, y1 - y0)), full = base + (y1 - y0) * (kT - 1);
   const shrink = Math.min(1, t.maxTall / (full * unitK));
 
-  // 글 자리 — 기본은 여느 글 상자, 사선 · 세로쓰기는 한 자씩(모서리까지 품는 상자)
+  // 글 자리 — 기본은 여느 글 상자, 사선 · 세로쓰기 · 휘기 · 기울이기는 한 자씩(모서리까지 품는 상자)
   let tb: { x0: number; y0: number; x1: number; y1: number }, layout: TextLayout | undefined;
   if (mode === 'basic') tb = { x0: -TW / 2 + dx, y0: dy, x1: TW / 2 + dx, y1: L.length * LH + dy };
   else {

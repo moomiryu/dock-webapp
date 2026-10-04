@@ -37,10 +37,14 @@ const T = {
     center: { ko: '가운데', en: 'Centre' },
     right: { ko: '오른쪽', en: 'Right' },
     /* 성격마다 제 정렬(2026-09-28, design/landscape.md) — 나무(당당한) · 구름(다정한).
-       나무는 기본 배열 · 사선 배열 · 세로쓰기 배열(2026-09-29, 디자이너) — 칸이 좁아 '배열'은 뺀다. 나무의 가운데가 '기본'이다 */
+       나무는 기본 배열 · 사선 배열 · 세로쓰기 배열(2026-09-29, 디자이너) — 칸이 좁아 '배열'은 뺀다. 나무의 가운데가 '기본'이다.
+       2026-10-04부터 나무의 칸은 기본 · 휘기 · 기울이기(TREE_WORD) — 사선 · 세로쓰기는 칸에서 빠졌다 */
     basic: { ko: '기본', en: 'Basic' },
     slant: { ko: '사선', en: 'Diagonal' },
     vertical: { ko: '세로쓰기', en: 'Vertical' },
+    /* 나무의 휘기 · 기울이기(2026-10-04, 디자이너) — 값은 구름의 arch · 돌의 hang-up 그대로, 나무에서만 이 말로 부른다(TREE_WORD) */
+    bend: { ko: '휘기', en: 'Curve' },
+    tilt: { ko: '기울이기', en: 'Tilt' },
     arch: { ko: '아치', en: 'Arch' },
     /* 부채꼴 — 칸에서 뺐다(2026-09-30, 디자이너). 옛 글은 그대로 부채꼴로 선다 — 되살리면 이 말을 쓴다 */
     fan: { ko: '부채꼴', en: 'Fan' },
@@ -54,10 +58,12 @@ const T = {
     /* 칸에서 뺐다(2026-09-28) — 되살리면 이 말을 쓴다 */
     contour: { ko: '윤곽 따라', en: 'Contour' }
 };
+/** 나무(당당한)에서만 다르게 부르는 칸 — 가운데는 '기본', 구름 · 돌에게서 빌린 아치 · 올리기는 '휘기' · '기울이기' */
+const TREE_WORD: Partial<Record<Align, 'basic' | 'bend' | 'tilt'>> = { center: 'basic', arch: 'bend', 'hang-up': 'tilt' };
 
 /*
  * 정렬 잣대의 선택지는 성격이 정한다(cloud.ts · arrangementsFor, 2026-09-28). 차분한 · 유머있는은
- * 고전적인 셋(왼쪽 · 가운데 · 오른쪽), 당당한(나무)은 기본 · 사선 · 세로쓰기, 다정한(구름)은
+ * 고전적인 셋(왼쪽 · 가운데 · 오른쪽), 당당한(나무)은 기본 · 휘기 · 기울이기(2026-10-04, 그전엔 사선 · 세로쓰기), 다정한(구름)은
  * 가운데 · 아치 · 미소(부채꼴은 2026-09-30에 뺐다). 고르면 미리보기의 형상이 그 자리에서 바뀐다 — 정렬이 곧 실루엣이다.
  * 값은 tone.align으로 저장되고 벽까지 간다.
  */
@@ -366,7 +372,7 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext, returni
    <span className="tslider-name" id="align-name">{pick(T.align, lang)}</span>
    {/* 3/5 말투 스위치와 같은 부품이다(2026-09-28, 사용자 — "3단계 UI를 적극 활용",
        같은 앱이니 같은 분위기) — 칸 수는 성격의 정렬 수(셋 또는 넷) */}
-   <SnapSwitch labels={ALIGNS.map((a) => pick(a === 'center' && tone.font === 'ttoryeot' ? T.basic : T[a as Exclude<Align, 'distribute' | 'trapezoid'>], lang))} at={ALIGNS.indexOf(align)}
+   <SnapSwitch labels={ALIGNS.map((a) => pick(tone.font === 'ttoryeot' && TREE_WORD[a] ? T[TREE_WORD[a]] : T[a as Exclude<Align, 'distribute' | 'trapezoid'>], lang))} at={ALIGNS.indexOf(align)}
      onPick={(i) => setAlign(ALIGNS[i])} labelledBy="align-name" />
   </div>
   <button className="primary-action" onClick={() => onNext(current)}>{pick(T.next, lang)}</button>

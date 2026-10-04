@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { Cloud } from '../lib/cloud';
 import { TreePainter, rgb01, treeImage } from '../lib/treeGL';
+import { blur } from '../lib/hatch';
 
 /** 바람을 다시 그리는 간격 — 30fps(띠 구름과 같다). 잎이 --t-hold × 2에 한 결 지나갈 만큼 느려서 더 촘촘할 까닭이 없다 */
 const FRAME_MS = 33;
@@ -11,6 +12,106 @@ const DPR_MAX = 2;
 function rng(seed: number): () => number {
   let a = seed >>> 0;
   return () => { a += 0x6D2B79F5; let t = Math.imul(a ^ (a >>> 15), 1 | a); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+/** 행마다 켜진 칸에서 가장 가까운 꺼진 칸까지의 가로 거리 */
+function runH(on: Uint8Array, w: number, h: number): Float32Array {
+  const out = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    let c = 0;
+    for (let x = 0; x < w; x++) { const i = y * w + x; c = on[i] ? c + 1 : 0; out[i] = c; }
+    c = 0;
+    for (let x = w - 1; x >= 0; x--) { const i = y * w + x; c = on[i] ? c + 1 : 0; out[i] = Math.min(out[i], c); }
+  }
+  return out;
+}
+/** 열마다 — 그 세로 토막의 아래 끝까지 거리(below) · 토막 길이(len) */
+function runV(on: Uint8Array, w: number, h: number): { below: Float32Array; len: Float32Array } {
+  const below = new Float32Array(w * h), len = new Float32Array(w * h);
+  for (let x = 0; x < w; x++) {
+    let c = 0;
+    for (let y = h - 1; y >= 0; y--) { const i = y * w + x; c = on[i] ? c + 1 : 0; below[i] = c; }
+    c = 0;
+    for (let y = 0; y < h; y++) { const i = y * w + x; c = on[i] ? c + 1 : 0; len[i] = on[i] ? c + below[i] - 1 : 0; }
+  }
+  return { below, len };
+}
+/**
+ * 그늘 띠의 마감(2026-10-04, 디자이너 — "'직선형'으로 마감되는 부분이 너무 거슬린다", 격자 design/landscape-tree-tex-ends.png ·
+ * -fill.png에서 '다 둥글게' + "그 위에서 시작했으면 그 밑에는 모두 빗금"). 재료의 그늘(빨강)은 세로줄마다 칠해 띠 끝이 세로로, 윗변이 밑선을
+ * 그대로 올린 가로로 끊겼다. 나무를 그릴 때 한 번:
+ *   ① 윗변을 둥근 봉우리로 잇고(dd × 1.3 간격) 띠 끝을 반원으로
+ *   ② 큰 띠(칠의 1% 넘는)에서 덩이 밑자락(작은 틈을 메운 칠의 세로 토막에서 아래 끝까지 dd × 봉우리)을 따라 실루엣 끝까지 잇는다.
+ *      밑자락이 그 띠의 윗선보다 위에서 끝나는 가지는 통째로 뺀다(윗선에서 가로로 자르면 다시 직선이 났다)
+ *   ③ 띠에서 아래로 끊기지 않고 이어진 칠(잎 끝)도 그늘 — 버드나무 가닥은 이 뒤에 늘어뜨려 그늘을 이어받는다
+ *   ④ 칠 안에서 끝나는 곳(줄기와 만나는 자리)만 둥글게 — 실루엣 바깥 끝은 끝까지(빈틈을 남기지 않는다)
+ * 땅에 닿는 열(줄기)은 건드리지 않는다. dd = 수관 키의 7%(재료의 '덩이 밑선 위 키의 7%'), close = 작은 틈을 메우는 뭉갬(px)
+ */
+function finishShade(tc: CanvasRenderingContext2D, tw: number, th: number, dd: number, close: number) {
+  const img = tc.getImageData(0, 0, tw, th), d = img.data, n = tw * th;
+  const m = new Uint8Array(n), sh = new Uint8Array(n);
+  let area = 0;
+  for (let i = 0; i < n; i++) { const g = d[i * 4 + 1], r = d[i * 4]; m[i] = g > 127 ? 1 : 0; sh[i] = r > 0.5 * g && g > 51 ? 1 : 0; area += m[i]; }
+  const ground = new Uint8Array(tw);
+  for (let x = 0; x < tw; x++) for (let y = Math.max(0, th - 3); y < th; y++) if (m[y * tw + x]) { ground[x] = 1; break; }
+  const bump = (x: number) => { const p = ((x / (1.3 * dd)) % 1) * 2 - 1; return 0.55 + 0.45 * Math.sqrt(Math.max(0, 1 - p * p)); };
+  const cap = (dx: number) => { const q = 1 - Math.min(1, dx / dd); return Math.sqrt(Math.max(0, 1 - q * q)); };
+  // ① 윗변 · 띠 끝
+  { const dx = runH(sh, tw, th), { below, len } = runV(sh, tw, th);
+    for (let i = 0; i < n; i++) if (sh[i] && below[i] - 1 > len[i] * cap(dx[i]) * bump(i % tw) + 0.5) sh[i] = 0; }
+  // ② 밑자락
+  const cf = new Float32Array(n);
+  for (let i = 0; i < n; i++) cf[i] = m[i];
+  blur(cf, tw, th, close);
+  const closed = new Uint8Array(n);
+  for (let i = 0; i < n; i++) closed[i] = m[i] || cf[i] > 0.5 ? 1 : 0;
+  const cb = runV(closed, tw, th).below, zone = new Uint8Array(n);
+  for (let i = 0; i < n; i++) { const x = i % tw; zone[i] = m[i] && !ground[x] && cb[i] <= dd * bump(x) ? 1 : 0; }
+  // 띠 덩이(여덟 방향) — 넓이와 윗선
+  const lab = new Int32Array(n).fill(-1), q = new Int32Array(n), tops: number[] = [], sizes: number[] = [];
+  for (let i = 0; i < n; i++) {
+    if (!sh[i] || lab[i] >= 0) continue;
+    const id = sizes.length; let head = 0, tail = 0, top = th; q[tail++] = i; lab[i] = id;
+    while (head < tail) {
+      const j = q[head++], x = j % tw, y = (j - x) / tw; top = Math.min(top, y);
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const xx = x + dx, yy = y + dy, k = yy * tw + xx;
+        if ((dx || dy) && xx >= 0 && yy >= 0 && xx < tw && yy < th && sh[k] && lab[k] < 0) { lab[k] = id; q[tail++] = k; }
+      }
+    }
+    sizes.push(tail); tops.push(top);
+  }
+  const out = new Uint8Array(n), seen = new Uint8Array(n);
+  for (let i = 0; i < n; i++) if (sh[i] && sizes[lab[i]] < 0.01 * area) out[i] = 1;   // 작은 조각은 그대로
+  for (let c = 0; c < sizes.length; c++) {
+    if (sizes[c] < 0.01 * area) continue;
+    seen.fill(0);
+    let head = 0, tail = 0;
+    for (let i = 0; i < n; i++) if (lab[i] === c) { q[tail++] = i; seen[i] = 1; }
+    while (head < tail) {
+      const j = q[head++]; out[j] = 1;
+      const x = j % tw, y = (j - x) / tw;
+      for (const k of [x > 0 ? j - 1 : -1, x < tw - 1 ? j + 1 : -1, y > 0 ? j - tw : -1, y < th - 1 ? j + tw : -1]) {
+        if (k < 0 || seen[k]) continue;
+        const ky = (k - (k % tw)) / tw;
+        if ((zone[k] || lab[k] === c) && ky + cb[k] - 1 >= tops[c]) { seen[k] = 1; q[tail++] = k; }
+      }
+    }
+  }
+  // ③ 아래로 이어진 칠 · 줄기는 그대로
+  for (let x = 0; x < tw; x++) {
+    let carry = 0;
+    for (let y = 0; y < th; y++) { const i = y * tw + x; carry = out[i] || (carry && m[i]) ? 1 : 0; if (carry && m[i]) out[i] = 1; }
+    if (ground[x]) for (let y = 0; y < th; y++) out[y * tw + x] = sh[y * tw + x];
+  }
+  // ④ 칠 안에서 끝나는 곳만 둥글게
+  const open = new Uint8Array(n);
+  for (let i = 0; i < n; i++) open[i] = out[i] || !m[i] ? 1 : 0;
+  const dx2 = runH(open, tw, th), { below: b2, len: l2 } = runV(out, tw, th);
+  for (let i = 0; i < n; i++) {
+    const keep = out[i] && b2[i] - 1 <= l2[i] * cap(dx2[i]) + 0.5;
+    d[i * 4] = keep ? d[i * 4 + 1] : 0;
+  }
+  tc.putImageData(img, 0, 0);
 }
 /**
  * 버드나무 가닥 — 수관을 가닥(한 가닥 1~2 CSS px, 사이 0~1px) 단위로 아래로 끌어내린다. 글이 씨앗이라 같은 글은 같은 가닥
@@ -97,6 +198,9 @@ export default function TreeArt({ cloud, unit, color, quiet, hold }: { cloud: Cl
       tc.drawImage(img, 0, row(y0), iw, row(y1) - row(y0), 0, d0, tw, d1 - d0);
       tc.drawImage(img, 0, row(y1), iw, ih - row(y1), 0, d1, tw, th - d1);
       tc.setTransform(1, 0, 0, 1, 0, 0);
+      // 그늘 띠의 마감(둥근 봉우리 · 밑자락 끝까지) — 가닥을 늘어뜨리기 전에(가닥이 그늘을 이어받는다). 수관의 세로 배율로 잰다
+      const sv = row(y0) > 0 ? d0 / row(y0) : th / ih;
+      finishShade(tc, tw, th, 0.07 * ih * sv, 0.012 * ih * sv);
       // 가닥 길이는 늘이기 전의 키에 대어(줄기가 길어져도 가닥이 따라 길어지지 않게)
       if (t.drape) drape(tc, tw, th, t.drape.seed, (t.drape.L * t.base) / t.full, dpr);
       // 글자 자리 판 — 초록 = 바람을 멈추는 곳(글자 + 여백 + 가장 크게 밀리는 만큼, 흐리게), 빨강 = 빗금을 걷는 곳(둥글게)
@@ -110,7 +214,12 @@ export default function TreeArt({ cloud, unit, color, quiet, hold }: { cloud: Cl
       }
       const lr = pr.lift * s;
       zc.globalCompositeOperation = 'lighter'; zc.filter = `blur(${(0.6 * lr).toFixed(2)}px)`; zc.fillStyle = 'rgb(255,0,0)';
-      for (const r of t.zones) rect(r, lr, lr);
+      // 빗금을 걷는 곳 — 글자마다 원을 이은 둥근 물결(2026-10-04, 디자이너 '다 둥글게'). 둥근 네모였을 때 빗금 위가 가로로 끊겼다.
+      // 줄 네모(t.zones)를 줄 높이만큼씩 나눠 그 가운데에 원 하나 — 글자 하나에 원 하나쯤
+      for (const r of t.zones) {
+        const em = r[3] - r[1], k = Math.max(1, Math.round((r[2] - r[0]) / (0.9 * em))), cy = ((r[1] + r[3]) / 2) * s;
+        for (let j = 0; j < k; j++) { zc.beginPath(); zc.arc((r[0] + ((j + 0.5) * (r[2] - r[0])) / k) * s, cy, 0.62 * em * s + lr, 0, 2 * Math.PI); zc.fill(); }
+      }
       zc.filter = 'none'; zc.globalCompositeOperation = 'source-over';
       // 그릴 캔버스 — 상자 왼쪽 위에서 둘레 여유만큼 밖으로
       cv.width = tw + 2 * Math.round(M * dpr); cv.height = th + 2 * Math.round(M * dpr);
@@ -120,6 +229,8 @@ export default function TreeArt({ cloud, unit, color, quiet, hold }: { cloud: Cl
         tree, zone, out: cv, margin: Math.round(M * dpr), color: col, willow: t.species === 'willow',
         flutter: flutter * dpr, sway: sway * dpr, grain: pr.wind.grain * side * dpr,
         hatchPeriod: pr.hatch.period * side * dpr, hatchWidth: pr.hatch.width * side * dpr,
+        hatchWob: [(pr.hatch.wob?.[0] ?? 0) * side * dpr, (pr.hatch.wob?.[1] ?? 0) * side * dpr, pr.hatch.wob?.[2] ?? 0],
+        hatchGrain: [(pr.hatch.grain?.[0] ?? 1) * side * dpr, (pr.hatch.grain?.[1] ?? 1) * side * dpr, (pr.hatch.grain?.[2] ?? 1) * side * dpr],
         hold, pass: pr.wind.pass, swayTurn: pr.wind.swayTurn, gust: pr.wind.gust, phase
       });
       painter.draw(0, !quiet);

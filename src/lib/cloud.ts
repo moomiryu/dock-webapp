@@ -147,7 +147,8 @@ export interface Persona {
         넘으면 그 나무를 글과 함께 줄인다(shrink — 글자 배수 text에 곱한다). 글이 길고 크기를 크게 고른 드문 글만 걸린다 */
     maxTall: number;
     /** 빗금 — 한 칸 · 칠로 남는 줄의 굵기(한 변의 비율 — 벽 1920×1080에서 5px · 1.7px) */
-    hatch: { period: number; width: number };
+    /** 빗금 — 줄 간격 · 칠 줄 굵기(x + y), 손맛(2026-10-04, 돌 · 구름과 같은 '미세'): 흔들림(줄 자리 낮은 결 · 잔 결 · 굵기 몫)과 그 결의 폭 */
+    hatch: { period: number; width: number; wob?: readonly [number, number, number]; grain?: readonly [number, number, number] };
     /** 바람(둘 다 · 강) — 잎 떨림의 폭 · 바람결의 크기(한 변의 비율), 흔들림(나무 키의 비율), 바람결이 한 결 지나가는 ·
         흔들림 한 번 · 돌풍 한 번의 시간(--t-hold 배수). 움직이는 견본(landscape-tree-photo-wind.html)에서 디자이너가 골랐다 */
     wind: { flutter: number; grain: number; sway: number; pass: number; swayTurn: number; gust: number };
@@ -228,7 +229,8 @@ export const PERSONAS: Record<string, Persona> = {
     tree: { slant: 24, pitch: 1.6, bow: 1.3, tilt: -12, text: 1.4, bleed: 0.3, gap: 0.2, tall: [0.2, 0.6], jitter: 0.05, grow: 1.03, maxGrow: 3, stem: 0.12, lift: 0.42,
       flip: 0.5, stretch: { lo: 0.75, hi: 1.4, ref: 2, pow: 0.35, step: 0.1 }, drape: 0.22,   // 폭 늘이기 강(격자 — 없음 · 약 · 중 · 강)
       hug: { lo: 1.15, hi: 1.15, pow: 1, fit: 1.3 }, trunk: { lo: 0, hi: 0.2, pow: 1, from: 0.3, to: 0.9, max: 5 }, maxTall: 0.6,
-      hatch: { period: 5 / 401.76, width: 1.7 / 401.76 },
+      // 손맛 — 돌 · 구름과 같은 '미세'(2026-10-04, 디자이너 — 격자 design/landscape-tree-tex-wobble.png: 지금 · 미세 · 조금)
+      hatch: { period: 5 / 401.76, width: 1.7 / 401.76, wob: [0.7 / 401.76, 0.2 / 401.76, 0.1], grain: [6 / 401.76, 0.7 / 401.76, 4 / 401.76] },
       wind: { flutter: 4.5 / 401.76, grain: 26 / 401.76, sway: 11 / 432, pass: 2, swayTurn: 8, gust: 13 } } },
   // 날 선 돌 (2026-09-27). 매끈한 덩이였다 — 성격의 짝이 돌·별·꽃·나비로 바뀌면서
   // 차분한이 먼저 돌이 됐다. 원을 안 써서 아래 lobe·fill·gap·spread는 쓰이지 않는다.

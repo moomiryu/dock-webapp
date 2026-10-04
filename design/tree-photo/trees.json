@@ -88,6 +88,7 @@
   {
    "id": "pine-071",
    "name": "소나무 71 · 정이품송",
+   "dropped": "2026-10-04 디자이너 — 미리보기마다 나와 거슬렸다(앱에서 뺐다, export.py가 건너뛴다)",
    "species": "pine",
    "alpha": "pine-071",
    "fill": {

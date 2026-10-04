@@ -6,7 +6,8 @@
  * 글자 자리 판(zone — 빨강 = 빗금을 걷는 곳, 초록 = 바람을 멈추는 곳)을 따로 그린다. 한 프레임은:
  *   바람  잎 떨림(바람결이 한쪽에서 지나가며 칠을 살랑 민다) + 흔들림(수관이 기울었다 돌아온다) × 돌풍. 밑동은 가만히,
  *         글자 자리도 가만히 — 그 둘레의 칠이 움직이면 윤곽 밖으로 나간 줄 끝(끄트머리 잘리게)이 깜박인다
- *   빗금  그늘 안에서 칠로 남는 줄(／)만 두고 나머지를 오려 낸다. 무늬는 칠을 따라 움직인다(잎에 붙은 그늘이다)
+ *   빗금  그늘 안에서 칠로 남는 줄(／)만 두고 나머지를 오려 낸다. 무늬는 칠을 따라 움직인다(잎에 붙은 그늘이다).
+ *         손으로 그은 듯 줄이 굽이치고 굵기가 오르내린다 — 돌 · 구름과 같은 '미세'(2026-10-04). 줄 가장자리는 다듬는다
  *   칠    참여자가 고른 색 하나. 새 색을 만들지 않는다
  *
  * 벽에 나무가 여러 그루여도 WebGL 문맥은 **하나**다 — 크롬은 문맥이 열여섯을 넘으면 오래된 것부터 잃는다. 한 문맥에서
@@ -25,6 +26,8 @@ export interface TreeJob {
   willow: boolean;
   /** 기기 px — 잎 떨림 · 흔들림 · 바람결 · 빗금 한 칸 · 빗금 줄 굵기 */
   flutter: number; sway: number; grain: number; hatchPeriod: number; hatchWidth: number;
+  /** 빗금의 손맛 — 줄 자리를 미는 폭(낮은 결 · 잔 결, 기기 px) · 굵기 오르내림 몫, 그 결의 폭(기기 px) */
+  hatchWob: readonly [number, number, number]; hatchGrain: readonly [number, number, number];
   /** 초 — --t-hold, 그 배수들(바람결 한 결 · 흔들림 한 번 · 돌풍 한 번), 나무마다 다른 시작 */
   hold: number; pass: number; swayTurn: number; gust: number; phase: number;
 }
@@ -35,9 +38,12 @@ uniform sampler2D uTree, uZone;
 uniform vec2 uOut, uSize;
 uniform vec3 uColor;
 uniform float uM, uT, uHold, uR, uS, uGrain, uHP, uHW, uWillow, uPhase, uPass, uSwayT, uGustT;
+uniform vec3 uWob, uGr;
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
   return mix(mix(hash(i), hash(i + vec2(1., 0.)), f.x), mix(hash(i + vec2(0., 1.)), hash(i + vec2(1., 1.)), f.x), f.y); }
+// 결의 폭 s(px)의 잡음 — 대략 표준편차 1(돌 · 구름의 뭉갠 잡음과 같은 손)
+float sn(vec2 p, float s, float o){ return (noise(p / max(2.5 * s, 1e-3) + o) - .5) * 5.; }
 void main(){
   vec2 px = vec2(gl_FragCoord.x, uOut.y - gl_FragCoord.y) - vec2(uM);          // 나무 좌표, 위가 0
   vec4 z = texture2D(uZone, clamp(px / uSize, 0., 1.));
@@ -55,14 +61,19 @@ void main(){
   vec2 src = px - d * still;
   if (src.x < 0. || src.y < 0. || src.x > uSize.x || src.y > uSize.y) { gl_FragColor = vec4(0.); return; }
   vec4 tv = texture2D(uTree, src / uSize);
-  float cut = (tv.r > .5 && mod(src.x + src.y, uHP) >= uHW && z.r < .3) ? 1. : 0.;
+  // 빗금 — 줄 자리를 낮은 결 + 잔 결로 밀고 굵기를 오르내린다(손맛). 줄 가장자리 · 그늘 테두리는 다듬는다(켜고 끄면 계단이 졌다)
+  float u = src.x + src.y + uWob.x * sn(src, uGr.x, 0.) + uWob.y * sn(src, uGr.y, 17.);
+  float wl = uHW * (1. + uWob.z * sn(src, uGr.z, 31.)), ph = mod(u, uHP);
+  float sd = (ph >= wl ? min(ph - wl, uHP - ph) : -min(wl - ph, ph)) * .70710678;
+  // 그늘은 칠에 대한 몫으로 — 가는 가닥은 줄이면 칠 · 그늘이 같이 옅어져 0.5 아래로 빠졌다
+  float cut = smoothstep(.3, .7, tv.r / max(tv.g, .01)) * step(.02, tv.g) * (z.r < .3 ? 1. : 0.) * clamp(sd + .5, 0., 1.);
   float a = tv.g * (1. - cut);
   gl_FragColor = vec4(uColor * a, a);
 }`;
 
 type GL = { gl: WebGLRenderingContext; canvas: HTMLCanvasElement; loc: Record<string, WebGLUniformLocation | null> };
 let shared: GL | null | undefined;
-const NAMES = ['uTree', 'uZone', 'uOut', 'uSize', 'uColor', 'uM', 'uT', 'uHold', 'uR', 'uS', 'uGrain', 'uHP', 'uHW', 'uWillow', 'uPhase', 'uPass', 'uSwayT', 'uGustT'];
+const NAMES = ['uTree', 'uZone', 'uOut', 'uSize', 'uColor', 'uM', 'uT', 'uHold', 'uR', 'uS', 'uGrain', 'uHP', 'uHW', 'uWillow', 'uPhase', 'uPass', 'uSwayT', 'uGustT', 'uWob', 'uGr'];
 
 function glOf(): GL | null {
   if (shared !== undefined) return shared;
@@ -130,13 +141,14 @@ export class TreePainter {
     gl.uniform1f(loc.uM, j.margin); gl.uniform1f(loc.uT, sec); gl.uniform1f(loc.uHold, j.hold);
     gl.uniform1f(loc.uR, wind ? j.flutter : 0); gl.uniform1f(loc.uS, wind ? j.sway : 0);
     gl.uniform1f(loc.uGrain, j.grain); gl.uniform1f(loc.uHP, j.hatchPeriod); gl.uniform1f(loc.uHW, j.hatchWidth);
+    gl.uniform3f(loc.uWob, j.hatchWob[0], j.hatchWob[1], j.hatchWob[2]); gl.uniform3f(loc.uGr, j.hatchGrain[0], j.hatchGrain[1], j.hatchGrain[2]);
     gl.uniform1f(loc.uWillow, j.willow ? 1 : 0); gl.uniform1f(loc.uPhase, j.phase);
     gl.uniform1f(loc.uPass, j.pass); gl.uniform1f(loc.uSwayT, j.swayTurn); gl.uniform1f(loc.uGustT, j.gust);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     ctx.clearRect(0, 0, W, H);
     ctx.drawImage(canvas, 0, canvas.height - H, W, H, 0, 0, W, H);
   }
-  /** WebGL 없이 — 바람 없는 한 장. 셰이더와 같은 규칙(칠 · 그늘 안 빗금 · 글자 자리에선 걷음) */
+  /** WebGL 없이 — 바람 없는 한 장. 셰이더와 같은 규칙(칠 · 그늘 안 빗금 · 글자 자리에선 걷음), 손맛 · 다듬기는 없이 곧은 줄 */
   private cpu(ctx: CanvasRenderingContext2D): void {
     const j = this.job, W = j.out.width, H = j.out.height, tw = j.tree.width, th = j.tree.height, m = Math.round(j.margin);
     const T = j.tree.getContext('2d')?.getImageData(0, 0, tw, th).data, Z = j.zone.getContext('2d')?.getImageData(0, 0, tw, th).data;

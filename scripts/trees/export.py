@@ -53,7 +53,7 @@ if __name__ == '__main__':
     T = json.load(open(os.path.join(shape.ROOT, 'trees.json'), encoding='utf-8'))['trees']
     os.makedirs(os.path.join(APP, 'src', 'assets', 'trees'), exist_ok=True)
     rows = []
-    for t in [t for t in T if t['id'] == t['alpha']]:
+    for t in [t for t in T if t['id'] == t['alpha'] and not t.get('dropped')]:   # dropped = 디자이너가 뺀 나무
         m, sh = shape.tree(t, Hd=IMG_H, px=IMG_H / 480, drape_on=False)
         H, W = m.shape
         img = np.zeros((H, W, 3), np.uint8); img[..., 1] = m * 255; img[..., 2] = (sh & m) * 255   # BGR — 초록 칠, 빨강 그늘

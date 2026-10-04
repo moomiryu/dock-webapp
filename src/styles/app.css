@@ -3709,6 +3709,9 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 /* 사진 돌(차분한, StoneArt · 2026-10-04 빗금 결) — 나무와 같은 자리. 캔버스는 윤곽의 구불구불과 벽의 배(상자 밑)까지 품는다 */
 .stone-art{ position: absolute; inset: 0; pointer-events: none; }
 .stone-art canvas{ position: absolute; display: block; }
+/* 띠 구름(다정한, CloudArt · 2026-10-04 빗금 결) — 같은 자리. 캔버스는 꼬리 · 떠가는 조각 · 부풂까지 품는다(상자 밖) */
+.cloud-hatch{ position: absolute; inset: 0; pointer-events: none; }
+.cloud-hatch canvas{ position: absolute; display: block; }
 /* 글은 제 자리(cloud.text)에 앉는다 — 구름이 비대칭이라 한가운데가 아니다 */
 .cloud-text{ position: absolute; display: grid; place-items: center; }
 .cloud-bubble .message-line-fill{ background: none; padding-inline: 0; }

@@ -172,6 +172,8 @@ export interface Persona {
         둥실 · ⑥ 조각이 흩어지고 다시 돋음. stretch · tip(꼬리가 늘었다 줄고 끝이 위아래로 나부낌)은 0 — 끝으로 갈수록 크게
         물결치는 몸짓이 뱀의 문법이다(2026-10-01에 껐다) */
     motion: { billow: number; billowTurn: number; swell: number; swellTurn: number; drift: number; driftTurn: number; stretch: number; tip: number; tailTurn: number };
+    /** 빗금 결(2026-10-04, CloudArt) — 있으면 칠 위에 밑 띠의 그늘을 ／ 빗금으로. 지우면 한 색 구름(SVG)으로 돌아간다 */
+    tex?: CloudTex;
   };
   /** 유머있는 — 말투가 형상을 가른다: 귀여운 = 새, 시니컬한 = 박쥐(creatureFor). 기하 도형만(원 · 세모 · 띠 · 원호).
       몸은 글을 따르고, 붙는 것(꼬리 · 귀 · 날개)은 길이가 정해져 있다. 값의 근거는 design/landscape.md '새' · '박쥐' */
@@ -265,7 +267,15 @@ export const PERSONAS: Record<string, Persona> = {
   // 쓰이지 않는다. 행간 1.3(2026-09-30, 디자이너 — 나무와 같던 1.1에서 늘렸다). 고른 과정과 버린 것은 design/landscape.md '구름'.
   doran: { key: 'doran', edge: 'photo', lobe: [1.1, 1.6], fill: [0.5, 0.75], gap: 1.6, spread: [0, 0.9], sat: 0, blur: 0, lh: 1.3,
     photo: { body: 0.4, tail: 1, cap: 18, thick: [1, 1.15, 1.3, 1.5], pick: 4, arc: { bow: 1.3, fan: 130 },
-      motion: { billow: 0.35, billowTurn: 9, swell: 0.14, swellTurn: 10, drift: 0.6, driftTurn: 14, stretch: 0, tip: 0, tailTurn: 14 } } },
+      motion: { billow: 0.35, billowTurn: 9, swell: 0.14, swellTurn: 10, drift: 0.6, driftTurn: 14, stretch: 0, tip: 0, tailTurn: 14 },
+      // 빗금 결(2026-10-04, 디자이너 — 격자 design/landscape-cloud-tex-*.png). 빛은 돌과 같은 오른쪽 위(띠 구름은 밑이 평평해 위에서 오는
+      // 빛과 거의 같았다) · 그늘은 밑 띠(가장자리 따라 · 봉우리마다 대신) · 양 35%(돌과 같게 — 25 · 45 · 55%를 벽의 두 장면에서 견줬다).
+      // 뭉갬 · 정리 · 흔들림 · 글 둘레는 돌 그대로. 틈 ≤ 글자 획 × 1.6이라 다카포 획을 0.36 · 0.46 · 0.56pt로 올렸다(palettes.ts DORAN_STROKE)
+      tex: { q: 0.35, blur: 3.75 / 401.76, edge: 0.05, edgeGrain: 1.2 / 401.76, drop: 0.0225, light: [0.6, -0.8], band: [0.45, 0.5], bandBlur: 2 / 401.76,
+        hatch: { period: 5 / 401.76, gap: 3.3 / 401.76, ink: 1.6, wob: [0.7 / 401.76, 0.2 / 401.76, 0.1], grain: [6 / 401.76, 0.7 / 401.76, 4 / 401.76] },
+        fade: [0.5, 1.3], bare: 0.0275 } } },
+  // 사진 새 (2026-10-01). 귀여운 = 배가 둥근 작은 새 9, 시니컬한 = 까마귀 12 — 글만 1.65배로 넘치고 새 윤곽으로 잘린다(격자
+  // landscape-bird-photo-clip-*.png). 후보는 벽 글자가 가장 큰 새의 70% 안(near), 상한은 구름과 같은 18u. 아래 creature는 옛 기하 새.
   // 새 · 박쥐 (2026-09-29). 픽셀 구름 → 나비(시안) → 말투가 가른다: 귀여운 = 새, 시니컬한 = 박쥐. 기하 도형만.
   // 원을 부풀리지 않아 lobe · fill · gap · spread · cell은 쓰이지 않는다(cell은 옛 픽셀 구름의 격자 — 그리는 코드가 남아 있다).
   // 새: 몸 원 · 머리 0.55R · 꼬리 4u(글이 두 방향 중 하나). 박쥐: 한 몸, 귀 · 아래 끝 · 날개는 두 줄 견본에서 잰 길이 그대로.
@@ -370,6 +380,23 @@ export interface StoneTex {
   stroke: readonly (readonly [number, number])[];
 }
 /**
+ * 다정한 구름의 빗금 결(2026-10-04, 디자이너가 격자로 골랐다 — design/landscape.md '구름'의 결, design/landscape-cloud-tex-*.png).
+ * 길이는 벽 한 변(401.76px)에 대한 몫. 사진 명암이 윤곽과 안 맞아(꼬리를 다시 지었다) 그늘은 윤곽에서 셈한다: 빛 쪽 윤곽까지의 거리 ÷
+ * (그것 + 반대쪽 밑까지의 거리) — 구름 전체의 밑이 어둡다(밑 띠)
+ */
+export interface CloudTex {
+  /** 그늘 양 — 구름 안에서 어두운 몫 · 그늘을 뭉개는 폭 · 그늘 테두리 잡음(세기 · 결의 폭) · 작은 조각을 걷고 틈을 메우는 크기(구름 넓이의 몫) */
+  q: number; blur: number; edge: number; edgeGrain: number; drop: number;
+  /** 벽의 빛이 오는 쪽(화면, 아래가 + — 돌과 같다) · 밑 띠의 시작 · 폭(윗선 0 → 밑 1에서 어디부터 어두워지나) · 그 몫을 고르는 폭 */
+  light: readonly [number, number]; band: readonly [number, number]; bandBlur: number;
+  /** 빗금 — 줄 간격(x + y) · 가장 굵은 검은 틈(x + y) · 글자 획에 대한 틈의 한도(배, x + y로 잰다 — 격자 그대로) · 흔들림 · 그 결의 폭 */
+  hatch: { period: number; gap: number; ink: number; wob: readonly [number, number, number]; grain: readonly [number, number, number] };
+  /** 글 둘레에서 빗금이 사라지는 자리(em) — 이 안은 없고 · 이만큼 더 가면 그대로 */
+  fade: readonly [number, number];
+  /** 다카포 맨 획의 평균 굵기(em) — 덧댄 획(--optical-stroke)을 더하면 글자 획(잉크 넓이 × 2 ÷ 둘레로 쟀다) */
+  bare: number;
+}
+/**
  * 당당한의 사진 나무(treePhoto.data.ts). 원점 = 구름 상자 왼쪽 위, u 단위. 상자(w · h)는 수관과 줄기 윗부분까지 — 나무 전체
  * (폭 w · 키 full)는 그 밑으로 이어진다. 벽은 전체를 바닥에서 세우고, 폰은 무대 밑이 자른다
  */
@@ -411,6 +438,8 @@ export interface Photo {
   /** 꼬리 · 떨어진 조각까지 합친 가로 범위(u, 몸통 상자 기준) — 조각이 떠가는 데까지(driftReach). 벽이 읽힘을 따질 때 꼬리도
       몸으로 친다 */
   x0: number; x1: number;
+  /** 빗금 결(CloudArt)이 쓰는 글자 — 한 em(u) · 획의 평균 굵기(u, 빗금 틈이 이를 넘지 않게) */
+  ink?: { em: number; ink: number };
 }
 
 /** 유머있는의 새 · 박쥐 한 자세 — 원과 다각형. 원점 = 구름 상자 왼쪽 위, u 단위 */
@@ -620,11 +649,13 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
   }
   if (pr.edge === 'tree' && pr.tree) return treeFor(pr, rule, lines, font, optic, scaleX, o, LH, R);
   if (pr.edge === 'photo' && pr.photo) {
+    // 빗금 결이 쓰는 글자 — 한 em = 보이는 글자 크기(u), 획 = 다카포 맨 획 + 덧댄 획(formFor의 무게)
+    const ink = pr.photo.tex && o.ink ? { em: optic, ink: (pr.photo.tex.bare + o.ink.stroke) * optic } : undefined;
     if (o.align === 'arch' || o.align === 'fan' || o.align === 'smile') {
       const g = arcGlyphs(pr, lines, font, optic, scaleX, o, LH, o.align);
-      return photoFor(pr, rule, g.tb, g.chars, R, g.layout);
+      return photoFor(pr, rule, g.tb, g.chars, R, g.layout, ink);
     }
-    return photoFor(pr, rule, { x0: 0, y0: 0, x1: TW, y1: TH }, charCenters(lines, font, optic, scaleX, o.wdth, o.track ?? 0, TW, LH), R);
+    return photoFor(pr, rule, { x0: 0, y0: 0, x1: TW, y1: TH }, charCenters(lines, font, optic, scaleX, o.wdth, o.track ?? 0, TW, LH), R, undefined, ink);
   }
   // 말투가 없는 옛 글은 귀여운(새)이다 — 0이 귀여운, 1이 시니컬한(palettes.ts의 MANNER 차례)
   if (pr.edge === 'creature' && pr.creature) return creatureFor(pr, rule, TW, TH, R, o.manner === 1 ? 'bat' : 'bird');
@@ -1636,7 +1667,8 @@ function photoFit(s: PhotoShape, k: number, asp: number, RH: number, bodyAt: num
  * 격자로 고른 과정: 옆으로 퍼진 조각(해안선 같아 구름으로 안 읽혔다) → 세로로 쌓은 탑(한 톤이면 돌처럼 읽혔다) → 가로로
  * 나란히 선 봉우리 → 레퍼런스(보라 띠)의 띠를 위아래 되돌린 것(디자이너). 두 톤은 버리고 원톤
  */
-function photoFor(pr: Persona, rule: 'B' | 'C', tb: { x0: number; y0: number; x1: number; y1: number }, chars: Pt[], R: () => number, layout?: TextLayout): Cloud {
+function photoFor(pr: Persona, rule: 'B' | 'C', tb: { x0: number; y0: number; x1: number; y1: number }, chars: Pt[], R: () => number, layout?: TextLayout,
+  ink?: { em: number; ink: number }): Cloud {
   const p = pr.photo!, TW = tb.x1 - tb.x0, TH = tb.y1 - tb.y0, RW = TW + 2 * PAD, RH = TH + 2 * PAD;
   const each: PhotoFit[] = [];
   for (const s of CLOUD_PHOTOS) {
@@ -1689,7 +1721,8 @@ function photoFor(pr: Persona, rule: 'B' | 'C', tb: { x0: number; y0: number; x1
   };
   return {
     persona: pr, rule, circles: [], spikes: [],
-    photo: { id: f.s.id, pts, ...(extra.length ? { extra } : {}), chars: chars.map(([x, y]): Pt => [x - tb.x0 + tx, y - tb.y0 + ty]), x0: Math.min(...xs) - reach(-1), x1: Math.max(...xs) + reach(1) },
+    photo: { id: f.s.id, pts, ...(extra.length ? { extra } : {}), chars: chars.map(([x, y]): Pt => [x - tb.x0 + tx, y - tb.y0 + ty]), x0: Math.min(...xs) - reach(-1), x1: Math.max(...xs) + reach(1),
+      ...(ink ? { ink } : {}) },
     w: (f.bx1 - f.bx0) * f.upp, h: (f.by1 - f.by0) * f.upp,
     text: { x: tx, y: ty, w: TW, h: TH },
     ...(layout ? { layout } : {})

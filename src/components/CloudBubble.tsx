@@ -2,6 +2,7 @@ import { cloneElement, isValidElement, useEffect, useId, useMemo, useRef, type C
 import { AMP, DRIFT, T1, T2, photoWave, type Circle, type Cloud } from '../lib/cloud';
 import TreeArt from './TreeArt';
 import StoneArt from './StoneArt';
+import CloudArt from './CloudArt';
 import type { Boxed } from '../lib/fit';
 
 /**
@@ -206,6 +207,8 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   const stone = cloud.stone, hatch = pr.stone?.hatch, stoneArt = !!(stone?.photo && pr.stone?.photo?.tex);
   const stoneD = useMemo(() => (stone ? stonePath(stone.pts, pr.stone?.round ?? 0) : ''), [stone, pr.stone?.round]);
   const tree = cloud.tree, photo = cloud.photo;
+  // 빗금 결이 있는 띠 구름(2026-10-04)은 캔버스에 칠 · 빗금 · 움직임까지(CloudArt) — 화판(svg)은 비워 둔다(벽이 그 단위를 읽는다)
+  const cloudArt = !!(photo?.ink && pr.photo?.tex);
   const ring = (r: readonly (readonly [number, number])[]) => 'M' + r.map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join('L') + 'Z';
   // 꼬리 끝 너머 떨어진 조각(2026-10-01)은 같은 path에 이어 칠한다
   const photoD = useMemo(() => (photo ? [photo.pts, ...(photo.extra ?? [])].map(ring).join('') : ''), [photo]);
@@ -249,6 +252,7 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
     >
       {tree && <TreeArt cloud={cloud} unit={box.unit} color={color} quiet={quiet} hold={holdS()} />}
       {stoneArt && <StoneArt cloud={cloud} unit={box.unit} color={color} />}
+      {cloudArt && <CloudArt cloud={cloud} unit={box.unit} color={color} quiet={quiet} hold={holdS()} />}
       {!tree && !stoneArt && <svg className="cloud-art" viewBox={`0 0 ${W.toFixed(1)} ${H.toFixed(1)}`} aria-hidden="true" focusable="false">
         {stone && !(hatch?.on && stone.hatch.length) ? (
           /* 빗금이 꺼진 돌(cloud.ts · hatch.on) — 오려 낼 것 없이 면 하나 */
@@ -272,7 +276,7 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
             <path d={stoneD} fill={color} mask={`url(#${filterId}m)`} />
           </>
         ) : photo ? (
-          <path ref={photoRef} d={photoD} fill={color} />
+          cloudArt ? null : <path ref={photoRef} d={photoD} fill={color} />
         ) : shape ? (
           <g fill={color}>
             {shape.polys.map((P, i) => <path key={'p' + i} d={'M' + P.map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join('L') + 'Z'} />)}

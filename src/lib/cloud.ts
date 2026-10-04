@@ -562,6 +562,8 @@ interface Options {
   manner?: number;
   /** 3/5 무게 막대 자리(0~1) — 2026-10-04부터 당당한은 말투 대신 무게가 나무를 고른다(treeFor) */
   weightPos?: number;
+  /** 나무를 하나로 정한다(TREE_PHOTOS의 id) — 벽의 마네킹 나무가 셋 다 다른 나무로 서게(2026-10-04, 디자이너). 없거나 모르는 id면 종에서 고른다 */
+  tree?: string;
   /** 4/5 정렬 — 나무 · 구름은 이것으로 글 배치와 제 모양을 바꾼다(arrangementsFor) */
   align?: Align;
   /** 크기 막대(fit.ts SIZE_FILLS 사이) — 나무가 제 키를 이것으로 정한다 */
@@ -608,7 +610,7 @@ export function defaultAlign(font: string | undefined): Align {
  * 조율 값 그대로 구름을 만든다 — 서체별 표(palettes.ts · formFor)가 계산한
  * 장평·세로·기울기·폭 축·자간을 넘긴다. 4/5와 벽이 같은 이 함수를 쓴다.
  */
-export function cloudForTone(lines: readonly string[], tone: (Parameters<typeof formFor>[0] & { align?: Align; size?: number }) | null | undefined, o: Pick<Options, 'seed' | 'minDiameter'> = {}): Cloud {
+export function cloudForTone(lines: readonly string[], tone: (Parameters<typeof formFor>[0] & { align?: Align; size?: number }) | null | undefined, o: Pick<Options, 'seed' | 'minDiameter' | 'tree'> = {}): Cloud {
   // 같은 글 · 같은 조율이면 같은 구름이다(씨앗이 글) — 한 번 지은 것을 둔다. 벽은 1초마다 열두 글의 구름을 다시 묻는데,
   // 나무는 품을 크기를 찾느라 한 번에 수 ms가 든다(2026-09-29)
   const key = JSON.stringify([lines, tone, o]), had = MADE.get(key);
@@ -1479,7 +1481,8 @@ function treeFor(pr: Persona, rule: 'B' | 'C', lines: readonly string[], font: s
   // 종 — 말투가 남은 옛 글은 말투로(1 = 예리한 = 소나무 · 0 = 온화한 = 버드나무). 2026-10-04부터 당당한은 말투 대신 무게를
   // 묻고 무게가 고른다(디자이너): 가볍게 = 버드나무 · 무겁게 = 소나무 · 보통 = 세 번째 나무(아직 없다 — 들기 전까지 소나무)
   const sp = typeof o.manner === 'number' ? (o.manner === 1 ? 'pine' : 'willow') : (o.weightPos ?? 0.5) < 0.25 ? 'willow' : 'pine';
-  const kin = TREE_PHOTOS.filter((s) => s.species === sp);
+  const one = o.tree ? TREE_PHOTOS.filter((s) => s.id === o.tree) : [];
+  const kin = one.length ? one : TREE_PHOTOS.filter((s) => s.species === sp);
   // 글에 맞춤(hug) — 크기 막대는 글자만 정하고, 나무는 글이 겨우 드는 가장 작은 키 × hug(구름처럼 글이 틀을 정한다). 비교 중
   const H0 = t.hug ? Math.max(1, (fb[3] - fb[1]) * 1.2) : tall / unitK;
   // 글에 맞춤은 가장 작게 드는 키를 찾는다 — 이미 찾은 것보다 크게 드는 경우는 따지지 않는다(폭마다 · 나무마다 한계를 좁힌다.

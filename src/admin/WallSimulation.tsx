@@ -358,10 +358,12 @@ const CLOUD_SCALE = 1;
 /** 넓은 장면의 사진 새(유머있는) — 확대하면 ×0.75(새 글자 26px, 벽 1080). 견본 ③에서 고른 ×0.45(수관 ×1.8)를 그 비율 그대로 */
 const BIRD_SCALE = 0.45 / 1.8;
 /** 마네킹 나무 — 글 없는 풍경 나무(디자이너). 나무 글이 MANNEQUIN_MIN그루보다 적으면 모자란 만큼(최대 셋) 선다 — 새가 앉을 곳 ·
-    확대할 나무 꼭대기가 늘 있게. 키는 정해 준다(벽 높이의 비율 — 글이 없으니 글이 정하는 키가 없다). 모양은 씨앗 글이 고른다 */
+    확대할 나무 꼭대기가 늘 있게. 키는 정해 준다(벽 높이의 비율 — 글이 없으니 글이 정하는 키가 없다). 나무는 셋 다 다르게 정해 준다
+    (2026-10-04, 디자이너 — 씨앗 글에 맡기니 소나무 656을 뺀 뒤 셋이 다 764가 되어 한 모양이 되풀이됐다). 좌우 뒤집기 · 폭은 씨앗 글이 */
 const MANNEQUIN_MIN = 4;
-const MANNEQUINS: readonly { seed: string; tall: number }[] = [
-  { seed: '마네킹 하나', tall: 0.5 }, { seed: '마네킹 둘 셋', tall: 0.56 }, { seed: '마네킹 넷 다섯 여섯', tall: 0.47 }
+const MANNEQUINS: readonly { seed: string; tall: number; tree: string }[] = [
+  { seed: '마네킹 하나', tall: 0.5, tree: 'pine-764' }, { seed: '마네킹 둘 셋', tall: 0.56, tree: 'pine-223' },
+  { seed: '마네킹 넷 다섯 여섯', tall: 0.47, tree: 'pine-055' }
 ];
 
 /** 나무 꼭대기 선 — 벽 폭을 SKY_N칸으로 나눠 칸마다 그 위에 선 수관 중 가장 높은 꼭대기(px). 나무가 없는 칸은 이웃에서 잇는다.
@@ -1238,7 +1240,7 @@ function landHeight(): number {
   return window.innerHeight - groundPx(window.innerHeight);
 }
 
-/** 마네킹 나무 하나(MANNEQUINS) — 씨앗 글이 모양을 고르고(글은 그리지 않는다) 키는 정해 준 대로. 나무 그림의 키(tree.full)는
+/** 마네킹 나무 하나(MANNEQUINS) — 나무는 정해 준 것, 씨앗 글이 뒤집기 · 폭을 고르고(글은 그리지 않는다) 키는 정해 준 대로. 나무 그림의 키(tree.full)는
     줄기 구간만 늘여 맞춘다(cloud.ts treeFor의 줄기 늘이기와 같은 방식). 짧은 씨앗 글이 고른 나무는 키가 낮아, 나무 글이 없을 때
     확대할 띠가 바닥까지 내려가 확대 화면에 돌이 크게 들었다(견본) */
 type Mannequin = { id: string; cloud: Cloud; box: Boxed; tall: number };
@@ -1247,7 +1249,7 @@ const MANNEQUIN_MADE = new Map<number, Mannequin>();
 function mannequinOf(i: number): Mannequin {
   const had = MANNEQUIN_MADE.get(i);
   if (had) return had;
-  const { seed, tall } = MANNEQUINS[i], lines = linesFor(seed, MANNEQUIN_TONE), base = cloudForTone(lines, MANNEQUIN_TONE);
+  const { seed, tall, tree } = MANNEQUINS[i], lines = linesFor(seed, MANNEQUIN_TONE), base = cloudForTone(lines, MANNEQUIN_TONE, { tree });
   const box = bubbleAt(lines, cloudShape(base), fillFromLegacySize(MANNEQUIN_TONE.size)), t = base.tree;
   // 벽에서 키(px) = tall × 벽 높이, 그림의 1u(px) = 벽의 한 변(WALL_SIDE × 벽 높이) × 배율 × 상자 폭 ÷ 구름 폭 — 벽 높이가 지워진다
   const F = (tall * base.w) / (WALL_SIDE * GROUND_SCALE * box.w);

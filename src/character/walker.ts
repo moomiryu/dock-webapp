@@ -12,6 +12,7 @@
  */
 import walkSrc from '../../by_moomiryu/Renewal_v1/Character/people/Character_walk_v3.svg?raw';
 import happySrc from '../../by_moomiryu/Renewal_v1/Character/eye/eye_happy.svg?raw';
+import sadSrc from '../../by_moomiryu/Renewal_v1/Character/eye/eye_sad.svg?raw';
 
 const pick = (re: RegExp, what: string) => {
   const m = walkSrc.match(re);
@@ -123,3 +124,41 @@ export const EYE_SMILE = (() => {
   const k = EYE_WHITE.r / r;
   return { d, transform: `translate(${EYE_WHITE.cx} ${EYE_WHITE.cy}) scale(${k.toFixed(4)}) translate(${-cx} ${-cy})` };
 })();
+
+/**
+ * 슬프다 — 벽의 작은 사람이 넘어졌다 일어난 뒤 3초(WallWalkers, 2026-10-04 디자이너 "아파하는 표정도"). 작가의 큰 메가폰트
+ * 슬픈 눈(Character/eye/eye_sad.svg) 왼눈을 옮겨 온다: 흰자를 30° 기운 현으로 자른 활꼴 눈꺼풀(몸 색)과 가운데 눈동자.
+ * 눈동자와 눈꺼풀이 같은 몸 색이라 흰자는 초승달처럼 남는다. 홈에서는 쓰지 않는다
+ */
+export const EYE_SAD = (() => {
+  const circles = [...sadSrc.matchAll(/<circle[^>]*cx="([\d.]+)"[^>]*cy="([\d.]+)"[^>]*r="([\d.]+)"/g)].map((m) => m.slice(1).map(Number));
+  const lids = [...sadSrc.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map((m) => m[1]);
+  if (circles.length < 2 || !lids.length) throw new Error('eye_sad.svg에서 슬픈 눈을 못 찾았다');
+  const [[cx, cy, r], [, , pr]] = circles;   // 첫 원 = 왼눈 흰자, 둘째 = 그 눈동자
+  const lid = lids.sort((a, b) => parseFloat(a.slice(1)) - parseFloat(b.slice(1)))[0];
+  const k = EYE_WHITE.r / r;
+  return {
+    lid, pupil: { cx: EYE_WHITE.cx, cy: EYE_WHITE.cy, r: pr * k },
+    transform: `translate(${EYE_WHITE.cx} ${EYE_WHITE.cy}) scale(${k.toFixed(4)}) translate(${-cx} ${-cy})`
+  };
+})();
+
+/** 발바닥 — 서 있는 다리 그림의 아래 끝(작가의 걷기 그림, 0프레임) */
+export const FOOT_Y = 542;
+
+const roundRect = (x0: number, y0: number, x1: number, y1: number, r: number) =>
+  `M${x0 + r},${y0} H${x1 - r} Q${x1},${y0} ${x1},${y0 + r} V${y1 - r} Q${x1},${y1} ${x1 - r},${y1} H${x0 + r} Q${x0},${y1} ${x0},${y1 - r} V${y0 + r} Q${x0},${y0} ${x0 + r},${y0} Z`;
+/**
+ * 앉은 자세 — 벽의 작은 사람(WallWalkers, 2026-10-04 디자이너가 여섯 판 중 ③ '인형처럼'). 작가 그림에 없어 새로 그렸다.
+ * 짧고 통통한 두 발이 앞으로 나와 발끝이 위로(먼 발 30° · 가까운 발 12°를 축 pivot에서 돌린다, 모서리 30), 엉덩이 두 모서리는
+ * 반지름 56으로 둥글게. 앉으면 몸이 엉덩이가 바닥에 닿도록 drop만큼 내려온다. 앉아 있는 동안 두 발이 천천히 까딱(± swing).
+ * 버린 판: 다리를 뻗은 막대(각진 엉덩이 — '약간 어색') · 무릎 세워 · 꿇어앉기 · 걸터앉기(사진 돌엔 걸칠 모서리가 없다)
+ */
+export const SIT = {
+  far: roundRect(-50, FOOT_Y - 92, 170, FOOT_Y, 30),
+  near: roundRect(-75, FOOT_Y - 92, 150, FOOT_Y, 30),
+  pivot: [100, FOOT_Y] as const,
+  farDeg: 30, nearDeg: 12, farSwing: 6, nearSwing: 4,
+  body: `M${HEAD.cx - HEAD.r},${HEAD.cy} H${HEAD.cx + HEAD.r} V${CLIP_H - 56} Q${HEAD.cx + HEAD.r},${CLIP_H} ${HEAD.cx + HEAD.r - 56},${CLIP_H} H${HEAD.cx - HEAD.r + 56} Q${HEAD.cx - HEAD.r},${CLIP_H} ${HEAD.cx - HEAD.r},${CLIP_H - 56} Z`,
+  drop: FOOT_Y - (CLIP_H + 4)
+};

@@ -15,7 +15,9 @@ export type FontFamily = 'doran' | 'chabun' | 'botong' | 'ttoryeot' | 'deulseok'
  * 다정한(구름) = 가운데 · 아치 · 미소(부채꼴은 2026-09-30에 칸에서 뺐다 — 옛 글은 그대로 선다), 차분한(돌) = 올려 걸기 · 중간 걸기 · 내려 걸기(R17).
  * 목록은 cloud.ts의 arrangementsFor. 'contour'(윤곽 따라, R20)는 칸에서 뺐지만 되살릴 수 있게 둔다
  */
-export type Align = 'left' | 'center' | 'right' | 'distribute' | 'trapezoid' | 'arch' | 'fan' | 'smile' | 'hang-up' | 'hang-mid' | 'hang-down' | 'contour' | 'slant' | 'vertical';
+export type Align = 'left' | 'center' | 'right' | 'distribute' | 'trapezoid' | 'arch' | 'fan' | 'smile' | 'hang-up' | 'hang-mid' | 'hang-down' | 'contour' | 'slant' | 'vertical'
+  /* 유머있는(비)의 모양 — 핸드젯의 낱알 모양(2026-10-04, 디자이너 — palettes.ts RAIN_FACE) */
+  | 'round' | 'square' | 'pointy';
 
 export interface ToneState {
   align?: Align;

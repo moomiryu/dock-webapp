@@ -103,7 +103,7 @@ export default function VoiceBubble({ text, bg, color, fontFamily, font, weight,
     /* 모양은 서체별 표 하나가 정한다(2026-09-25). 3/5 견본 · 4/5 · 미리보기 ·
        벽이 모두 이 한 줄을 지난다. 세로 비율과 둥켈의 폭 축, 차분한의 자간이
        여기서 붙는다. */
-    const f = formFor({ font: font ?? '', tone: width, slnt: slant, wght: weight, manner, speed, weight: weightPos });
+    const f = formFor({ font: font ?? '', tone: width, slnt: slant, wght: weight, manner, speed, weight: weightPos, align: alignIn });
     const scale = Math.min(60, Math.max(28, size)) / 44;
     /* 서체마다 같은 크기가 다르게 보인다(palettes.ts · opticalFix). 02에서만
        고쳐 두고 여기서 안 고치면, 성격을 고른 화면과 그 뒤 화면들의 글자

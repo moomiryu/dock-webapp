@@ -2503,6 +2503,13 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .color-stage{ width: 100%; height: 100%; display: grid; place-items: center;
   container-type: size; }
 
+/* 유머있는(비)의 폰 미리보기(RainPreview, 2026-10-04) — 무대를 다 쓰고 밖으로 나간 빗방울은 잘린다(위에서 들어와 밑으로 잠긴다).
+   빗방울 하나 = 원 선 · 명암을 그린 캔버스 + 그 위의 글자(낱알 축을 모든 브라우저가 그리게 DOM 글자로). 자리는 lib/rain.ts가 잰다 */
+.rain-stage{ position: relative; width: 100%; height: 100%; overflow: hidden; }
+.rain-drop{ position: absolute; left: 0; top: 0; will-change: transform; pointer-events: none; }
+.rain-drop > canvas{ position: absolute; inset: 0; width: 100%; height: 100%; }
+.rain-drop > span{ position: absolute; line-height: 1; white-space: nowrap; }
+
 /* 03 조율 — 두 장을 겹쳐 두고 통째로 민다.
    한 장에 제목·설명·견본·축 셋을 다 올리면 처음 보는 사람에게 요소가
    너무 많다. 설명하는 장과 조작하는 장을 가르고, 누르면 위로 밀린다. */

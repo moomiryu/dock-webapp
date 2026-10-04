@@ -69,8 +69,13 @@ if __name__ == '__main__':
                     f"    img: new URL('../assets/trees/{t['id']}.png', import.meta.url).href,\n"
                     f"    paint: '{bits(gp)}',\n    shade: '{bits(gs)}' }}")
         print(t['id'], (H, W), 'grid', (GRID_H, gw), 'crown', round(cx), round(cy), bottom, 'perch', pr)
+    # 뺀 나무는 여기서 적는다 — 손으로 적으면 다시 돌릴 때 지워졌다(2026-10-04, 당당한 서체 세션이 알려 줌)
+    kept = [t for t in T if t['id'] == t['alpha'] and not t.get('dropped')]
+    n_p = sum(1 for t in kept if t['species'] == 'pine'); n_w = len(kept) - n_p
+    gone = ''.join('// 뺀 나무: ' + t.get('name', t['id']) + '(' + t['id'] + ') — ' + t['dropped'] + '. 원판은 design/tree-photo에 그대로' + chr(10)
+                   for t in T if t['id'] == t['alpha'] and t.get('dropped'))
     head = """// 자동 생성 — scripts/trees/export.py가 design/tree-photo에서 만든다. 손으로 고치지 않는다.
-// 당당한의 사진 나무 일곱 그루(2026-09-30, 디자이너가 격자로 고른 판) — 소나무 5 · 버드나무 2(늘어뜨리기 전의 수관, drape).
+// 당당한의 사진 나무 @N그루(2026-09-30, 디자이너가 격자로 고른 판) — 소나무 @P · 버드나무 @W(늘어뜨리기 전의 수관, drape).
 // 뒤집기 · 폭 늘이기 · 버드나무 가닥은 앱이 글마다 한다(cloud.ts treeFor · TreeArt).
 // 그리는 판은 src/assets/trees/<id>.png(키 1280 — 초록 = 칠, 빨강 = 덩이 밑 그늘). 여기 있는 것은 재는 판이다:
 // 칸 격자(키 gh = 160, 폭 gw) — paint = 칠(1), shade = 그늘(1), 줄 차례 · 큰 비트 먼저, base64.
@@ -81,7 +86,7 @@ export interface TreeShape {
   perch: readonly (readonly [number, number])[]; img: string; paint: string; shade: string;
 }
 
-export const TREE_PHOTOS: readonly TreeShape[] = [
-"""
+@GONEexport const TREE_PHOTOS: readonly TreeShape[] = [
+""".replace('@N', str(len(kept))).replace('@P', str(n_p)).replace('@W', str(n_w)).replace('@GONE', gone)
     open(os.path.join(APP, 'src', 'lib', 'treePhoto.data.ts'), 'w', encoding='utf-8', newline='\n').write(head + ',\n'.join(rows) + '\n];\n')
     print(len(rows), '그루')

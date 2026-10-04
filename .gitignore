@@ -19,3 +19,7 @@ reference capture/
 
 # 에디터 개인 설정 (Python 환경 등 — 프로젝트와 무관)
 .vscode/
+
+# Generated Python cache
+__pycache__/
+*.py[cod]

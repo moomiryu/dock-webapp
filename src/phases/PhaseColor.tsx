@@ -36,6 +36,9 @@ const T = {
     left: { ko: '왼쪽', en: 'Left' },
     center: { ko: '가운데', en: 'Centre' },
     right: { ko: '오른쪽', en: 'Right' },
+    round: { ko: '둥글', en: 'Round' },
+    square: { ko: '네모', en: 'Square' },
+    pointy: { ko: '뾰족', en: 'Pointy' },
     /* 성격마다 제 정렬(2026-09-28, design/landscape.md) — 나무(당당한) · 구름(다정한).
        나무는 기본 배열 · 사선 배열 · 세로쓰기 배열(2026-09-29, 디자이너) — 칸이 좁아 '배열'은 뺀다. 나무의 가운데가 '기본'이다.
        2026-10-04부터 나무의 칸은 기본 · 휘기 · 기울이기(TREE_WORD) — 사선 · 세로쓰기는 칸에서 빠졌다 */

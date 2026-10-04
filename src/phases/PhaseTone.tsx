@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
 import SnapSwitch, { tick } from '../components/SnapSwitch';
-import { MANNER, SIZE_WORDS, SPEED_WORDS, fontMap, formFor, hasWeightAxis, legacyFields, mannerDefault, mannerOrder, opticalFix, sizeAt, sizePos, weightWordsFor } from '../lib/palettes';
+import { MANNER, SIZE_WORDS, fontMap, formFor, hasSizeBar, hasWeightAxis, legacyFields, mannerDefault, mannerOrder, opticalFix, sizeAt, sizePos, speedBarFor, weightWordsFor } from '../lib/palettes';
 import { DEFAULT_TONE, type PartialTone } from '../lib/tone';
 import { foldLines } from '../lib/fit';
 import { pick, useLang } from '../lib/lang';
@@ -13,6 +13,8 @@ const T = {
     /* 셋째 축은 서체가 정한다 — 무게가 없는 서체는 말투를 묻는다(palettes.ts · MANNER) */
     leadWeight: { ko: '발화의 크기, 속도, 무게를 정해봐요.', en: 'Set the size, pace and weight of your line.' },
     leadManner: { ko: '발화의 크기, 속도, 말투를 정해봐요.', en: 'Set the size, pace and tone of your line.' },
+    /* 유머있는(비)은 크기를 묻지 않는다 — 벽 글자가 28px 하나(palettes.ts · hasSizeBar) */
+    leadPaceWeight: { ko: '발화의 속도, 무게를 정해봐요.', en: 'Set the pace and weight of your line.' },
     start: { ko: '화면을 누르면 시작해요', en: 'Tap the screen to start' },
     comparing: { ko: '기본 상태를 보는 중. 눌러서 편집한 상태로 돌아가기', en: 'Showing the default. Tap to go back to your edit' },
     compare: { ko: '눌러서 기본과 비교', en: 'Tap to compare with the default' },
@@ -247,6 +249,9 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
     const [tone, setTone] = useState<PartialTone>(() => {
         /* 말투가 비어 오면(옛 초안) 앞 칸으로 채운다 — 칸은 예리한을 가리키는데 글은 온화한(빈 값)으로 서는 일이 없게 */
         const t = { ...initialTone, speed: initialTone.speed ?? 0.5, weight: initialTone.weight ?? 0.5, manner: hasWeightAxis(initialTone.font) ? undefined : initialTone.manner ?? mannerDefault(initialTone.font) };
+        /* 빠르기 막대가 '보통'에서 시작하는 성격(유머있는)은 그보다 느린 값을 보통으로 올린다 — 막대에 없는 칸에 서지 않게 */
+        const bar = speedBarFor(t.font);
+        t.speed = bar.toSpeed(bar.fromSpeed(t.speed));
         return { ...t, ...legacyFields(t) };
     });
     const lang = useLang();
@@ -394,6 +399,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
     };
     const speed = tone.speed ?? 0.5;
     const weight = tone.weight ?? 0.5;
+    const speedBar = speedBarFor(tone.font);
 
     /**
      * 견본을 눌러 기본과 비교. 토글이다 — 한 번 누르면 기본, 다시 누르면
@@ -444,7 +450,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
         설명이 사라지는 계기가 **누르는 손**이어야 한다. '가'와 같이 간다. */}
     <div className="z-ask">
      <h1>{pick(T.title, lang)}</h1>
-     <p>{pick(hasWeightAxis(tone.font) ? T.leadWeight : T.leadManner, lang)}</p>
+     <p>{pick(!hasSizeBar(tone.font) ? T.leadPaceWeight : hasWeightAxis(tone.font) ? T.leadWeight : T.leadManner, lang)}</p>
     </div>
     {/* 삽화 자리. 아직 그려지지 않았다 — 지금은 내 글이 대신 서서 크기와
         속도 축을 차례로 훑는다(app.css · toneDemo). 속도의 세 자리(위 slow · mid ·
@@ -519,10 +525,11 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
        만지던 탭은 걷었다. 작은 화면(320)에서는 이 판이 줄지 않고 위의 견본
        칸이 줄어든다(견본 칸은 남는 자리를 받는다). */}
    <div className="tone-panel">
-    <Slider name={pick(T.size, lang)} words={pick(SIZE_WORDS, lang)} value={sizePos(tone.size)}
-      onChange={v => set({ size: +sizeAt(v).toFixed(2) })} />
-    <Slider name={pick(T.speed, lang)} words={pick(SPEED_WORDS[tone.font] ?? SIZE_WORDS, lang)} value={speed}
-      onChange={v => set({ speed: v })} />
+    {/* 유머있는(비)은 크기 막대가 없고, 빠르기는 보통 ~ 빠르게 세 칸이다(2026-10-04, 디자이너 — palettes.ts · speedBarFor) */}
+    {hasSizeBar(tone.font) && <Slider name={pick(T.size, lang)} words={pick(SIZE_WORDS, lang)} value={sizePos(tone.size)}
+      onChange={v => set({ size: +sizeAt(v).toFixed(2) })} />}
+    <Slider name={pick(T.speed, lang)} words={pick(speedBar.words, lang)} value={speedBar.fromSpeed(speed)}
+      onChange={v => set({ speed: speedBar.toSpeed(v) })} />
     {hasWeightAxis(tone.font)
       ? <Slider name={pick(T.weight, lang)} words={pick(weightWordsFor(tone.font), lang)} value={weight} onChange={v => set({ weight: v })} />
       : <MannerSwitch font={tone.font} at={tone.manner ?? mannerDefault(tone.font)} onPick={i => set({ manner: i })} />}

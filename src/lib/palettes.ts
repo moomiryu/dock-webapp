@@ -227,14 +227,15 @@ export const graphics: string[] = [
 /* 이름은 두 언어로 든다(2026-09-26, 영문판). 쓰는 곳이 지금 언어를 고른다.
    labels · axes는 **저장되는 값**(manner 0 · 1)의 차례다. 화면에 서는 차례는 order —
    값의 뜻을 바꾸면 벽에 떠 있는 글의 말투와 형상이 뒤집힌다. */
-export const MANNER: Record<string, { labels: Pair<[string, string]>; axes?: [string, string]; order?: [number, number] }> = {
-  deulseok: {
-    // 시니컬한의 ELSH는 **8.8**이다. 0.8로 적혀 있었다(2026-09-20에 안내서와
-    // 대조해 고쳤다) — 0.8이면 획이 거의 사라져 글자가 점선으로 흩어진다.
-    labels: { ko: ['귀여운', '시니컬한'], en: ['Cute', 'Cynical'] },
-    axes: ['"ELSH" 12, "ELGR" 1.75', '"ELSH" 0.8, "ELGR" 1']   // 시니컬한 ELSH 8.8 → 0.8 (2026-09-25 표)
-  }
-};
+export const MANNER: Record<string, { labels: Pair<[string, string]>; axes?: [string, string]; order?: [number, number] }> = {};
+/**
+ * 유머있는(핸드젯)의 옛 말투 자형 — 귀여운 · 시니컬한(저장된 manner 0 · 1의 차례). 2026-10-04 유머있는도 말투를 뺐다(디자이너 —
+ * 귀여운 · 시니컬한 둘 대신 '귀여움' 하나, 셋째 막대는 무게). 이제부터는 귀여운 자형 하나에 무게 막대가 굵기를 바꾼다
+ * (HANDJET_WEIGHT). 말투가 적힌 옛 글만 이 값으로 그때 모습 그대로 선다 — 쓴 사람이 고른 모양을 벽이 바꾸지 않는다.
+ * 시니컬한의 ELSH는 **8.8**이다. 0.8로 적혀 있었다(2026-09-20에 안내서와 대조해 고쳤다) — 0.8이면 획이 거의 사라져
+ * 글자가 점선으로 흩어진다(2026-09-25 표의 값을 그대로 둔다)
+ */
+const HANDJET_AXES = ['"ELSH" 12, "ELGR" 1.75', '"ELSH" 0.8, "ELGR" 1'] as const;
 
 /** 이 서체가 무게 축을 실제로 갖고 있는가 — 없으면 말투를 묻는다 */
 export const hasWeightAxis = (font: string) => !(font in MANNER);
@@ -253,6 +254,8 @@ export const mannerDefault = (font: string) => mannerOrder(font)[0];
 export function variationFor(font: string, wght: number, manner = 0): string {
   const m = MANNER[font];
   if (m) return m.axes?.[manner ? 1 : 0] ?? 'normal';
+  // 유머있는의 옛 글(막대 전) — 그때의 말투 자형 그대로, 굵기는 font-weight가 든다
+  if (font === 'deulseok') return HANDJET_AXES[manner ? 1 : 0];
   return `"wght" ${wght}`;
 }
 
@@ -308,8 +311,35 @@ const CHABUN_STROKE: Three = [0, 0, 0.0093];
     (디자이너): 맨 획이 0.0275em(차분한 500의 절반 아래)이라 벽의 작은 글이 13.7px에서 획 0.4px — 구름 빗금 틈(획 × 1.6까지)이
     0.6px로 가늘어졌다. 사다리를 통째로 +0.12 · +0.24 · +0.36pt 올린 넷 중 '다' — "여기까지가 한계"(가장 가는 획 2.09배) */
 const DORAN_STROKE: Three = [0.36 / 12, 0.46 / 12, 0.56 / 12];
-/** 핸드젯은 두께 840에 고정 */
+/** 핸드젯 — 말투를 고르던 옛 글(2026-09-25 ~ 10-03)의 굵기. 그때는 840에 고정이었다 */
 const HANDJET_WGHT = 840;
+/**
+ * 유머있는의 무게(2026-10-04, 디자이너) — 막대 다섯 칸이 핸드젯 굵기 400 · 560 · 720 · 840 · 900. 굵기 100 ~ 900을 폰 40px · 벽
+ * 22px × 밝은 칠 · 어두운 칠에 늘어놓은 격자에서 골랐다: 100 · 200은 글자를 이루는 점이 흐려져 점선으로 흩어지고, 300은 벽 22px에서
+ * 아슬아슬했다. 고르게 나눈 300 · 450 · 600 · 750 · 900 대신, 벽의 가장 가는 글도 넉넉히 읽히게 아래를 올리고 지금까지의 840을
+ * '무겁게'에 둔 쪽(제안 2)
+ */
+const HANDJET_WEIGHT = [400, 560, 720, 840, 900] as const;
+/** 유머있는(비)의 모양 — 4/5 '모양' 칸의 값(tone.align). 그 밖의 값(옛 왼쪽 · 가운데 · 오른쪽, 빈 값)은 둥글 */
+export type RainShape = 'round' | 'square' | 'pointy';
+export const RAIN_SHAPES: readonly RainShape[] = ['round', 'square', 'pointy'];
+export const rainShapeOf = (align?: string): RainShape => (align === 'square' || align === 'pointy' ? align : 'round');
+/**
+ * 모양마다 핸드젯의 낱알(ELSH · ELGR)과 무게 다섯 칸의 굵기(2026-10-04, 디자이너). 둥글 = 지금까지의 귀여운 자형, 뾰족 = 옛 시니컬한의
+ * 톱니 세모(ELSH 1 — 0.8보다 낱알이 커 벽에서 덜 흐리다), 네모 = 기본 네모 낱알. 굵기는 **같은 무게 칸이면 셋이 같은 무게로 보이게**
+ * 둥글을 기준으로 맞췄다: 글자의 칠해진 넓이와 흐리게 본 덩치(가우스 0.05em, 50% 넘는 넓이)를 견본 글 마흔 자로 재서 둥글과 1% 안
+ * (뾰족 840 칸만 870 — 900이면 위 두 칸이 같아져서 조금 덜 올렸다). 뾰족은 톱니라 칠이 적어 올리고, 네모는 꽉 차서 내렸다
+ */
+export const RAIN_FACE: Record<RainShape, { elsh: number; elgr: number; wght: readonly [number, number, number, number, number] }> = {
+  round: { elsh: 12, elgr: 1.75, wght: HANDJET_WEIGHT },
+  square: { elsh: 2, elgr: 1, wght: [370, 450, 550, 620, 660] },
+  pointy: { elsh: 1, elgr: 1, wght: [600, 700, 800, 870, 900] }
+};
+/** 다섯 칸(0 · ¼ · ½ · ¾ · 1) 사이를 곧게 잇는다 */
+const alongFive = (t: number, v: readonly [number, number, number, number, number]) => {
+  const x = Math.min(1, Math.max(0, t)) * 4, i = Math.min(3, Math.floor(x));
+  return v[i] + (v[i + 1] - v[i]) * (x - i);
+};
 /** 차분한은 늘 자간 -25 */
 const CHABUN_TRACK = '-0.025em';
 /** 당당한의 바탕 굵기 — 김정철 고딕 Regular(2026-10-04, 그전엔 이사만루 · 아침 Medium). 막대가 없는 옛 글(wght 700)도 이 굵기로 선다 */
@@ -382,8 +412,24 @@ export const SPEED_WORDS: Record<string, Pair<Five>> = {
   chabun: LEISURE,
   doran: LEISURE
 };
+/**
+ * 유머있는(비)의 빠르기 막대 — 보통 ~ 빠르게 세 칸(2026-10-04, 디자이너 — "장평은 조절하지 말고 기울기만, 보통-빠르게만").
+ * 막대 자리 0 · ½ · 1이 speed 0.5 · 0.75 · 1이라 저장되는 값의 뜻(가운데 = 보통)은 다른 성격과 같고, 기울기는 0 · 9 · 18°다.
+ * 벽에서는 이 값이 기울기와 함께 비가 내리는 빠르기를 정한다
+ */
+const RAIN_SPEED_WORDS: Pair<[string, string, string]> = {
+  ko: ['보통', '재잘재잘', '한껏 재잘재잘'],
+  en: ['Regular', 'Chatty', 'Extra chatty']
+};
+/** 빠르기 막대 — 칸의 말과, 막대 자리(0~1) ↔ 저장되는 speed(0~1, 가운데 = 보통) */
+export function speedBarFor(font: string): { words: Pair<readonly string[]>; toSpeed: (v: number) => number; fromSpeed: (s: number) => number } {
+  if (font === 'deulseok') return { words: RAIN_SPEED_WORDS, toSpeed: (v) => 0.5 + 0.5 * v, fromSpeed: (s) => Math.min(1, Math.max(0, (s - 0.5) / 0.5)) };
+  return { words: SPEED_WORDS[font] ?? SIZE_WORDS, toSpeed: (v) => v, fromSpeed: (s) => s };
+}
+/** 크기 막대를 세우는가 — 유머있는(비)은 벽 글자가 28px 하나라 크기를 묻지 않는다(2026-10-04, 디자이너 — 막대는 빠르기 · 무게 둘) */
+export const hasSizeBar = (font: string) => font !== 'deulseok';
 /** 막대 자리에서 가장 가까운 칸(0~4) */
-export const stopAt = (t: number) => Math.round(Math.min(1, Math.max(0, t)) * (STOPS - 1));
+export const stopAt =(t: number) => Math.round(Math.min(1, Math.max(0, t)) * (STOPS - 1));
 /** 가장 가까운 칸의 자리(0 · .25 · .5 · .75 · 1) */
 export const snap = (t: number) => stopAt(t) / (STOPS - 1);
 export const wordAt = (t: number, words: Five) => words[stopAt(t)];
@@ -403,7 +449,7 @@ export interface Form {
   wdth?: number;
 }
 
-type FormInput = { font: string; tone?: number; slnt?: number; wght?: number; manner?: number; speed?: number; weight?: number };
+type FormInput = { font: string; tone?: number; slnt?: number; wght?: number; manner?: number; speed?: number; weight?: number; align?: string };
 
 /**
  * 한 글의 모양. speed가 있으면 새 표로, 없으면(옛 글) 옛 칸 그대로 그린다.
@@ -428,6 +474,8 @@ export function formFor(t: FormInput): Form {
   let stroke = '0';
   let weight = 400;
   let letterSpacing = track;
+  /** 장평 · 세로를 그대로 두는가 — 유머있는(비)의 새 글은 기울기만 바뀐다(speedBarFor) */
+  let flat = false;
   if (bold) {
     /* 무게 세 칸 · 칸 사이는 획 덧대기(TTORYEOT_WEIGHT). 자간은 속도 자간뿐(진중한 쪽에서만) */
     const b = boldWeight(w);
@@ -435,8 +483,18 @@ export function formFor(t: FormInput): Form {
     stroke = b.stroke.toFixed(4) + 'em';
     letterSpacing = along(s, TTORYEOT_SLOW_TRACK).toFixed(4) + 'em';
   } else if (font === 'deulseok') {
-    weight = HANDJET_WGHT;
-    variation = `"wght" ${HANDJET_WGHT}, ${MANNER.deulseok.axes![t.manner ? 1 : 0]}`;
+    /* 무게 다섯 칸(HANDJET_WEIGHT) · 귀여운 자형 하나. 말투가 적힌 옛 글은 그때처럼 840에 그 말투(HANDJET_AXES) */
+    const old = t.manner === 0 || t.manner === 1;
+    if (old) {
+      weight = HANDJET_WGHT;
+      variation = `"wght" ${weight}, ${HANDJET_AXES[t.manner ? 1 : 0]}`;
+    } else {
+      /* 비(2026-10-04) — 4/5 모양(둥글 · 네모 · 뾰족)이 낱알 모양을, 무게 칸이 그 모양의 보정 굵기를 고른다 */
+      const f = RAIN_FACE[rainShapeOf(t.align)];
+      weight = Math.round(alongFive(w, f.wght));
+      variation = `"wght" ${weight}, "ELSH" ${f.elsh}, "ELGR" ${f.elgr}`;
+    }
+    flat = !old;
   } else if (font === 'chabun') {
     weight = Math.round(along(w, CHABUN_WGHT));
     variation = `"wght" ${weight}`;
@@ -445,7 +503,7 @@ export function formFor(t: FormInput): Form {
     stroke = along(w, DORAN_STROKE).toFixed(4) + 'em';
   }
   return {
-    scaleX: along(s, row.sx), scaleY: along(s, row.sy), slant,
+    scaleX: flat ? 1 : along(s, row.sx), scaleY: flat ? 1 : along(s, row.sy), slant,
     variation, stroke, letterSpacing, weight
   };
 }

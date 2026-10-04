@@ -54,7 +54,7 @@ interface Props {
  */
 /** 3/5 기본형(막대 가운데 · 말투 첫째 칸)의 글자 모양 — palettes.ts · formFor */
 function faceOf(font: string): CSSProperties {
-  const f = formFor({ font, speed: 0.5, weight: 0.5, manner: mannerDefault(font) });
+  const f = formFor({ font, speed: 0.5, weight: 0.5, manner: hasWeightAxis(font) ? undefined : mannerDefault(font) });
   return {
     fontFamily: fontMap[font],
     fontWeight: f.weight,

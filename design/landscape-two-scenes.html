@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>두 화면 고개 들기</title>
+<!-- 벽을 두 화면으로 — 땅(당당한 나무 · 차분한 돌)과 하늘(다정한 구름 · 유머있는 새). 고개를 들고 내리듯 위아래로 바뀐다(2026-10-02, 디자이너).
+     하늘 화면의 밑에는 글 없는 수관(풍경)이 있고 새가 거기 앉는다 — 나무와 새가 한 화면에 서지 않으니 크기를 맞출 일이 없다.
+     실제 앱 부품(CloudBubble · VoiceBubble)으로 그린다. 개발 서버로 연다: npm run dev 뒤
+     http://localhost:5173/design/landscape-two-scenes.html
+     수관 = 나무 사진 ×1.8 · 밑 8% 묻힘, 새 ×0.45(디자이너가 고른 판). 몸짓 · 날갯짓은 landscape-bird-photo-perch.html과 같다 -->
+<style>
+  html, body { margin: 0; height: 100%; background: var(--ink); overflow: hidden; }
+  body { display: block; min-height: 0; }
+  #bar { position: fixed; left: 0; right: 0; top: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center;
+    gap: var(--space-in-group); padding: var(--space-in-group) var(--space-group); background: var(--ink);
+    border-bottom: 1px solid var(--grey-800); color: var(--grey-300); font: 500 var(--fs-body-s) var(--text-font); }
+  #bar button { font: inherit; color: var(--grey-200); background: transparent; border: 1px solid var(--grey-700);
+    border-radius: var(--r-button); padding: var(--s1) var(--s4); cursor: pointer; }
+  #bar button.on { border-color: var(--paper); color: var(--paper); }
+  #bar .sep { width: 1px; align-self: stretch; background: var(--grey-800); margin: 0 var(--s2); }
+  #bar #now { margin-left: auto; color: var(--grey-500); }
+  #stage { position: absolute; left: 0; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden; background: var(--ink); --tilt-n: 6; }
+  .layer { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px;
+    transition: transform calc(var(--t-hold) * var(--tilt-n)) var(--ease-standard); }
+  .layer > .wall-field { position: absolute; inset: 0; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <button id="go">지금 바꾸기</button>
+  <span class="sep"></span>
+  <span>수관</span>
+  <button data-v="cut" class="on">한 덩어리 · 줄기 자름</button><button data-v="tall">한 덩어리 · 줄기가 땅까지</button><button data-v="rise">아래에서 솟음</button>
+  <span class="sep"></span>
+  <span>걸리는 시간</span>
+  <button data-n="4">2.8초</button><button data-n="6" class="on">4.2초</button><button data-n="9">6.3초</button>
+  <span class="sep"></span>
+  <span>바뀌는 간격</span>
+  <button data-every="10" class="on">10초</button><button data-every="60">1분</button>
+  <span class="sep"></span>
+  <span>수관 색</span>
+  <button data-c="dark" class="on">어둡게</button><button data-c="tree">나무 색</button>
+  <span id="now"></span>
+</div>
+<div id="stage">
+  <div class="layer" id="ground"><div class="wall-field"></div></div>
+  <div class="layer" id="canopy"><div class="wall-field"></div></div>
+  <div class="layer" id="sky"><div class="wall-field"></div></div>
+</div>
+<script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import '/src/styles/global.css';
+import '/src/styles/app.css';
+import CloudBubble from '/src/components/CloudBubble.tsx';
+import VoiceBubble from '/src/components/VoiceBubble.tsx';
+import { cloudForTone, cloudShape, linesFor } from '/src/lib/cloud.ts';
+import { bubbleAt, fillFromLegacySize, WALL_SIDE } from '/src/lib/fit.ts';
+import { fontMap } from '/src/lib/palettes.ts';
+import { ATTITUDE_COLORS } from '/src/lib/palettes-v2.ts';
+
+const h = React.createElement;
+const W = 1920, H = 1080, SIDE = H * WALL_SIDE, BIRD = 0.45, CROWN = 1.8, SINK = 0.08;
+const css = getComputedStyle(document.documentElement);
+// --t-hold — 빌드는 700ms를 .7s로 적기도 한다(단위를 보고 읽는다)
+const tv = css.getPropertyValue('--t-hold').trim();
+const T = tv.endsWith('ms') ? parseFloat(tv) / 1000 : parseFloat(tv);
+// 벽의 값 그대로 — 몸짓마다 [걸리는 시간, 다음까지 최소, 최대](T 배수) · 머무는 시간 · 나는 빠르기. 세기 ×1 = 기하 새의 값
+const IDLE = { hop: [1, 6, 14], fluff: [2, 7, 16], peck: [1, 7, 16] };
+const PERCH = [12, 28], FLY_SPEED = 0.2, FLY_T = [4, 7], FLY_ARC = 0.25;
+const HOP_U = 0.6, FLUFF = 0.05, PECK = 12;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const bump = (x) => (x <= 0 || x >= 1 ? 0 : Math.sin(Math.PI * x));
+
+const stage = document.getElementById('stage');
+const layer = { ground: document.getElementById('ground'), canopy: document.getElementById('canopy'), sky: document.getElementById('sky') };
+const field = (k) => layer[k].firstElementChild;
+const fit = () => {
+  const top = document.getElementById('bar').offsetHeight, s = Math.min(innerWidth / W, (innerHeight - top) / H);
+  stage.style.top = top + 'px'; stage.style.transform = `scale(${s})`;
+};
+addEventListener('resize', fit);
+
+/** 글 하나를 벽의 말로 — 벽(WallBlock)과 같은 계산. textScale은 글자만의 배율 */
+function make(text, font, manner, colorId, scale, textScale = scale) {
+  const tone = { font, speed: 0.5, weight: 0.5, manner };
+  const lines = linesFor(text, tone), cloud = cloudForTone(lines, tone);
+  const box = bubbleAt(lines, cloudShape(cloud), fillFromLegacySize(undefined));
+  const col = ATTITUDE_COLORS[font].find((c) => c.id === colorId);
+  const side = SIDE * scale, w = side * box.w, hh = side * box.h;
+  const voice = h(VoiceBubble, { text: lines.join('\n'), bg: col.bg, color: col.text, fontFamily: fontMap[font], font, weight: 400, manner,
+    speed: 0.5, weightPos: 0.5, perChar: font === 'doran', fontSize: `${(SIDE * textScale * box.unit).toFixed(3)}px` });
+  return { lines, cloud, box, col, side, w, h: hh, kx: w / cloud.w, ky: hh / cloud.h, voice };
+}
+function mount(m, kind, where, { still = true, voice = true, color = m.col.bg } = {}) {
+  const el = document.createElement('div');
+  el.className = `wall-block is-${kind}`;
+  field(where).append(el);
+  const root = createRoot(el);
+  const draw = (c, col = color) => root.render(h(CloudBubble, { cloud: c, box: m.box, side: `${m.side}px`, color: col, still }, voice ? m.voice : null));
+  draw(m.cloud);
+  return { el, draw };
+}
+const place = (el, x, y) => { el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`; };
+
+// ── 땅 — 당당한 나무 셋 · 차분한 돌 둘. 지금 배포된 벽 그대로(나무는 글이 키를 정한다) ──
+function tree(text, colorId, x) {
+  const m = make(text, 'ttoryeot', 0, colorId, 1), d = mount(m, 'tree', 'ground');
+  const tall = Math.max((m.cloud.tree?.tall ?? 0) * H, m.h);
+  d.el.style.setProperty('--tree-ext', `${(tall - m.h).toFixed(0)}px`);
+  place(d.el, x - m.w / 2, H - tall);
+  requestAnimationFrame(() => { d.el.dataset.placed = '1'; });
+}
+function stone(text, colorId, x) {
+  const m = make(text, 'chabun', 0, colorId, 1), d = mount(m, 'stone', 'ground');
+  place(d.el, x - m.w / 2, H - m.h);
+}
+tree('오늘 발표 내가 다 찢고 온다', 'yellow', 330);
+stone('천천히 가도 괜찮다', 'stone', 760);
+tree('할 수 있다 진짜로 된다', 'green', 1130);
+stone('조용히 오래 생각했다', 'navy', 1480);
+tree('끝까지 간다', 'orange', 1730);
+
+// ── 하늘 밑의 수관 — 글 없는 풍경. 나무 사진 ×1.8, 밑 8%가 화면 밑에 묻힌다 ──
+const DARK = css.getPropertyValue('--grey-800').trim();
+const crowns = [];
+function crown(seedText, colorId, x) {
+  const m = make(seedText, 'ttoryeot', 0, colorId, CROWN, 1), d = mount(m, 'tree', 'canopy', { voice: false, color: DARK });
+  const top = H - m.h * (1 - SINK), left = x - m.w / 2;
+  d.el.style.setProperty('--tree-ext', '0px');
+  d.el.dataset.placed = '1';
+  // 줄기가 땅까지 — 하늘 화면 밑에서 땅 화면 바닥(하늘 화면 기준 2H)까지 이어진 키 큰 나무. 줄기 길이는 그림 자료(tree.full ·
+  // trunk.k)가 정하므로 줄기 구간만 그만큼 늘인 나무를 따로 둔다
+  const t = m.cloud.tree, F = (H + m.h * (1 - SINK)) / m.ky;
+  const tall = { ...m.cloud, tree: { ...t, full: F, trunk: { ...t.trunk, k: 1 + (F - t.base) / Math.max(1e-6, t.trunk.y1 - t.trunk.y0) } } };
+  place(d.el, left, top);
+  crowns.push({ m, d, tall, tips: (m.cloud.tree?.perch ?? []).map(([px, py]) => [left + px * m.kx, top + py * m.ky]) });
+}
+crown('오늘 발표 내가 다 찢고 온다', 'yellow', 260);
+crown('할 수 있다 진짜로 된다', 'green', 960);
+crown('끝까지 간다', 'orange', 1660);
+
+// ── 하늘 — 다정한 구름 셋. 위쪽에서 천천히 오간다 ──
+const clouds = [];
+function cloud(text, colorId, x, y) {
+  const m = make(text, 'doran', 0, colorId, 1), d = mount(m, 'cloud', 'sky', { still: false });
+  clouds.push({ m, d, x, y, ph: rnd(0, Math.PI * 2), per: rnd(40, 60) });
+}
+cloud('오늘 하늘 진짜 예쁘다', 'coral', 420, 170);
+cloud('다들 밥은 먹고 다니지', 'lavender', 1120, 110);
+cloud('내일도 여기서 보자', 'peach', 1560, 330);
+
+// ── 새 — 귀여운(둥근 새) 둘 · 시니컬한(까마귀) 둘. 수관 끝에 배로 앉는다 ──
+const birds = [];
+function bird(text, manner, colorId) {
+  const m = make(text, 'deulseok', manner, colorId, BIRD), B = m.cloud.bird;
+  if (!B) { console.warn('새가 아니다', text); return; }
+  const d = mount(m, 'bird', 'canopy');
+  const tcx = m.cloud.text.x + m.cloud.text.w / 2, mirror = (P) => P.map(([x, y]) => [2 * tcx - x, y]);
+  // 배가 닿는 점 — 무게중심 바로 아래의 윤곽 밑선(꼬리는 자리 아래로 늘어진다)
+  const contactOf = (P) => {
+    let a = 0, cx = 0;
+    for (let i = 0; i < P.length; i++) { const [x0, y0] = P[i], [x1, y1] = P[(i + 1) % P.length], q = x0 * y1 - x1 * y0; a += q; cx += (x0 + x1) * q; }
+    cx /= 3 * a;
+    let y = -Infinity;
+    for (let i = 0; i < P.length; i++) { const [ax, ay] = P[i], [bx, by] = P[(i + 1) % P.length];
+      if ((ax - cx) * (bx - cx) > 0 || ax === bx) continue; y = Math.max(y, ay + ((by - ay) * (cx - ax)) / (bx - ax)); }
+    return [cx, y];
+  };
+  const sit = { 1: B.face === 1 ? B.pts : mirror(B.pts), [-1]: B.face === -1 ? B.pts : mirror(B.pts) };
+  const fly = (k, f) => (f === B.face ? B.fly[k] : mirror(B.fly[k]));
+  const bx = [], by = [];
+  for (const f of [1, -1]) { const c = contactOf(sit[f]); for (const [x, y] of sit[f]) { bx.push((x - c[0]) * m.kx); by.push((y - c[1]) * m.ky); } }
+  const reach = [Math.min(...bx) * 1.08, Math.min(...by) * 1.08 - HOP_U * 1.5 * m.ky, Math.max(...bx) * 1.08, Math.max(0, ...by)];
+  birds.push({ m, B, d, sit, fly, reach, contact: { 1: contactOf(sit[1]), [-1]: contactOf(sit[-1]) },
+    face: Math.random() < 0.5 ? 1 : -1, mode: 'perch', spot: null, pos: [0, 0], until: 0, fl: null, t0s: {}, next: {}, hopTurn: false, sig: '' });
+}
+bird('오늘도 수고했어', 0, 'neon-green');
+bird('배고프다 밥 먹으러 갈 사람', 0, 'hot-pink');
+bird('월요일이 또 왔네', 1, 'electric');
+bird('내일 시험인데 아직 한 장도 못 봤다', 1, 'magenta');
+
+const spots = crowns.flatMap((c) => c.tips.map((p) => ({ host: c, p })));
+const boxAt = (b, p) => [p[0] + b.reach[0], p[1] + b.reach[1], p[0] + b.reach[2], p[1] + b.reach[3]];
+const meet = (a, z) => Math.min(a[2], z[2]) > Math.max(a[0], z[0]) && Math.min(a[3], z[3]) > Math.max(a[1], z[1]);
+const spotOk = (b, s) => { const r = boxAt(b, s.p); return r[0] >= 0 && r[2] <= W && r[1] >= 0 && !birds.some((o) => o !== b && o.spot && meet(r, boxAt(o, o.spot.p))); };
+const crowd = (b, s) => birds.filter((o) => o !== b && o.spot?.host === s.host).length + (s.host === b.spot?.host ? 0.5 : 0);
+function pick(b) {
+  const ok = spots.filter((s) => s !== b.spot && spotOk(b, s));
+  ok.sort(() => Math.random() - 0.5).sort((a, z) => crowd(b, a) - crowd(b, z));
+  return ok[0] ?? null;
+}
+birds.forEach((b) => { const s = pick(b); b.spot = s; b.pos = s ? s.p.slice() : [W / 2, H / 3]; b.until = performance.now() / 1000 + rnd(...PERCH) * T; });
+
+function takeOff(b, sec) {
+  const s = pick(b);
+  // 갈 곳이 없으면 조금 더 앉아 있는다(안 그러면 다음 프레임에 또 날려다 끝없이 되풀이했다)
+  if (!s) { b.until = sec + rnd(...PERCH) * T; return; }
+  const from = b.pos.slice(), to = s.p.slice(), dist = Math.hypot(to[0] - from[0], to[1] - from[1]);
+  b.fl = { from, to, t0: sec, dur: Math.min(FLY_T[1] * T, Math.max(FLY_T[0] * T, dist / (FLY_SPEED * H))) };
+  b.spot = s; b.mode = 'fly'; b.face = to[0] >= from[0] ? 1 : -1; b.t0s = {};
+}
+function phase(b, name, sec) {
+  const [dur, a, z] = IDLE[name];
+  if (b.mode !== 'perch') { b.t0s[name] = undefined; return -1; }
+  if (b.next[name] === undefined) b.next[name] = sec + rnd(0.5, z * T);
+  if (sec >= b.next[name] && b.t0s[name] === undefined) { b.t0s[name] = sec; if (name === 'hop') b.hopTurn = Math.random() < 0.35; }
+  const t0 = b.t0s[name];
+  if (t0 === undefined) return -1;
+  const x = (sec - t0) / (dur * T);
+  if (x >= 1) { b.t0s[name] = undefined; b.next[name] = sec + rnd(a * T, z * T); if (name === 'hop' && b.hopTurn) b.face = -b.face; return -1; }
+  return x;
+}
+const turnAbout = (P, deg, o) => { const r = (deg * Math.PI) / 180, c = Math.cos(r), s = Math.sin(r);
+  return P.map(([x, y]) => [o[0] + (x - o[0]) * c - (y - o[1]) * s, o[1] + (x - o[0]) * s + (y - o[1]) * c]); };
+const scaleAbout = (P, k, o) => P.map(([x, y]) => [o[0] + (x - o[0]) * k, o[1] + (y - o[1]) * k]);
+function frame(b, sec) {
+  let P, dy = 0, face = b.face, sig;
+  if (b.mode === 'fly') {
+    const e = (sec - b.fl.t0) / b.fl.dur;
+    if (e >= 1) { b.mode = 'perch'; b.pos = b.fl.to.slice(); b.fl = null; b.until = sec + rnd(...PERCH) * T; return frame(b, sec); }
+    const { from, to } = b.fl, dist = Math.hypot(to[0] - from[0], to[1] - from[1]), lift = FLY_ARC * dist + 0.05 * H;
+    const cx = (from[0] + to[0]) / 2, cy = Math.min(from[1], to[1]) - lift;
+    b.pos = [(1 - e) ** 2 * from[0] + 2 * (1 - e) * e * cx + e * e * to[0], (1 - e) ** 2 * from[1] + 2 * (1 - e) * e * cy + e * e * to[1]];
+    const k = ['up', 'mid', 'down', 'mid'][Math.floor((sec - b.fl.t0) / (T / 4)) % 4];
+    P = b.fly(k, face); sig = 'f' + k + face;
+  } else {
+    if (sec >= b.until) { takeOff(b, sec); return frame(b, sec); }
+    const hp = phase(b, 'hop', sec), fp = phase(b, 'fluff', sec), pp = phase(b, 'peck', sec);
+    if (hp > 0.5 && b.hopTurn) face = -face;
+    P = b.sit[face];
+    const o = b.contact[face];
+    if (fp >= 0) P = scaleAbout(P, 1 + FLUFF * bump(fp), o);
+    if (pp >= 0) P = turnAbout(P, face * PECK * bump(pp), o);
+    if (hp >= 0) dy = -HOP_U * b.m.ky * bump(hp);
+    sig = `p${face}${fp >= 0 ? fp.toFixed(3) : ''}${pp >= 0 ? pp.toFixed(3) : ''}`;
+  }
+  const c = b.contact[face];
+  place(b.d.el, b.pos[0] - c[0] * b.m.kx, b.pos[1] - c[1] * b.m.ky + dy);
+  if (sig !== b.sig) { b.sig = sig; b.d.draw({ ...b.m.cloud, bird: { ...b.B, pts: P } }); }
+}
+
+// ── 고개 들기 — 땅(0)과 하늘(1). 하늘은 땅 바로 위에 있다(한 덩어리), 또는 수관만 아래에서 솟는다 ──
+// 수관의 세 방식 — cut: 하늘과 한 덩어리, 하늘 화면 밑에서 줄기를 자른다 · tall: 한 덩어리, 줄기가 땅 화면 바닥까지(땅 화면 뒤에
+// 어두운 줄기가 선다) · rise: 땅이 내려가는 동안 수관만 아래에서 솟는다
+let scene = 0, variant = 'cut', every = 10, lastSwitch = performance.now() / 1000;
+function setVariant(v) {
+  variant = v;
+  layer.canopy.style.overflow = v === 'cut' ? 'hidden' : 'visible';
+  layer.canopy.style.zIndex = v === 'tall' ? '0' : '1';
+  layer.ground.style.zIndex = v === 'tall' ? '1' : '0';
+  layer.sky.style.zIndex = '2';
+  drawCrowns();
+}
+let crownColor = 'dark';
+const drawCrowns = () => { for (const c of crowns) c.d.draw(variant === 'tall' ? c.tall : c.m.cloud, crownColor === 'dark' ? DARK : c.m.col.bg); };
+function setLayers(instant = false) {
+  const y = { ground: scene * H, sky: (scene - 1) * H, canopy: variant === 'rise' ? (1 - scene) * H : (scene - 1) * H };
+  for (const k of Object.keys(layer)) {
+    layer[k].style.transition = instant ? 'none' : '';
+    layer[k].style.transform = `translate3d(0, ${y[k]}px, 0)`;
+  }
+  if (instant) requestAnimationFrame(() => { for (const k of Object.keys(layer)) layer[k].style.transition = ''; });
+}
+const flip = () => { scene = 1 - scene; lastSwitch = performance.now() / 1000; setLayers(); };
+setVariant('cut'); setLayers(true);
+
+const now = document.getElementById('now');
+const loop = (t) => {
+  const sec = t / 1000;
+  for (const b of birds) frame(b, sec);
+  for (const c of clouds) place(c.d.el, c.x - c.m.w / 2 + 60 * Math.sin((2 * Math.PI * sec) / c.per + c.ph), c.y);
+  const left = Math.max(0, every - (sec - lastSwitch));
+  if (left === 0) flip();
+  now.textContent = `지금 ${scene ? '하늘' : '땅'} · ${Math.ceil(left)}초 뒤 바뀜`;
+  requestAnimationFrame(loop);
+};
+requestAnimationFrame(loop);
+fit();
+
+// ── 조작 ──
+const group = (attr, set) => document.querySelectorAll(`[${attr}]`).forEach((el) => el.addEventListener('click', () => {
+  document.querySelectorAll(`[${attr}]`).forEach((x) => x.classList.toggle('on', x === el)); set(el.getAttribute(attr));
+}));
+document.getElementById('go').addEventListener('click', flip);
+group('data-v', (v) => { setVariant(v); setLayers(true); });
+group('data-n', (v) => stage.style.setProperty('--tilt-n', v));
+group('data-every', (v) => { every = +v; lastSwitch = performance.now() / 1000; });
+group('data-c', (v) => { crownColor = v; drawCrowns(); });
+</script>
+</body>
+</html>

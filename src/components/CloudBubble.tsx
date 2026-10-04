@@ -171,7 +171,7 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   }, [cloud, quiet]);
 
   const art = useMemo(() => {
-    if (pr.edge === 'pixel' || cloud.stone || cloud.tree || cloud.photo || cloud.creature) return null;
+    if (pr.edge === 'pixel' || cloud.stone || cloud.tree || cloud.photo || cloud.creature || cloud.bird) return null;
     return (
       <>
         {cloud.circles.map((c, i) => (
@@ -232,6 +232,13 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
     return () => cancelAnimationFrame(raf);
   }, [photo, motion, quiet, cloud.w, cloud.text.w, cloud.text.h]);
   const creature = cloud.creature, shape = creature ? (pose && creature.poses[pose]) || creature.poses.rest : null;
+  // 사진 새 — 앉은 윤곽 하나를 한 색으로. 글은 새 윤곽으로 잘린다(글만 1.65배라 새 밖으로 넘친다): 글 상자에 대한 % 다각형 —
+  // SVG 참조(url(#…))는 아이폰 사파리에서 HTML에 안 먹을 수 있어 어디서나 되는 polygon()으로
+  const bird = cloud.bird;
+  const birdD = useMemo(() => (bird ? 'M' + bird.pts.map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join('L') + 'Z' : ''), [bird]);
+  const birdClip = useMemo(() => (bird
+    ? `polygon(${bird.pts.map((p) => `${(((p[0] - t.x) / t.w) * 100).toFixed(2)}% ${(((p[1] - t.y) / t.h) * 100).toFixed(2)}%`).join(',')})`
+    : undefined), [bird, t.x, t.y, t.w, t.h]);
   // 나무 · 구슬 구름은 글 배치를 형상이 정한다(cloud.ts의 layout — 다시 나눈 줄 · 줄마다 자간 · 한 자씩의 자리).
   // 줄 맞춤은 가운데 — 나무 · 뭉게구름은 가운데 맞춘 줄을 품게 지었다
   const lay = cloud.layout;
@@ -277,6 +284,8 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
           </>
         ) : photo ? (
           cloudArt ? null : <path ref={photoRef} d={photoD} fill={color} />
+        ) : bird ? (
+          <path className="bird-art" d={birdD} fill={color} />
         ) : shape ? (
           <g fill={color}>
             {shape.polys.map((P, i) => <path key={'p' + i} d={'M' + P.map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join('L') + 'Z'} />)}
@@ -304,7 +313,8 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
         left: `${((t.x / cloud.w) * 100).toFixed(3)}%`, top: `${((t.y / cloud.h) * 100).toFixed(3)}%`,
         width: `${((t.w / cloud.w) * 100).toFixed(3)}%`, height: `${((t.h / cloud.h) * 100).toFixed(3)}%`,
         // 걸기 — 글 상자를 제 가운데로 돌려 곧은 윗변과 나란히 둔다(cloud.ts stoneFor)
-        ...(lay?.rotate ? { transform: `rotate(${lay.rotate.toFixed(4)}rad)` } : {})
+        ...(lay?.rotate ? { transform: `rotate(${lay.rotate.toFixed(4)}rad)` } : {}),
+        ...(birdClip ? { clipPath: birdClip, WebkitClipPath: birdClip } : {})
       }}>{kids}</div>
     </div>
   );

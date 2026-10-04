@@ -3753,6 +3753,10 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    곱해져 읽히지 않는 자리는 글자가 비킨다(WallSimulation LEGIBLE). 떠다니는 말(유머있는)은 아직 섞지 않는다 —
    어둡게로 섞으면 벽을 튕겨 다니는 글자가 나무 위에서 셋에 하나꼴로 묻혔다. 나비를 새로 잡을 때 정한다 */
 .wall-field{ position: absolute; inset: 0; isolation: isolate; }
+/* 두 장면의 카메라가 키우고 옮기는 한 풍경 — 뒤 겹(.wall-scenery, 글 없는 마네킹 나무)과 말들의 겹(.wall-field). 마네킹은 말들과 섞이지
+   않는다: 같은 겹에서 어둡게(darken)로 섞였더니 어두운 마네킹 줄기 앞에 선 돌의 글자까지 어둡게 먹혔다(벽에서 봤다) — 뒤에 따로 선다 */
+.wall-world{ position: absolute; inset: 0; transform-origin: 0 0; }
+.wall-scenery{ position: absolute; inset: 0; isolation: isolate; }
 /* 돌은 섞지 않는다 — 뒤의 나무 기둥을 다 가린다(2026-10-04, 디자이너 — 섞으니 칠 사이로 기둥이 비치고 돌 글자가 기둥 색으로 물들었다) */
 .wall-block.is-tree{ mix-blend-mode: darken; }
 .wall-block.is-cloud{ mix-blend-mode: hard-light; }

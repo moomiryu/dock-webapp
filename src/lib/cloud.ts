@@ -4,6 +4,7 @@ import type { Align } from '../types';
 import { CLOUD_PHOTOS, type PhotoShape } from './cloudPhoto.data';
 import { TREE_PHOTOS, type TreeShape } from './treePhoto.data';
 import { STONE_PHOTOS, type StoneShape } from './stonePhoto.data';
+import { birdFor, type BirdBuilt, type BirdOptions } from './birdPhoto';
 
 /**
  * 발화 배경 — 구름.
@@ -180,7 +181,10 @@ export interface Persona {
     /** 빗금 결(2026-10-04, CloudArt) — 있으면 칠 위에 밑 띠의 그늘을 ／ 빗금으로. 지우면 한 색 구름(SVG)으로 돌아간다 */
     tex?: CloudTex;
   };
-  /** 유머있는 — 말투가 형상을 가른다: 귀여운 = 새, 시니컬한 = 박쥐(creatureFor). 기하 도형만(원 · 세모 · 띠 · 원호).
+  /** 유머있는 — 사진에서 딴 새(2026-10-01, birdPhoto.ts): 귀여운 = 배가 둥근 작은 새, 시니컬한 = 까마귀. 있으면 아래 기하
+      새 · 박쥐(creature) 대신 쓴다 — 지우면 기하가 되살아난다. 값의 근거는 birdPhoto.ts · design/landscape.md '새' */
+  bird?: BirdOptions;
+  /** 유머있는(옛) — 말투가 형상을 가른다: 귀여운 = 새, 시니컬한 = 박쥐(creatureFor). 기하 도형만(원 · 세모 · 띠 · 원호).
       몸은 글을 따르고, 붙는 것(꼬리 · 귀 · 날개)은 길이가 정해져 있다. 값의 근거는 design/landscape.md '새' · '박쥐' */
   creature?: {
     bird: {
@@ -287,6 +291,7 @@ export const PERSONAS: Record<string, Persona> = {
   // 새: 몸 원 · 머리 0.55R · 꼬리 4u(글이 두 방향 중 하나). 박쥐: 한 몸, 귀 · 아래 끝 · 날개는 두 줄 견본에서 잰 길이 그대로.
   // 고른 과정과 200개로 잰 것은 design/landscape.md '새' · '박쥐'.
   deulseok: { key: 'deulseok', edge: 'creature', lobe: [1.1, 1.6], fill: [0.55, 0.75], gap: 1.7, spread: [0, 0.8], sat: 0, blur: 0, cell: 0.5,
+    bird: { text: 1.65, cap: 18, near: 0.7 },
     creature: {
       bird: { grow: 1.02, head: { r: 0.55, at: -38, out: 0.5 }, beak: { len: 0.34, half: 0.2 },
         tail: { len: 4, half: { root: 0.18, tip: 0.5 }, root: 0.78, up: { from: 200, to: 195 }, down: { from: 165, to: 150 }, fly: { from: 185, to: 185 } },
@@ -455,6 +460,12 @@ export interface CreaturePose { discs: { cx: number; cy: number; r: number }[]; 
  * 새는 앉되 원을 자르지 않고, 박쥐는 거꾸로 매달린다(형상만 뒤집고 글은 바로 선다). sit · fly는 벽이 고르는 자세 —
  * 새는 앉음(원을 자르지 않는다 — 폰의 자세와 같다, 2026-09-29) · 날기(부채 날개, 꼬리를 곧게), 박쥐는 날기(펼침). 상자 밖으로 나갈 수 있다
  */
+/**
+ * 유머있는의 사진 새(2026-10-01, birdPhoto.ts). pts = 앉은 윤곽(폰 4/5 · 5/5, 벽에 앉았을 때) — 상자(w · h)는 이것으로 잰다.
+ * fly = 날갯짓 세 장면(올림 · 수평 · 내림, 벽이 날 때 --t-hold에 한 번). 원점 = 구름 상자 왼쪽 위, u. 글은 새 윤곽으로 잘린다
+ * (CloudBubble). face = 머리가 오른쪽이면 1. scale = 글자 칸 배수(1.65) — cloudShape가 넘긴다
+ */
+export type Bird = Pick<BirdBuilt, 'id' | 'kind' | 'face' | 'pts' | 'fly' | 'scale'>;
 export interface Creature {
   kind: 'bird' | 'bat';
   poses: { rest: CreaturePose; fly: CreaturePose; sit?: CreaturePose; twitch?: CreaturePose; stretch?: CreaturePose };
@@ -490,7 +501,9 @@ export interface Cloud {
   tree?: Tree;
   /** 다정한의 띠 구름. 있으면 circles · spikes는 비어 있다 */
   photo?: Photo;
-  /** 유머있는의 새 · 박쥐. 있으면 circles · spikes는 비어 있다 */
+  /** 유머있는의 사진 새. 있으면 circles · spikes는 비어 있다 */
+  bird?: Bird;
+  /** 유머있는의 옛 기하 새 · 박쥐. 있으면 circles · spikes는 비어 있다 */
   creature?: Creature;
   /** 형상이 정한 글 배치. 없으면 들어온 줄 그대로 */
   layout?: TextLayout;
@@ -665,6 +678,11 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
     return photoFor(pr, rule, { x0: 0, y0: 0, x1: TW, y1: TH }, charCenters(lines, font, optic, scaleX, o.wdth, o.track ?? 0, TW, LH), R, undefined, ink);
   }
   // 말투가 없는 옛 글은 귀여운(새)이다 — 0이 귀여운, 1이 시니컬한(palettes.ts의 MANNER 차례)
+  if (pr.edge === 'creature' && pr.bird) {
+    const b = birdFor(o.manner === 1 ? 1 : 0, TW, TH, PAD, R, pr.bird);
+    if (b) return { persona: pr, rule, circles: [], spikes: [], bird: { id: b.id, kind: b.kind, face: b.face, pts: b.pts, fly: b.fly, scale: b.scale },
+      w: b.w, h: b.h, text: b.text };
+  }
   if (pr.edge === 'creature' && pr.creature) return creatureFor(pr, rule, TW, TH, R, o.manner === 1 ? 'bat' : 'bird');
 
   const circles: Circle[] = [];
@@ -1980,6 +1998,8 @@ export function cloudShape(cloud: Cloud): BoxShape {
   return {
     body: (_tw, _th, u) => ({ w: cloud.w * u, h: cloud.h * u }),
     tail: () => 0,
+    // 사진 새 — 글자만 text배(1.65). 새는 글 + 여백을 품는 크기라 글이 새 밖으로 넘친다(잘림은 CloudBubble)
+    ...(cloud.bird ? { scale: cloud.bird.scale } : {}),
     // 나무 — 글자는 크기 막대의 text배(1.4)로 앉고, 벽 한 칸에 맞춰 줄이지 않는다(나무가 바닥에 서서 제 키로 선다). 키 상한에
     // 걸린 나무만 글과 함께 shrink배로 줄인다
     ...(cloud.tree ? { scale: (cloud.persona.tree?.text ?? 1) * cloud.tree.shrink, free: true } : {})

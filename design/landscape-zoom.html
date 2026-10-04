@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>풍경 줌 인</title>
+<!-- 벽의 두 화면을 한 풍경의 두 장면으로 — 넓게(당당한 나무 · 차분한 돌의 글이 주인공, 새 · 구름은 글 없는 형태로) ↔ 한 곳을
+     확대(나무 꼭대기와 하늘 사이 — 수관은 글 없는 풍경, 새 · 구름의 글이 드러난다). 끊김 없는 확대 한 번으로 바뀐다(2026-10-02, 디자이너).
+     디자이너가 고른 값(10-02): 확대 ×3 · 걸리는 시간 8.4초(12T) · 넓은 장면 나무 · 돌 ×1.25. 넓은 장면에서 새 · 구름은 처음 판(③ ÷ 1.8) 크기 — 확대하면 새 글자 26 · 구름 36px.
+     실제 앱 부품으로 그린다. 개발 서버로 연다: npm run dev 뒤 http://localhost:5173/design/landscape-zoom.html
+     확대한 동안은 나무 꼭대기와 하늘의 띠를 옆으로 천천히 훑는다 — 새 · 구름이 벽 어디에 있든 한 번씩 화면에 든다(디자이너, ㄱ).
+     글 없는 마네킹 나무가 늘 서 있다 — 나무 글이 없어도 새가 앉을 곳 · 확대할 곳이 있다(디자이너).
+     ?s=1.25 — 넓은 장면의 나무 · 돌 크기(지금 벽 = 1) · ?trees=0 — 나무 글이 하나도 없을 때(마네킹만) -->
+<style>
+  html, body { margin: 0; height: 100%; background: var(--ink); overflow: hidden; }
+  body { display: block; min-height: 0; }
+  #bar { position: fixed; left: 0; right: 0; top: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center;
+    gap: var(--space-in-group); padding: var(--space-in-group) var(--space-group); background: var(--ink);
+    border-bottom: 1px solid var(--grey-800); color: var(--grey-300); font: 500 var(--fs-body-s) var(--text-font); }
+  #bar button, #bar a { font: inherit; color: var(--grey-200); background: transparent; border: 1px solid var(--grey-700);
+    border-radius: var(--r-button); padding: var(--s1) var(--s4); cursor: pointer; text-decoration: none; }
+  #bar .on { border-color: var(--paper); color: var(--paper); }
+  #bar .sep { width: 1px; align-self: stretch; background: var(--grey-800); margin: 0 var(--s2); }
+  #bar #now { margin-left: auto; color: var(--grey-500); }
+  #stage { position: absolute; left: 0; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden; background: var(--ink); }
+  #world { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; will-change: transform; }
+  #world > .wall-field { position: absolute; inset: 0; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <button id="go">지금 바꾸기</button>
+  <span class="sep"></span>
+  <span>걸리는 시간</span>
+  <button data-n="6">4.2초</button><button data-n="9">6.3초</button><button data-n="12" class="on">8.4초</button>
+  <span class="sep"></span>
+  <span>바뀌는 간격</span>
+  <button data-every="10">10초</button><button data-every="60" class="on">1분</button>
+  <span class="sep"></span>
+  <span>넓은 장면의 나무 · 돌</span>
+  <a data-q="s=1">지금 벽 ×1</a><a data-q="s=1.25">×1.25</a><a data-q="s=1.5">×1.5</a>
+  <span class="sep"></span>
+  <span>확대 배율</span>
+  <a data-q="k=1.8">×1.8</a><a data-q="k=2.4">×2.4</a><a data-q="k=3">×3</a>
+  <span class="sep"></span>
+  <span>나무 글</span>
+  <a data-q="trees=1">있음</a><a data-q="trees=0">없음(마네킹만)</a>
+  <span id="now"></span>
+</div>
+<div id="stage"><div id="world"><div class="wall-field" id="field"></div></div></div>
+<script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import '/src/styles/global.css';
+import '/src/styles/app.css';
+import CloudBubble from '/src/components/CloudBubble.tsx';
+import VoiceBubble from '/src/components/VoiceBubble.tsx';
+import { cloudForTone, cloudShape, linesFor } from '/src/lib/cloud.ts';
+import { bubbleAt, fillFromLegacySize, WALL_SIDE } from '/src/lib/fit.ts';
+import { fontMap } from '/src/lib/palettes.ts';
+import { ATTITUDE_COLORS } from '/src/lib/palettes-v2.ts';
+
+const h = React.createElement;
+const Q = new URLSearchParams(location.search);
+// 확대 배율 K — 확대한 장면이 고른 판 ③(수관 = 나무 ×1.8)이 되게. 넓은 장면의 나무 · 돌은 S배(지금 벽 = 1) — 확대하면 수관이 ×1.8S
+const W = 1920, H = 1080, SIDE = H * WALL_SIDE, K = +(Q.get('k') ?? 3), S = +(Q.get('s') ?? 1.25);
+// 확대한 장면에서 새 ×0.45 · 구름 ×1(벽의 크기) — 넓은 장면에서는 K만큼 작다
+// 넓은 장면의 새 · 구름 크기는 고정 — 처음 고른 판(확대 ×1.8에서 새 ×0.45 · 구름 ×1). 확대 배율을 키우면 확대 화면의 새 · 구름이 그만큼 커진다
+const BIRD = 0.45 / 1.8, CLOUD = 1 / 1.8;
+// 주소의 값을 바꿔 다시 연다 — 다른 값은 그대로 둔다
+document.querySelectorAll('[data-q]').forEach((a) => {
+  const [k, v] = a.dataset.q.split('='), cur = Q.get(k) ?? ({ s: '1.25', k: '3', trees: '1' })[k];
+  a.classList.toggle('on', cur === v);
+  a.href = '?' + new URLSearchParams({ ...Object.fromEntries(Q), [k]: v }).toString();
+});
+const css = getComputedStyle(document.documentElement);
+const tv = css.getPropertyValue('--t-hold').trim();
+const T = tv.endsWith('ms') ? parseFloat(tv) / 1000 : parseFloat(tv);
+// 이징 — --ease-standard를 그대로 읽어 푼다(글의 스러짐과 확대가 같은 진행을 쓰게 JS로 걷는다)
+const bez = css.getPropertyValue('--ease-standard').match(/\(([^)]*)\)/)[1].split(',').map(Number);
+const ease = (x) => {
+  const [x1, y1, x2, y2] = bez, f = (t, a, b) => 3 * a * t * (1 - t) ** 2 + 3 * b * t * t * (1 - t) + t ** 3;
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (f(m, x1, x2) < x) lo = m; else hi = m; }
+  return f((lo + hi) / 2, y1, y2);
+};
+const IDLE = { hop: [1, 6, 14], fluff: [2, 7, 16], peck: [1, 7, 16] };
+const PERCH = [12, 28], FLY_SPEED = 0.2, FLY_T = [4, 7], FLY_ARC = 0.25;
+const HOP_U = 0.6, FLUFF = 0.05, PECK = 12;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const bump = (x) => (x <= 0 || x >= 1 ? 0 : Math.sin(Math.PI * x));
+const smooth = (x) => { const t = Math.max(0, Math.min(1, x)); return t * t * (3 - 2 * t); };
+
+const stage = document.getElementById('stage'), world = document.getElementById('world'), field = document.getElementById('field');
+const fit = () => {
+  const top = document.getElementById('bar').offsetHeight, s = Math.min(innerWidth / W, (innerHeight - top) / H);
+  stage.style.top = top + 'px'; stage.style.transform = `scale(${s})`;
+};
+addEventListener('resize', fit);
+
+function make(text, font, manner, colorId, scale) {
+  const tone = { font, speed: 0.5, weight: 0.5, manner };
+  const lines = linesFor(text, tone), cloud = cloudForTone(lines, tone);
+  const box = bubbleAt(lines, cloudShape(cloud), fillFromLegacySize(undefined));
+  const col = ATTITUDE_COLORS[font].find((c) => c.id === colorId);
+  const side = SIDE * scale, w = side * box.w, hh = side * box.h;
+  const voice = h(VoiceBubble, { text: lines.join('\n'), bg: col.bg, color: col.text, fontFamily: fontMap[font], font, weight: 400, manner,
+    speed: 0.5, weightPos: 0.5, perChar: font === 'doran', fontSize: `${(side * box.unit).toFixed(3)}px` });
+  return { lines, cloud, box, col, side, w, h: hh, kx: w / cloud.w, ky: hh / cloud.h, voice };
+}
+/** 글은 넓은 장면에서 보이는 쪽(wide) — 나무 · 돌 — 과 확대한 장면에서 보이는 쪽 — 새 · 구름 */
+const texts = { wide: [], near: [] };
+function mount(m, kind, side, { still = true, voice = true, color = m.col.bg } = {}) {
+  const el = document.createElement('div');
+  el.className = `wall-block is-${kind}`;
+  field.append(el);
+  const root = createRoot(el);
+  const draw = (c) => root.render(h(CloudBubble, { cloud: c, box: m.box, side: `${m.side}px`, color, still }, voice ? m.voice : null));
+  draw(m.cloud);
+  if (voice) texts[side].push(el);
+  return { el, draw };
+}
+/** 마네킹 나무의 칠 — 글 없는 풍경이라 메시지 색이 아니다. 어둡게 물러난다 */
+const DARK = css.getPropertyValue('--grey-800').trim();
+const place = (el, x, y) => { el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`; };
+
+// ── 땅 — 당당한 나무 · 차분한 돌(지금 벽의 크기 × S). 나무는 글이 키를 정한다 ──
+const trees = [];
+function tree(text, colorId, x, dummy = 0) {
+  const m = make(text, 'ttoryeot', 0, colorId, S), d = mount(m, 'tree', 'wide', dummy ? { voice: false, color: DARK } : {});
+  // 마네킹은 키를 정해 준다(dummy = 벽 높이의 비율) — 글이 없으니 글이 정하는 키가 없다. 짧은 씨앗 글로 고른 나무는 키가 낮아
+  // 나무 글이 없을 때 확대할 띠가 바닥까지 내려갔다(돌이 확대 화면에 크게 들었다). 줄기 구간만 늘인다
+  if (dummy) {
+    const t = m.cloud.tree, F = (dummy * H) / m.ky;
+    if (F > t.full) m.cloud = { ...m.cloud, tree: { ...t, full: F, trunk: { ...t.trunk, k: 1 + (F - t.base) / Math.max(1e-6, t.trunk.y1 - t.trunk.y0) } } };
+    d.draw(m.cloud);
+  }
+  const tall = dummy ? Math.max(dummy * H, m.h) : Math.max((m.cloud.tree?.tall ?? 0) * H * S, m.h), top = H - tall, left = x - m.w / 2;
+  d.el.style.setProperty('--tree-ext', `${(tall - m.h).toFixed(0)}px`);
+  place(d.el, left, top);
+  requestAnimationFrame(() => { d.el.dataset.placed = '1'; });
+  trees.push({ m, x, left, top, dummy, tips: (m.cloud.tree?.perch ?? []).map(([px, py]) => [left + px * m.kx, top + py * m.ky]) });
+}
+function stone(text, colorId, x) {
+  const m = make(text, 'chabun', 0, colorId, S), d = mount(m, 'stone', 'wide');
+  place(d.el, x - m.w / 2, H - m.h);
+}
+// 마네킹 나무 먼저(뒤에 선다) — 모양은 글을 씨앗으로 고를 뿐, 글은 그리지 않는다
+tree('마네킹 하나', 'green', 130, 0.5);
+tree('마네킹 둘 셋', 'green', 880, 0.56);
+tree('마네킹 넷 다섯 여섯', 'green', 1820, 0.47);
+const TREES = Q.get('trees') !== '0';
+if (TREES) tree('오늘 발표 내가 다 찢고 온다', 'yellow', 390);
+stone('천천히 가도 괜찮다', 'stone', 650);
+if (TREES) tree('할 수 있다 진짜로 된다', 'green', 1100);
+stone('조용히 오래 생각했다', 'navy', 1340);
+if (TREES) tree('끝까지 간다', 'orange', 1580);
+
+// ── 확대할 띠 — 나무 꼭대기와 그 위 하늘(벽 폭 전체). 가장 높은 수관 꼭대기가 확대한 장면의 35% 높이에 오게.
+//    확대한 화면은 이 띠의 폭 1/K만 보인다 — 옆으로 훑는다(아래 카메라) ──
+const RW = W / K, RH = H / K, RXMAX = W - RW;
+// 나무 꼭대기 선 — x에서 그 위에 선 수관 중 가장 높은 꼭대기(없으면 이웃에서 잇는다). 확대 배율이 크면 화면이 띠의 좁은 곳만
+// 보여 높이가 다른 나무 꼭대기를 놓친다 — 카메라가 이 선을 따라(보이는 폭만큼 고르게 펴서) 오르내린다
+const topLine = (() => {
+  const N = 97, raw = Array.from({ length: N }, (_, i) => {
+    const x = (i / (N - 1)) * W, over = trees.filter((t) => Math.abs(x - t.x) < t.m.w * 0.35);
+    return over.length ? Math.min(...over.map((t) => t.top)) : NaN;
+  });
+  for (let i = 0; i < N; i++) if (Number.isNaN(raw[i])) {
+    let a = i, b = i; while (a >= 0 && Number.isNaN(raw[a])) a--; while (b < N && Number.isNaN(raw[b])) b++;
+    raw[i] = a < 0 ? raw[b] : b >= N ? raw[a] : raw[a] + ((raw[b] - raw[a]) * (i - a)) / (b - a);
+  }
+  return raw;
+})();
+// 확대한 화면에서 가장 높은 수관 꼭대기가 오는 높이(화면 위에서) — 수관은 아래 띠로 깔리고 위는 새 · 구름의 하늘이다.
+// 35%에 두었더니 확대 ×3에서 화면의 3분의 2가 수관이라 새 · 구름이 오히려 밀렸다
+const TOP_AT = +(Q.get('top') ?? 0.6);
+/** x 둘레(±r)에서 가장 높은 수관 꼭대기(px) */
+const topMin = (x, r) => {
+  const N = topLine.length; let m = Infinity;
+  for (let i = 0; i < N; i++) { const xi = (i / (N - 1)) * W; if (Math.abs(xi - x) <= r) m = Math.min(m, topLine[i]); }
+  return m === Infinity ? topLine[Math.round((Math.max(0, Math.min(W, x)) / W) * (N - 1))] : m;
+};
+/** 보이는 띠의 가운데가 x일 때 띠의 위(px) — 보이는 폭에서 가장 높은 꼭대기를 TOP_AT에 둔다. 키 큰 나무가 화면에 들어올 때
+    카메라가 툭 오르지 않게 이웃(보이는 폭의 절반)과 고르게 편다 */
+function ryAt(cx) {
+  const c = Math.max(RW / 2, Math.min(W - RW / 2, cx));
+  let s = 0, n = 0;
+  for (let k = -8; k <= 8; k++) { const x = c + (k / 8) * (RW / 4); s += topMin(x, RW / 2); n++; }
+  return Math.max(0, Math.min(H - RH, s / n - TOP_AT * RH));
+}
+const ry = Math.min(...Array.from({ length: 21 }, (_, i) => ryAt((i / 20) * W)));   // 가장 높은 띠 — 갈 곳 없는 새가 머무는 높이
+
+// ── 하늘 — 다정한 구름(넓은 장면에서는 글 없는 형태). 확대할 곳의 위쪽에서 천천히 오간다 ──
+const clouds = [];
+function cloud(text, colorId, fx, fy) {
+  const m = make(text, 'doran', 0, colorId, CLOUD), d = mount(m, 'cloud', 'near', { still: false });
+  // 그 자리(오가는 폭까지) 가장 높은 수관 꼭대기에서 새 키(뛰는 높이까지) 위가 구름 밑 — 확대한 화면 안에 들게
+  const x = fx * W, birdH = Math.max(...birds.map((b) => b.m.h)) * 1.3, roof = topMin(x, m.w / 2 + 0.04 * W) - birdH - 0.03 * RH - m.h;
+  clouds.push({ m, d, x, y: Math.max(ryAt(x) + 0.02 * RH, Math.min(roof, ryAt(x) + 0.3 * RH) - fy * RH), ph: rnd(0, Math.PI * 2), per: rnd(40, 60) });
+}
+
+// ── 새 — 넓은 장면에서는 글 없이 작게, 띠 안의 나무 끝(마네킹 포함) 어디든 앉는다 ──
+const birds = [];
+function bird(text, manner, colorId) {
+  const m = make(text, 'deulseok', manner, colorId, BIRD), B = m.cloud.bird;
+  if (!B) { console.warn('새가 아니다', text); return; }
+  const d = mount(m, 'bird', 'near');
+  const tcx = m.cloud.text.x + m.cloud.text.w / 2, mirror = (P) => P.map(([x, y]) => [2 * tcx - x, y]);
+  const contactOf = (P) => {
+    let a = 0, cx = 0;
+    for (let i = 0; i < P.length; i++) { const [x0, y0] = P[i], [x1, y1] = P[(i + 1) % P.length], q = x0 * y1 - x1 * y0; a += q; cx += (x0 + x1) * q; }
+    cx /= 3 * a;
+    let y = -Infinity;
+    for (let i = 0; i < P.length; i++) { const [ax, ay] = P[i], [bx, by] = P[(i + 1) % P.length];
+      if ((ax - cx) * (bx - cx) > 0 || ax === bx) continue; y = Math.max(y, ay + ((by - ay) * (cx - ax)) / (bx - ax)); }
+    return [cx, y];
+  };
+  const sit = { 1: B.face === 1 ? B.pts : mirror(B.pts), [-1]: B.face === -1 ? B.pts : mirror(B.pts) };
+  const fly = (k, f) => (f === B.face ? B.fly[k] : mirror(B.fly[k]));
+  const bx = [], by = [];
+  for (const f of [1, -1]) { const c = contactOf(sit[f]); for (const [x, y] of sit[f]) { bx.push((x - c[0]) * m.kx); by.push((y - c[1]) * m.ky); } }
+  const reach = [Math.min(...bx) * 1.08, Math.min(...by) * 1.08 - HOP_U * 1.5 * m.ky, Math.max(...bx) * 1.08, Math.max(0, ...by)];
+  birds.push({ m, B, d, sit, fly, reach, contact: { 1: contactOf(sit[1]), [-1]: contactOf(sit[-1]) },
+    face: Math.random() < 0.5 ? 1 : -1, mode: 'perch', spot: null, pos: [0, 0], until: 0, fl: null, t0s: {}, next: {}, hopTurn: false, sig: '' });
+}
+bird('오늘도 수고했어', 0, 'neon-green');
+bird('배고프다 밥 먹으러 갈 사람', 0, 'hot-pink');
+bird('월요일이 또 왔네', 1, 'electric');
+bird('내일 시험인데 아직 한 장도 못 봤다', 1, 'magenta');
+// 구름은 새 뒤에 — 새 머리 높이를 알아야 자리를 잡는다(벽에서도 구름이 새 위에 그려진다)
+cloud('오늘 하늘 진짜 예쁘다', 'coral', 0.16, 0.06);
+cloud('다들 밥은 먹고 다니지', 'lavender', 0.52, 0.03);
+cloud('내일도 여기서 보자', 'peach', 0.84, 0.18);
+
+// 앉을 자리 — 띠 안의 나무 끝(가로는 벽 전체 — 훑는 동안 다 지나간다, 세로는 확대했을 때 보이는 높이)
+const spots = trees.flatMap((t) => t.tips.map((p) => ({ host: t, p }))).filter((s) => { const y0 = ryAt(s.p[0]); return s.p[1] > y0 + 0.15 * RH && s.p[1] < y0 + 0.95 * RH; });
+const boxAt = (b, p) => [p[0] + b.reach[0], p[1] + b.reach[1], p[0] + b.reach[2], p[1] + b.reach[3]];
+const meet = (a, z) => Math.min(a[2], z[2]) > Math.max(a[0], z[0]) && Math.min(a[3], z[3]) > Math.max(a[1], z[1]);
+const spotOk = (b, s) => { const r = boxAt(b, s.p); return r[0] >= 0 && r[2] <= W && r[1] >= ryAt(s.p[0]) && !birds.some((o) => o !== b && o.spot && meet(r, boxAt(o, o.spot.p))); };
+const crowd = (b, s) => birds.filter((o) => o !== b && o.spot?.host === s.host).length + (s.host === b.spot?.host ? 0.5 : 0);
+function pick(b) {
+  const ok = spots.filter((s) => s !== b.spot && spotOk(b, s));
+  ok.sort(() => Math.random() - 0.5).sort((a, z) => crowd(b, a) - crowd(b, z));
+  return ok[0] ?? null;
+}
+birds.forEach((b) => { const s = pick(b); b.spot = s; b.pos = s ? s.p.slice() : [W / 2, ry + RH / 3]; b.until = performance.now() / 1000 + rnd(...PERCH) * T; });
+function takeOff(b, sec) {
+  const s = pick(b);
+  // 갈 곳이 없으면 조금 더 앉아 있는다(안 그러면 다음 프레임에 또 날려다 끝없이 되풀이했다)
+  if (!s) { b.until = sec + rnd(...PERCH) * T; return; }
+  const from = b.pos.slice(), to = s.p.slice(), dist = Math.hypot(to[0] - from[0], to[1] - from[1]);
+  b.fl = { from, to, t0: sec, dur: Math.min(FLY_T[1] * T, Math.max(FLY_T[0] * T, dist / (FLY_SPEED * RH))) };
+  b.spot = s; b.mode = 'fly'; b.face = to[0] >= from[0] ? 1 : -1; b.t0s = {};
+}
+function phase(b, name, sec) {
+  const [dur, a, z] = IDLE[name];
+  if (b.mode !== 'perch') { b.t0s[name] = undefined; return -1; }
+  if (b.next[name] === undefined) b.next[name] = sec + rnd(0.5, z * T);
+  if (sec >= b.next[name] && b.t0s[name] === undefined) { b.t0s[name] = sec; if (name === 'hop') b.hopTurn = Math.random() < 0.35; }
+  const t0 = b.t0s[name];
+  if (t0 === undefined) return -1;
+  const x = (sec - t0) / (dur * T);
+  if (x >= 1) { b.t0s[name] = undefined; b.next[name] = sec + rnd(a * T, z * T); if (name === 'hop' && b.hopTurn) b.face = -b.face; return -1; }
+  return x;
+}
+const turnAbout = (P, deg, o) => { const r = (deg * Math.PI) / 180, c = Math.cos(r), s = Math.sin(r);
+  return P.map(([x, y]) => [o[0] + (x - o[0]) * c - (y - o[1]) * s, o[1] + (x - o[0]) * s + (y - o[1]) * c]); };
+const scaleAbout = (P, k, o) => P.map(([x, y]) => [o[0] + (x - o[0]) * k, o[1] + (y - o[1]) * k]);
+function frame(b, sec) {
+  let P, dy = 0, face = b.face, sig;
+  if (b.mode === 'fly') {
+    const e = (sec - b.fl.t0) / b.fl.dur;
+    if (e >= 1) { b.mode = 'perch'; b.pos = b.fl.to.slice(); b.fl = null; b.until = sec + rnd(...PERCH) * T; return frame(b, sec); }
+    // 나는 길은 확대할 곳의 크기로(벽의 flyAt을 RH에 맞춰) — 확대하면 벽에서 나는 것과 같은 높이로 솟는다
+    const { from, to } = b.fl, dist = Math.hypot(to[0] - from[0], to[1] - from[1]), lift = Math.min(FLY_ARC * dist + 0.05 * RH, Math.min(from[1], to[1]) - ryAt((from[0] + to[0]) / 2) - 0.1 * RH);
+    const cx = (from[0] + to[0]) / 2, cy = Math.min(from[1], to[1]) - Math.max(0, lift);
+    b.pos = [(1 - e) ** 2 * from[0] + 2 * (1 - e) * e * cx + e * e * to[0], (1 - e) ** 2 * from[1] + 2 * (1 - e) * e * cy + e * e * to[1]];
+    const k = ['up', 'mid', 'down', 'mid'][Math.floor((sec - b.fl.t0) / (T / 4)) % 4];
+    P = b.fly(k, face); sig = 'f' + k + face;
+  } else {
+    if (sec >= b.until) { takeOff(b, sec); return frame(b, sec); }
+    const hp = phase(b, 'hop', sec), fp = phase(b, 'fluff', sec), pp = phase(b, 'peck', sec);
+    if (hp > 0.5 && b.hopTurn) face = -face;
+    P = b.sit[face];
+    const o = b.contact[face];
+    if (fp >= 0) P = scaleAbout(P, 1 + FLUFF * bump(fp), o);
+    if (pp >= 0) P = turnAbout(P, face * PECK * bump(pp), o);
+    if (hp >= 0) dy = -HOP_U * b.m.ky * bump(hp);
+    sig = `p${face}${fp >= 0 ? fp.toFixed(3) : ''}${pp >= 0 ? pp.toFixed(3) : ''}`;
+  }
+  const c = b.contact[face];
+  place(b.d.el, b.pos[0] - c[0] * b.m.kx, b.pos[1] - c[1] * b.m.ky + dy);
+  if (sig !== b.sig) { b.sig = sig; b.d.draw({ ...b.m.cloud, bird: { ...b.B, pts: P } }); }
+}
+
+// ── 카메라 — 확대 진행 z(0 = 넓게, 1 = 확대, 배율 K^z, 곱으로 키워야 고르게 다가온다) · 훑는 자리 rx(보이는 띠의 왼쪽, 0 ~ RXMAX).
+//    확대하는 동안(들어가기 → 머물기 → 빠져나오기 끝까지) rx가 한 방향으로 고르게 흐르고, 다음 번엔 반대로 흐른다.
+//    들어가고 나오는 동안에도 흐르니 멈췄다 출발하는 이음매가 없다 — 빠르기는 확대가 느는 만큼만 눈에 보인다.
+//    나무 · 돌의 글은 확대되며 스러지고, 새 · 구름의 글은 배어 나온다 ──
+let zFrom = 0, zTo = 0, zt0 = -1e9, dur = 12, every = 60, lastSwitch = performance.now() / 1000, z = 0;
+let panT0 = -1e9, panDir = -1, panLen = 1;
+const textEl = (el) => el.querySelector('.cloud-text');
+function apply(zv, rxv) {
+  const s = K ** zv, u = (1 - 1 / s) / (1 - 1 / K);
+  world.style.transform = `scale(${s.toFixed(5)}) translate(${(-u * rxv).toFixed(2)}px, ${(-u * ryAt(rxv + RW / 2)).toFixed(2)}px)`;
+  const wide = 1 - smooth((zv - 0.1) / 0.5), near = smooth((zv - 0.45) / 0.45);
+  for (const el of texts.wide) { const t = textEl(el); if (t) t.style.opacity = wide.toFixed(3); }
+  for (const el of texts.near) { const t = textEl(el); if (t) t.style.opacity = near.toFixed(3); }
+}
+// 새 · 구름 글이 하나도 없으면 확대하지 않는다 — 들어가 봐야 빈 하늘
+const canZoom = () => birds.length + clouds.length > 0;
+function flip() {
+  const sec = performance.now() / 1000;
+  lastSwitch = sec;
+  if (zTo === 0 && !canZoom()) return;
+  zFrom = z; zTo = 1 - zTo; zt0 = sec;
+  if (zTo === 1) { panT0 = sec; panDir = -panDir; panLen = every + dur * T; }
+}
+
+if (Q.has('label')) {
+  // 판 위에 값 — 글자 크기(벽 1080 기준 px): 넓은 장면의 나무 · 돌, 확대한 장면의 새 · 구름
+  const em = (scale, m) => SIDE * scale * m.box.unit;
+  const avg = (a) => (a.reduce((x, y) => x + y, 0) / a.length).toFixed(0);
+  const lab = document.createElement('div');
+  lab.textContent = `나무 · 돌 ×${S} · 확대 ×${K} — 넓게: 나무 글자 ${avg(trees.filter((t) => !t.dummy).map((t) => em(S, t.m)))}px · 확대: 새 ${avg(birds.map((b) => em(BIRD * K, b.m)))} · 구름 ${avg(clouds.map((c) => em(CLOUD * K, c.m)))}px`;
+  Object.assign(lab.style, { position: 'absolute', left: '24px', top: '20px', color: 'var(--paper)', font: '500 32px var(--text-font)', zIndex: 3 });
+  stage.append(lab);
+}
+const now = document.getElementById('now');
+const loop = (t) => {
+  const sec = t / 1000;
+  z = zFrom + (zTo - zFrom) * ease(Math.min(1, (sec - zt0) / (dur * T)));
+  const pp = Math.max(0, Math.min(1, (sec - panT0) / panLen));
+  apply(z, panDir > 0 ? pp * RXMAX : (1 - pp) * RXMAX);
+  for (const b of birds) frame(b, sec);
+  for (const c of clouds) place(c.d.el, c.x - c.m.w / 2 + 0.04 * W * Math.sin((2 * Math.PI * sec) / c.per + c.ph), c.y);
+  const left = Math.max(0, every - (sec - lastSwitch));
+  if (left === 0) flip();
+  now.textContent = `지금 ${zTo ? '확대' : '넓게'} · ${Math.ceil(left)}초 뒤 바뀜`;
+  requestAnimationFrame(loop);
+};
+requestAnimationFrame(loop);
+fit();
+
+const group = (attr, set) => document.querySelectorAll(`button[${attr}]`).forEach((el) => el.addEventListener('click', () => {
+  document.querySelectorAll(`button[${attr}]`).forEach((x) => x.classList.toggle('on', x === el)); set(el.getAttribute(attr));
+}));
+document.getElementById('go').addEventListener('click', flip);
+group('data-n', (v) => { dur = +v; });
+group('data-every', (v) => { every = +v; lastSwitch = performance.now() / 1000; });
+</script>
+</body>
+</html>

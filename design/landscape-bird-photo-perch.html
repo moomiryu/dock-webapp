@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>앉은 새 몸짓</title>
+<!-- 앉은 사진 새의 몸짓 견본 — 벽 크기(1920×1080)에 실제 앱 부품(CloudBubble · VoiceBubble · 나무 · 돌)으로.
+     개발 서버로 연다: npm run dev 뒤 http://localhost:5173/design/landscape-bird-photo-perch.html
+     몸짓은 몸 전체에만 입힌다(사진 새는 부품이 없다) — 콩콩(셋에 하나꼴 공중에서 돌아섬) · 부풀기 · 숙이기.
+     세기 1 = 기하 새가 고른 값(콩콩 0.6u · 부풀기 5% · 숙이기 12°), 간격 · 시간은 벽의 IDLE 그대로. 글은 바로 서고, 새 윤곽이 글을 자른다 -->
+<style>
+  html, body { margin: 0; height: 100%; background: var(--ink); overflow: hidden; }
+  body { display: block; min-height: 0; }
+  #bar { position: fixed; left: 0; right: 0; top: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center;
+    gap: var(--space-in-group); padding: var(--space-in-group) var(--space-group); background: var(--ink);
+    border-bottom: 1px solid var(--grey-800); color: var(--grey-300); font: 500 var(--fs-body-s) var(--text-font); }
+  #bar button { font: inherit; color: var(--grey-200); background: transparent; border: 1px solid var(--grey-700);
+    border-radius: var(--r-button); padding: var(--s1) var(--s4); cursor: pointer; }
+  #bar button.on { border-color: var(--paper); color: var(--paper); }
+  #bar .sep { width: 1px; align-self: stretch; background: var(--grey-800); margin: 0 var(--s2); }
+  #stage { position: absolute; left: 0; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden; background: var(--ink); }
+</style>
+</head>
+<body>
+<div id="bar">
+  <span>다 같이</span>
+  <button data-go="hop">콩콩</button><button data-go="turn">콩콩 + 돌아서기</button><button data-go="fluff">부풀기</button><button data-go="peck">숙이기</button>
+  <span class="sep"></span>
+  <span>세기</span>
+  <button data-k="0.5">작게 ×0.5</button><button data-k="1" class="on">지금 ×1</button><button data-k="1.5">크게 ×1.5</button>
+  <span class="sep"></span>
+  <button data-go="fly">자리 바꾸기</button>
+  <span class="sep"></span>
+  <span>저절로</span>
+  <button id="autoIdle" class="on">몸짓</button><button id="autoFly" class="on">날기</button>
+</div>
+<div id="stage"><div class="wall-field" id="field"></div></div>
+<script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import '/src/styles/global.css';
+import '/src/styles/app.css';
+import CloudBubble from '/src/components/CloudBubble.tsx';
+import VoiceBubble from '/src/components/VoiceBubble.tsx';
+import { cloudForTone, cloudShape, linesFor } from '/src/lib/cloud.ts';
+import { bubbleAt, fillFromLegacySize, WALL_SIDE } from '/src/lib/fit.ts';
+import { fontMap } from '/src/lib/palettes.ts';
+import { ATTITUDE_COLORS } from '/src/lib/palettes-v2.ts';
+
+const h = React.createElement;
+// 처음 값은 디자이너가 고른 판(10-01) — 새 ×0.45(벽은 아직 0.68) · 나무 수관 ×1.8(글자는 그대로, 수관만 키워 밑 8%를 바닥에 묻는다 —
+// 줄기는 화면 밖, 클로즈업). 주소 끝의 값으로 바꿔 본다 — ?bird=0.5 · ?tree=1(지금 벽의 나무) · ?seed=3(자리 고르기를 같게) · ?label(값을 판 위에 적는다)
+const Q = new URLSearchParams(location.search);
+const W = 1920, H = 1080, SIDE = H * WALL_SIDE, CREATURE_SCALE = +(Q.get('bird') ?? 0.45), CROWN = +(Q.get('tree') ?? 1.8);
+const SINK = +(Q.get('sink') ?? 0.08), TRUNK = +(Q.get('trunk') ?? 0);
+const random = Q.has('seed') ? ((a) => () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; })(+Q.get('seed')) : Math.random;
+// --t-hold — 빌드는 700ms를 .7s로 적기도 한다(단위를 보고 읽는다)
+const tv = getComputedStyle(document.documentElement).getPropertyValue('--t-hold').trim();
+const T = tv.endsWith('ms') ? parseFloat(tv) / 1000 : parseFloat(tv);
+// 벽의 값 그대로 — 몸짓마다 [걸리는 시간, 다음까지 최소, 최대](T 배수) · 머무는 시간 · 나는 빠르기
+const IDLE = { hop: [1, 6, 14], fluff: [2, 7, 16], peck: [1, 7, 16] };
+const PERCH = [12, 28], FLY_SPEED = 0.2, FLY_T = [4, 7], FLY_ARC = 0.25;
+// 세기 1 = 기하 새의 값
+const HOP_U = 0.6, FLUFF = 0.05, PECK = 12;
+const rnd = (a, b) => a + random() * (b - a);
+const bump = (x) => (x <= 0 || x >= 1 ? 0 : Math.sin(Math.PI * x));
+
+const field = document.getElementById('field');
+const stage = document.getElementById('stage');
+const fit = () => {
+  const top = document.getElementById('bar').offsetHeight, s = Math.min(innerWidth / W, (innerHeight - top) / H);
+  stage.style.top = top + 'px'; stage.style.transform = `scale(${s})`;
+};
+addEventListener('resize', fit);
+
+/** 글 하나를 벽의 말로 — 벽(WallBlock)과 같은 계산 */
+function make(text, font, manner, colorId, scale, textScale = scale) {
+  const tone = { font, speed: 0.5, weight: 0.5, manner };
+  const lines = linesFor(text, tone), cloud = cloudForTone(lines, tone);
+  const box = bubbleAt(lines, cloudShape(cloud), fillFromLegacySize(undefined));
+  const col = ATTITUDE_COLORS[font].find((c) => c.id === colorId);
+  const side = SIDE * scale, w = side * box.w, hh = side * box.h;
+  const voice = h(VoiceBubble, { text: lines.join('\n'), bg: col.bg, color: col.text, fontFamily: fontMap[font], font, weight: 400, manner,
+    speed: 0.5, weightPos: 0.5, fontSize: `${(SIDE * textScale * box.unit).toFixed(3)}px` });
+  return { lines, cloud, box, col, side, w, h: hh, kx: w / cloud.w, ky: hh / cloud.h, voice, em: SIDE * textScale * box.unit };
+}
+function mount(m, kind, cloud = m.cloud) {
+  const el = document.createElement('div');
+  el.className = `wall-block is-${kind}`;
+  field.append(el);
+  const root = createRoot(el);
+  const draw = (c) => root.render(h(CloudBubble, { cloud: c, box: m.box, side: `${m.side}px`, color: m.col.bg, still: true }, m.voice));
+  draw(cloud);
+  return { el, draw };
+}
+
+// ── 풍경 — 나무 둘(당당한) · 돌 둘(차분한). 바닥에 선다 ──
+const hosts = [];
+function tree(text, colorId, x) {
+  const m = make(text, 'ttoryeot', 0, colorId, CROWN, 1), d = mount(m, 'tree');
+  // 클로즈업이면 수관 밑이 바닥에 묻힌다(?sink = 상자 키의 비율, 글은 늘 보이게) — 또는 줄기가 조금 보인다(?trunk = 벽 높이의 비율)
+  const tb0 = (m.cloud.text.y + m.cloud.text.h) / m.cloud.h, sink = Math.min(SINK, 1 - tb0 - 0.04);
+  const tall = CROWN === 1 ? Math.max((m.cloud.tree?.tall ?? 0) * H, m.h) : TRUNK > 0 ? m.h + TRUNK * H : m.h * (1 - sink), top = H - tall;
+  d.el.style.setProperty('--tree-ext', `${Math.max(0, tall - m.h).toFixed(0)}px`);
+  d.el.style.transform = `translate3d(${(x - m.w / 2).toFixed(1)}px, ${top.toFixed(1)}px, 0)`;
+  requestAnimationFrame(() => { d.el.dataset.placed = '1'; });
+  const left = x - m.w / 2, tb = top + (m.cloud.text.y + m.cloud.text.h) * m.ky;
+  hosts.push({ kind: 'tree', x, left, top, m, tips: (m.cloud.tree?.perch ?? []).map(([px, py]) => [left + px * m.kx, top + py * m.ky]), textBottom: tb, text: textRect(m, left, top) });
+}
+/** 글 상자(px) — 새가 가리면 안 되는 곳 */
+function textRect(m, left, top) {
+  const t = m.cloud.text;
+  return [left + t.x * m.kx, top + t.y * m.ky, left + (t.x + t.w) * m.kx, top + (t.y + t.h) * m.ky];
+}
+function stone(text, colorId, x) {
+  const m = make(text, 'chabun', 0, colorId, 1), d = mount(m, 'stone');
+  const top = H - m.h, left = x - m.w / 2;
+  d.el.style.transform = `translate3d(${left.toFixed(1)}px, ${top.toFixed(1)}px, 0)`;
+  const P = m.cloud.stone.pts.map(([px, py]) => [left + px * m.kx, top + py * m.ky]);
+  // 윤곽의 윗변 높이 — x에서(벽의 topAt)
+  const topAt = (lx) => { let best = Infinity; for (let i = 0; i < P.length; i++) { const [ax, ay] = P[i], [bx, by] = P[(i + 1) % P.length];
+    if ((ax - lx) * (bx - lx) > 0 || ax === bx) continue; best = Math.min(best, ay + ((by - ay) * (lx - ax)) / (bx - ax)); } return best; };
+  hosts.push({ kind: 'stone', x, left, top, m, topAt, text: textRect(m, left, top) });
+}
+tree('오늘 발표 내가 다 찢고 온다', 'yellow', 300);
+stone('천천히 가도 괜찮다', 'stone', 720);
+tree('할 수 있다 진짜로 된다', 'green', 1100);
+stone('조용히 오래 생각했다', 'navy', 1460);
+tree('끝까지 간다', 'orange', 1740);
+
+// ── 앉을 자리 — 벽(spotsFor)과 같은 셋: 나무 끝 · 나무 중턱(글 아래 ~ 벽 밑 20% 위, 나무 앞) · 돌 윗변 ──
+const spots = [];
+function addSpots(birdH) {
+  for (const o of hosts) {
+    if (o.kind === 'tree') {
+      o.tips.forEach((p) => spots.push({ kind: 'tip', host: o, p }));
+      const lo = o.textBottom + birdH, hi = H * 0.8;
+      for (const f of [-0.22, 0.24]) if (hi > lo) spots.push({ kind: 'mid', host: o, p: [o.x + (f * o.m.w) / 2, rnd(lo, hi)] });
+    } else for (const f of [-0.3, 0, 0.3]) { const x = o.x + f * o.m.w / 2; spots.push({ kind: 'stone', host: o, p: [x, o.topAt(x)] }); }
+  }
+}
+
+// ── 새 — 귀여운(둥근 새) 셋 · 시니컬한(까마귀) 셋 ──
+const birds = [];
+function bird(text, manner, colorId) {
+  const m = make(text, 'deulseok', manner, colorId, CREATURE_SCALE);
+  const B = m.cloud.bird;
+  if (!B) { console.warn('새가 아니다', text); return; }
+  const d = mount(m, 'bird');
+  const tcx = m.cloud.text.x + m.cloud.text.w / 2;
+  const mirror = (P) => P.map(([x, y]) => [2 * tcx - x, y]);
+  // 배가 닿는 점 — 무게중심 바로 아래의 윤곽 밑선. 가장 낮은 점으로 했더니 꼬리가 처진 새는 꼬리 끝으로 섰다.
+  // 다리가 없으니 배로 앉고, 꼬리는 앉은 자리 아래로 늘어진다
+  const contactOf = (P) => {
+    let a = 0, cx = 0;
+    for (let i = 0; i < P.length; i++) { const [x0, y0] = P[i], [x1, y1] = P[(i + 1) % P.length], q = x0 * y1 - x1 * y0; a += q; cx += (x0 + x1) * q; }
+    cx /= 3 * a;
+    let y = -Infinity;
+    for (let i = 0; i < P.length; i++) { const [ax, ay] = P[i], [bx, by] = P[(i + 1) % P.length];
+      if ((ax - cx) * (bx - cx) > 0 || ax === bx) continue; y = Math.max(y, ay + ((by - ay) * (cx - ax)) / (bx - ax)); }
+    return [cx, y];
+  };
+  const sit = { 1: B.face === 1 ? B.pts : mirror(B.pts), [-1]: B.face === -1 ? B.pts : mirror(B.pts) };
+  const fly = (k, f) => (f === B.face ? B.fly[k] : mirror(B.fly[k]));
+  // 앉은 몸이 차지하는 테두리(배 닿는 점에서, px) — 양쪽 방향 · 크게 부푼 몸 · 크게 뛴 높이까지 합쳐(벽의 reach)
+  const bx = [], by = [];
+  for (const f of [1, -1]) { const c = contactOf(sit[f]); for (const [x, y] of sit[f]) { bx.push((x - c[0]) * m.kx); by.push((y - c[1]) * m.ky); } }
+  const reach = [Math.min(...bx) * 1.08, Math.min(...by) * 1.08 - HOP_U * 1.5 * m.ky, Math.max(...bx) * 1.08, Math.max(0, ...by)];
+  birds.push({ m, B, d, mirror, contact: { 1: contactOf(sit[1]), [-1]: contactOf(sit[-1]) }, sit, fly, reach,
+    face: random() < 0.5 ? 1 : -1, mode: 'perch', spot: null, pos: [0, 0], until: 0, fl: null, t0s: {}, next: {}, hopTurn: false, sig: '' });
+}
+bird('오늘도 수고했어', 0, 'neon-green');
+bird('배고프다 밥 먹으러 갈 사람', 0, 'hot-pink');
+bird('월요일이 또 왔네', 1, 'electric');
+bird('내일 시험인데 아직 한 장도 못 봤다', 1, 'magenta');
+addSpots(Math.max(...birds.map((b) => b.m.h)));
+if (Q.has('label')) {
+  // 판 위에 값 — 글자 크기는 벽 1080 기준 px(한 칸 = 글자 몸)
+  const avg = (a) => (a.reduce((x, y) => x + y, 0) / a.length).toFixed(0);
+  const lab = document.createElement('div');
+  lab.textContent = `새 ×${CREATURE_SCALE} · 나무 수관 ×${CROWN}${CROWN === 1 ? '' : TRUNK > 0 ? ` · 줄기 ${Math.round(TRUNK * 100)}% 보임` : ` · 수관 밑 ${Math.round(SINK * 100)}% 묻힘`} — 글자: 새 ${avg(birds.map((b) => b.m.em))} · 나무 ${avg(hosts.filter((o) => o.kind === 'tree').map((o) => o.m.em))} · 돌 ${avg(hosts.filter((o) => o.kind === 'stone').map((o) => o.m.em))}px`;
+  Object.assign(lab.style, { position: 'absolute', left: '24px', top: '20px', color: 'var(--paper)', font: '500 32px var(--text-font)', zIndex: 3 });
+  stage.append(lab);
+}
+
+// 앉을 수 있나 — 벽 안에 들고, 남의 글(나무 · 돌)을 안 가리고, 다른 새(앉은 자리 · 가는 자리)와 안 겹친다(벽의 spotOk)
+const boxAt = (b, p) => [p[0] + b.reach[0], p[1] + b.reach[1], p[0] + b.reach[2], p[1] + b.reach[3]];
+const meet = (a, z) => Math.min(a[2], z[2]) > Math.max(a[0], z[0]) && Math.min(a[3], z[3]) > Math.max(a[1], z[1]);
+function spotOk(b, s) {
+  const r = boxAt(b, s.p);
+  if (r[0] < 0 || r[2] > W || r[1] < 0) return false;
+  if (hosts.some((o) => meet(r, o.text))) return false;
+  return !birds.some((o) => o !== b && o.spot && meet(r, boxAt(o, o.spot.p)));
+}
+// 몰리지 않게 — 다른 새가 앉은 나무 · 돌은 뒤로, 지금 앉은 나무 · 돌도 뒤로(날아도 제자리 옆으로만 옮겨 앉았다)
+const crowd = (b, s) => birds.filter((o) => o !== b && o.spot?.host === s.host).length + (s.host === b.spot?.host ? 0.5 : 0);
+function pick(b, kinds) {
+  const ok = spots.filter((s) => s !== b.spot && (!kinds || kinds.includes(s.kind)) && spotOk(b, s));
+  ok.sort(() => random() - 0.5).sort((a, z) => crowd(b, a) - crowd(b, z));
+  return ok[0] ?? null;
+}
+
+// 처음 자리 — 나무 끝 · 돌 위를 번갈아
+birds.forEach((b, i) => {
+  const s = pick(b, [i % 2 ? 'stone' : 'tip']) ?? pick(b);
+  b.spot = s; b.pos = s ? s.p.slice() : [W / 2, H / 3]; b.until = performance.now() / 1000 + rnd(...PERCH) * T;
+});
+
+let K = 1, autoIdle = !Q.has('still'), autoFly = !Q.has('still');
+function takeOff(b, sec) {
+  const s = pick(b);
+  // 갈 곳이 없으면 조금 더 앉아 있는다(안 그러면 다음 프레임에 또 날려다 끝없이 되풀이했다)
+  if (!s) { b.until = sec + rnd(...PERCH) * T; return; }
+  const from = b.pos.slice(), to = s.p.slice(), dist = Math.hypot(to[0] - from[0], to[1] - from[1]);
+  b.fl = { from, to, t0: sec, dur: Math.min(FLY_T[1] * T, Math.max(FLY_T[0] * T, dist / (FLY_SPEED * H))) };
+  b.spot = s; b.mode = 'fly'; b.face = to[0] >= from[0] ? 1 : -1; b.t0s = {};
+}
+function phase(b, name, sec) {
+  const [dur, a, z] = IDLE[name];
+  if (b.mode !== 'perch') { b.t0s[name] = undefined; return -1; }
+  if (b.next[name] === undefined) b.next[name] = sec + rnd(0.5, z * T);
+  if (autoIdle && sec >= b.next[name] && b.t0s[name] === undefined) { b.t0s[name] = sec; if (name === 'hop') b.hopTurn = random() < 0.35; }
+  const t0 = b.t0s[name];
+  if (t0 === undefined) return -1;
+  const x = (sec - t0) / (dur * T);
+  if (x >= 1) { b.t0s[name] = undefined; b.next[name] = sec + rnd(a * T, z * T); if (name === 'hop' && b.hopTurn) b.face = -b.face; return -1; }
+  return x;
+}
+const turnAbout = (P, deg, o) => { const r = (deg * Math.PI) / 180, c = Math.cos(r), s = Math.sin(r);
+  return P.map(([x, y]) => [o[0] + (x - o[0]) * c - (y - o[1]) * s, o[1] + (x - o[0]) * s + (y - o[1]) * c]); };
+const scaleAbout = (P, k, o) => P.map(([x, y]) => [o[0] + (x - o[0]) * k, o[1] + (y - o[1]) * k]);
+
+function frame(b, sec) {
+  let P, dy = 0, face = b.face, sig;
+  if (b.mode === 'fly') {
+    const e = (sec - b.fl.t0) / b.fl.dur;
+    if (e >= 1) { b.mode = 'perch'; b.pos = b.fl.to.slice(); b.fl = null; b.until = sec + rnd(...PERCH) * T; return frame(b, sec); }
+    // 솟았다 내려앉는 2차 곡선(벽의 flyAt) · 날갯짓 한 번 = T, 올림 → 수평 → 내림 → 수평
+    const { from, to } = b.fl, dist = Math.hypot(to[0] - from[0], to[1] - from[1]), lift = FLY_ARC * dist + 0.05 * H;
+    const cx = (from[0] + to[0]) / 2, cy = Math.min(from[1], to[1]) - lift;
+    b.pos = [(1 - e) ** 2 * from[0] + 2 * (1 - e) * e * cx + e * e * to[0], (1 - e) ** 2 * from[1] + 2 * (1 - e) * e * cy + e * e * to[1]];
+    const k = ['up', 'mid', 'down', 'mid'][Math.floor((sec - b.fl.t0) / (T / 4)) % 4];
+    P = b.fly(k, face); sig = 'f' + k + face;
+  } else {
+    if (autoFly && sec >= b.until) { takeOff(b, sec); return frame(b, sec); }
+    const hp = phase(b, 'hop', sec), fp = phase(b, 'fluff', sec), pp = phase(b, 'peck', sec);
+    if (hp > 0.5 && b.hopTurn) face = -face;
+    P = b.sit[face];
+    const o = b.contact[face];
+    if (fp >= 0) P = scaleAbout(P, 1 + FLUFF * K * bump(fp), o);
+    if (pp >= 0) P = turnAbout(P, face * PECK * K * bump(pp), o);
+    if (hp >= 0) dy = -HOP_U * K * b.m.ky * bump(hp);
+    sig = `p${face}${fp >= 0 ? fp.toFixed(3) : ''}${pp >= 0 ? pp.toFixed(3) : ''}`;
+  }
+  const c = b.contact[face];
+  b.d.el.style.transform = `translate3d(${(b.pos[0] - c[0] * b.m.kx).toFixed(1)}px, ${(b.pos[1] - c[1] * b.m.ky + dy).toFixed(1)}px, 0)`;
+  if (sig !== b.sig) { b.sig = sig; b.d.draw({ ...b.m.cloud, bird: { ...b.B, pts: P } }); }
+}
+const loop = (t) => { const sec = t / 1000; for (const b of birds) frame(b, sec); requestAnimationFrame(loop); };
+requestAnimationFrame(loop);
+fit();
+
+// ── 조작 ──
+document.querySelectorAll('[data-k]').forEach((el) => el.addEventListener('click', () => {
+  K = parseFloat(el.dataset.k); document.querySelectorAll('[data-k]').forEach((x) => x.classList.toggle('on', x === el));
+}));
+document.querySelectorAll('[data-go]').forEach((el) => el.addEventListener('click', () => {
+  const sec = performance.now() / 1000, go = el.dataset.go;
+  for (const b of birds) {
+    if (go === 'fly') { if (b.mode === 'perch') takeOff(b, sec); continue; }
+    if (b.mode !== 'perch') continue;
+    const name = go === 'turn' ? 'hop' : go;
+    b.t0s[name] = sec; if (name === 'hop') b.hopTurn = go === 'turn';
+  }
+}));
+const toggle = (id, set) => { const el = document.getElementById(id); el.addEventListener('click', () => { el.classList.toggle('on'); set(el.classList.contains('on')); }); };
+toggle('autoIdle', (v) => { autoIdle = v; });
+toggle('autoFly', (v) => { autoFly = v; const sec = performance.now() / 1000; for (const b of birds) b.until = sec + rnd(...PERCH) * T; });
+</script>
+</body>
+</html>

@@ -321,7 +321,7 @@ export function personaFor(font?: string): Persona {
    한글 고정폭 0.92 · 띄어쓰기 0.30. 둥켈을 함께 재서 0.678 · 0.116이 그대로 나와 방법을 확인했다.
    아침에는 폭 축이 없어 아래 TTORYEOT_WIDE와 advanceFor의 보간은 이제 쓰이지 않는다(wdth가 안 온다). */
 const ADVANCE: Record<string, { hangul: number; space: number }> = {
-  ttoryeot: { hangul: 0.92, space: 0.25 },   // 이사만루 Medium(10-04 — 한글은 아침과 같은 0.92, 띄어쓰기만 0.30 → 0.25)
+  ttoryeot: { hangul: 0.90, space: 0.29 },   // 김정철 고딕(10-04 — 굵기마다 같다. 그전 이사만루 0.92 · 0.25)
   chabun: { hangul: 0.97, space: 0.31 },
   doran: { hangul: 1, space: 0.35 },
   deulseok: { hangul: 0.79, space: 0.177 },
@@ -597,7 +597,7 @@ export function cloudForTone(lines: readonly string[], tone: (Parameters<typeof 
   if (!tone) c = cloudFor(lines, undefined, o);
   else {
     const f = formFor(tone);
-    c = cloudFor(lines, tone.font, { ...o, scaleX: f.scaleX, scaleY: f.scaleY, slant: f.slant, wdth: f.wdth, track: (parseFloat(f.letterSpacing) || 0) + (f.advExtra ?? 0), manner: tone.manner, weightPos: tone.weight, align: tone.align,
+    c = cloudFor(lines, tone.font, { ...o, scaleX: f.scaleX, scaleY: f.scaleY, slant: f.slant, wdth: f.wdth, track: parseFloat(f.letterSpacing) || 0, manner: tone.manner, weightPos: tone.weight, align: tone.align,
       fill: fillFromLegacySize(tone.size), ink: { weight: f.weight, stroke: parseFloat(f.stroke) || 0 } });
   }
   if (MADE.size >= 300) MADE.delete(MADE.keys().next().value!);

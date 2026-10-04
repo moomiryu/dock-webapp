@@ -153,7 +153,7 @@ function Slider({ name, words, value, onChange }: {
     const [moving, setMoving] = useState(false);
     const live = useRef(value);
     live.current = value;
-    /* 칸 수는 말의 개수다 — 대개 다섯, 당당한의 무게는 셋(이사만루 Light · Medium · Bold, 2026-10-04) */
+    /* 칸 수는 말의 개수다 — 대개 다섯, 당당한의 무게는 셋(김정철 고딕 Light · Regular · Regular에 획 덧대기, 2026-10-04) */
     const STOPS = words.length;
     const stopAt = (t: number) => Math.round(Math.min(1, Math.max(0, t)) * (STOPS - 1));
     const snap = (t: number) => stopAt(t) / (STOPS - 1);

@@ -129,35 +129,6 @@
   font-display: swap;
 }
 
-/* 당당한 — 이사만루체 (공게임즈 · 릭스폰트, 2020). 2026-10-04 아침 Medium에서 갈렸다(디자이너 —
-   SM견출고딕의 '꽉 찬 네모꼴과 각'을 웹에서 쓸 수 있는 서체로).
-
-   사용권: "상업적 용도를 포함하여 누구나 자유롭게 사용할 수 있으나, 임의로 수정 변형하여
-   유료로 판매하는 것은 금지합니다"(gonggames.com). 공식 TTF를 글자 하나 안 고치고 woff2로만
-   바꿨다. 한글 11172자 · 빈 글자 0. 굵기 세 벌이 따로 파일이라 가변 축은 없다 — 무게 막대의
-   칸 사이는 palettes.ts가 이어 준다. */
-@font-face {
-  font-family: 'Isamanru';
-  src: url('/fonts/Isamanru-Light.woff2') format('woff2');
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Isamanru';
-  src: url('/fonts/Isamanru-Medium.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Isamanru';
-  src: url('/fonts/Isamanru-Bold.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
 /* 브라우저가 굵기를 지어내지 못하게 막는다.
    네 발화 서체 중 둘(당당한·다정한)은 무게 축이 아예 없다. 켜 두면
    600·700에서만 가짜 굵기가 갑자기 얹혀 다섯 칸이 '셋+둘'로 갈라지고,

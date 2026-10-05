@@ -3500,3 +3500,41 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 /* 2026-09-28~29: 네 칸 십자의 세로선이 이 선에 닿게 틀 간격(섹션 24)만큼 올려 붙였었다.
    네 칸이 제 테두리를 가진 칸이 되면서(2026-09-29) 걷었다 — 두 선이 겹치지 않게 틀
    간격을 그대로 둔다. */
+
+/* ─── 00 홈 — 풍경 포스터 + 스플래시(2026-10-06, HomePoster · 견본 design/home-splash.html) ───
+   08 완료 화면도 .home-frame을 쓰므로 새 홈만 .is-poster로 가른다. 풍경 · 땅은 --grey-200 면(윤곽 · 빗금 없음),
+   화면 아래는 빨강 막(.info-overlay::after)과 같은 높이 · 섞음의 --grey-300. 사파리 주소창 뒤도 그 색으로 잇는다 */
+.home-frame.is-poster{
+  background: var(--grey-50);
+  --edge-top-paint: var(--grey-50);
+  --edge-bottom-paint: var(--grey-300);
+}
+.is-poster .home-gate{ margin-top: auto; }
+.home-poster{ position: absolute; inset: 0; z-index: var(--z-content); }
+.home-poster-art{ display: block; position: absolute; inset: 0; }
+.home-poster .hp-land{ fill: var(--grey-200); }
+.home-poster .hp-flood{ flood-color: var(--grey-200); }
+.home-poster .hp-fade-stop{ stop-color: var(--grey-300); }
+.home-poster .hp-eye{ fill: var(--paper); }
+.home-poster .hp-red{ color: var(--brand-main); }
+.home-poster .hp-cyan{ color: var(--char-cyan); }
+/* 원 글 — 부제 그대로(16 · 500 · 빨강), 빈칸은 첫 화면 글꼴(Whois)이 그린다 */
+.home-poster .hp-sub{ fill: var(--brand-main); font-size: var(--fs-body); font-weight: 500; white-space: pre; }
+/* 원 안 워드마크 — 서체 · 굵기 · 자간은 옛 워드마크 그대로, 크기 · 행간만 새 칸(tokens.css --fs-home-mark) */
+.home-poster .hp-mark{
+  fill: var(--brand-main);
+  font-family: 'Lineal VF', sans-serif; font-weight: 900; font-variation-settings: 'wght' 1200;
+  font-size: var(--fs-home-mark); letter-spacing: -0.01em;
+}
+/* 물음표 대신 — 오른쪽 아래 세로쓰기 두 줄, 밑줄은 줄 오른쪽. 글자와 선으로 누를 것을 알린다 */
+.home-poster-about{
+  position: absolute; right: var(--pad-x); z-index: 3;
+  writing-mode: vertical-rl;
+  font: inherit; font-size: var(--fs-body); font-weight: 500; line-height: 1.5;
+  color: var(--grey-800); background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline; text-underline-position: right; text-underline-offset: 4px; text-decoration-thickness: 1px;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-poster-about:focus-visible{ outline: 2px solid var(--ink); outline-offset: 4px; }
+/* 스플래시 동안 화면 어디를 눌러도 끝 장면으로 */
+.home-poster-skip{ position: fixed; inset: 0; z-index: 2000; background: none; border: 0; padding: 0; -webkit-tap-highlight-color: transparent; }

@@ -38,6 +38,8 @@ async function settle() {
   await page.waitForFunction(() => !document.querySelector('.splash'), { timeout: 12000 }).catch(() => {});
   // 빨강이 캐릭터 자리로 내려앉는 900ms까지 기다린다
   await page.waitForFunction(() => !document.querySelector('.splash-veil'), { timeout: 5000 }).catch(() => {});
+  // 홈 스플래시(2026-10-06 HomePoster)는 눌러서 끝 장면으로 — 돌고 있는 동안은 화면 전체가 '건너뛰기'다
+  await page.locator('.home-poster-skip').click({ timeout: 1500 }).catch(() => {});
   await page.waitForTimeout(400);
 }
 
@@ -90,7 +92,7 @@ if (EN && (await page.evaluate(() => document.documentElement.lang)) !== 'en') {
 }
 
 // 2026-09-27: About은 홈의 물음표가 따로 연다. 뒤로가기 없이 X 하나로 닫는다
-await page.locator('.home-help').click();
+await page.locator('.home-poster-about').click();   // 물음표가 세로쓰기 링크가 됐다(2026-10-06)
 await page.waitForTimeout(500);
 await audit('01 About');
 await page.locator('.info-head .z-home').click();

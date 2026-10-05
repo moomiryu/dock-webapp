@@ -74,6 +74,8 @@ export async function settle(page) {
   await page
     .waitForFunction(() => !document.querySelector('.splash-veil'), { timeout: 5000 })
     .catch(() => {});
+  // 홈 스플래시(2026-10-06 HomePoster)는 눌러서 끝 장면으로 — 돌고 있는 동안은 화면 전체가 '건너뛰기'다
+  await page.locator('.home-poster-skip').click({ timeout: 1500 }).catch(() => {});
   await page.waitForTimeout(300);
 }
 

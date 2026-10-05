@@ -124,6 +124,9 @@ await page.evaluate(() => document.fonts.ready);
 await page.waitForFunction(() => !document.querySelector('.splash'), { timeout: 12000 }).catch(() => {});
   // 빨강이 캐릭터 자리로 내려앉는 900ms까지 기다린다
   await page.waitForFunction(() => !document.querySelector('.splash-veil'), { timeout: 5000 }).catch(() => {});
+// 홈 스플래시(2026-10-06 HomePoster)는 눌러서 끝 장면으로
+await page.locator('.home-poster-skip').click({ timeout: 1500 }).catch(() => {});
+await page.waitForTimeout(600);
 snap['01 홈'] = await grab();
 
 // 차례는 2026-09-18에 뒤집혔다 — 한 줄을 먼저 쓰고 형식을 나중에 고른다.

@@ -2588,15 +2588,14 @@ export default function WallSimulation() {
       .map((msg) => ({ msg, kind: kindOf(cloudOf(msg).cloud), tall: tallOf(msg) }))
       .sort((a, b) => RANK[a.kind] - RANK[b.kind] || (a.kind === 'tree' ? b.tall - a.tall : 0));
   }, [solid]);
-  /** 비가 보는 풍경 — 구름(나오는 곳 · 그 글자 자리), 비킬 글자 자리(나무 · 돌 · 떠다니는 말, 둘레 TEXT_CLEAR), 땅의 윗선 */
+  /** 비눗방울이 보는 풍경 — 비킬 글자 자리(나무 · 돌 · 떠다니는 말 · 구름, 둘레 TEXT_CLEAR), 땅의 윗선 */
   const rainScene = useCallback((): RainScene => {
-    const h = landHeight(), m = TEXT_CLEAR * h, clouds: RainScene['clouds'] = [], letters: RainScene['letters'] = [];
-    for (const [id, b] of bodiesRef.current) {
-      if (b.away) continue;
-      if (b.kind === 'cloud') clouds.push({ id, x: b.x, y: b.y, hw: b.hw, hh: b.hh, letters: lettersOf(b, m) });
-      else { const l = lettersOf(b, m); if (l) letters.push(l); }
+    const h = landHeight(), m = TEXT_CLEAR * h, letters: RainScene['letters'] = [];
+    for (const b of bodiesRef.current.values()) {
+      const l = b.away ? null : lettersOf(b, m);
+      if (l) letters.push(l);
     }
-    return { clouds, letters, land: h };
+    return { letters, land: h };
   }, []);
 
   const retry = useCallback(() => {
@@ -2681,7 +2680,7 @@ export default function WallSimulation() {
         {layered.filter((x) => x.kind !== 'cloud').map(({ msg }, i) => (
           <WallBlock key={msg.id} msg={msg} index={i} ghost={emphMsg?.id === msg.id} onEl={setBlockEl} />
         ))}
-        {/* 비 — 나무 · 돌 앞, 구름 뒤(구름 밑에서 나온다). 글자 자리는 비킨다(WallRain) */}
+        {/* 비눗방울 — 나무 · 돌 앞, 구름 뒤. 글자 자리는 비킨다(WallRain) */}
         <WallRain msgs={rain} scene={rainScene} hideId={emphMsg?.id ?? null} />
         {layered.filter((x) => x.kind === 'cloud').map(({ msg }, i) => (
           <WallBlock key={msg.id} msg={msg} index={i} ghost={emphMsg?.id === msg.id} onEl={setBlockEl} />

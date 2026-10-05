@@ -1,39 +1,24 @@
 /**
- * 유머있는 = 비(2026-10-04, 디자이너). 새 → 말을 거쳐 실루엣을 따라가지 않기로 했다 — 글자 하나하나를 선 원에 담아(①처럼) 구름에서
- * 내리는 빗방울로. 줄기는 75°로 오르는 계단(당당한 사선처럼 글자는 똑바로 선다 — 맨 앞 글자가 가장 아래여야 땅에 첫 글자부터 잠긴다).
- * 고른 값과 견본은 design/landscape.md '비' · design/landscape-drops.html. 모양(낱알)과 굵기는 palettes.ts의 RAIN_FACE · formFor.
+ * 유머있는 = 비(2026-10-04, 디자이너) → 비눗방울(2026-10-06). 새 → 말을 거쳐 실루엣을 따라가지 않기로 했다 — 글자 하나하나를 선 원에
+ * 담아(①처럼). 처음엔 구름에서 75°로 내리는 빗방울이었고, 기울기 없는 가로줄이 되며 비눗방울이 됐다.
+ * 고른 값과 견본은 design/landscape.md '비눗방울' · design/landscape-drops.html · landscape-bubbles.html. 모양(낱알)과 굵기는 palettes.ts의
+ * RAIN_FACE · formFor.
  *
- * 여기에 있는 것: 빗방울의 치수 · 글자를 원 안에 놓는 자리(시각 보정) · 원 선과 명암을 그린 캔버스. 폰 미리보기(RainPreview)와
- * 벽이 같이 쓴다.
+ * 여기에 있는 것: 방울의 치수 · 가로줄 배치 · 떠다니기 · 글자를 원 안에 놓는 자리(시각 보정) · 원 선과 명암을 그린 캔버스. 폰 미리보기
+ * (RainPreview)와 벽(WallRain)이 같이 쓴다.
  */
 import { cssRgb, noise } from './hatch';
 import { RAIN_FACE, type RainShape } from './palettes';
 
-/** 빗방울 — 원 지름 1.5em(글자 1em), 원 선 = 글자 획 0.078em(×1), 줄기 위 원 사이 0.06em, 띄어쓰기는 반 칸 */
-export const DROP = { d: 1.5, ring: 0.078, gap: 0.06, space: 0.5 } as const;
-/**
- * 줄기 — 각도 75°(A판: 빠르기와 상관없이 나란하다 — 각도까지 바꾸는 B판은 산만했다), 글자 하나가 지나는 시간 보통 0.6초 → 빠르게 0.35초
- * (빠르기 막대는 보통 ~ 빠르게, palettes.ts speedBarFor). 벽 글자는 28px(1080 높이 기준 — 22px은 프로젝터 흉내에서 선과 획이 녹았다)
- */
-export const STREAM = { angle: 75, sec: [0.6, 0.35] as const, wallFs: 28 / 1080 } as const;
+/** 방울 — 원 지름 1.5em(글자 1em), 원 선 0.043em(글자 획 0.078em의 0.55배 — 2026-10-06 디자이너, 획과 같으면 원이 글자보다 무거웠다), 띄어쓰기는 반 칸 */
+export const DROP = { d: 1.5, ring: 0.043, space: 0.5 } as const;
+/** 벽 글자 28px(1080 높이 기준 — 22px은 프로젝터 흉내에서 선과 획이 녹았다) */
+export const WALL_FS = 28 / 1080;
 /** 글의 색 — 검정 위 선 · 글자로 어두웠던 옛 일렉트릭 · 마젠타(palettes-v2.ts가 2026-10-04에 밝혔다)를 벽에 떠 있는 옛 글에서도 밝힌 값으로 */
 const LIFTED: Record<string, string> = { '#3A50A5': '#7591EC', '#86437F': '#C57DBC' };
 export const rainColor = (bg: string) => LIFTED[bg.toUpperCase()] ?? bg;
 /** speed(0.5 보통 ~ 1 빠르게)의 몫 0 ~ 1 */
-export const fastOf = (speed?: number) => Math.min(1, Math.max(0, ((speed ?? 0.5) - 0.5) / 0.5));
-export const secPerChar = (speed?: number) => STREAM.sec[0] + (STREAM.sec[1] - STREAM.sec[0]) * fastOf(speed);
-/** 줄기가 내려가는 쪽(화면 좌표, y 아래로) — 왼쪽 아래 */
-export const streamDir = (): [number, number] => { const r = (STREAM.angle * Math.PI) / 180; return [-Math.cos(r), Math.sin(r)]; };
-/** 글의 빗방울 자리 — 줄기 위 거리(em). 맨 앞 글자가 0, 띄어쓰기는 반 칸만 비운다 */
-export function slotsOf(text: string): { ch: string; at: number }[] {
-  const step = DROP.d + DROP.gap, out: { ch: string; at: number }[] = [];
-  let at = 0;
-  for (const ch of text.replace(/\s+/g, ' ').trim()) {
-    if (ch === ' ') { at += DROP.space * step; continue; }
-    out.push({ ch, at }); at += step;
-  }
-  return out;
-}
+const fastOf = (speed?: number) => Math.min(1, Math.max(0, ((speed ?? 0.5) - 0.5) / 0.5));
 
 /**
  * 비눗방울(2026-10-06, 디자이너). 비의 줄기를 사선 덩어리로 바꿔 보다가 — 기울기 없이 왼쪽에서 오른쪽으로 읽히면 비 · 눈이 아니라

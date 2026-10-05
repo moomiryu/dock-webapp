@@ -401,7 +401,7 @@ export const SPEED_WORDS: Record<string, Pair<Five>> = {
 /**
  * 유머있는(비)의 빠르기 막대 — 보통 ~ 빠르게 세 칸(2026-10-04, 디자이너 — "장평은 조절하지 말고 기울기만, 보통-빠르게만").
  * 막대 자리 0 · ½ · 1이 speed 0.5 · 0.75 · 1이라 저장되는 값의 뜻(가운데 = 보통)은 다른 성격과 같고, 기울기는 0 · 9 · 18°다.
- * 벽에서는 이 값이 기울기와 함께 비가 내리는 빠르기를 정한다
+ * 이 값이 기울기와 함께 비눗방울이 떠다니는 박자를 정한다(lib/rain.ts bubbleMove)
  */
 const RAIN_SPEED_WORDS: Pair<[string, string, string]> = {
   ko: ['보통', '재잘재잘', '한껏 재잘재잘'],

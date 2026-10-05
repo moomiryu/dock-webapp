@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
-import { BIG_SIDE_MAX_VW, BIG_SIDE_VH, WallShowMessage } from '../admin/WallSimulation';
+import { BIG_SIDE_MAX_VW, BIG_SIDE_VH, WallShowMessage } from '../components/WallShowMessage';
 import type { StoredMessage } from '../lib/firebase';
 import { personaFor } from '../lib/cloud';
 import { fillFromLegacySize, phoneSide } from '../lib/fit';

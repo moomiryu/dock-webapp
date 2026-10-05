@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import AdminWall from './admin/AdminWall';
-import WallSimulation from './admin/WallSimulation';
+import { lazy, Suspense, useEffect, useState } from 'react';
+// 벽 · 관리자는 그 주소에서만 받는다 — 폰이 벽 몫(물리 계산 · 땅 · 작은 사람)까지 받지 않게(2026-10-06)
+const AdminWall = lazy(() => import('./admin/AdminWall'));
+const WallSimulation = lazy(() => import('./admin/WallSimulation'));
 import PhaseHome from './phases/PhaseHome';
 import PhaseGlyph from './phases/PhaseGlyph';
 import PhaseTone from './phases/PhaseTone';
@@ -97,11 +98,11 @@ export default function App() {
      늦게 오는 서체가 있으면 첫 화면이 한 번 다른 글씨로 깜빡일 수 있다. */
 
   if (window.location.pathname.startsWith('/wall')) {
-    return <WallSimulation />;
+    return <Suspense fallback={null}><WallSimulation /></Suspense>;
   }
 
   if (window.location.pathname.startsWith('/admin')) {
-    return <AdminWall />;
+    return <Suspense fallback={null}><AdminWall /></Suspense>;
   }
 
   /**

@@ -338,20 +338,10 @@ const LETTER_APART = 1.25;
     파고들었다(벽에서 20초 재서) — 두어 프레임에 뗀다. 파고듦이 조금씩 자라므로 한 번에 미는 양은 여전히 작다 */
 const LETTER_PUSH_S = 0.02;
 
-// ─── 두 장면 — 넓게 ↔ 확대 (2026-10-02, design/landscape.md '두 장면') ─────────────
-// 벽은 한 풍경이다. 기본 화면(넓게)에서 나무 · 돌 · 구름의 글이 모두 원래 크기로 읽히고, 1분마다 나무 꼭대기와 그 위 하늘의 띠로
-// 끊김 없이 확대해 들어간다 — 보통 카메라처럼 키우고 옮길 뿐 글을 숨기거나 크기를 바꾸지 않는다(2026-10-04, 디자이너. 그전엔
-// 넓게 보면 구름 · 새가 글 없이 작게(×0.56 · ×0.25), 나무 · 돌은 ×1.25였고 확대하면 나무 · 돌 글이 스러지고 구름 · 새 글이 배어 났다).
-// 확대한 동안은 그 띠를 옆으로 천천히 훑는다 — 구름이 벽 어디에 있든 한 번씩 화면에 든다. 다음 번엔 반대로.
-// 움직이는 견본 design/landscape-zoom.html에서 디자이너가 골랐다: 확대 ×3 · 8.4초 · 띠 훑기 · 마네킹 나무.
-/** 한 장면에 머무는 시간(초) — 넓게 1분, 확대 1분 */
-const SCENE_S = 60;
-/** 확대 배율 · 들어가고 나오는 시간(--t-hold 배수, 8.4초) */
-const ZOOM_K = 3;
-const ZOOM_T = 12;
-/** 확대한 화면에서 보이는 폭의 가장 높은 수관 꼭대기가 오는 높이(화면 위에서). 수관은 아래 띠로 깔리고 위는 새 · 구름의 하늘이다 —
-    35%였을 때 ×3에서 수관이 화면의 3분의 2를 먹어 새 · 구름이 밀렸다(견본) */
-const ZOOM_TOP = 0.6;
+// ─── 풍경의 크기 — 기본 전체 화면을 유지한다(2026-10-05) ──────────────────
+// 자동 카메라 전환은 제거했다. 아래 값은 기존 새의 자리 계산에 쓰는 하늘 영역 비율이다.
+const SKY_PATCH_SCALE = 3;
+const SKY_CANOPY_RATIO = 0.6;
 /** 넓은 장면의 크기 — 나무 · 돌 · 구름 모두 원래 크기(2026-10-04, 디자이너 — 한 화면에 글이 다 보이게. 그전 나무 · 돌 ×1.25 ·
     구름 ×0.56). 이름은 남겨 둔다 — 다시 나누게 되면 여기서 */
 const GROUND_SCALE = 1;
@@ -368,10 +358,10 @@ const MANNEQUINS: readonly { seed: string; tall: number; tree: string }[] = [
 ];
 
 /** 나무 꼭대기 선 — 벽 폭을 SKY_N칸으로 나눠 칸마다 그 위에 선 수관 중 가장 높은 꼭대기(px). 나무가 없는 칸은 이웃에서 잇는다.
-    프레임마다 나무 자리를 세운 뒤 다시 잰다(step) — 구름 자리 · 카메라가 이것을 본다 */
+    프레임마다 나무 자리를 세운 뒤 다시 잰다(step) — 새의 하늘 영역 계산에 쓴다 */
 const SKY_N = 97;
-type Sky = { line: number[]; w: number; h: number; clouds: Pt2[] };
-let SKY: Sky = { line: [], w: 1, h: 1, clouds: [] };
+type Sky = { line: number[]; w: number; h: number };
+let SKY: Sky = { line: [], w: 1, h: 1 };
 function skyOf(bodies: Iterable<Body>, w: number, h: number): Sky {
   const trees = [...bodies].filter((b) => b.kind === 'tree');
   const line = Array.from({ length: SKY_N }, (_, i) => {
@@ -387,9 +377,7 @@ function skyOf(bodies: Iterable<Body>, w: number, h: number): Sky {
     while (b < SKY_N && Number.isNaN(line[b])) b++;
     line[i] = a < 0 ? line[b] : b >= SKY_N ? line[a] : line[a] + ((line[b] - line[a]) * (i - a)) / (b - a);
   }
-  // 구름 가운데들 — 카메라가 확대한 동안 구름을 따라 높이를 잡는다(aimTop)
-  const clouds = [...bodies].filter((b) => b.kind === 'cloud').map((b): Pt2 => [b.x, b.y]);
-  return { line, w, h, clouds };
+  return { line, w, h };
 }
 /** x 둘레(±r)에서 가장 높은 수관 꼭대기(px) */
 function canopyTop(S: Sky, x: number, r: number): number {
@@ -397,32 +385,16 @@ function canopyTop(S: Sky, x: number, r: number): number {
   for (let i = 0; i < SKY_N; i++) if (Math.abs((i / (SKY_N - 1)) * S.w - x) <= r) m = Math.min(m, S.line[i]);
   return m === Infinity ? S.line[Math.round((Math.max(0, Math.min(S.w, x)) / S.w) * (SKY_N - 1))] ?? S.h * 0.55 : m;
 }
-/** 확대한 화면이 가운데 x를 볼 때 그 화면의 위 끝(px) — 보이는 폭에서 가장 높은 꼭대기가 ZOOM_TOP에 오게. 이웃(보이는 폭의 절반)과
-    고르게 펴서, 키 큰 나무가 화면에 들어올 때 카메라가 툭 오르지 않게 */
+/** 사진 새가 머무는 하늘 영역의 위 끝(px). 이전 확대 화면의 계산을 유지해 새의 배치와 비행 높이를 보존한다. */
 function viewTop(S: Sky, x: number): number {
-  const RW = S.w / ZOOM_K, RH = S.h / ZOOM_K, c = Math.max(RW / 2, Math.min(S.w - RW / 2, x));
+  const RW = S.w / SKY_PATCH_SCALE, RH = S.h / SKY_PATCH_SCALE, c = Math.max(RW / 2, Math.min(S.w - RW / 2, x));
   let s = 0;
   for (let k = -8; k <= 8; k++) s += canopyTop(S, c + (k / 8) * (RW / 4), RW / 2);
-  return Math.max(0, Math.min(S.h - RH, s / 17 - ZOOM_TOP * RH));
+  return Math.max(0, Math.min(S.h - RH, s / 17 - SKY_CANOPY_RATIO * RH));
 }
-/** 확대한 카메라가 가운데 x를 볼 때 화면 위 끝(px) — 그 둘레 구름들의 높이를 가운데에 둔다(가까운 구름일수록 크게, 확대 화면 폭의
-    절반을 결의 폭으로). 기본 화면에서 글이 다 보이게 되며(2026-10-04) 구름이 나무 꼭대기 위 띠를 떠나 벽 위 어디에나 있어, 나무 꼭대기
-    선(viewTop)을 따랐더니 확대 화면이 빈 하늘을 비췄다. 구름이 없으면 나무 꼭대기 선 */
-function aimTop(S: Sky, x: number): number {
-  const RW = S.w / ZOOM_K, RH = S.h / ZOOM_K, c = Math.max(RW / 2, Math.min(S.w - RW / 2, x));
-  let sw = 0, sy = 0;
-  for (const [cx, cy] of S.clouds) { const k = Math.exp(-(((cx - c) / (RW / 2)) ** 2)); sw += k; sy += k * cy; }
-  if (sw < 1e-3) return viewTop(S, x);
-  return Math.max(0, Math.min(S.h - RH, sy / sw - RH / 2));
-}
-/**
- * 가로 x에 반폭 half인 것이 확대 화면에 **온전히** 들어 있을 수 있는 카메라 자리들(화면 가운데가 x ± (보이는 반폭 − half))에서
- * 화면 위 끝의 [가장 낮은 곳, 가장 높은 곳](px). 이 둘 사이에 있어야 훑는 동안 잘리지 않고 보인다 — 처음엔 '카메라가 바로 위에
- * 왔을 때'의 높이로만 잡았더니, 화면 가장자리로 들어올 때는 카메라 높이가 달라 구름 윗부분이 잘렸다(벽에서 확대 1분 동안 재서:
- * 구름 하나는 한 번도 온전히 안 보였다)
- */
+/** 사진 새의 반폭까지 고려한 하늘 영역 경계. 기존 배치 범위를 유지하며 화면 변환에는 쓰지 않는다. */
 function viewSpan(S: Sky, x: number, half: number): Pt2 {
-  const reach = Math.max(0, S.w / ZOOM_K / 2 - half);
+  const reach = Math.max(0, S.w / SKY_PATCH_SCALE / 2 - half);
   let lo = -Infinity, hi = Infinity;
   for (let k = -4; k <= 4; k++) { const v = viewTop(S, x + (k / 4) * reach); lo = Math.max(lo, v); hi = Math.min(hi, v); }
   return [lo, hi];
@@ -711,8 +683,8 @@ function pairCloud(b: Body, w: number, h: number, taken: Body[], over: number): 
     const [rx, ry] = floatR(o, w, h), ox = o.home![0] * w, oy = o.home![1] * h;
     for (const f of [0, -0.3, 0.3, -0.6, 0.6]) {
       const dx = besideX(o, b.hw, ov, dir) - o.x, dy = f * (o.hh + b.hh), x = ox + dx, y = oy + dy, [lo, hi] = skyRange(SKY, x, b.hw + rx, b.hh);
-      // 짝과 함께 확대 화면에 온전히 들어야 둘 다 읽힌다 — 둘을 합친 폭이 보이는 폭을 넘으면 짝을 짓지 않는다
-      if (Math.max(x + b.hw, ox + o.hw) - Math.min(x - b.hw, ox - o.hw) + 2 * rx > w / ZOOM_K) continue;
+      // 구름 쌍의 기존 폭 제한을 유지해 배치가 달라지지 않게 한다
+      if (Math.max(x + b.hw, ox + o.hw) - Math.min(x - b.hw, ox - o.hw) + 2 * rx > w / SKY_PATCH_SCALE) continue;
       if (x - b.hw - rx < 0 || x + b.hw + rx > w || y - ry < lo - 1 || y + ry > hi + 1) continue;
       const mine = words(b, x, y), sweep: Rect = [mine[0] - rx, mine[1] - ry, mine[2] + rx, mine[3] + ry];
       // 짝과 글자끼리 · 읽히지 않는 글자와 몸이 안 닿고, 나무 · 돌 곁 · 다른 구름의 글줄에도 안 걸리는 자리
@@ -1137,8 +1109,6 @@ function calmStep(C: Calm, W: StoneWorld, map: Map<string, Body>, f: Size | unde
   // 그 글의 돌 — 등장하는 동안은 물리 밖에 세워 둔다(복귀 때 떨어뜨린다)
   const own = map.get(C.id);
   if (own && !C.dropped) { if (own.mb) { Matter.Composite.remove(W.engine.world, own.mb); own.mb = null; } own.parked = true; }
-  // 두 장면 — 확대 중에 왔으면 카메라가 빠져나오는 동안(CALM_ZOOM_OUT) 기다린다(t0가 그만큼 뒤다). 풍경도 아직 그대로 둔다
-  if (C.phase === 'enter' && now < C.t0) return;
   if (!C.snap) {
     C.snap = new Map();
     for (const [id, b] of map) if (id !== C.id) C.snap.set(id, { x: b.x, y: b.y, a: b.a });
@@ -1260,96 +1230,6 @@ function mannequinOf(i: number): Mannequin {
   const q = { id: `mannequin-${i}`, cloud, box, tall };
   MANNEQUIN_MADE.set(i, q);
   return q;
-}
-
-// ─── 카메라 (두 장면) ──────────────────────────────────────────────────
-/** 카메라 — 확대 진행 z(0 넓게 · 1 확대, 배율 ZOOM_K^z — 곱으로 키워야 고르게 다가온다) · 훑기. 프레임 루프가 걷는다(React 밖).
-    from → to를 t0부터 ZOOM_T에 걸쳐. 훑기는 확대해 들어가는 순간부터 빠져나오기가 끝날 때까지 한 방향으로 고르게(pan0 · panLen),
-    다음 번엔 반대로 — 들어가고 나오는 동안에도 흐르니 멈췄다 출발하는 이음매가 없다(빠르기는 확대가 느는 만큼만 눈에 보인다).
-    last = 장면이 마지막으로 바뀐 때. cy = 확대 화면의 위 끝(나무 꼭대기 선을 따라 고르게 따라간다). s · ox · oy = 이번 프레임의 변환 —
-    풍경 좌표 p는 화면의 (p − o) × s에 그려진다(발화가 내려앉을 자리를 잴 때 쓴다) */
-type Cam = { z: number; from: number; to: number; t0: number; dur: number; pan0: number; panDir: number; panLen: number; panA: number; panB: number; last: number;
-  cy: number; s: number; ox: number; oy: number;
-  /** 움직임 줄이기 — 확대하지 않고 잠깐 어두워졌다 밝아지며 바뀐다(dip, fade = 풍경의 불투명도). 머무는 곳은 확대할 것들을 차례로(focusI) */
-  dip: boolean; fade: number; focusI: number };
-const newCam = (sec: number): Cam => ({ z: 0, from: 0, to: 0, t0: -1e9, dur: 1, pan0: -1e9, panDir: -1, panLen: 1, panA: 0, panB: 0, last: sec, cy: NaN, s: 1, ox: 0, oy: 0,
-  dip: false, fade: 1, focusI: 0 });
-/** 차분한의 큰 돌이 확대 중에 오면 먼저 이만큼(--t-hold 배수, 2.8초)에 빠져나온 뒤 밀려 들어온다 — 큰 돌은 넓은 장면의 일이다 */
-const CALM_ZOOM_OUT = 4;
-/** 확대한 동안 카메라가 아직 훑을 가로 범위(px) — 새가 옮겨 앉을 자리를 여기 안에서 고른다(이미 지나간 쪽으로 옮겨 앉으면 그 새 글은
-    그 확대 동안 다시 안 보인다 — 벽에서 재다 봤다). 넓게 있을 때는 null */
-let REACH: Pt2 | null = null;
-/** --ease-standard를 읽어 푼다 — 확대와 글의 스러짐이 같은 진행을 써야 해서 CSS 전환 대신 JS가 걷는다. 못 읽으면 곧은 진행 */
-let EASE: ((x: number) => number) | null = null;
-function easeStandard(x: number): number {
-  if (!EASE) {
-    const m = /\(([^)]*)\)/.exec(getComputedStyle(document.documentElement).getPropertyValue('--ease-standard'));
-    const p = m ? m[1].split(',').map(Number) : [];
-    if (p.length !== 4 || p.some((v) => Number.isNaN(v))) EASE = (t) => t;
-    else {
-      const [x1, y1, x2, y2] = p, f = (t: number, a: number, b: number) => 3 * a * t * (1 - t) ** 2 + 3 * b * t * t * (1 - t) + t ** 3;
-      EASE = (t) => {
-        let lo = 0, hi = 1;
-        for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (f(mid, x1, x2) < t) lo = mid; else hi = mid; }
-        return f((lo + hi) / 2, y1, y2);
-      };
-    }
-  }
-  return EASE(Math.max(0, Math.min(1, x)));
-}
-/**
- * 발화 — 막이 벽을 덮고 있는 동안(보이지 않는다) 카메라를 그 글의 장면으로 옮겨 둔다. 확대 장면의 글(구름 · 새)이면 그 잔상을 가운데
- * 두고 멈춰 선다(훑지 않는다), 넓은 장면의 글이면 넓게. 막이 걷히는 동안(내려앉기)에도 그대로라 내려앉을 자리가 움직이지 않는다.
- * 시계는 여기서 다시 센다 — 내려앉은 뒤 그 장면에 1분
- */
-function camAim(c: Cam, sec: number, w: number, b: Body, near: boolean) {
-  c.last = sec; c.from = c.to = near ? 1 : 0; c.t0 = -1e9; c.dip = false;
-  if (!near) return;
-  const RW = w / ZOOM_K;
-  c.panA = c.panB = Math.max(0, Math.min(w - RW, b.x - RW / 2)); c.pan0 = sec; c.cy = NaN;
-}
-/** 장면을 바꾼다 — to = 0 넓게 · 1 확대. 확대할 때는 훑을 범위를 그때 정한다: 구름 · 새가 있는 가로 범위(span, px)를 덮는
-    만큼만 — 벽 끝에서 끝까지 훑으면 처음 몇 초가 빈 하늘이었다(벽에서 찍어 봤다). 범위가 보이는 폭보다 좁으면 가운데에 선다 */
-function camFlip(c: Cam, to: number, sec: number, w: number, span: Pt2 | null, dur = ZOOM_T * hold(), dip = false) {
-  c.from = c.z; c.to = to; c.t0 = sec; c.dur = dur; c.last = sec; c.dip = dip;
-  if (to !== 1) return;
-  c.pan0 = sec; c.panDir = -c.panDir; c.panLen = SCENE_S - ZOOM_T * hold(); c.cy = NaN;
-  const RW = w / ZOOM_K, cl = (v: number) => Math.max(0, Math.min(w - RW, v)), [a, b] = span ?? [0, w];
-  c.panA = cl(a); c.panB = cl(b - RW);
-  if (c.panB < c.panA) c.panA = c.panB = cl((a + b) / 2 - RW / 2);
-}
-/**
- * 카메라 한 걸음 — 1분마다 장면을 바꾸고(확대할 구름 · 새 글이 없거나 넓게 있어야 할 때는 넓게 머문다), 이번 프레임의 확대 ·
- * 훑는 자리 · 화면 위 끝을 정한다. pause = 장면을 바꾸지 않고 시계만 멈춘다(발화 중)
- */
-function camStep(c: Cam, sec: number, dt: number, w: number, o: { span: Pt2 | null; focus: number[]; still: boolean; calm: boolean; pause: boolean }) {
-  const T = hold(), keepWide = o.calm || !o.span;
-  // 움직임 줄이기 — 확대해 들어가지 않고 2T에 어두워졌다 밝아지며 바뀐다. 훑지 않고 확대할 것(구름 · 새) 하나를 가운데 두고 멈춰 선다 —
-  // 바뀔 때마다 다음 것으로(focusI)
-  const flip = (to: number) => {
-    if (!o.still) { camFlip(c, to, sec, w, to === 1 ? o.span : null, o.calm ? CALM_ZOOM_OUT * T : ZOOM_T * T); return; }
-    const x = o.focus.length ? o.focus[c.focusI++ % o.focus.length] : w / 2;
-    camFlip(c, to, sec, w, [x, x], 2 * T, true);
-  };
-  if (keepWide && c.to === 1) flip(0);
-  else if (keepWide || o.pause) c.last = Math.max(c.last, sec - SCENE_S + 1);
-  else if (sec - c.last >= SCENE_S) flip(1 - c.to);
-  const e = (sec - c.t0) / c.dur;
-  c.z = c.dip ? (e < 0.5 ? c.from : c.to) : c.from + (c.to - c.from) * easeStandard(e);
-  c.fade = c.dip && e < 1 ? Math.abs(1 - 2 * Math.max(0, e)) : 1;
-  // 훑기 — 다 확대된 동안(들어가기가 끝난 때부터 나오기 시작까지, panLen) 범위를 정확히 지나가고, 들어가고 나오는 동안은 같은 빠르기로
-  // 그 바깥으로 이어 흐른다. 처음엔 들어가기 시작부터 나오기 끝까지에 범위를 맞췄더니 양 끝의 구름 · 새는 덜 확대됐을 때만 화면에
-  // 들었다(벽에서 재서: 확대 1분 동안 한 번도 온전히 안 보인 글이 나왔다). 벽 끝에서는 멈춘다
-  const RW = w / ZOOM_K, Z = ZOOM_T * T, q = Math.max(-Z / c.panLen, Math.min(1 + Z / c.panLen, (sec - c.pan0 - Z) / c.panLen));
-  const rx = Math.max(0, Math.min(w - RW, c.panA + (c.panB - c.panA) * (c.panDir > 0 ? q : 1 - q)));
-  REACH = c.to === 1 ? (c.panB >= c.panA) === (c.panDir > 0) ? [rx, Math.max(c.panA, c.panB) + RW] : [Math.min(c.panA, c.panB), rx + RW] : null;
-  // 화면 위 끝 — 훑는 자리 둘레 구름들의 높이를 따른다(aimTop). 늦추면 훑는 동안 어긋나므로 빠르기만 묶는다 — 구름이 바뀔 때
-  // 툭 뛰지 않게(1초에 확대 화면 높이의 절반까지)
-  const cy = aimTop(SKY, rx + RW / 2), vmax = (0.5 * (SKY.h / ZOOM_K)) * dt;
-  c.cy = Number.isNaN(c.cy) ? cy : c.cy + Math.max(-vmax, Math.min(vmax, cy - c.cy));
-  c.s = ZOOM_K ** c.z;
-  const u = (1 - 1 / c.s) / (1 - 1 / ZOOM_K);
-  c.ox = u * rx; c.oy = u * c.cy;
 }
 
 /** 새 몸을 아무 자리에 놓는다. 이미 있는 것들과 겹치지 않는 자리를 찾아본다.
@@ -1501,7 +1381,7 @@ function step(W: StoneWorld, bodies: Body[], w: number, h: number, dt: number, s
     b.y = h - treeHeight(b, h) + b.hh;
     b.zone = b.tx ? zoneAt(b.x, b.y, b.hw, b.hh, b.tx, h) : null;
   }
-  // 나무 꼭대기 선 — 구름의 하늘 띠와 카메라가 본다(두 장면)
+  // 나무 꼭대기 선 — 사진 새의 배치와 비행 높이에 쓴다
   SKY = skyOf(bodies, w, h);
   const zones = zonesOf(bodies);
   for (const b of bodies) {
@@ -1884,7 +1764,7 @@ function spotOk(b: Body, P: Pt2, bodies: Body[], w: number, h: number): boolean 
   if (r[0] < 0 || r[2] > w || r[1] < -2 || r[3] > h) return false;
   // 사진 새(두 장면) — 확대해 그 자리를 지날 때 몸 전체가 화면 안에 들어야 한다(새 글은 확대해야 읽힌다). 나무 중턱 · 돌 위는
   // 대개 확대 화면 밑이라 걸러지고 나무 꼭대기에 앉는다
-  if (b.cr!.geo.photo) { const [top, low] = viewSpan(SKY, (r[0] + r[2]) / 2, (r[2] - r[0]) / 2); if (r[1] < top || r[3] > low + h / ZOOM_K) return false; }
+  if (b.cr!.geo.photo) { const [top, low] = viewSpan(SKY, (r[0] + r[2]) / 2, (r[2] - r[0]) / 2); if (r[1] < top || r[3] > low + h / SKY_PATCH_SCALE) return false; }
   for (const o of bodies) {
     if (o === b) continue;
     if (o.cr) {
@@ -1916,9 +1796,7 @@ function spotsFor(b: Body, bodies: Body[], w: number, h: number): Spot[] {
     for (const o of bodies) if (o.kind === 'cloud') for (const f of [-0.35, 0, 0.35]) cands.push({ kind: 'cloud', host: o, i: 0, dx: f * o.hw, y: 0 });
   }
   const now = b.cr!.spot;
-  // 확대한 동안 사진 새는 카메라가 아직 훑을 범위 안으로만 옮겨 앉는다(REACH)
-  const ahead = (P: Pt2) => { if (!REACH || !g.photo) return true; const r = crBox(b, P); return r[0] >= REACH[0] && r[2] <= REACH[1]; };
-  const ok = cands.filter((sp) => { const P = spotPoint(sp, bodies); return !!P && ahead(P) && spotOk(b, P, bodies, w, h); });
+  const ok = cands.filter((sp) => { const P = spotPoint(sp, bodies); return !!P && spotOk(b, P, bodies, w, h); });
   const fresh = ok.filter((sp) => !now || sp.host !== now.host || sp.kind !== now.kind || sp.i !== now.i);
   // 몰리지 않게 — 앉는 몸짓에 앉을 곳(나무 · 돌 · 구름) 말고 다른 몸이 안 걸리는 자리부터. 새 · 박쥐가 한 나무에 겹쳐 앉지도 않는다
   const crowd = (sp: Spot) => { const P = spotPoint(sp, bodies)!; return crowdAt(crBox(b, P), bodies, w, h, (q) => q === b || q === sp.host)
@@ -1939,7 +1817,7 @@ function flyAt(b: Body, from: Pt2, to: Pt2, arc: number, w: number, h: number, e
   const cx = (from[0] + to[0]) / 2;
   let cy = g.kind === 'bat' ? Math.max(from[1], to[1]) + lift : Math.min(from[1], to[1]) - lift;
   // 사진 새 — 솟는 길이 확대 화면 위로 나가지 않게(나는 동안에도 확대 화면 안에서 보이게)
-  if (g.photo) cy = Math.max(cy, viewTop(SKY, cx) - crBox(b, [0, 0], true)[1] + CLOUD_MARGIN * (h / ZOOM_K));
+  if (g.photo) cy = Math.max(cy, viewTop(SKY, cx) - crBox(b, [0, 0], true)[1] + CLOUD_MARGIN * (h / SKY_PATCH_SCALE));
   const x = (1 - e) ** 2 * from[0] + 2 * (1 - e) * e * cx + e * e * to[0], y = (1 - e) ** 2 * from[1] + 2 * (1 - e) * e * cy + e * e * to[1] + wob;
   // 나는 자세의 테두리가 벽 안에 들게 — 앉는 점에서 네 변까지(px). 날아오르고 내려앉는 끝점은 앉은 자리 그대로
   const r = crBox(b, [0, 0], true), k = Math.min(1, 8 * e, 8 * (1 - e));
@@ -1969,8 +1847,8 @@ function takeOff(b: Body, bodies: Body[], w: number, h: number, sec: number) {
   }
   // 사진 새 — 옮겨 앉을 데가 없으면 그대로 조금 더 앉아 있는다. 앉은 나무가 사라졌으면 확대 띠 안의 빈 하늘로 날며 다시 찾는다
   if (!next && c.geo.photo && c.mode === 'perch' && c.spot && spotPoint(c.spot, bodies)) { c.until = sec + perchFor(c.geo); return; }
-  const fx = REACH && c.geo.photo ? crRnd(REACH[0] + b.hw, REACH[1] - b.hw) : crRnd(b.hw, w - b.hw);
-  c.spot = next ?? { kind: 'ceil', host: null, i: -1, dx: fx, y: c.geo.photo ? viewTop(SKY, fx) + 0.4 * (h / ZOOM_K) : crRnd(0.2, 0.5) * h };
+  const fx = crRnd(b.hw, w - b.hw);
+  c.spot = next ?? { kind: 'ceil', host: null, i: -1, dx: fx, y: c.geo.photo ? viewTop(SKY, fx) + 0.4 * (h / SKY_PATCH_SCALE) : crRnd(0.2, 0.5) * h };
   const to = spotPoint(c.spot, bodies)!, T = hold(), dist = Math.hypot(to[0] - from[0], to[1] - from[1]);
   c.mode = 'fly'; c.from = from; c.t0 = sec; c.arc = arc;
   c.dur = Math.max(FLY_T[0] * T, Math.min(FLY_T[1] * T, dist / (FLY_SPEED * h)));
@@ -2209,9 +2087,6 @@ export default function WallSimulation() {
   const crDomRef = useRef(new Map<string, CrDom>());
   /** 사진 새의 윤곽 · 글 상자(글마다). 요소가 바뀌면 다시 찾는다 */
   const birdDomRef = useRef(new Map<string, BirdDom>());
-  /** 두 장면의 카메라 — 풍경(wall-world: 마네킹 겹 + 말들의 겹)을 통째로 키우고 옮긴다 */
-  const fieldRef = useRef<HTMLDivElement | null>(null);
-  const camRef = useRef<Cam | null>(null);
 
   // 화면이 다 차 있을 때 한 칸씩 갈아 끼우는 시계
   const [rotate, setRotate] = useState(0);
@@ -2331,7 +2206,7 @@ export default function WallSimulation() {
   const emphIdRef = useRef<string | null>(null);
   /** 붙잡아 둔 잔상 — 발화가 시작될 때부터 내려앉기가 끝날 때까지(숨어 있다 — is-ghost). 프레임 루프가 이 하나만 붙잡는다.
       전에는 내려앉을 때만 붙잡고 끝나면 놓았는데, 내려앉는 도중 다음 발화가 오면 놓는 타이머가 지워져 앞 글이 영영 붙잡혀 있었다.
-      두 장면부터는 발화 내내 붙잡는다 — 카메라가 그 잔상을 겨눠 두고(확대 장면이면 그 자리로) 막이 걷힐 때 그대로 내려앉는다 */
+      발화 내내 붙잡아 두고, 막이 걷힐 때 기본 화면의 그 자리로 내려앉는다 */
   const holdIdRef = useRef<string | null>(null);
   /** 발화 중인 글 그 자체. 내려앉은 뒤 붙잡아 둘 때 쓴다 */
   const emphMsgRef = useRef<StoredMessage | null>(null);
@@ -2378,13 +2253,12 @@ export default function WallSimulation() {
       const body = id ? bodiesRef.current.get(id) : null;
       if (body) {
         const bigSide = Math.min(window.innerHeight * BIG_SIDE_VH, window.innerWidth * BIG_SIDE_MAX_VW) / 100;
-        // 풍경 좌표 → 화면 — 카메라(두 장면)가 확대해 있으면 그 배율 · 자리로
-        const cam = camRef.current, cs = cam?.s ?? 1, ox = cam?.ox ?? 0, oy = cam?.oy ?? 0;
+        // 풍경은 항상 기본 전체 화면이므로 몸의 좌표를 그대로 쓴다.
         setEmphLand({
-          dx: (body.x - ox) * cs - window.innerWidth / 2,
-          dy: (body.y - oy) * cs - window.innerHeight / 2,
-          // 같은 글이라 잔상과 큰 상자의 생김새가 같다 — 배율은 한 변의 비다(잔상은 장면의 배율 scaleOf만큼, 카메라가 확대해 있으면 그만큼 더)
-          scale: (boxSide() * (sizesRef.current.get(id!)?.scale ?? 1) * cs) / bigSide
+          dx: body.x - window.innerWidth / 2,
+          dy: body.y - window.innerHeight / 2,
+          // 같은 글이라 잔상과 큰 상자의 생김새가 같다 — 배율은 한 변의 비다(잔상은 종류별 배율 scaleOf만큼)
+          scale: (boxSide() * (sizesRef.current.get(id!)?.scale ?? 1)) / bigSide
         });
       } else {
         setEmphLand(SINK);
@@ -2411,15 +2285,13 @@ export default function WallSimulation() {
       const { cloud, box } = cloudOf(msg);
       if (cloud.stone && !prefersReducedMotion()) {
         const one = boxSide(), G = Math.min((CALM_SIZE * window.innerWidth) / (box.w * one), (CALM_SIZE * window.innerHeight) / (box.h * one));
-        // 확대 중이면 카메라가 먼저 빠져나온다(CALM_ZOOM_OUT) — 큰 돌은 그 뒤에 밀려 들어온다
-        const cam = camRef.current, wait = cam && (cam.to === 1 || cam.z > 0.01) ? CALM_ZOOM_OUT * hold() : 0;
         // 돌 명단 — 일곱을 넘거나 바닥에 새 돌이 들어갈 자리가 없으면 가장 오래된 돌부터 빠진다(stonePlan). 빠질 돌은 풍경이 돌아올 때
         // 돌아오지 않고, 새 돌은 그렇게 난 자리에 떨어진다
         const sc = scaleOf(cloud), colors = colorsOf(msg);
         const me = { kind: 'stone', heavy: true, x: 0, y: 0, hw: (box.w * one * sc) / 2, hh: ((box.h + box.tail) * one * sc) / 2, tx: textBox(cloud),
           bg: rgbOf(colors.bg), fg: rgbOf(colors.text) } as Body;
         const { retire, spot } = stonePlan(msg.id, me, stoneKeepRef.current, bodiesRef.current, window.innerWidth, landHeight());
-        calmRef.current = { id: msg.id, phase: 'enter', t0: performance.now() / 1000 + wait, G, giant: null, x0: NaN, snap: null, fade: 0, dropped: false, done: false, retire, kept: false, spot };
+        calmRef.current = { id: msg.id, phase: 'enter', t0: performance.now() / 1000, G, giant: null, x0: NaN, snap: null, fade: 0, dropped: false, done: false, retire, kept: false, spot };
         setCalmMsg({ msg, G });
       } else { calmRef.current = null; setCalmMsg(null); }
       // EMPHASIS_MS는 상한이고, 세는 곳은 **꽂힌 순간**이다. 벽이 신호를 몇
@@ -2657,10 +2529,6 @@ export default function WallSimulation() {
         // 날던 새를 붙잡으면 가던 자리에 앉혀 둔다(숨어 있는 동안이다) — 아니면 공중에서 앉은 자세로 멈춘다
         if (want && b.cr && b.cr.mode === 'fly' && b.cr.spot) { const P = spotPoint(b.cr.spot, [...map.values()]); if (P) { b.cr.mode = 'perch'; placeAt(b, P); } }
       }
-      // 막이 덮고 있는 동안 카메라를 그 글의 장면으로(camAim)
-      const aim = holdId && !landingRef.current ? map.get(holdId) : undefined;
-      // 넓게 — 기본 화면에서 모든 글이 읽히니 어느 글이든 넓은 화면에 내려앉는다(2026-10-04. 그전엔 구름 · 새 글이면 확대해 겨눴다)
-      if (aim) camAim((camRef.current ??= newCam(t / 1000)), t / 1000, w, aim, false);
       // 차분한의 발화 — 앞 발화가 아직 안 끝났으면 풍경부터 되돌리고, 큰 돌 · 휩쓸림 · 복귀를 걷는다
       const undo = calmUndoRef.current;
       if (undo) { calmRestore(undo, world, map, t / 1000); const ob = map.get(undo.id); if (ob) ob.parked = false; calmUndoRef.current = null; }
@@ -2728,25 +2596,6 @@ export default function WallSimulation() {
           if (el.style.opacity !== op) el.style.opacity = op;
           if (id === Cn.id) el.style.visibility = Cn.dropped ? 'visible' : '';
         } else if (el.style.opacity || el.style.visibility) { el.style.opacity = ''; el.style.visibility = ''; }
-      }
-      // 두 장면 — 카메라가 풍경을 통째로 키우고 옮긴다. 확대할 것(구름 · 새 글)이 없거나, 차분한의 큰 돌이 들어오거나, 움직임을 줄인
-      // 화면이면 넓게 머문다. 발화 중에는 장면을 바꾸지 않는다. 글은 늘 그대로다(보통 카메라 — 2026-10-04)
-      const cam = (camRef.current ??= newCam(t / 1000)), fe = fieldRef.current;
-      // 확대할 것 — 구름 · 새가 있는 가로 범위(구름은 헤매는 폭까지). 없으면 넓게 머문다
-      let span: Pt2 | null = null;
-      const focus: number[] = [];
-      for (const b of map.values()) if (b.kind === 'cloud' || b.kind === 'bird' || b.kind === 'bat') {
-        const r = b.kind === 'cloud' ? b.hw + floatR(b, w, h)[0] : b.hw;
-        span = span ? [Math.min(span[0], b.x - r), Math.max(span[1], b.x + r)] : [b.x - r, b.x + r];
-        focus.push(b.x);
-      }
-      focus.sort((a, b) => a - b);
-      camStep(cam, t / 1000, dt, w, { span, focus, still: !moving, calm: !!calmRef.current, pause: !!emphIdRef.current && !landingRef.current });
-      if (fe) {
-        const op = cam.fade < 1 ? cam.fade.toFixed(3) : '';
-        if (fe.style.opacity !== op) fe.style.opacity = op;
-        const tf = cam.z > 1e-4 ? `scale(${cam.s.toFixed(5)}) translate(${(-cam.ox).toFixed(2)}px, ${(-cam.oy).toFixed(2)}px)` : '';
-        if (fe.style.transform !== tf) fe.style.transform = tf;
       }
       // 큰 돌 — 각도는 늘 0(밀려오고 밀려 나간다)
       const ge = giantElRef.current, gC = calmRef.current?.giant;
@@ -2845,8 +2694,8 @@ export default function WallSimulation() {
 
       {/* 풍경 — 잔상들이 세 줄을 흘러간다. 발화 중인 글의 잔상은 자리만
           지키고 숨어 있다가(is-ghost) 큰 상자가 내려앉는 순간 드러난다 */}
-      {/* 두 장면 — 카메라가 이 한 풍경을 통째로 키우고 옮긴다(wall-world). 마네킹 나무는 말들과 섞이지 않게 뒤 겹에(app.css) */}
-      <div className="wall-world" ref={fieldRef}>
+      {/* 기본 전체 화면의 풍경. 마네킹 나무는 말들과 섞이지 않게 뒤 겹에(app.css) */}
+      <div className="wall-world">
       <div className="wall-scenery">
         {mannequins.map((q) => <WallMannequin key={q.id} q={q} onEl={setBlockEl} />)}
       </div>

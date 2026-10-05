@@ -1,6 +1,7 @@
 @import './tokens.css';
+@import './pretendard.css';
 
-/* UI pairing: Latin/digits use Lineal VF, Korean uses local Pretendard. */
+/* UI pairing: Latin/digits use Lineal VF, Korean uses local Pretendard (pretendard.css — 조각). */
 @font-face {
   font-family: 'Lineal VF';
   src: url('/fonts/LinealVF.ttf') format('truetype');
@@ -8,13 +9,6 @@
   font-style: normal;
   font-display: swap;
   unicode-range: U+0000-024F;
-}
-@font-face {
-  font-family: 'Pretendard Variable';
-  src: url('/fonts/PretendardVariable.woff2') format('woff2');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
 }
 
 /* Whois (Raphaël Bastide, whois-mono.ttf · 굵기 500 한 벌 · 라틴 52자와 숫자

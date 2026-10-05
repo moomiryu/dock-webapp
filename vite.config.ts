@@ -41,6 +41,8 @@ export default defineConfig({
       workbox: {
         navigateFallback: '/index.html',
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // Pretendard 조각 93개(3.4MB)는 미리 받지 않는다 — 화면에 나온 글자의 조각만 받으려고 나눈 것이다
+        globIgnores: ['fonts/pretendard/**'],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.origin === 'https://cdn.jsdelivr.net',

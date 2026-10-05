@@ -229,8 +229,10 @@ export const PERSONAS: Record<string, Persona> = {
   // 나무 (2026-09-28, 09-30 사진으로). 뾰족 구름 → 별(09-27) → 박스 → 기하 나무(삼각형 단 · 원, 09-29) → 사진에서 뗀 한 그루
   // (09-30 — 기하는 조형적 당위가 없고 주인공처럼 보였다). 원(lobe · fill · gap · spread)은 쓰이지 않는다. 행간 1.1은 박스에서
   // 고른 값 그대로. 고른 과정과 버린 것은 design/landscape.md '나무'.
+  // 글자 배수 text 1.4 → 1.05(2026-10-06, 디자이너): 둥켈로 돌아오자 벽 가운데 칸의 한글 잉크 높이가 23px(차분한 17.2 ·
+  // 다정한 19.8, 1920×1200) · 한 글자 잉크량 4.5배였다. 0.6 ~ 1.0배를 다른 셋 옆에 놓고 0.75배(17.0px · 2.5배)를 골랐다
   ttoryeot: { key: 'ttoryeot', edge: 'tree', lobe: [1.25, 1.85], fill: [0.6, 0.8], gap: 1.9, spread: [0.2, 0.9], sat: 0, blur: 0, lh: 1.1,
-    tree: { slant: 24, pitch: 1.6, bow: 1.3, tilt: -12, text: 1.4, bleed: 0.3, gap: 0.2, tall: [0.2, 0.6], jitter: 0.05, grow: 1.03, maxGrow: 3, stem: 0.12, lift: 0.42,
+    tree: { slant: 24, pitch: 1.6, bow: 1.3, tilt: -12, text: 1.05, bleed: 0.3, gap: 0.2, tall: [0.2, 0.6], jitter: 0.05, grow: 1.03, maxGrow: 3, stem: 0.12, lift: 0.42,
       flip: 0.5, stretch: { lo: 0.75, hi: 1.4, ref: 2, pow: 0.35, step: 0.1 }, drape: 0.22,   // 폭 늘이기 강(격자 — 없음 · 약 · 중 · 강)
       hug: { lo: 1.15, hi: 1.15, pow: 1, fit: 1.3 }, trunk: { lo: 0, hi: 0.2, pow: 1, from: 0.3, to: 0.9, max: 5 }, maxTall: 0.6,
       // 손맛 — 돌 · 구름과 같은 '미세'(2026-10-04, 디자이너 — 격자 design/landscape-tree-tex-wobble.png: 지금 · 미세 · 조금)

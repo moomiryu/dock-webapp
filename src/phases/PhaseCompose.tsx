@@ -12,6 +12,8 @@ const T = {
     hint: { ko: '어떤 말을 쓸지 모르겠어요.', en: "I don't know what to write." },
     full: { ko: '다 찼어요', en: 'Full' },
     hintHead: { ko: '이런 말도 좋아요', en: 'Some examples' },
+    hintRule: { ko: '무슨 말이든 좋지만, 누군가를 해치는 말은 안 돼요.', en: 'Anything is welcome, but words that hurt others are not.' },
+    hintRuleDetail: { ko: '욕설, 혐오·차별 표현, 특정인을 향한 비방이나 위협적인 내용은 삼가 주세요.', en: 'Please avoid profanity, hate or discriminatory language, personal attacks and threats.' },
     close: { ko: '닫기', en: 'Close' },
     done: { ko: '다 썼어요', en: 'Done writing' }
 };
@@ -56,7 +58,7 @@ interface Props {
  * 들어가게 해 두면 그중 하나를 고르는 일이 되고, 무엇을 쓸지 정하는 권한이
  * 화면으로 넘어간다. 여기 있는 것은 "이런 것도 말이 된다"는 예일 뿐이다.
  *
- * 주제는 넷 다 다른 결이다 — 관찰 · 바람 · 건넴 · 외침. 하나로 쏠리면
+ * 한국어 확정 주제는 감사 · 학교에 대한 바람 · 마음에 남은 문장 · 관심사이며 각각 예시 둘을 둔다. 하나로 쏠리면
  * 그 결이 권장되는 것으로 읽힌다.
  *
  * 영어 예문은 초안이다(2026-09-26). 결 넷은 그대로 옮긴다. 넷 다 벽의 줄 접기로
@@ -65,10 +67,10 @@ interface Props {
  */
 const HINTS: Pair<Array<{ topic: string; line: string }>> = {
     ko: [
-        { topic: '오늘 발견한 것', line: '이 시간의 캠퍼스는 생각보다 다정하다.' },
-        { topic: '이곳에 바라는 것', line: '잠깐 앉아 쉴 벤치가 더 있으면 좋겠다.' },
-        { topic: '누군가에게 건네는 말', line: '아직 작업 중인 사람, 나도 여기 있어요.' },
-        { topic: '그냥 외쳐보고 싶은 말', line: '과제도 광합성으로 끝낼 수 있으면 좋겠다.' }
+        { topic: "고마운 사람이 떠오른다면", line: "○○○ 교수님, 이번 학기 진짜 감사했어요.\n○○ 동아리, 올 한 해 정말 수고했어! 방학 전시도 화이팅~" },
+        { topic: "학교에 바라는 게 있다면", line: "이번 축제에 실리카겔 오면 좋겠어요… 21년을 잊지 못해 (´╥ω╥`)\n외부인 출입이 너무 많아졌어요. 대책이 필요합니다." },
+        { topic: "마음에 남은 문장이 있다면", line: "불안은 대처할 대상이 아니다.\n인생은 패배할 가능성으로 가득 차 있다. 그것이 삶의 묘미이다." },
+        { topic: "요즘 관심사를 나누고 싶다면", line: "취업 << 이거 어떻게 하는 거야...\n원피스 앵무새설 소름이네ㄷㄷ" }
     ],
     en: [
         { topic: 'Something you noticed today', line: 'Campus at this hour is kinder than I thought.' },
@@ -324,12 +326,16 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
       {/* 주제와 예시는 읽는 결이 다르다. 목록의 이름과 설명으로 둔다 —
           예시가 버튼이 아니라는 것도 이 꼴이 말한다. */}
       <dl className="write-hint-list">
-        {pick(HINTS, lang).map(h => (
+        {pick(HINTS, lang).map((h, i) => (
           <div key={h.topic}>
-            <dt>{h.topic}</dt>
-            <dd>{h.line}</dd>
+            <dt><strong>{i + 1}. {h.topic}</strong></dt>
+            {h.line.split('\n').map(line => <dd key={line}>{line}</dd>)}
           </div>
         ))}
+        <div>
+          <dt><strong>{pick(T.hintRule, lang)}</strong></dt>
+          <dd>{pick(T.hintRuleDetail, lang)}</dd>
+        </div>
       </dl>
     </div>
   )}

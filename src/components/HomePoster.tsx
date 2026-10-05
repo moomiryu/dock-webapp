@@ -135,12 +135,10 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
     const qa = (s: string) => [...svg.querySelectorAll(s)] as SVGElement[];
     const land = q<SVGGElement>('[data-p="land"]'), arc = q<SVGCircleElement>('[data-p="arc"]'), spin = q<SVGGElement>('[data-p="spin"]');
     const m1 = q<SVGTSpanElement>('[data-p="m1"]'), m2 = q<SVGTSpanElement>('[data-p="m2"]');
-    // 글자 상자를 재서 자리를 맞춘다 — 사파리는 같은 y에 글자를 9px쯤 낮게 그렸다(2026-10-06 아이폰). 크롬에서 고른 모습의
-    // 관계(상자 가운데 = 원 가운데 + 글자 크기 × 0.5125)를 어느 브라우저에서든 지킨다. 크롬에서는 0px 움직인다
-    const mark = m1.parentNode as SVGTextElement, mb = mark.getBBox();
-    const fix = mb.height ? lay.cy + 0.5125 * lay.fs - (mb.y + mb.height / 2) : 0;
-    const m1y = Number(m1.getAttribute('y')) + fix, m2y = Number(m2.getAttribute('y')) + fix;
-    m1.setAttribute('y', String(m1y)); m2.setAttribute('y', String(m2y));
+    // 두 줄의 기준 높이는 원 가운데에서 계산한다 — 화면에서 읽으면 안 된다. 서체가 늦게 오거나 크기가 바뀌어 이 계산을
+    // 다시 할 때 글자가 떠오르는 중(10px 아래)이면 그 값을 기준으로 읽어 다시 할 때마다 10px씩 쌓였다(2026-10-06,
+    // 크롬 20px · 아이폰은 더 — 기기마다 다시 하는 횟수가 달라 어긋남도 달랐다)
+    const m1y = lay.cy - ((lay.lh - CAP) * lay.fs) / 2, m2y = m1y + lay.lh * lay.fs;
     const red = q<SVGGElement>('[data-p="red"]'), cyan = q<SVGGElement>('[data-p="cyan"]');
     const rFront = red.querySelector('[data-p="front"]') as SVGGElement, rFrontEyes = red.querySelector('[data-p="front-eyes"]') as SVGGElement;
     const rSide = red.querySelector('[data-p="side"]') as SVGGElement, rSit = red.querySelector('[data-p="sit"]') as SVGGElement;

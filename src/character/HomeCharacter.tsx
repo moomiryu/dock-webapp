@@ -169,9 +169,12 @@ const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n
 const random = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
-export default function HomeCharacter({ onTap }: {
+export default function HomeCharacter({ onTap, greet = true }: {
   /** 짧게 눌렀을 때 — 홈이 언어 창을 연다 */
   onTap?: () => void;
+  /** false면 인사 없이 눈을 뜬 채로 시작한다 — 발화 종료(08)는 다 하고 난 자리라
+   *  "안녕하세요"가 맞지 않는다. 홈을 건너뛰고 온 사람(NFC 진입)도 거기서 인사받지 않는다 */
+  greet?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   /* 손 이벤트는 한 번만 달리므로(아래 효과) 늘 최신 onTap을 부르게 */
@@ -224,8 +227,8 @@ export default function HomeCharacter({ onTap }: {
    * sessionStorage인 이유: 새로고침해도 이어지되 탭을 새로 열면 다시
    * 인사한다. 설치물 앞에 다음 사람이 서는 것이 곧 새 탭이다.
    */
-  const greetedOnce = typeof sessionStorage !== 'undefined'
-    && sessionStorage.getItem('mf-greeted') === '1';
+  const greetedOnce = !greet || (typeof sessionStorage !== 'undefined'
+    && sessionStorage.getItem('mf-greeted') === '1');
   const [blind, setBlind] = useState(!greetedOnce);
   // 뱉은 글자. 표정과 같은 이유로 React가 들고 있다 — 몇 초에 한 번뿐이라
   // 리렌더가 드물다. 자리와 크기는 매 프레임이라 여전히 DOM을 직접 만진다.
@@ -266,6 +269,15 @@ export default function HomeCharacter({ onTap }: {
     let geo: PoseGeo = from;   // 지금 이 순간의 형태
 
     let w = 0, h = 0, size = 0, x = 0, y = 0;
+    /**
+     * 실루엣이 내려갈 수 있는 제일 아래 — 버튼 영역(.home-gate) 위 24.
+     * 구경꾼의 발끝 한계(HomeCrowd groundLimit · GATE_GAP)와 같은 값이다.
+     * 홈에서는 버튼 영역이 낮아 걸리지 않는다. 발화 종료(08)는 버튼 위에 규칙
+     * 두 줄이 더 서서, 320×568에서 액자 높이의 52%에 앉은 캐릭터가 규칙 글자를
+     * 덮었다(2026-10-06, 상자 아래 407 · 규칙 위 345).
+     */
+    let floorY = Infinity;
+    const GATE_GAP = 24;
     /** 액자에 마지막으로 적어 준 실루엣 자리. 안 바뀌었으면 다시 안 적는다 */
     let saidX = Infinity, saidY = Infinity;
     /**
@@ -349,7 +361,7 @@ export default function HomeCharacter({ onTap }: {
     const contain = () => {
       const { rx, ry } = bounds();
       x = clamp(x, rx, w - rx);
-      y = clamp(y, ry, h - ry);
+      y = clamp(y, ry, Math.max(ry, Math.min(h, floorY) - ry));
     };
 
     const paint = (progress: number) => {
@@ -454,6 +466,8 @@ export default function HomeCharacter({ onTap }: {
     const measure = () => {
       w = frame.clientWidth;
       h = frame.clientHeight;
+      const gate = frame.querySelector('.home-gate')?.getBoundingClientRect();
+      floorY = gate ? gate.top - frame.getBoundingClientRect().top - GATE_GAP : Infinity;
       size = el.offsetWidth;
       el.style.setProperty('--char-box', `${size}px`);
       if (!initialized) { x = w / 2; y = h * REST_Y; initialized = true; }
@@ -704,6 +718,9 @@ export default function HomeCharacter({ onTap }: {
     const resize = new ResizeObserver(measure);
     resize.observe(frame);
     resize.observe(el);
+    /* 버튼 영역의 키가 글꼴이 늦게 들어와 바뀌어도 바닥을 다시 잰다 */
+    const gateEl = frame.querySelector('.home-gate');
+    if (gateEl) resize.observe(gateEl);
     measure();
     const onVisibility = () => { visible = !document.hidden; lastTime = 0; };
     const onReduced = () => {

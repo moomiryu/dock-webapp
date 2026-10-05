@@ -92,7 +92,6 @@
 .send-copy h1,
 .onwall h1,
 .onwall-look,
-.done h1,
 .done-lead,
 .z-glyph-hint {
   word-break: keep-all;
@@ -807,39 +806,6 @@
 }
 
 /* ─── 전송 실패 ─────────────────────────────────────────────── */
-
-/* ─── 08 완료 ───────────────────────────────────────────────── */
-
-.done{
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: var(--s3);
-}
-
-.done h1{
-  text-wrap: balance;
-  font-size: var(--fs-h1);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: var(--lh-head);
-}
-
-.done-after{
-  display: flex;
-  flex-direction: column;
-  gap: var(--s3);
-  border-top: 1px solid var(--line);
-  padding-top: var(--s4);
-  margin-top: var(--s2);
-  font-size: var(--fs-body-s);
-  line-height: 1.5;
-  color: var(--muted);
-}
-
-.done .done-home-link{
-  margin-top: auto;
-}
 
 /* ─── 03 쓰기: 액자를 화면 끝까지 ────────────────────────────
    가운데에 띠 하나만 액자인 그림은 '왜 여기만 화면이지'로 읽힌다.
@@ -3104,9 +3070,6 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   .onwall-eye-open, .onwall-eye-shut{ animation: none; }
   .onwall-eye-shut{ opacity: 0; }
 }
-.done-simple { justify-content:center; }
-.done-simple .done-after { border:0; padding:0; margin:0; font-size:var(--fs-body); color:var(--body-text); }
-.done-simple .done-home-link { flex:none; margin-top:var(--s7); }
 
 /* ─── 성격: 손가락이 닿는 순간 ─────────────────────────────────
    닿는 순간 빨강으로 미리 보여 주던 규칙은 2026-09-29에 걷었다 — 이제 닿는
@@ -3484,20 +3447,25 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    참여자가 고른 크기가 바뀐다. 넘치면 넘치는 대로 보인다. */
 .tone-adjust .tone-work .z-glyph-stage, .tone-adjust .tone-work .z-glyph-fit{ overflow: visible; }
 
-/* ─── 08 완료 — 한 줄 더 쓰기 · 의견 칸 · 만든 사람 (2026-09-25) ───────────
-   상자 없이 선 하나와 여백으로만 묶는다. 여백은 전부 역할 토큰이다:
-   한 줄 더 쓰기 → 선 24 · 선 → 제목 24 · 제목 → 설명 4 · 설명 → 입력칸 16 ·
-   입력칸 → 보내기 8 · 의견 칸 → 만든 사람 32. */
-/* 이 화면의 주 행동 — 테두리 칸 버튼은 이것 하나뿐이다 */
-.done .done-home-link{ display: grid; place-items: center; width: 100%; min-height: var(--btn-l);
-  margin-top: var(--space-section); padding: 0 var(--pad-btn-x);
-  border: 1px solid var(--ink); border-radius: var(--r-button); background: none;
-  color: var(--ink); font-family: var(--text-font); font-size: var(--fs-body); font-weight: 600;
-  text-decoration: none; }
-/* 선은 머리줄 밑 선·목록 줄 사이 선과 같은 선 — 화면 끝에서 끝까지 */
-/* .done의 gap(--s3)이 이미 벌려 둔 만큼 빼서 버튼 → 선이 정확히 24 */
-.done-footer{ margin-top: calc(var(--space-section) - var(--s3)); margin-inline: calc(var(--pad-x) * -1);
-  padding: var(--space-section) var(--pad-x) 0; border-top: 1px solid var(--rule); text-align: left; }
+/* ─── 08 완료 — 홈의 생김새 · 의견 칸 · 만든 사람 (2026-10-06) ───────────
+   첫 화면 높이 한 장(.home-frame)이 홈과 같은 틀이다: 워드마크 자리에 '발화 종료.'와
+   메아리 한 줄, 가운데 홈의 캐릭터 · 구경꾼, 아래에 익명성 · 운영 원칙과 빨간
+   '한 줄 더 쓰기'(홈의 '처음이에요'와 같은 부품). 그 한 장 밖 아래에 의견 칸이
+   붙고, 바닥색(grey-200 — 홈 그라데이션의 아래 끝)이 이어진다.
+   의견 칸 안의 여백은 전부 역할 토큰이다: 선 → 제목 24 · 제목 → 설명 4 ·
+   설명 → 입력칸 16 · 입력칸 → 보내기 8 · 의견 칸 → 만든 사람 32. */
+.done-home{ width: 100%; max-width: 480px; background: var(--grey-200);
+  /* 선이 서는 자리(규칙 목록 · 의견 칸 위)가 grey-200 바닥이라 --line(grey-200)이 사라진다.
+     한 칸 짙게 — 3/5 조절판이 grey-200 위에 grey-300 테두리를 두는 것과 같은 관계 */
+  --line: var(--grey-300); --rule: var(--grey-300); }
+/* 워드마크 자리의 제목. 크기 · 굵기는 그전 08 제목 그대로다 */
+.done-home .home-intro h1{ text-wrap: balance; word-break: keep-all; font-size: var(--fs-h1); font-weight: 700;
+  letter-spacing: -0.02em; line-height: var(--lh-head); }
+/* 보조 글자(--muted, grey-600)는 grey-200 바닥에서 3.75:1이라 작은 글자 기준(4.5)에 못 미친다.
+   한 칸 짙은 본문 회색(grey-700, 5.78:1)으로. 입력칸 안 안내문은 흰 바탕이라 그대로 둔다 */
+.done-home .info-rules dt, .done-home .feedback-desc, .done-home .done-credits{ color: var(--body-text); }
+/* 선은 목록 줄 사이 선과 같은 선 — 화면 끝에서 끝까지 */
+.done-footer{ padding: var(--space-section) var(--pad-x) 0; border-top: 1px solid var(--rule); text-align: left; }
 .feedback{ display: grid; }
 .feedback-title{ font-family: var(--text-font); font-size: var(--fs-body); font-weight: 600; line-height: 1.4; color: var(--ink); }
 .feedback-desc{ margin-top: var(--space-title-desc); font-size: var(--fs-body-s); line-height: 1.5; color: var(--muted); }

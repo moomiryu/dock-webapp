@@ -155,7 +155,7 @@ async function main() {
 
   // 08 완료 — 30초를 기다리지 않고, 실제로도 흔한 길인 '폰을 뺐다'로 넘어간다
   await page.getByRole('button', { name: '폰을 뺐어요' }).click();
-  await page.waitForSelector('.done-after', { timeout: 10000 });
+  await page.waitForSelector('.done-home', { timeout: 10000 });
   await shoot(page, '08-done');
 
   await browser.close();

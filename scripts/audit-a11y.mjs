@@ -151,7 +151,7 @@ await page.waitForTimeout(400);
 await audit('07 벽에 떠 있음');
 
 await page.locator('.onwall-release').click();   // 폰을 뺐어요
-await page.waitForSelector('.done', { timeout: 10000 });
+await page.waitForSelector('.done-home', { timeout: 10000 });
 await audit('08 완료');
 
 await browser.close();

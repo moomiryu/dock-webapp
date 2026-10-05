@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import MegafontFrame from '../components/MegafontFrame';
+import HomeCharacter from '../character/HomeCharacter';
+import HomeCrowd from '../character/HomeCrowd';
 import { FEEDBACK_MAX, submitFeedback } from '../lib/firebase';
 import { pick, useLang } from '../lib/lang';
 
 /* 이 화면의 말. 영어는 초안이다(2026-09-26, 영문판). 장치가 하는 말(합니다체)은
    영어에서도 차분한 평서문으로 둔다 */
 const T = {
-    label: { ko: '완료', en: 'Done' },
-    title: { ko: '발화 종료', en: 'Speech ended' },
+    title: { ko: '발화 종료.', en: 'Speech ended.' },
     /* 이 문단은 세로로 쌓는 칸(app.css .done-after, flex)이라 글과 굵은 조각이
        늘 따로 선다. 한 문장으로 옮기면 'and'에서 끊겨 보여서, 영어는 두 문장으로
        나눠 그 자리가 문장 사이가 되게 한다 */
@@ -45,30 +45,49 @@ interface Props {
  * 알아야 하는 것이라 5/5 확인 화면이 들고 있다 — 다 보낸 뒤에 말하면 늦다.
  *
  * 2026-09-25: '한 줄 더 쓰기' 아래에 푸터가 붙었다 — 의견 칸과 만든 사람 줄.
- * 상자 없이 화면 끝까지 가는 선 하나와 여백으로만 묶는다. 테두리 칸 버튼은
- * '한 줄 더 쓰기' 하나뿐이다(이 화면의 주 행동). '보내기'는 글자 버튼이다.
+ * 상자 없이 화면 끝까지 가는 선 하나와 여백으로만 묶는다. '보내기'는 글자 버튼이다.
+ *
+ * 2026-10-06(사용자): 홈의 생김새를 입었다 — 앱에서 이 화면만 따로 놀았다
+ * (머리줄 'MEGAFONT · 완료'는 여기에만 있었고, 빨강이 한 곳도 없었다). 첫 화면
+ * 높이 한 장(.home-frame)이 홈과 같은 틀이다: 워드마크 자리에 '발화 종료.'와
+ * 메아리 한 줄, 가운데 홈의 캐릭터와 다가와 서는 구경꾼, 아래 빨간 주 행동.
+ * 캐릭터는 인사하지 않는다(greet=false). 홈의 흐르는 말(HomeVoices)은 가져오지
+ * 않는다. 의견 칸과 만든 사람 줄은 그 한 장 **밖** 아래에 붙어 읽는 사람만 본다 —
+ * 틀 안에 두면 캐릭터 · 구경꾼이 늘어난 틀 높이로 자리를 잡아 첫 화면 밖으로 내려간다.
  */
 export default function PhaseDone({ onRestart }: Props) {
     const lang = useLang();
-    return <MegafontFrame phaseLabel={pick(T.label, lang)}><div className="done done-simple">
-      <h1>{pick(T.title, lang)}</h1>
-      <p className="done-after">{pick(T.after, lang)}</p>
-      <dl className="info-rules">
-        <div>
-          <dt>{pick(T.anonT, lang)}</dt>
-          <dd>{pick(T.anonD, lang)}</dd>
+    return <div className="done-home">
+     <div className="home-frame">
+      <HomeCrowd />
+      <HomeCharacter greet={false} />
+      <div className="home-layer">
+        <div className="home-intro">
+          <h1>{pick(T.title, lang)}</h1>
+          <p className="home-subtitle">{pick(T.after, lang)}</p>
         </div>
-        <div>
-          <dt>{pick(T.rulesT, lang)}</dt>
-          <dd>{pick(T.rulesD, lang)}</dd>
+        <div className="home-gate">
+          <dl className="info-rules">
+            <div>
+              <dt>{pick(T.anonT, lang)}</dt>
+              <dd>{pick(T.anonD, lang)}</dd>
+            </div>
+            <div>
+              <dt>{pick(T.rulesT, lang)}</dt>
+              <dd>{pick(T.rulesD, lang)}</dd>
+            </div>
+          </dl>
+          <div className="home-actions">
+            <button className="home-cta" onClick={onRestart}>{pick(T.again, lang)}</button>
+          </div>
         </div>
-      </dl>
-      <button className="done-home-link" onClick={onRestart}>{pick(T.again, lang)}</button>
+      </div>
+     </div>
       <footer className="done-footer">
         <FeedbackForm />
         <p className="done-credits">© 2026 WoongandRyu<br />{pick(T.credits, lang)}</p>
       </footer>
-    </div></MegafontFrame>;
+    </div>;
 }
 
 /** 같은 기기에서 다시 보낼 수 있기까지 — 연달아 보내기를 앱에서 막는다(서버가 없어 규칙은 못 센다) */

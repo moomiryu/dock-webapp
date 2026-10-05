@@ -25,7 +25,7 @@ export const palettes: Palette[] = [
 // 되었다(tone.ts). 키는 안 바꾼다 — 사흘치 글이 벽에 떠 있는 동안 키를
 // 바꾸면 그 글들이 서체를 잃는다.
 //
-//   ttoryeot 당당한   → Kim jung chul Gothic           (Adobe 킷 qgd6cda)
+//   ttoryeot 당당한   → dunkel-sans-variable          (Adobe 킷 qgd6cda — 2026-10-06 되돌림)
 //   chabun   차분한   → source-han-serif-kr-variable  (Adobe 킷 qgd6cda)
 //   doran    다정한   → 마포 다카포                    (우리 파일)
 //   deulseok 유머있는 → Handjet 2.004                  (우리 파일)
@@ -38,10 +38,12 @@ export const palettes: Palette[] = [
 // 농도 0.42(아침 0.23 · 둥켈 0.60), 네모 채움 0.91(아침 0.88).
 // 2026-10-04 같은 날 **Kim jung chul Gothic**으로 다시 갈렸다(디자이너 — Adobe 킷에 더해 두었다).
 // Light · Regular · Bold 세 벌. 농도 0.17 · 0.23 · 0.37, 네모 채움 0.87~0.92(이사만루 0.90~0.93) —
-// 꽉 찬 네모꼴은 그대로, 이사만루보다 한결 가볍다. Bold는 디자이너가 '너무 굵다'고 해 쓰지 않는다(TTORYEOT_WEIGHT).
+// 꽉 찬 네모꼴은 그대로, 이사만루보다 한결 가볍다. Bold는 디자이너가 '너무 굵다'고 해 쓰지 않았다.
+// 2026-10-06: **둥켈산스로 되돌렸다**(디자이너 — 지금 앱에 둥켈만 바꿔 끼운 목업을 보고). 3/5의 셋째 막대도 무게에서
+// 말투(온화한 · 예리한 — 둥켈의 GLAT 축)로 돌아왔다. 4/5 모양(기본 · 휘기 · 기울이기)은 그대로.
 //
 // 네 서체가 가진 축은 제각각이다 (파일의 fvar를 직접 읽어 확인했다):
-//   당당한   없음 — 정적 굵기 셋(Light · Regular · Bold) ← 무게 막대는 Light · Regular에 획을 덧대 잇는다(10-04)
+//   당당한   wdth 700~1000 · GLAT 0~1000  ← 무게 축이 없다(둥켈산스, 10-06 되돌림)
 //   차분한   wght 250~900                  ← 그것뿐
 //   유머있는 wght 100~900 · ELSH 0~16 · ELGR 1~2
 //   다정한   없음                          ← 굵기 한 벌
@@ -52,14 +54,14 @@ export const palettes: Palette[] = [
 // 올리면 당당한·차분한 둘이 한꺼번에 사라질 수 있다. 차분한은 본명조가
 // 받아 주고(index.html의 CDN), 당당한은 UI 얼굴로 떨어진다.
 export const fontMap: Record<string, string> = {
-  ttoryeot: '"kim-jung-chul-gothic", "Pretendard Variable", sans-serif',
+  ttoryeot: '"dunkel-sans-variable", "Pretendard Variable", sans-serif',
   chabun: '"source-han-serif-kr-variable", "Noto Serif KR Variable", serif',
   doran: '"Mapo Dacapo", "Pretendard Variable", sans-serif',
   deulseok: '"Handjet", "Pretendard Variable", sans-serif',
   // 옛 Firestore 문서가 아직 벽에 있다. 없어진 서체를 가리키게 두면 그 글만
   // UI 얼굴로 떨어지므로, 제일 가까운 새 칸으로 보낸다.
   botong: '"Pretendard Variable", sans-serif',
-  gothic: '"kim-jung-chul-gothic", "Pretendard Variable", sans-serif',
+  gothic: '"dunkel-sans-variable", "Pretendard Variable", sans-serif',
   mono: '"Pretendard Variable", sans-serif',
   myeongjo: '"source-han-serif-kr-variable", "Noto Serif KR Variable", serif',
   song: '"Handjet", "Pretendard Variable", sans-serif'
@@ -108,9 +110,11 @@ export const fontMap: Record<string, string> = {
    같은 날 당당한이 김정철 고딕 Regular가 되며 다시 쟀다. 다른 셋의 범위가 길이 0.96~1.09 · 높이 0.86~1.13일 때
    0.8이 길이 1.01 · 높이 1.00(셋의 한가운데), 0.85가 1.07 · 1.06 — 이사만루 0.85(1.08 · 1.07)와 같은 크기라
    0.85를 그대로 둔다. shift −0.0104. 아침 · 둥켈을 같은 방법으로 다시 재 기록과 맞는 것(−0.0037 · 0.018)을
-   확인했다 — 이사만루의 −0.0382는 그때 잘못 잰 값이었다(지금 재면 −0.065). */
+   확인했다 — 이사만루의 −0.0382는 그때 잘못 잰 값이었다(지금 재면 −0.065).
+   2026-10-06: 둥켈로 되돌리며 둥켈 시절 값(1 · 0.0172) 그대로 — 디자이너가 그 크기로 본 목업에서 골랐다. 둥켈은 면 채움이
+   0.60이라 벽에서 다른 셋보다 크게 읽힌다(10-01에 아침으로 바꾼 까닭) — 알고 되돌렸다. */
 export const opticalFix: Record<string, { scale?: number; shift?: number }> = {
-  ttoryeot: { scale: 0.85, shift: -0.0104 },   // 당당한   김정철 고딕 Regular
+  ttoryeot: { scale: 1, shift: 0.0172 },        // 당당한   둥켈산스(10-06 되돌림)
   chabun: { scale: 0.73, shift: 0.0227 },      // 차분한   본명조
   doran: { scale: 0.77, shift: -0.0187 },      // 다정한   다카포
   deulseok: { scale: 0.93, shift: -0.0211 }    // 유머있는 핸드젯
@@ -144,10 +148,10 @@ export const opticalFix: Record<string, { scale?: number; shift?: number }> = {
  * 말투(GLAT)를 두었다.
  *
  * 2026-10-01: 당당한의 줄을 뺐다 — 서체가 아침 Medium(정적 500)으로 갈렸다.
- * 위 둥켈 이야기는 그 줄이 있던 까닭으로 남긴다. 옛 글(wght 700)도 이제 획을
- * 덧대지 않고 아침 500 그대로 선다(formFor).
+ * 2026-10-06: 둥켈로 되돌리며 그 줄도 돌아왔다 — 막대가 생기기 전의 옛 글(wght)이 쓴다.
  */
 const STROKE_LADDER: Record<string, Record<number, number>> = {
+  ttoryeot: { 300: 0, 400: 0.002, 500: 0.004, 600: 0.006, 700: 0.008 },
   doran: { 300: 0, 400: 0.015, 500: 0.03, 600: 0.045, 700: 0.06 }
 };
 
@@ -221,13 +225,17 @@ export const graphics: string[] = [
  * 안 보이는 작은 글자에서도 말투가 갈리게 하려는 것이다.
  *
  * 2026-10-04: 당당한의 말투를 뺐다(디자이너 — 이사만루에는 둥켈처럼 자형 자체의
- * 변수가 없다). 당당한은 이제 **무게**를 묻는다 — 세 칸(TTORYEOT_WEIGHT, 지금은 김정철 고딕
- * Light · Regular · Regular에 획 덧대기). 벽에 남은 옛 글(말투 0 · 1)은 그 말투로 나무를 고른다(cloud.ts).
+ * 변수가 없다). 당당한은 그동안 **무게**를 물었다(김정철 고딕 Light · Regular · Regular에 획 덧대기).
+ * 2026-10-06: 둥켈로 되돌리며 말투(GLAT)도 돌아왔다(디자이너). 값의 뜻(0 = 온화한 · 1 = 예리한)은 둥켈 시절 그대로라
+ * 벽에 남은 옛 글의 말투 · 나무가 바뀌지 않는다. 무게로 쓴 글(10-04 ~ 10-06)은 말투가 비어 있어 온화한 자형에 서고,
+ * 나무는 그때처럼 무게가 고른다(cloud.ts treeFor).
  */
 /* 이름은 두 언어로 든다(2026-09-26, 영문판). 쓰는 곳이 지금 언어를 고른다.
    labels · axes는 **저장되는 값**(manner 0 · 1)의 차례다. 화면에 서는 차례는 order —
    값의 뜻을 바꾸면 벽에 떠 있는 글의 말투와 형상이 뒤집힌다. */
-export const MANNER: Record<string, { labels: Pair<[string, string]>; axes?: [string, string]; order?: [number, number] }> = {};
+export const MANNER: Record<string, { labels: Pair<[string, string]>; axes?: [string, string]; order?: [number, number] }> = {
+  ttoryeot: { labels: { ko: ['온화한', '예리한'], en: ['Gentle', 'Sharp'] }, axes: ['"GLAT" 1000', '"GLAT" 0'] }
+};
 /**
  * 유머있는(핸드젯)의 옛 말투 자형 — 귀여운 · 시니컬한(저장된 manner 0 · 1의 차례). 2026-10-04 유머있는도 말투를 뺐다(디자이너 —
  * 귀여운 · 시니컬한 둘 대신 '귀여움' 하나, 셋째 막대는 무게). 이제부터는 귀여운 자형 하나에 무게 막대가 굵기를 바꾼다
@@ -266,8 +274,8 @@ export function variationFor(font: string, wght: number, manner = 0): string {
    함수를 거친다. 값은 사용자가 정했다(작업 지침 8번).
 
      성격 · 서체              속도 왼쪽            가운데              오른쪽
-     당당한 · 아침(500)       진중한 가로115%      보통                 거침없는
-                              자간 +0.06
+     당당한 · 둥켈산스        진중한 폭 1000       보통 폭 700          거침없는 폭 700
+                              세로75%              세로75%
      유머있는 · 핸드젯(840)   능청능청 가로121%     보통                 재잘재잘 가로88%
                               세로75%
      차분한 · 본명조(자간-25) 느긋한 세로86%       보통                 날렵한 가로88%
@@ -275,7 +283,7 @@ export function variationFor(font: string, wght: number, manner = 0): string {
 
      무게  차분한 wght 500 · 620 · 900 + 끝에서 획 0.0093em('1000쯤', 2026-10-04 — 그전 250 · 445 · 900)
            다정한 획 0.36 · 0.46 · 0.56pt(12pt 기준, 2026-10-04 — 그전 0 · 0.1 · 0.2pt)
-     말투  당당한 온화한(둥글게 · 자간 +0.02) · 예리한(자간 −0.02)
+     말투  당당한 온화한 GLAT 1000 · 예리한 GLAT 0(둥켈산스, 2026-10-06 되돌림)
            유머있는 ELSH 12/ELGR 1.75 · 0.8/1
 
    당당한의 진중한은 둥켈의 폭 축(1000)으로 넓어졌었다. 아침에는 폭 축이 없어
@@ -286,6 +294,7 @@ export function variationFor(font: string, wght: number, manner = 0): string {
    장평 115%+자간 +0.06em · 굵기 700+자간 +0.08em · 장평 115%+세로 90%를 한 장에 놓고
    **장평 115% + 자간 +0.06em**(넓게 + 띄워 — 글줄 길이 1.24, 농도 0.93). 무게는 자간을 더하지
    않는다(김정철 고딕은 굵기마다 글자폭이 같다, 10-04). 거침없는 쪽(기울기 18°)은 그대로 두었다.
+   2026-10-06: 둥켈산스로 되돌리며 위 둥켈 시절 값(폭 1000 · 700 · 700, 세로 75% · 75% · 100%)으로 돌아왔다(디자이너가 본 목업 그대로).
 
    기울기는 속도 가운데에서 0, 오른쪽 끝에서 18도 — 그 사이를 이어서 기운다
    (12~18도로 세기를 조절, 사용자 결정). 모든 값은 세 지점 사이를 곧게 잇는다.
@@ -295,7 +304,7 @@ export function variationFor(font: string, wght: number, manner = 0): string {
 export const SLANT_MAX = 18;
 type Three = [number, number, number];
 const SPEED: Record<string, { sx: Three; sy: Three; wdth?: Three }> = {
-  ttoryeot: { sx: [1.15, 1, 1], sy: [1, 1, 1] },
+  ttoryeot: { sx: [1, 1, 1], sy: [0.75, 0.75, 1], wdth: [1000, 700, 700] },
   deulseok: { sx: [1.21, 1, 0.88], sy: [0.75, 1, 1] },
   chabun: { sx: [1, 1, 0.88], sy: [0.86, 1, 1] },
   doran: { sx: [1.38, 1, 0.84], sy: [1, 1, 1] }
@@ -342,27 +351,6 @@ const alongFive = (t: number, v: readonly [number, number, number, number, numbe
 };
 /** 차분한은 늘 자간 -25 */
 const CHABUN_TRACK = '-0.025em';
-/** 당당한의 바탕 굵기 — 김정철 고딕 Regular(2026-10-04, 그전엔 이사만루 · 아침 Medium). 막대가 없는 옛 글(wght 700)도 이 굵기로 선다 */
-const TTORYEOT_WGHT = 400;
-/**
- * 당당한의 무게(2026-10-04, 디자이너) — 막대 세 칸이 김정철 고딕 **Light · Regular · Regular + 획 0.031em**이다.
- * Bold(농도 0.37)는 디자이너가 '너무 굵다'고 해 쓰지 않는다. 무겁게는 차분한의 '매우 무겁게'(0.311)에 맞춰
- * Regular에 획을 덧대 0.312로 맞췄다. 칸 사이는 이사만루 때 고른 **획 덧대기** 그대로다: 가는 쪽 굵기에 획을 덧대
- * 다음 칸의 농도까지 굵히고, 칸에 닿는 순간 진짜 굵기로 바뀐다.
- *   stroke — 다음 칸까지 덧댈 획(em). Light + 0.020em이 Regular와 같은 농도(0.229)다(44px에서 쟀다).
- *            가운데 → 무겁게는 굵기가 바뀌지 않고 획만 0 → 0.031em으로 는다
- * 김정철 고딕은 굵기마다 한글 폭이 0.90em으로 같아서 무게가 자간을 더하지 않는다(이사만루 Bold는 넓어 자간으로 이었다).
- */
-const TTORYEOT_WEIGHT = { wght: [300, 400], stroke: [0.020, 0.031] } as const;
-/** 당당한 무게 막대 자리(0 · 0.5 · 1) → 굵기 · 덧댈 획(em) */
-function boldWeight(w: number) {
-  const x = Math.min(1, Math.max(0, w));
-  const s = x < 0.5 ? 0 : 1, u = (x - s * 0.5) / 0.5;
-  return { wght: TTORYEOT_WEIGHT.wght[s], stroke: u * TTORYEOT_WEIGHT.stroke[s] };
-}
-/** 당당한의 속도 자간(em) — 진중한 쪽 끝에서 +0.06, 보통부터는 0. 무게 자간 위에 더한다(2026-10-01, 디자이너) */
-const TTORYEOT_SLOW_TRACK: Three = [0.06, 0, 0];
-
 /** 세 지점(0 · 0.5 · 1) 사이를 곧게 잇는다 */
 export const along = (t: number, [l, m, r]: Three) => {
   const x = Math.min(1, Math.max(0, t));
@@ -390,12 +378,8 @@ export const WEIGHT_WORDS: Pair<Five> = {
   ko: ['매우 가볍게', '가볍게', '보통', '무겁게', '매우 무겁게'],
   en: ['Very light', 'Light', 'Regular', 'Heavy', 'Very heavy']
 };
-/** 당당한의 무게 막대는 세 칸이다(2026-10-04, 디자이너) — 김정철 고딕 Light · Regular · Regular에 획 덧대기. 막대는 말의 개수만큼 칸을 낸다 */
-const BOLD_WEIGHT_WORDS: Pair<[string, string, string]> = {
-  ko: ['가볍게', '보통', '무겁게'],
-  en: ['Light', 'Regular', 'Heavy']
-};
-export const weightWordsFor = (font: string): Pair<readonly string[]> => (font === 'ttoryeot' ? BOLD_WEIGHT_WORDS : WEIGHT_WORDS);
+/** 무게 막대의 칸 말 — 막대는 말의 개수만큼 칸을 낸다(당당한의 세 칸 무게는 2026-10-06 둥켈로 되돌리며 말투로 갈음했다) */
+export const weightWordsFor = (_font: string): Pair<readonly string[]> => WEIGHT_WORDS;
 const LEISURE: Pair<Five> = {
   ko: ['매우 느긋한', '느긋한', '보통', '날렵한', '매우 날렵한'],
   en: ['Very leisurely', 'Leisurely', 'Regular', 'Nimble', 'Very nimble']
@@ -444,8 +428,7 @@ export interface Form {
   stroke: string;
   letterSpacing: string;
   weight: number;
-  /** 둥켈산스의 폭 축(700~1000)이 들던 자리. 2026-10-01 당당한이 아침으로 갈리며 비었다 —
-      구름(cloud.ts)이 글자폭을 셀 때 아직 받는 자리라 남겨 둔다. 지금은 어느 서체도 채우지 않는다 */
+  /** 둥켈산스의 폭 축(700~1000) — 구름 · 나무(cloud.ts)가 글자폭을 셀 때 받는다. 2026-10-01 ~ 10-06엔 비어 있었다 */
   wdth?: number;
 }
 
@@ -459,7 +442,7 @@ export function formFor(t: FormInput): Form {
   const bold = font === 'ttoryeot';
   const track = font === 'chabun' ? CHABUN_TRACK : '0';
   if (t.speed === undefined || t.speed === null || !SPEED[font]) {
-    const wght = bold ? TTORYEOT_WGHT : t.wght ?? 400;
+    const wght = t.wght ?? 400;
     return {
       scaleX: t.tone ?? 1, scaleY: 1, slant: Math.abs(t.slnt ?? 0),
       variation: variationFor(font, wght, t.manner ?? 0),
@@ -476,12 +459,12 @@ export function formFor(t: FormInput): Form {
   let letterSpacing = track;
   /** 장평 · 세로를 그대로 두는가 — 유머있는(비)의 새 글은 기울기만 바뀐다(speedBarFor) */
   let flat = false;
+  let wdth: number | undefined;
   if (bold) {
-    /* 무게 세 칸 · 칸 사이는 획 덧대기(TTORYEOT_WEIGHT). 자간은 속도 자간뿐(진중한 쪽에서만) */
-    const b = boldWeight(w);
-    weight = b.wght;
-    stroke = b.stroke.toFixed(4) + 'em';
-    letterSpacing = along(s, TTORYEOT_SLOW_TRACK).toFixed(4) + 'em';
+    /* 둥켈산스(2026-10-06 되돌림) — 폭 축은 속도가(진중한 1000 · 보통 · 거침없는 700), 말투는 GLAT(온화한 1000 · 예리한 0).
+       무게 축이 없어 굵기는 그대로다. 말투가 빈 글(무게로 쓴 10-04 ~ 10-06)은 온화한 자형 */
+    wdth = Math.round(along(s, row.wdth!));
+    variation = `"wdth" ${wdth}, ${MANNER.ttoryeot.axes![t.manner ? 1 : 0]}`;
   } else if (font === 'deulseok') {
     /* 무게 다섯 칸(HANDJET_WEIGHT) · 귀여운 자형 하나. 말투가 적힌 옛 글은 그때처럼 840에 그 말투(HANDJET_AXES) */
     const old = t.manner === 0 || t.manner === 1;
@@ -504,7 +487,7 @@ export function formFor(t: FormInput): Form {
   }
   return {
     scaleX: flat ? 1 : along(s, row.sx), scaleY: flat ? 1 : along(s, row.sy), slant,
-    variation, stroke, letterSpacing, weight
+    variation, stroke, letterSpacing, weight, wdth
   };
 }
 

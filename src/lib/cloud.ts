@@ -330,9 +330,10 @@ export function personaFor(font?: string): Persona {
    표의 0.989는 2% 넓었다. 돌의 넘치기(R18)가 줄 끝을 파고드는 깊이가 이 표에 걸려 있어 0.97로 고쳤다.
    2026-10-01 당당한이 아침 Medium으로 갈렸다. 같은 방법(100px, 글자를 먼저 올리고 기다림)으로 쟀다 —
    한글 고정폭 0.92 · 띄어쓰기 0.30. 둥켈을 함께 재서 0.678 · 0.116이 그대로 나와 방법을 확인했다.
-   아침에는 폭 축이 없어 아래 TTORYEOT_WIDE와 advanceFor의 보간은 이제 쓰이지 않는다(wdth가 안 온다). */
+   아침에는 폭 축이 없어 아래 TTORYEOT_WIDE와 advanceFor의 보간은 쓰이지 않았다(wdth가 안 온다).
+   2026-10-06: 당당한을 둥켈산스로 되돌려(디자이너) 둥켈 값(폭 700에서 0.678 · 0.116)과 폭 축 보간이 다시 쓰인다. */
 const ADVANCE: Record<string, { hangul: number; space: number }> = {
-  ttoryeot: { hangul: 0.90, space: 0.29 },   // 김정철 고딕(10-04 — 굵기마다 같다. 그전 이사만루 0.92 · 0.25)
+  ttoryeot: { hangul: 0.678, space: 0.116 },  // 둥켈산스 폭 700(10-06 되돌림 — 그사이 김정철 고딕 0.90 · 0.29, 이사만루 0.92 · 0.25)
   chabun: { hangul: 0.97, space: 0.31 },
   doran: { hangul: 1, space: 0.35 },
   deulseok: { hangul: 0.79, space: 0.177 },
@@ -1478,8 +1479,8 @@ function treeFor(pr: Persona, rule: 'B' | 'C', lines: readonly string[], font: s
   const flip = R() < t.flip;
   const fb = [Math.min(...foot.map((r) => r[0])), Math.min(...foot.map((r) => r[1])), Math.max(...foot.map((r) => r[2])), Math.max(...foot.map((r) => r[3]))];
   const widths = treeWidths((fb[2] - fb[0]) / Math.max(0.01, fb[3] - fb[1]), t.stretch);
-  // 종 — 말투가 남은 옛 글은 말투로(1 = 예리한 = 소나무 · 0 = 온화한 = 버드나무). 2026-10-04부터 당당한은 말투 대신 무게를
-  // 묻고 무게가 고른다(디자이너): 가볍게 = 버드나무 · 무겁게 = 소나무 · 보통 = 세 번째 나무(아직 없다 — 들기 전까지 소나무)
+  // 종 — 말투가 고른다(1 = 예리한 = 소나무 · 0 = 온화한 = 버드나무). 2026-10-04 ~ 10-06엔 당당한이 말투 대신 무게를 물었고
+  // 그때 쓴 글(말투가 빈 글)은 무게가 고른다: 가볍게 = 버드나무 · 그 밖 = 소나무. 10-06 둥켈로 되돌리며 말투가 돌아왔다(디자이너)
   const sp = typeof o.manner === 'number' ? (o.manner === 1 ? 'pine' : 'willow') : (o.weightPos ?? 0.5) < 0.25 ? 'willow' : 'pine';
   const one = o.tree ? TREE_PHOTOS.filter((s) => s.id === o.tree) : [];
   const kin = one.length ? one : TREE_PHOTOS.filter((s) => s.species === sp);

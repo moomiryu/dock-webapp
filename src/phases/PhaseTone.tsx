@@ -155,7 +155,7 @@ function Slider({ name, words, value, onChange }: {
     const [moving, setMoving] = useState(false);
     const live = useRef(value);
     live.current = value;
-    /* 칸 수는 말의 개수다 — 대개 다섯, 당당한의 무게는 셋(김정철 고딕 Light · Regular · Regular에 획 덧대기, 2026-10-04) */
+    /* 칸 수는 말의 개수다 — 다섯(당당한의 세 칸 무게는 2026-10-06 둥켈로 되돌리며 말투 버튼 둘로 갈음했다) */
     const STOPS = words.length;
     const stopAt = (t: number) => Math.round(Math.min(1, Math.max(0, t)) * (STOPS - 1));
     const snap = (t: number) => stopAt(t) / (STOPS - 1);
@@ -235,7 +235,8 @@ function MannerSwitch({ font, at, onPick }: { font: string; at: number; onPick: 
        붙는 손맛은 공용 스위치(components/SnapSwitch)가 맡는다 — 언어 창과 같다. */
     const lang = useLang();
     const names = pick(MANNER[font].labels, lang) as unknown as readonly [string, string];
-    /* 칸의 차례와 저장되는 값의 차례가 다를 수 있다(당당한: 예리한이 앞, 값은 1) — palettes.ts · MANNER */
+    /* 칸의 차례와 저장되는 값의 차례가 다를 수 있다(palettes.ts · MANNER의 order — 아침 때 당당한은 예리한이 앞이었다,
+       10-06 둥켈로 되돌리며 둥켈 시절처럼 온화한이 앞) */
     const order = mannerOrder(font);
     const labels = [names[order[0]], names[order[1]]] as const;
     return <div className="tslider">

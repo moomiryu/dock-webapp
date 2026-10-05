@@ -242,26 +242,7 @@ html[data-edge] [data-edge-strip="bottom"]{ bottom: 0; background: var(--edge-bo
   justify-content: center;
 }
 
-
-/* === 공용: 그래픽 레이어 + 줄 펄스 (입력앱·아카이브·벽 공용) === */
-.graphic-layer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.5s;
-}
-
-.graphic-layer.active {
-  opacity: 1;
-}
-
-.graphic-layer svg {
-  width: 100%;
-  height: 100%;
-  color: var(--graphic, #8B9A1B);
-  display: block;
-}
+/* === 공용: 줄 펄스 (입력앱·아카이브·벽 공용) === */
 
 .preview-text {
   position: relative;
@@ -325,45 +306,6 @@ html[data-edge] [data-edge-strip="bottom"]{ bottom: 0; background: var(--edge-bo
   from { transform: translateX(0); }
   to { transform: translateX(-100px); }
 }
-
-/* === v1 자모 골격 animations === */
-@keyframes mfOBreath {
-  0%, 100% { transform: scale(0.94); opacity: 0.8; }
-  50%      { transform: scale(1.04); opacity: 1.0; }
-}
-@keyframes mfORot {
-  from { transform: rotate(0); }
-  to   { transform: rotate(360deg); }
-}
-@keyframes mfGQuarter {
-  0%   { transform: rotate(0); }
-  25%  { transform: rotate(90deg); }
-  50%  { transform: rotate(180deg); }
-  75%  { transform: rotate(270deg); }
-  100% { transform: rotate(360deg); }
-}
-@keyframes mfSRise {
-  0%, 100% { transform: translateY(0); opacity: 0.55; }
-  50%      { transform: translateY(-14px); opacity: 1.0; }
-}
-@keyframes mfLineDrift {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-6px); }
-}
-@keyframes mfLineJitter {
-  0%, 100% { transform: translateX(0); }
-  10%      { transform: translateX(-2px); }
-  20%      { transform: translateX(1.5px); }
-  35%      { transform: translateX(-1px); }
-  50%      { transform: translateX(2px); }
-  70%      { transform: translateX(-1.5px); }
-  85%      { transform: translateX(1px); }
-}
-@keyframes mfAsterRot {
-  from { transform: rotate(0); }
-  to   { transform: rotate(360deg); }
-}
-
 
 /* === Admin wall === */
 .admin-wall {
@@ -573,102 +515,6 @@ body.wall-mode {
   text-align: center;
 }
 
-.wall-error-help {
-  margin-top: 24px;
-  max-width: 440px;
-  color: #888;
-  font-family: 'D2Coding', monospace;
-  font-size: 10px;
-  letter-spacing: 0.05em;
-  text-align: left;
-  border-top: 1px dashed #444;
-  padding-top: 16px;
-}
-
-.wall-error-help-title {
-  margin-bottom: 8px;
-  letter-spacing: 0.15em;
-  font-weight: 700;
-  color: #aaa;
-}
-
-.wall-error-help-list {
-  margin: 0;
-  padding-left: 18px;
-  line-height: 1.7;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.wall-error-help-list strong {
-  color: #ccc;
-}
-
-.wall-error-help-link {
-  color: #6cf;
-  text-decoration: underline;
-}
-
-.wall-error {
-  position: absolute;
-  top: 20px;
-  left: 20px;
-  color: #f44;
-  font-family: 'D2Coding', monospace;
-  font-size: 11px;
-  z-index: 110;
-}
-
-/* === Track lines (faint horizontal projector grid — museum reference) === */
-.wall-tracks-bg {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.wall-track-line {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.045);
-}
-
-/* === Crowd messages — horizontal scroll on assigned tracks === */
-.wall-crowd {
-  position: absolute;
-  left: 0;
-  white-space: nowrap;
-  line-height: 1.2;
-  letter-spacing: -0.005em;
-  transform-origin: center;
-  will-change: transform;
-  z-index: var(--z-content);
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  padding: 0 var(--sp-3);
-}
-
-.wall-crowd.track-left {
-  animation-name: wallSlideLeft;
-}
-
-.wall-crowd.track-right {
-  animation-name: wallSlideRight;
-}
-
-@keyframes wallSlideLeft {
-  0%   { transform: translateX(100vw); }
-  100% { transform: translateX(-100%); }
-}
-
-@keyframes wallSlideRight {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(100vw); }
-}
-
 /* === 잔상 — 떠다니다 서로·벽면에 닿으면 튕긴다 ===
    자리는 CSS가 모른다. WallSimulation의 프레임 루프가 transform으로 적는다 —
    가로 세 줄을 흘러가던 CSS 애니메이션(wallSlideLeft/Right)은 걷어냈다.
@@ -679,80 +525,6 @@ body.wall-mode {
   top: 0;
   z-index: var(--z-content);
   will-change: transform;
-}
-
-.wall-block-inner {
-  display: inline-block;
-  max-width: 30vw;                  /* cap width so dense blocks never overlap */
-  padding: 0.25em 0.6em;            /* each block keeps its own margin */
-  font-size: clamp(36px, 4vw, 64px); /* all the same, larger */
-  line-height: 1.16;
-  letter-spacing: -0.01em;
-  text-align: left;
-}
-
-.wall-block-inner .wall-line {
-  display: block;
-  word-break: keep-all;             /* keep manual breaks; wrap only over-long lines */
-}
-
-/* === Emphasis message — newest, solo at center for EMPHASIS_MS === */
-.wall-emphasis {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 90vw;
-  max-width: 1100px;
-  z-index: var(--z-elevated);
-  text-align: center;
-  pointer-events: none;
-  will-change: opacity, transform;
-}
-
-.wall-emphasis-text {
-  position: relative;
-  z-index: 2; /* above the graphic */
-  font-size: clamp(80px, 14vw, 220px);
-  line-height: 1.12;
-  word-break: keep-all;
-  letter-spacing: -0.02em;
-  transition: transform var(--t-slow) var(--ease-standard);
-  font-weight: inherit;
-  font-variation-settings: inherit;
-}
-
-/* Typewriter: each character fades/rises in, staggered by animation-delay */
-.wall-char {
-  display: inline-block;
-  white-space: pre;
-  opacity: 0;
-  animation: wallCharIn 0.55s var(--ease-emphasized) forwards;
-}
-
-@keyframes wallCharIn {
-  from { opacity: 0; transform: translateY(0.28em); }
-  to   { opacity: 1; transform: none; }
-}
-
-/* The message's chosen graphic, behind the emphasis text */
-.wall-emphasis-graphic {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 72vmin;
-  max-width: 640px;
-  aspect-ratio: 380 / 260;
-  z-index: 1; /* above the mood background, below the text */
-  opacity: 0.7;
-  pointer-events: none;
-}
-
-.wall-emphasis-graphic svg {
-  width: 100%;
-  height: 100%;
-  display: block;
 }
 
 /* 발화 — 검정이 깔리고 그 위에 그 사람 색의 상자 하나가 선다.
@@ -791,42 +563,6 @@ body.wall-mode {
 @keyframes wallBoxIn {
   from { opacity: 0; scale: 0.92; }
   to   { opacity: 1; scale: 1; }
-}
-
-.wall-line {
-  display: block;
-}
-
-.wall-emphasis-meta {
-  margin-top: var(--sp-4);
-  font-family: 'D2Coding', monospace;
-  font-size: var(--fs-xs);
-  letter-spacing: var(--ls-mono-loose);
-  opacity: 0.4;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.wall-emphasis.stage-enter {
-  animation: wallEmphasisEnter 1.5s var(--ease-emphasized) both;
-}
-
-.wall-emphasis.stage-hold {
-  opacity: 1;
-}
-
-.wall-emphasis.stage-settle {
-  animation: wallEmphasisSettle 2s var(--ease-standard) both;
-}
-
-@keyframes wallEmphasisEnter {
-  0%   { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
-  55%  { opacity: 1; }
-  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-}
-
-@keyframes wallEmphasisSettle {
-  0%   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.55); }
 }
 
 .wall-overlay {
@@ -895,14 +631,6 @@ body.wall-mode {
   text-align: center;
   line-height: 1.25;
   transform-origin: center;
-}
-
-/* 필터를 담아 두는 자리. 그림이 아니라 정의라서 크기를 갖지 않는다. */
-.mf-defs{
-  position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
 }
 /* 잔상 — 풍경의 한 칸. 크기는 CloudBubble이 --echo-side에 제 비례를 곱해
    적는다. 물리 계산이 왼쪽 위 모서리를 주므로 여기서 자리를 더 옮기지 않는다. */

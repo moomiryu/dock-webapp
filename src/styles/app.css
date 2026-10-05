@@ -57,18 +57,6 @@
   color: var(--ink);
 }
 
-.mf-home-btn{
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-
 /* 뒤로 가기 — 아이콘만. 좌상단의 고정 자리 */
 /* 손이 닿는 자리는 44인데 그 안의 ∨는 24이고, 그 24 안에서도 획은 7.5만큼
    들어가 있다 — 합쳐서 17.5. 그대로 두면 아이콘이 본문 글자보다 17px 안쪽에
@@ -145,9 +133,6 @@
 /* 쓰는 자리는 검은 액자 전체다 -- 어디를 눌러도 입력이 잡힌다. 그래서
    포커스도 액자의 밝은 헤어라인이 굵어지는 것으로 알린다.
    글 둘레에 링을 두르면 방금 없앤 둥근 사각형이 도로 보인다. */
-.live-input:focus-visible{
-  outline: none;
-}
 
 .proj-frame:focus-within{
   box-shadow: inset 0 0 0 2px rgb(255 255 255 / 88%);
@@ -189,10 +174,6 @@
 .done-home-link:active,
 .z-back:active {
   background: var(--press-tint);
-}
-
-.z-step.on:active {
-  filter: brightness(0.96);
 }
 
 /* ── 누름: 살짝 작아졌다가 돌아온다 (2026-09-29, 사용자) ────────────────────
@@ -285,7 +266,6 @@
   min-height: var(--btn-l);
 }
 
-
 /* ─── 홈: 인사말, 캐릭터, 시작 선택 ─── */
 
 /* ── 홈은 방이다: 뒷벽과 바닥 ────────────────────────────────────────
@@ -337,12 +317,6 @@
   gap: var(--s3);
 }
 
-.home-gate-q{
-  font-size: var(--fs-body);
-  line-height: 1.5;
-  color: var(--muted);
-}
-
 .home-actions{
   display: flex;
   flex-direction: column;
@@ -379,8 +353,6 @@
   align-items: center;
   justify-content: center;
 }
-
-
 
 /* ─── 자형 (glyph) ──────────────────────────────────────────── */
 
@@ -448,22 +420,6 @@
   paint-order: stroke fill;
 }
 
-/* 고르기 전 — 중립 서체를 흐리게. '여기에 뜬다'만 알린다.
-   aria-hidden으로는 부족하다: 대비 규칙은 낭독기가 아니라 눈이 기준이라,
-   화면에 보이는 글자면 흐려도 읽을 수 있어야 한다. --line(1.4:1)이 아니라
-   --muted(4.5:1)를 쓰는 이유다. */
-.z-glyph-stage.no-face .z-glyph{
-  color: var(--muted);
-  font-family: var(--ui-font);
-}
-
-.z-glyph-hint{
-  font-family: var(--label-font);
-  font-size: var(--fs-cap-s);
-  letter-spacing: 0.02em;
-  color: var(--muted);
-}
-
 /* 자형 고르기 — 정도가 아니라 종류라서 슬라이더가 아니라 선택.
    카드 이름을 그 서체로 찍어 라벨 자체가 견본이 되게 한다. */
 .style-cards{
@@ -504,161 +460,7 @@
   line-height: 1.15;
 }
 
-
-
-/* 조절 축 — 셋 다 버튼이다. 눈금 다섯 칸.
-   슬라이더를 두 번 시도했고 두 번 다 같은 데서 걸렸다: 손잡이가 무엇을
-   만지는 중인지 말해 주지 못한다. 칸을 눌러 고르면 축 이름이 화면에
-   그대로 남는다. */
-.z-steps{
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  place-items: center;
-  gap: 1px;
-  background: var(--line);
-  border: 1px solid var(--line);
-  border-radius: var(--r-l);
-  overflow: hidden;
-}
-
-
-/* 칸마다 점이 6 → 18px로 커진다. 글자 없이 "왼쪽이 적고 오른쪽이 많다"만
-   말하는 표식이라, 어느 축에 놓아도 방향이 같게 읽힌다.
-   크기는 인라인 style이 준다(칸 번호로 정해지는 값이라서). */
-.z-step-dot{
-  position: relative;
-  z-index: 1;
-  display: block;
-  border-radius: var(--r-full);
-  background: currentColor;
-  pointer-events: none;
-  transition: background 160ms;
-}
-
-/* ─── 자석 손잡이 ───────────────────────────────────────────────
-   버튼 다섯 개를 끌 수 있는 트랙 하나로 바꿨다. 눌러서 고르는 것만
-   되면 값 사이를 오가며 견본을 살피는 일이 안 된다 — 한 칸 보고, 손 떼고,
-   다음 칸 보고가 되어 '조율'이 아니라 '고르기'가 된다.
-
-   손잡이는 손가락을 그대로 따라가고(--at), 값은 제일 가까운 눈금으로
-   먼저 가 있는다. 손을 떼면 --at이 그 눈금 값으로 돌아가는데, 그때
-   transition이 걸려 있어 손잡이가 눈금으로 빨려 들어간다. 자석으로
-   읽히는 건 이 180ms다. 끄는 동안(.is-dragging)에는 꺼 둔다 — 안 그러면
-   손잡이가 손가락보다 한 박자 늦게 온다.
-
-   자리 계산: 안쪽 폭은 100% - 8(좌우 패딩 4), 손잡이는 그 1/5.
-   --at이 1일 때 왼쪽 끝이 안쪽 폭의 4/5에 선다. */
-.z-steps-thumb{
-  position: absolute;
-  top: var(--s1);
-  bottom: var(--s1);
-  left: calc(4px + var(--at, 0) * (100% - 8px) * 0.8);
-  width: calc((100% - 8px) / 5);
-  background: var(--brand-sub);
-  border-radius: var(--r-full);
-  pointer-events: none;
-  transition: left 180ms var(--ease-emphasized);
-}
-.z-steps.is-dragging .z-steps-thumb{ transition: none; }
-
-/* 진짜 입력은 트랙을 통째로 덮는다. 손잡이는 위에서 그리고 있으니
-   여기서는 잡는 자리만 내준다 — 트랙 아무 데나 눌러도 그리로 간다. */
-.z-steps-input{
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  background: none;
-  appearance: none;
-  -webkit-appearance: none;
-  cursor: pointer;
-}
-.z-steps-input::-webkit-slider-runnable-track{ height: 100%; background: none; }
-.z-steps-input::-moz-range-track{ height: 100%; background: none; }
-/* 브라우저가 그리는 손잡이는 감춘다. 폭은 우리 손잡이와 같게 둬야
-   양 끝에서 손가락과 손잡이가 어긋나지 않는다. */
-.z-steps-input::-webkit-slider-thumb{
-  appearance: none; -webkit-appearance: none;
-  width: calc((100% - 8px) / 5); height: 100%; opacity: 0;
-}
-.z-steps-input::-moz-range-thumb{
-  width: 20%; height: 100%; opacity: 0; border: 0;
-}
-.z-steps-input:focus-visible{ outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--r-full); }
-
 /* ─── 효과·색 (compose) / 미리보기 ──────────────────────────── */
-
-/* 아래층(보이는 글자)과 위층(투명 입력)이 같은 상자를 정확히 나눠 쓴다.
-   폰트·크기·자간·정렬·변형은 여기서 한 번만 정하고 둘 다 물려받는다. */
-.live-wrap{
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  text-align: center;
-  line-height: 1.25;
-  word-break: keep-all;
-  transform-origin: center;
-  font-weight: var(--wght-base, 400);
-  font-variation-settings: 'wght' var(--wght-base, 400);
-}
-
-.live-text,
-.live-placeholder{
-  white-space: pre-wrap;
-  word-break: keep-all;
-  min-height: 1.25em;
-}
-
-.live-placeholder{
-  position: absolute;
-  inset: 0;
-  opacity: 0.75;
-  pointer-events: none;
-}
-
-.live-input{
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  border: none;
-  outline: none;
-  resize: none;
-  overflow: hidden;
-  background: transparent;
-  color: transparent;
-  font: inherit;
-  line-height: inherit;
-  letter-spacing: inherit;
-  text-align: inherit;
-  white-space: pre-wrap;
-  word-break: keep-all;
-  -webkit-text-fill-color: transparent;
-}
-
-.live-input::selection{
-  background: currentColor;
-  opacity: 0.25;
-}
-
-.live-text .word,
-.proj-text .word{
-  display: inline-block;
-  transition: font-weight 900ms ease-in-out, font-variation-settings 900ms ease-in-out;
-  font-weight: inherit;
-}
-
-.live-text .word.active,
-.proj-text .word.active{
-  font-weight: var(--wght-active, 400);
-  font-variation-settings: 'wght' var(--wght-active, 400);
-}
 
 /* ─── 투사 미리보기 (16:9 = 실제 벽 2.5 × 1.41 m, Full HD) ─── */
 
@@ -689,151 +491,6 @@
   cursor: text;
 }
 
-.proj-tracks{
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.proj-tracks span{
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.14;
-}
-
-.proj-text{
-  position: relative;
-  z-index: 2;
-  /* container query(cqw/cqh) 미지원 브라우저 폴백 — 인라인 font-size가
-     무효가 되면 이 값이 쓰인다. 자동 맞춤은 안 되지만 글자는 보인다. */
-  font-size: 30px;
-  text-align: center;
-  line-height: 1.25;
-  word-break: keep-all;
-  transform-origin: center;
-  font-weight: var(--wght-base, 400);
-  font-variation-settings: 'wght' var(--wght-base, 400);
-}
-
-/* 액자 아래 — 이 한 줄이 실제 크기 감각을 준다 */
-.proj-meta-end{
-  margin-left: auto;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-
-.proj-meta-end span{
-  color: var(--muted);
-}
-
-.proj-meta-end.is-near{
-  font-weight: 600;
-}
-
-.proj-meta-end.is-near span{
-  color: var(--ink);
-}
-
-.proj-meta-full{
-  font-weight: 400;
-}
-
-.proj-meta{
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--s4);
-  font-family: var(--label-font);
-  font-size: var(--fs-cap);
-  line-height: 1.65;
-  letter-spacing: 0.02em;
-  color: var(--muted);
-}
-
-/* 색 — 누를 때마다 다음 조합으로. 색 자체는 액자가 보여주고,
-   버튼은 이게 '색'이라는 것과 몇 번째인지만 말한다. 액자 바로 아래에
-   붙어 있어야 무엇을 바꾸는 버튼인지 보인다(2차 피드백). */
-.z-cycle{
-  width: 100%;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: var(--r-l);
-  padding: var(--s4) var(--s5);
-  font-family: inherit;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s4);
-  flex: none;
-  min-height: var(--btn-l);
-}
-
-.proj-stage.is-bleed .z-cycle{
-  width: auto;
-  margin: 0 var(--pad-x);
-}
-
-.z-cycle-label{
-  font-size: var(--fs-body);
-  color: var(--ink);
-}
-
-.z-cycle-hint{
-  font-family: var(--label-font);
-  font-size: var(--fs-cap-s);
-  color: var(--muted);
-  margin-left: var(--s3);
-}
-
-.z-cycle-count{
-  font-family: var(--label-font);
-  font-size: var(--fs-body);
-  letter-spacing: 0.04em;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-
-.z-cycle-count span{
-  color: var(--muted);
-}
-
-.z-cycle-value{
-  font-size: var(--fs-body);
-  font-weight: 500;
-  color: var(--ink);
-}
-
-/* ─── 진행 표시 ─────────────────────────────────────────────── */
-
-.z-progress{
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  font-family: var(--label-font);
-  font-size: 12px;
-  color: var(--muted);
-  flex: none;
-}
-
-.z-progress .dot{
-  width: 18px;
-  height: 2px;
-  background: var(--line);
-}
-
-.z-progress .dot.on{
-  background: var(--ink);
-}
-
-.z-progress-label{
-  margin-left: var(--s2);
-  letter-spacing: 0.02em;
-}
-
 /* ─── 송신·도킹 안내 ────────────────────────────────────────── */
 
 .guide-hero{
@@ -858,15 +515,7 @@
   border-radius: var(--r-surface);
 }
 
-/* 개발 중에만 보이는 참고줄 */
-.dev-note{
-  font-size: var(--fs-cap-s);
-  line-height: 1.5;
-  color: var(--muted);
-}
-
 /* ─── 00 Splash ─────────────────────────────────────────────── */
-
 
 /* ─── 프로젝트 정보 덮개 ────────────────────────────────────── */
 
@@ -899,20 +548,6 @@
   min-height: 44px;
   flex: none;
 }
-
-.info-close{
-  min-height: var(--btn-l);
-  padding: 0 var(--s4);
-  background: none;
-  border: 1px solid var(--line);
-  border-radius: var(--r-l);
-  font-family: var(--label-font);
-  font-size: var(--fs-body-s);
-  letter-spacing: 0.02em;
-  color: var(--ink);
-  cursor: pointer;
-}
-
 
 /* Vertical sections use natural height; large text never gets trapped in a slide. */
 /* 한 번에 한 장만 여기 선다. 스크롤은 없다 — 넘기는 것은 '다음'이 한다.
@@ -947,7 +582,6 @@
 /* 제목과 설명 사이는 한 칸 더. 그 둘은 같은 덩어리가 아니다. */
 .info-slide h2{ margin-top: var(--s1); }   /* 6→4: 작성 화면의 제목(y 84)과 같은 줄에 선다 */
 .info-said{ margin-top: var(--s2); }
-
 
 /* 삽화는 **줄어들 줄 안다**.
    flex:none이던 동안, 화면이 짧으면 한 장이 한 쪽보다 길어졌다. 넘긴
@@ -1094,95 +728,6 @@
   margin-top: var(--s1);
 }
 
-/* ─── 05 전송 중 ──────────────────────────────────────────────
-   00 스플래시와 같은 가로 막대를 쓰면 두 화면이 같은 사건으로 읽힌다.
-   여기는 '내 말이 벽으로 가는 중'이라 한 점에서 퍼지는 파문으로 둔다. */
-
-.send-hero{
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s6);
-  text-align: center;
-}
-
-.send-copy{
-  display: flex;
-  flex-direction: column;
-  gap: var(--s3);
-}
-
-.send-copy h1{
-  text-wrap: balance;
-  font-size: var(--fs-h2);
-  line-height: var(--lh-head);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-.send-copy p{
-  font-size: var(--fs-body);
-  line-height: 1.5;
-  color: var(--muted);
-}
-
-.send-ripple{
-  line-height: 0;
-  color: var(--ink);
-}
-
-.send-track,
-.send-arc,
-.send-wave{
-  fill: none;
-}
-
-.send-track{
-  stroke: var(--line);
-  stroke-width: 1;
-}
-
-/* 경과는 링이 채운다 — 12시에서 시작하도록 돌려 둔다 */
-.send-arc{
-  stroke: var(--ink);
-  stroke-width: 2;
-  stroke-linecap: butt;
-  transform: rotate(-90deg);
-  transform-origin: 60px 60px;
-  transition: stroke-dashoffset 120ms linear;
-}
-
-.send-core{
-  fill: var(--ink);
-}
-
-.send-wave{
-  stroke: var(--ink);
-  stroke-width: 1;
-  opacity: 0;
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: sendWave 2.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
-}
-
-.send-wave.d2 { animation-delay: 0.8s; }
-.send-wave.d3 { animation-delay: 1.6s; }
-
-@keyframes sendWave {
-  0%   { transform: scale(0.4); opacity: 0; }
-  14%  { opacity: 0.85; }
-  100% { transform: scale(4); opacity: 0; }
-}
-
-.send-pct{
-  font-family: var(--label-font);
-  font-size: var(--fs-cap);
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-
 /* ─── 06 도킹 안내 그림 ─────────────────────────────────────── */
 
 .dock-guide{
@@ -1220,124 +765,10 @@
   .send-wave {
     animation: none !important;
   }
-  .send-wave {
-    opacity: 0.3;
-  }
   /* 모션을 끈 사람에게는 목표 상태 — 반쯤 꽂힌 모습 — 을 그대로 보여준다 */
   .dock-phone {
     transform: translateY(78px);
   }
-}
-
-/* ─── 06 꽂기 전에 알려주는 결과 ────────────────────────────── */
-
-.dock-next{
-  display: flex;
-  flex-direction: column;
-  gap: var(--s3);
-  padding: var(--s4) var(--s5);
-  border: 1px solid var(--line);
-  margin-top: var(--s1);
-  border-radius: var(--r-surface);
-}
-
-.dock-next-row{
-  display: grid;
-  grid-template-columns: 44px 1fr;
-  align-items: baseline;
-  gap: var(--s3);
-}
-
-.dock-next-label{
-  font-family: var(--label-font);
-  font-size: var(--fs-cap);
-  letter-spacing: 0.02em;
-  color: var(--muted);
-}
-
-.dock-next p{
-  font-size: var(--fs-body);
-  line-height: 1.5;
-  color: var(--ink);
-}
-
-.dock-next b{
-  font-weight: 600;
-}
-
-.dock-next-cap{
-  font-family: var(--label-font);
-  font-size: var(--fs-cap-s);
-  line-height: 1.5;
-  color: var(--muted);
-  border-top: 1px solid var(--line);
-  padding-top: var(--s3);
-}
-
-/* ─── 07 · 08 폰이 꽂힌 채로 읽는 화면 ──────────────────────
-   폰은 위쪽부터 세로로 들어간다. 서 있는 사람에게는 아래 절반만 남는다.
-   그 절반 안에서 끝나야 하는 화면들이다. */
-
-.dock-frame{
-  width: 100%;
-  max-width: 480px;
-  min-height: 100dvh;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--ui-font);
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-
-/* 홈 안으로 들어가 보이지 않는 절반. 손에 들고 볼 때만 보이고,
-   그때는 왜 아래만 쓰는지에 대한 설명이 된다. */
-.dock-buried{
-  /* min-height 위에서는 %가 해석되지 않는다 — 뷰포트 단위로 못 박는다 */
-  flex: 0 0 50dvh;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: var(--s5) var(--pad-x) var(--s3);
-  border-bottom: 3px solid var(--ink);
-  background-image: repeating-linear-gradient(
-    -45deg,
-    transparent 0 8px,
-    rgba(0, 0, 0, 0.05) 8px 9px
-  );
-}
-
-.dock-buried-head{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s4);
-  font-family: var(--label-font);
-  font-size: var(--fs-cap);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.dock-buried-head > span:first-child{
-  color: var(--ink);
-}
-
-.dock-buried-label{
-  font-family: var(--label-font);
-  font-size: var(--fs-cap-s);
-  letter-spacing: 0.02em;
-  color: var(--muted);
-  text-align: center;
-}
-
-.dock-shown{
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: var(--s5) var(--pad-x) max(var(--s6), env(safe-area-inset-bottom, 0px));
-  min-height: 0;
-  overflow-y: auto;
 }
 
 /* ─── 07 지금 벽에 떠 있는 동안 ─────────────────────────────
@@ -1361,18 +792,6 @@
   line-height: var(--lh-head);
 }
 
-.onwall-look{
-  font-size: var(--fs-body);
-  line-height: 1.5;
-}
-
-.onwall-meter{
-  display: flex;
-  align-items: baseline;
-  gap: var(--s3);
-  margin-top: var(--s1);
-}
-
 /* 곁눈질로 읽히면 충분하다. 이건 이 화면의 주인공이 아니라
    '언제까지'를 알려주는 곁줄이다. */
 .onwall-count{
@@ -1383,45 +802,11 @@
   font-variant-numeric: tabular-nums;
 }
 
-.onwall-bar{
-  height: 2px;
-  background: var(--line);
-  overflow: hidden;
-}
-
-.onwall-bar i{
-  display: block;
-  height: 100%;
-  background: var(--ink);
-  transition: width 120ms linear;
-}
-
-.onwall-note{
-  font-size: var(--fs-body);
-  line-height: 1.5;
-  color: var(--muted);
-}
-
-/* 종료 방식은 이 화면에서 두 번째로 중요한 말이다 */
-.onwall-note b{
-  color: var(--ink);
-  font-weight: 600;
-}
-
 .onwall .primary-action{
   margin-top: auto;
 }
 
 /* ─── 전송 실패 ─────────────────────────────────────────────── */
-
-/* 실패했을 때 가장 먼저 안심시켜야 하는 것 — 쓴 글이 남아 있다는 사실 */
-.fail-keep{
-  color: var(--ink) !important;
-  border: 1px solid var(--line);
-  padding: var(--s4) var(--s5);
-  font-size: 14px !important;
-  border-radius: var(--r-surface);
-}
 
 /* ─── 08 완료 ───────────────────────────────────────────────── */
 
@@ -1440,12 +825,6 @@
   line-height: var(--lh-head);
 }
 
-.done-lead{
-  font-size: var(--fs-body);
-  line-height: 1.5;
-  color: var(--ink);
-}
-
 .done-after{
   display: flex;
   flex-direction: column;
@@ -1461,9 +840,6 @@
 .done .done-home-link{
   margin-top: auto;
 }
-
-
-
 
 /* ─── 03 쓰기: 액자를 화면 끝까지 ────────────────────────────
    가운데에 띠 하나만 액자인 그림은 '왜 여기만 화면이지'로 읽힌다.
@@ -1481,10 +857,6 @@
 .proj-stage.is-bleed .proj-frame{
   border-left: 0;
   border-right: 0;
-}
-
-.proj-stage.is-bleed .proj-meta{
-  padding: 0 var(--pad-x);
 }
 
 /* ─── 04 벽 시뮬레이션 ───────────────────────────────────────
@@ -1510,136 +882,6 @@
   border: 1px solid var(--ink);
   container-type: size;
   transition: background-color 650ms ease;
-}
-
-.sim-tracks{
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 1;
-  transition: opacity 450ms ease;
-}
-
-.sim-tracks span{
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: #ffffff;
-  opacity: 0.12;
-}
-
-/* 강조 중에는 풍경이 통째로 덮인다 — 실제 벽이 그렇다 */
-.is-burst .sim-tracks,
-.is-hold .sim-tracks{
-  opacity: 0;
-}
-
-.sim-crowd{
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transition: opacity 900ms ease;
-  pointer-events: none;
-}
-
-.is-settle .sim-crowd,
-.is-ambient .sim-crowd{
-  opacity: 0.8;
-}
-
-.sim-lane{
-  position: absolute;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: center;
-  animation-name: simLane;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  animation-play-state: paused;
-}
-
-.is-settle .sim-lane,
-.is-ambient .sim-lane{
-  animation-play-state: running;
-}
-
-.sim-crowd-item{
-  display: block;
-  white-space: nowrap;
-  transform: translateY(-50%);
-  font-size: 5.4cqw;
-  line-height: 1.2;
-}
-
-/* 양 끝은 화면 밖이라 되돌아가는 순간이 보이지 않는다 */
-@keyframes simLane {
-  from { transform: translateX(108cqw); }
-  to   { transform: translateX(-108cqw); }
-}
-
-/* 가로 흐름은 lane이, 등장·축소는 mine이 맡는다.
-   음수 지연으로 정확히 가운데에서 시작하게 해 두면
-   풍경에 합류할 때 튀지 않는다. */
-.sim-mine-lane{
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 0 4%;
-  animation: simLane 34s linear infinite;
-  animation-delay: -17s;
-  animation-play-state: paused;
-}
-
-.is-ambient .sim-mine-lane{
-  animation-play-state: running;
-}
-
-.sim-mine{
-  max-width: 100%;
-  will-change: transform;
-}
-
-.sim-mine-tone{
-  transform-origin: center;
-}
-
-/* 세로 이동은 액자 높이 기준(cqh)이라야 글 길이와 무관하게 같은 자리에 선다 */
-.is-empty .sim-mine{
-  transform: translateY(62cqh);
-  opacity: 0;
-}
-
-.is-burst .sim-mine{
-  animation: simBurst 1050ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
-}
-
-.is-hold .sim-mine{
-  transform: none;
-  opacity: 1;
-}
-
-/* 내 글은 가운데 트랙에 앉는다 — 이웃들은 위아래 두 트랙을 쓴다 */
-.is-settle .sim-mine{
-  transform: translateY(0) scale(0.38);
-  opacity: 1;
-  transition: transform 950ms cubic-bezier(0.45, 0, 0.15, 1);
-}
-
-.is-ambient .sim-mine{
-  transform: translateY(0) scale(0.38);
-}
-
-/* 소리가 오는 모양 — 아래에서 한 번 넘치게 올라왔다 자리를 잡는다 */
-@keyframes simBurst {
-  0%   { transform: translateY(62cqh) scale(0.9); opacity: 0; }
-  30%  { opacity: 1; }
-  58%  { transform: translateY(-11cqh) scale(1.07); }
-  76%  { transform: translateY(4cqh) scale(0.97); }
-  90%  { transform: translateY(-1.5cqh) scale(1.01); }
-  100% { transform: translateY(0) scale(1); opacity: 1; }
 }
 
 /* 모션에는 이름이 없다 — 지금 보고 있는 게 어느 시간인지 말해준다 */
@@ -1675,7 +917,6 @@
   cursor: pointer;
 }
 
-
 /* 모션을 껐을 때 — 흐르지는 않되 **자리는 지킨다.**
    전에는 여기서 animation을 통째로 지웠다. 그러면 풍경의 여섯 줄이 쓰던
    자리까지 같이 잃는다 — 그 자리는 줄마다 다른 음수 지연이 만들던 것이라,
@@ -1687,19 +928,6 @@
    31.8cqw인데 제일 긴 글(22자 = 119cqw)이 그 간격을 넘어 옆줄을 덮었다.
    24초면 45cqw가 되어 같은 줄의 셋이 서로를 비껴간다. 내 글만 34초 그대로
    둔다 — 지연 -17초가 딱 절반, 곧 한가운데다. */
-@media (prefers-reduced-motion: reduce) {
-  .sim-lane,
-  .sim-mine-lane {
-    animation-play-state: paused !important;
-    transition: none !important;
-  }
-  .sim-lane{ animation-duration: 24s !important; }
-  .sim-mine-lane{ animation-duration: 34s !important; }
-  .sim-mine {
-    animation: none !important;
-    transition: none !important;
-  }
-}
 
 /* 2026-09-07: participant typography and spacing refinement. */
 .home-layer{ padding-top: max(var(--s5), env(safe-area-inset-top, 0px)); }
@@ -1722,7 +950,6 @@
 .style-card.on{ border-color: var(--brand-main); }
 .style-card-name{ font-size: var(--fs-h3); line-height: 1.5; }
 .z-glyph-stage{ height: 160px; flex: none; container-type: inline-size; }
-.z-glyph-hint{ font-size: var(--fs-body-s); line-height: 1.5; }
 .z1 > .primary-action{ margin-top: auto; }
 .info-overlay{ height: 100dvh; min-height: 0; gap: var(--s3); }
 /* 밑줄은 되살리고 아래 여백만 0으로 둔다 (2026-09-22).
@@ -1746,7 +973,6 @@
 /* 작가가 끊어 준 자리를 지키는 제목. text-wrap: balance는 white-space가
    줄바꿈을 지키는 순간 꺼지므로(명세가 그렇다) 굳이 같이 두지 않는다. */
 .info-slide h2[data-break]{ white-space: pre-line; text-wrap: initial; }
-.info-step-label{ font-size: var(--fs-body); font-weight: 600; letter-spacing: 0; }
 .info-said{ width: 100%; }
 /* 글은 작성 단계처럼 왼쪽에 선다(2026-09-27 사용자). 가운데 정렬이던 때는 작성
    화면으로 넘어가며 제목의 자리가 바뀌었다. 장의 좌우 여백(--pad-x + --s1)은
@@ -2779,9 +2005,6 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    아래쪽이 탁해진다 — 하늘색(#2ce9f7) 위에 붉은 기운이 얹히면 회색이 된다.
    칠하는 차례를 정한다: 배경 → 바닥 기운 → 삽화 → 버튼. */
 .info-overlay > .info-track{ position: relative; z-index: 2; }
-.tone-selected{ display: flex; align-items: center; justify-content: space-between; color: var(--body-text); font-size: var(--fs-body-s); }
-.tone-selected button{ border: 0; background: var(--grey-100); border-radius: var(--r-s); padding: var(--s3) var(--s5); min-height: 44px; color: var(--grey-700); font: inherit; cursor: pointer; }
-.tone-selected button:active{ background: var(--grey-200); }
 /* 2026-09-15 스케치: 견본이 빨간 면 위에서 화면 위쪽을 통째로 쓴다.
    제목도 설명도 없앴다 — 무슨 화면인지는 견본이 말하고, 무엇을 만지는지는
    아래 세 라벨이 말한다. 그래서 면은 가장자리까지, 위로는 맨 끝까지 간다. */
@@ -2866,82 +2089,6 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 }
 .tone-panel > .primary-action{ margin-top: calc(var(--space-section) - var(--space-group)); }
 
-
-/* ── 지금 만지는 것 + 되돌리기 ───────────────────────────────────────
-   위계의 둘째 칸이다(미리보기 → **여기** → 도구 → 다섯 칸 → 다음).
-   항목 이름은 작고 차분하게, 값은 그 옆에 또렷하게. 한 줄에 나란히 두어
-   '크기 · 보통'이 한 문장으로 읽힌다.
-
-   되돌리기는 이 줄 오른쪽 끝이다. 글자 버튼이었다가 아이콘이 됐다 —
-   되무르는 일이 만드는 일만큼 커 보이던 것을 던다. 되무를 대상이 바로
-   왼쪽에 적혀 있어 무엇이 돌아가는지가 자리로도 읽힌다. */
-.tone-now{ display: flex; align-items: center; justify-content: space-between;
-  gap: var(--s4); min-height: var(--btn-l); }
-.tone-now-text{ display: flex; align-items: baseline; gap: var(--s3);
-  font-family: var(--ui-font); min-width: 0; }
-/* --muted(grey-600)는 이 판(--grey-50) 위에서 4.36:1이라 14px 글자에
-   모자랐다(axe가 잡았다). 한 단 진한 --body-text로 6.4:1. 값과의 위계는
-   색이 아니라 크기와 굵기가 낸다. */
-.tone-now-name{ font-size: var(--fs-cap); color: var(--body-text); flex: none; }
-.tone-now-value{ font-size: var(--fs-body); font-weight: 700; color: var(--ink);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* 아이콘은 20px이지만 누르는 자리는 48px이다 — 작게 보이는 것과 작게
-   만져지는 것은 다른 일이다. 오른쪽 여백만큼 밖으로 내밀어 아이콘의
-   광학 중심이 패널 가장자리에 맞는다. */
-.tone-revert{
-  flex: none; width: var(--btn-l); height: var(--btn-l);
-  margin-right: calc((var(--btn-l) - var(--s6)) / -2);
-  display: grid; place-items: center;
-  border: 0; border-radius: var(--r-full); background: none;
-  color: var(--body-text); cursor: pointer;
-  transition: background 120ms var(--ease-standard), color 120ms var(--ease-standard);
-}
-/* 도구 아이콘과 같은 칸이라 둘이 한 식구로 읽힌다. 누르는 자리는 48px 그대로 */
-.tone-revert svg{ width: var(--s6); height: var(--s6); fill: none; stroke: currentColor; }
-/* 기본값이면 되돌릴 것이 없다. 자리는 그대로 두고 끈다 */
-.tone-revert:disabled{ color: var(--grey-300); cursor: default; }
-.tone-revert:active:not(:disabled){ background: var(--press-tint); }
-
-/* ── 도구 셋 ─────────────────────────────────────────────────────────
-   아이콘과 이름뿐이다. 2026-09-22에 **테두리를 걷었다** — 원마다 1px
-   테두리를 두르고 고른 것 위에 고리를 한 겹 더 얹고 있었는데, 같은 것을
-   두 번 그리는 꼴이었고 아래 조절 영역까지 더해 이 화면에만 둥근 테두리가
-   세 켜였다. 무엇이 골라졌는지는 테두리가 아니라 **채움**이 말한다.
-
-   상태가 둘인데 채움 하나로 겹쳐 말하지 않는다:
-     고른 도구 = 아이콘 자리가 브랜드 면으로 차고 아이콘이 희어진다
-     바꾼 도구 = 원 오른쪽 위의 **청록 점**. 자리도 색도 모양도 다르고,
-                 고른 도구(붉은 면) 위에서도 안 고른 것 위에서도 읽힌다
-   색을 못 보는 사람에게도 둘이 갈린다 — 하나는 면, 하나는 점이다. */
-.tone-picks{ display: flex; justify-content: center; gap: var(--space-in-group); }   /* 나란한 버튼 8 (32였다) */
-.tone-pick{
-  display: grid; justify-items: center; gap: var(--s3);
-  border: 0; background: none; padding: 0; cursor: pointer;
-  font-family: var(--ui-font); color: var(--body-text);
-}
-.tone-dial{
-  position: relative;
-  width: var(--btn-l); height: var(--btn-l);
-  display: grid; place-items: center;
-  border: 0; border-radius: var(--r-full);
-  background: none; color: var(--body-text);
-  transition: background 180ms var(--ease-standard), color 180ms var(--ease-standard);
-}
-.tone-dial svg{ width: var(--s6); height: var(--s6); fill: currentColor; stroke: currentColor; }
-.tone-dial svg [fill='none']{ fill: none; }
-/* 흰 아이콘이 올라앉는 면이라 --brand-main(4.00:1)이 아니라 이쪽이다 */
-.tone-pick.on .tone-dial{ background: var(--brand-strong); color: var(--paper); }
-.tone-pick.on{ color: var(--ink); font-weight: 700; }
-.tone-pick-name{ font-size: var(--fs-cap-s); }
-.tone-pick:active .tone-dial{ background: var(--press-tint); }
-.tone-pick.on:active .tone-dial{ background: var(--brand-strong); filter: brightness(0.94); }
-/* 기본에서 바꾼 도구에만 붙는 점. 고른 표시(붉은 면)와 섞이지 않게 청록이다 */
-.tone-moved{
-  position: absolute; top: 0; right: 0;
-  width: var(--s3); height: var(--s3); border-radius: var(--r-full);
-  background: var(--brand-sub); border: 2px solid var(--grey-50);
-}
-
 /* ── 다섯 칸 ─────────────────────────────────────────────────────────
    짧은 트랙 하나에 점 다섯. 2026-09-22에 눈금자를 걷어냈다 — 칸 사이마다
    잔눈금 셋을 끼워 두었는데, 값은 다섯뿐이라 **갈 수 없는 자리**를 열두
@@ -2954,72 +2101,8 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 
    점 다섯만으로는 어느 쪽이 '적고' 어느 쪽이 '많은지'를 못 말한다.
    고른 칸까지 선을 채워서 그 방향을 준다. */
-/* 다섯 칸이든 말투 버튼 둘이든 이 높이를 쓴다 — 도구를 오가도 '다음'이 제자리다 */
-.tone-area{ min-height: var(--btn-xl); display: grid; align-content: center; }
-.tone-track{
-  position: relative; width: calc(var(--btn-l) * 5); max-width: 100%;
-  height: var(--btn-l); margin-inline: auto;
-  touch-action: none; cursor: pointer;
-  user-select: none; -webkit-user-select: none;
-  /* 점 하나의 몫. 양 끝 점은 이 몫의 절반씩만 트랙 안쪽에 들어와야
-     첫 칸과 끝 칸이 트랙 끝에 붙는다. */
-  --cell: var(--btn-l);
-  --span: calc(100% - var(--cell));
-}
-/* 선은 회색 하나다. **붉은 채움 선을 걷어냈다**(2026-09-22) — 지나온
-   쪽을 빨갛게 칠했더니 그 위에 회색 점들이 얹혀 두 색이 한 선에서
-   부딪쳤고, 오른쪽 끝에서는 선 전체가 빨간데 회색 점 넷이 떠 있었다.
-   게다가 이 화면의 채도 높은 브랜드색이 다섯이 됐다(붉은 견본면 · 고른
-   도구 · 채움 선 · 선택 점 · 다음 버튼). DESIGN.md의 색 예산은 둘이다.
-
-   빨강은 **한 번만** 쓴다 — 지금 고른 칸. 그 하나가 어디 있는지가 이
-   컨트롤이 답해야 하는 전부다. */
-.tone-track-line{
-  position: absolute; top: 50%; height: 2px; margin-top: -1px; border-radius: 1px;
-  left: calc(var(--cell) / 2); right: calc(var(--cell) / 2);
-  background: var(--grey-300);
-}
-/* 점은 다섯이 **같은 크기**다.
-   왼쪽이 작고 오른쪽으로 갈수록 커지는 사다리를 넷 놓고 골랐다
-   (격자 한 장, 2026-09-22). 커지는 쪽은 전부 같은 곳에서 깨졌다 —
-   맨 오른쪽 회색 점이 고른 칸의 빨간 점과 크기가 맞먹어, 첫 칸이나
-   가운데를 골랐을 때 **눈이 선택이 아니라 회색으로 갔다**. 6→18(옛 값)은
-   18 > 16이라 회색이 이겼고, 4·6·8·12·16은 16 = 16으로 비겼다.
-   6→12는 여유가 남았지만 7.5·9·10.5가 사다리에 없는 값이라, 방금 적은
-   규칙을 첫 사용에서 어기게 된다.
-
-   그래서 크기는 방향을 말하지 않는다. '어느 쪽이 많은가'는 바로 위
-   .tone-now-value가 글자로 들고 있다('아주 작게'…'아주 크게') — 한
-   가지를 두 군데서 말할 이유가 없다. */
-.tone-stop{
-  position: absolute; top: 50%;
-  left: calc(var(--cell) / 2 + var(--span) * var(--i) / var(--last));
-  --dot: var(--s3);
-  width: var(--dot); height: var(--dot);
-  margin: calc(var(--dot) / -2) 0 0 calc(var(--dot) / -2);
-  border-radius: var(--r-full); background: var(--grey-400);
-  transition: width 220ms var(--ease-emphasized), height 220ms var(--ease-emphasized),
-    margin 220ms var(--ease-emphasized), background 180ms var(--ease-standard);
-}
 /* 고른 칸. 회색 선이 밑으로 지나가지 않도록 판 색 고리를 두른다.
    회색 점(8)의 두 배라 어느 자리에 있어도 혼자 크다. */
-.tone-stop.on{
-  --dot: var(--s5);
-  background: var(--brand-main); box-shadow: 0 0 0 4px var(--grey-50);
-}
-@media (prefers-reduced-motion: reduce){ .tone-stop{ transition: none; } }
-/* 진짜 입력은 트랙을 통째로 덮는다. 자판의 화살표키와 낭독기가 이걸 잡는다 —
-   ± 버튼을 걷어낸 자리를 여기가 받는다. **손가락은 안 받는다**
-   (pointer-events: none): 네이티브 range는 누른 자리로 값을 순간이동시키는데,
-   그 규칙이 위 다섯 점의 규칙과 한 자리에서 부딪친다. 손가락은 .tone-track이
-   받아 제일 가까운 칸을 고른다. 초점과 화살표키는 이 속성과 무관하다. */
-.tone-track-input{
-  position: absolute; inset: 0; z-index: 2; pointer-events: none;
-  width: 100%; height: 100%; margin: 0; padding: 0;
-  background: none; appearance: none; -webkit-appearance: none; opacity: 0;
-}
-.tone-track-input:focus-visible{ opacity: 0.001; }
-.tone-track:focus-within{ outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--r-s); }
 
 /* 짧은 화면에서는 패널이 한 칸씩 줄어든다.
    640 화면에서 견본칸이 99px까지 눌렸다 — '기본 상태' 표와 견본 글자가
@@ -3056,13 +2139,6 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   padding: var(--s2) var(--s4); border-radius: var(--r-control);
   pointer-events: none;
 }
-
-.z-steps{ background: var(--grey-100); border-color: var(--grey-100); gap: var(--s1); padding: var(--s1); }
-/* 점은 --grey-600 — 회색 트랙 위에서 4.2:1이다. 글자가 아니라 표식이라
-   대비 규칙의 대상이 아니지만, 안 보이면 눈금이 몇 칸인지 못 센다.
-   손잡이가 올라앉은 눈금만 검게 — 청록 위에서 회색은 묻힌다. */
-.z-steps{ min-height: var(--btn-l); color: var(--grey-600); }
-.z-step-dot.on{ background: var(--ink); }
 /* 말투 — 값이 둘뿐인 축이라 손잡이가 아니라 버튼 둘이다(안내서도 그렇게
    그렸다). 이름이 **그 말투의 얼굴로** 쓰여 있어서, 누르기 전에 무엇이
    되는지가 글자 자체로 보인다 — 잣대가 이름이 아니라 견본인 셈이다.
@@ -3070,25 +2146,6 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    생김새는 옆의 눈금과 한 식구다: 회색 띠(--line) 위에 고른 것만 청록
    알약(--brand-sub). 처음엔 검은 바탕인 줄 알고 흰 글자·흰 테두리를 줬는데,
    이 칸은 흰 판이라 안 고른 쪽이 통째로 안 보였다. */
-/* 눈금자와 **같은 높이**여야 한다(--btn-xl). 58px이라 눈금자(56)와 2px
-   어긋났고, 도구를 오갈 때마다 아래의 '다음'이 그만큼 들썩였다. */
-.z-manner{ height: var(--btn-xl); align-items: center;
-  display: grid; grid-template-columns: 1fr 1fr; gap: var(--s1);
-  padding: 4px; background: var(--line); border: 1px solid var(--line);
-  border-radius: var(--r-l);
-}
-.z-manner-btn{
-  /* 48 + 위아래 4씩 = 56. 눈금자와 같은 높이라야 도구를 오갈 때 이 줄이
-     제자리에 있는다(--btn-l에 --s1 두 겹을 더한 값이 --btn-xl이다). */
-  min-height: var(--btn-l); padding: var(--s1) var(--s3);
-  border: 0; border-radius: var(--r-control);
-  background: none; color: var(--body-text);
-  font-size: var(--fs-body); line-height: 1.2; cursor: pointer;
-  transition: background 200ms var(--ease-standard), color 200ms var(--ease-standard);
-}
-.z-manner-btn.on{ background: var(--brand-sub); color: var(--ink); }
-.z-manner-btn:active{ background: var(--press-tint); }
-.z-manner-btn.on:active{ filter: brightness(0.94); }
 /* 보조 설명은 제목보다 한 칸 낮다(--muted · 4.64:1). 2026-09-07에 여기서
    --body-text로 올려 뒀었는데, 그러면 제목과 본문이 같은 세기로 읽힌다.
    기본 선언(.z-ask p · .guide-hero p)이 원래 --muted였다 — 거기로 돌린다.
@@ -3153,41 +2210,17 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   pointer-events: auto; cursor: pointer; }
 .home-help:active{ scale: 0.94; }
 .home-help:focus-visible{ outline: 2px solid var(--ink); outline-offset: 2px; }
-.color-options{ border: 0; min-width: 0; }
-.color-swatches{ display: flex; gap: var(--s4); overflow-x: auto; padding: var(--s3); scrollbar-width: thin; scroll-padding-inline: var(--s3); }
-.color-option{ position: relative; flex: 0 0 56px; width: 56px; height: 56px; display: grid; place-items: center; cursor: pointer; }
-.color-option input{ position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-.color-swatch{ display: block; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--grey-300); pointer-events: none; }
-.color-option input:checked + .color-swatch{ outline: 3px solid var(--brand-main); outline-offset: 3px; }
-.color-option input:focus-visible + .color-swatch{ box-shadow: 0 0 0 8px var(--paper), 0 0 0 10px var(--ink); }
-.color-caption{ text-align: center; color: var(--muted); font-size: var(--fs-body-s); }
 .sr-only{ position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 /* Bilingual specimen and a consistent black screen for message previews. */
 .z-glyph > span{ display: block; }
-/* 2026-09-15 스케치: Public / Voice 두 줄이다. 한 줄로 두면 라틴이
-   '발화'보다 넓어져 견본의 주인이 바뀐다. 비율은 스케치에서 잰 것 —
-   발화 133px일 때 라틴 44.6px(0.335em), 두 줄 잉크 88px, 사이 44.3px. */
-.z-glyph .glyph-latin{ font-family: 'Lineal VF', sans-serif; font-size: 0.335em; line-height: 1.26; margin-top: 0.33em; }
-.info-step-label{ text-transform: none; font-weight: 600; }
-.color-preview-stage{ flex-direction: column; justify-content: center; gap: var(--s4); }
-.color-preview{ background: #000; }
-.screen-ratio-note{ color: var(--muted); font-size: var(--fs-body-s); align-self: flex-start; line-height: 1.5; }
 /* 더 이상 배경을 가진 캡슐이 아니다. 두 층(덩어리 · 읽는 글자)을 겹쳐 놓는
    자리일 뿐이라 배경도 라운드도 없다. 글자 크기를 여기서 정하는 것은
    useGoo가 이 상자를 재서 번짐 반경을 잡기 때문이다. */
-.compose-bubble{ position: relative; width: 82%; padding: var(--s5) var(--s6); }
-.proj-tracks, .sim-tracks{ display: none; }
-.sim-mine.voice-bubble{ max-width: 88%; }
-.sim-crowd-item{ padding: 0.5em 1em; border-radius: 999px; }
-
-.is-settle .sim-crowd, .is-ambient .sim-crowd{ opacity: 1; }
 .home-intro .home-headline{ container-type: inline-size; }
 /* 21cqw는 잉크 328px이었다. 스케치가 308.6이라 한 급 줄인다 — 19.8cqw.
    2026-09-22: 그 92% — 18.2cqw. (위의 52px은 컨테이너 단위를 모르는
    브라우저의 예비값, 56의 92%) */
 .home-headline > span{ font-size: 18.2cqw; }
-
-.sim-crowd-item{ font-size: 2.4cqw; max-width: 60cqw; white-space: normal; word-break: keep-all; }
 
 /* ─── 자판이 올라온 화면 ──────────────────────────────────────
    dvh는 주소창만 따라가고 자판은 따라가지 않는다. lib/viewport가 실제로
@@ -3220,9 +2253,6 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   width: min(100%, calc(100cqh * 2.4 / 1.5));
   height: auto;
 }
-
-/* 자판이 올라와 있는 동안은 비율 안내가 자리를 뺏을 뿐이다 */
-:root[data-keyboard='up'] .proj-meta > span:first-child{ display: none; }
 
 /* ═══ 캐릭터 ═══════════════════════════════════════════════════════
    홈에는 캐릭터가 둘 있다. 한가운데 서 있는 큰 메가폰트 하나와, 배경을
@@ -3550,13 +2580,6 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    아래 전부에 건다 — 한 칸만 걸면 글자를 담은 칸에서 다시 지워진다. */
 .voice-bubble.is-fill .message-line-fill,
 .voice-bubble.is-fill .message-line-fill * { overflow-wrap: anywhere; }
-/* 라벨은 제 칸 가운데 — 스케치에서 셋 다 x=49.7에 맞춰져 있다.
-   왼쪽에 붙이면 '크기'(두 자)와 '빠르기'(세 자)가 서로 어긋나 보인다. */
-.tone-slider { display:grid; grid-template-columns: var(--btn-l) minmax(0,1fr); gap:var(--s4); align-items:center; font-size:var(--fs-body-s); color:var(--body-text); }
-.tone-slider > span:first-child { text-align: center; }
-.tone-slider-control { display:flex; flex-direction:column; gap:var(--s1); }
-.tone-slider-labels { display:flex; justify-content:space-between; }
-.tone-slider input { width:100%; min-height:var(--btn-s); accent-color:var(--brand-strong); cursor:pointer; }
 /* 2026-09-15 스케치: 쓰는 자리가 화면을 통째로 쓴다. 뒤로 가기와 정렬·기울기는
    그 위에 떠 있고, 글자 수는 자리의 오른쪽 아래에 앉는다. 16:10 액자를 벗는
    대신 60자를 채워도 18px로 읽힌다 — 벽 비율은 미리보기(05)가 맡는다. */
@@ -3565,31 +2588,6 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .compose-chrome{ position: absolute; top: var(--top-safe); left: var(--pad-x); right: var(--pad-x); display: flex; align-items: center; justify-content: space-between; gap: var(--s4); z-index: 1; }
 .compose-chrome .z-back{ color: var(--paper); }
 .compose-chrome .z-back:active{ background: rgb(255 255 255 / 16%); }
-/* 검은 자리 위에서는 흰 알약 두 개가 글보다 먼저 눈에 든다. 테두리만 남긴다. */
-.compose-chrome .format-button{ background: none; border-color: rgb(255 255 255 / 34%); color: var(--paper); }
-.compose-chrome .format-button[aria-pressed=true]{ background: var(--brand-sub); border-color: var(--brand-sub); color: var(--ink); }
-/* 물러선 뒤에만 서는 제목. 자리는 02·03과 같다 — 머리줄(16 + 44) 아래 16.
-   액자 위에 떠 있어서(absolute) 제목이 생겨도 한가운데의 덩이는 한 픽셀도
-   안 움직인다. 물러서는 420ms와 같은 박자로 떠오른다. */
-.compose-ask{ position: absolute;
-  /* 머리줄(위 16 + 높이 44 + 선 1) 밑으로 섹션 사이 24 — 다른 화면과 같은 자리 */
-  top: calc(var(--top-safe) + var(--btn-m) + 1px + var(--space-section)); left: var(--pad-x); right: var(--pad-x);
-  z-index: 1; color: var(--paper); opacity: 0; pointer-events: none;
-  transition: opacity 420ms var(--ease-emphasized); }
-/* 3초 뒤 흐려지던 것을 2026-09-22에 멈췄다. 색을 고르는 동안 무엇을 하는
-   자리인지가 화면에서 없어졌다 — 제목은 절대 위치라 자리를 안 먹으니
-   서 있어도 잃는 것이 없다. */
-.compose-editor.is-pulled .compose-ask{ opacity: 1; }
-
-/* ─── 제목은 3초만 서 있는다 ───────────────────────────────────
-   무엇을 정하는 화면인지 한 번 말하고 물러난다. 계속 서 있으면 발화와
-   제목이 같은 화면에서 목소리를 다투고, 작은 폰에서는 둘이 서로 낑긴다.
-   읽고 나면 할 일이 끝난 문장이라 자리를 발화에게 넘긴다.
-
-   03·04의 .compose-ask는 absolute라 자리를 안 먹는다 — 흐려지기만 하면 된다.
-   03은 자판을 내려야 제목이 서므로, 애니메이션도 is-pulled가 붙는 그 순간
-   시작한다(규칙째로 들어왔다 나가서 셈이 매번 다시 선다). */
-@keyframes askBrief { to { opacity: 0; } }
 
 /* 02·05의 .z-ask는 세로로 자리를 먹는 칸이다. 흐려지는 것만으로는 빈자리가
    그대로 남아 아무것도 넓어지지 않으므로, 흐려진 뒤 칸을 접는다.
@@ -3625,32 +2623,20 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 
    수치는 참고 자료(motion reference_2.gif)를 프레임마다 재서 나온 것이다.
    components/WaveBox.tsx의 WaveRing 주석에 그 표가 있었다 — 아무도 안 불러 2026-10-06에 지웠다(git 기록에 있다). */
-/* minmax(0,1fr)이 있어야 한다. 격자의 기본 칸은 max-content라, 60자를 한 줄로
-   편 너비(1012px)까지 칸이 부풀고 글이 판 밖으로 흘러 나간다. */
-.compose-pane{ position: relative; width: 100%; height: 100%; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center;
-  transition: width 420ms var(--ease-emphasized), height 420ms var(--ease-emphasized), border-radius 420ms var(--ease-emphasized); }
-/* 316 × 1.174(물결이 가장 멀리 갔을 때) = 371 — 스케치에서 형태가 차지한 370이다 */
-.compose-editor.is-pulled .compose-pane{ width: min(80vw, 316px); height: min(80vw, 316px); border-radius: 17%; }
 /* 고른 색은 글자 뒤에 깔린 알약이 아니라 **배경 전체**다 (스케치 04a).
    쓰는 동안에는 액자가 통째로 그 색이고, 물러서면 그 색이 한 덩이로
    줄어든다 — 검정이 드러나는 건 물러선 뒤뿐이다. */
 .compose-editor{ background: var(--pane-bg); transition: background 420ms var(--ease-emphasized); }
 .compose-editor.is-pulled{ background: var(--ink); }
-.compose-pane{ background: var(--pane-bg); }
-/* 줄마다 두르던 둥근 사각형은 배경이 통째로 그 색이 되면 할 일이 없다.
-   남겨 두면 같은 색이 두 겹으로 겹쳐 가장자리에 테가 보인다. */
-.compose-pane .message-line-fill{ background: none; padding-inline: 0; }
 /* 머리줄은 흰색 붙박이였다 — 배경이 형광색이 되면 읽히지 않는다.
    메시지의 글자색을 그대로 쓴다. 그 색은 배경과 대비되도록 고른 값이다. */
 .compose-editor .compose-chrome .z-back,
 .compose-editor .compose-chrome .format-button,
 .compose-editor .compose-chrome .z-step-of{ color: var(--chrome-ink, var(--paper)); }
-.compose-editor .compose-chrome .format-button{ border-color: color-mix(in srgb, var(--chrome-ink, var(--paper)) 34%, transparent); }
 .compose-editor .compose-count{ color: var(--chrome-ink, var(--grey-500)); opacity: 0.7; }
 .compose-editor.is-pulled .compose-chrome .z-back,
 .compose-editor.is-pulled .compose-chrome .format-button,
 .compose-editor.is-pulled .compose-chrome .z-step-of{ color: var(--paper); }
-.compose-editor.is-pulled .compose-chrome .format-button{ border-color: rgb(255 255 255 / 34%); }
 /* 물러선 상자의 글자는 이제 상자가 정한다 — VoiceBubble의 fill이 재서 채운다.
    여기 있던 transform: scale(0.62)를 걷어냈다. 그 0.62는 글자만 줄였지 글줄
    폭은 그대로 둬서, 16자가 상자 가로의 35%밖에 못 채우고 화면에 찍히는 크기가
@@ -3658,52 +2644,6 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    글자 크기 사다리가 따로 상한을 걸고 있어서다. 두 겹을 다 걷어내고 상자에
    맞춘다: 16자 56px, 50자 31px, 2자는 한 줄이 폭에 걸려 110px. */
 .compose-editor.is-pulled .compose-count{ opacity: 0; }
-
-/* 물결이 얼마나 멀리·얼마나 짙게 가는지. WaveRing이 strength로 이 둘을
-   내려준다. @property로 등록해야 값이 바뀔 때 뚝 끊기지 않고 건너간다 —
-   등록하지 않은 사용자 속성은 보간되지 않아서, 벽에서 물결이 잦아드는
-   30초가 계단처럼 보이게 된다. */
-@property --wave-reach { syntax: '<number>'; inherits: true; initial-value: 1.174; }
-@property --wave-ink   { syntax: '<number>'; inherits: true; initial-value: 1; }
-
-/* 240 화판에 200짜리 네모를 그려 두었으므로 판을 120%로 키우면 네모가
-   판에 꼭 맞는다. */
-/* inset:0 + margin:auto로는 가운데에 못 온다 — 판보다 큰 상자라 그 규칙은
-   왼쪽에 붙여 버린다. 가운데를 직접 잡는다. */
-.wave-ring{ position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 120%; height: 120%; pointer-events: none;
-  overflow: visible; }
-/* 04에서만 — 자리 잡을 때까지는 없는 것과 같다. 물러선 뒤에만 보인다.
-   벽에는 이 가림막이 없다. 거기서는 물결이 늘 켜져 있고, 세기로만 말한다. */
-.compose-pane .wave-ring{ opacity: 0; transition: opacity 240ms; }
-.compose-editor.is-pulled .compose-pane .wave-ring{ opacity: 1; }
-/* 741.6 = 둘레. 네 토막으로 끊고(185.4마다) 변 한가운데에 34짜리 틈을 둔다 */
-.wave-ring-path{ stroke-dasharray: 151.4 34; stroke-dashoffset: 102.4; stroke-linecap: round;
-  transform-box: fill-box; transform-origin: center; animation: waveRing 600ms linear infinite; }
-@keyframes waveRing {
-  0%   { transform: scale(1.028); stroke-width: 3.8px; opacity: var(--wave-ink); }
-  78%  { opacity: var(--wave-ink); }
-  100% { transform: scale(var(--wave-reach)); stroke-width: 0.9px; opacity: 0; }
-}
-/* 물결이 떨어져 나가는 순간 몸통이 그만큼 여윈다 — 한 변으로 2.2%.
-   주기가 물결과 같아야 한 몸으로 읽힌다. */
-.wave-core{ animation: waveCore 600ms linear infinite; }
-.compose-editor.is-pulled .compose-pane{ animation: waveCore 600ms linear infinite; }
-@keyframes waveCore {
-  0%   { transform: scale(0.978); }
-  100% { transform: scale(1); }
-}
-/* 여러 상자가 한 화면에 있을 때 숨을 어긋내는 손잡이. 물결과 몸통이 같은
-   값을 봐야 한 몸으로 읽힌다. animation 축약형 뒤에 와야 지워지지 않는다. */
-.wave-core, .wave-ring-path{ animation-delay: var(--wave-phase, 0s); }
-
-/* 상자 자체. 04의 .compose-pane.is-pulled와 같은 몸 — 정사각, 17% 라운드,
-   글 뒤에 알약 없음. 크기는 쓰는 쪽이 준다(폰은 316px, 벽은 vh).
-   세기가 바뀔 때 뚝 끊기지 않게 잇는다 — 벽에서 30초에 걸쳐 잦아드는 동안
-   값이 250ms마다 내려오고, 그 사이를 이 transition이 채운다. 내려앉을 때는
-   --wave-calm으로 더 길게 잇는다. */
-.wave-box{ position: relative; display: grid; place-items: center; aspect-ratio: 1; border-radius: 17%;
-  transition: --wave-reach var(--wave-calm, 300ms) linear, --wave-ink var(--wave-calm, 300ms) linear; }
-.wave-box .message-line-fill{ background: none; padding-inline: 0; }
 
 /* ── 구름(벽 · 04) ─────────────────────────────────────────────────────
    글을 감싸는 배경. 자리는 cloud.ts, 그리기와 숨은 CloudBubble이 한다.
@@ -3794,13 +2734,9 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 @media (prefers-reduced-motion: reduce) {
   .wave-ring-path, .wave-core, .compose-editor.is-pulled .compose-pane,
   .tone-adjust .z-glyph > span, .tone-adjust .z-glyph-char { animation: none; }
-  .wave-ring-path { stroke-width: 3.8px; }
 }
 .compose-count > span{ color: var(--grey-600); }
 .compose-count.is-full > span{ color: var(--grey-400); }
-.compose-toolbar { display:flex; justify-content:flex-end; gap:var(--s3); }
-.format-button { display:grid; place-items:center; width:var(--btn-l); height:var(--btn-l); border:1px solid var(--line); border-radius:var(--r-s); background:var(--paper); color:var(--ink); }
-.format-button[aria-pressed=true] { background:var(--brand-sub); }
 /* .compose-editor는 여기서 빠졌다 — 이제 액자 자체가 고른 색을 입는다.
    검정은 물러섰을 때만 드러난다(.is-pulled). */
 .sim-frame { background:var(--ink); }
@@ -3840,9 +2776,6 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    물러서면 화면째 검정이 되고 한 덩이만 색으로 남는다(스케치 04c). */
 .compose-screen{ background: var(--pane-bg, var(--ink)); transition: background 420ms var(--ease-emphasized); }
 .compose-screen.is-pulled{ background: var(--ink); }
-.color-choice .z-step-of{ color: var(--chrome-ink, var(--paper)); }
-/* 04의 안내 문장(2026-09-28). 검은 자리 위라 기본 --muted로는 AA에 모자란다 — 05와 같은 값 */
-.color-choice .compose-ask p{ color: var(--grey-400); }
 /* '이렇게 담을게요'가 **그 색**이다. 고른 짝(배경·글자)을 버튼이 그대로
    입는다 — 누르기 전에 결과가 버튼 안에 있다.
    테두리는 없다(2026-09-29 사용자). 글자색 1px 선을 둘렀었다 — 검은 화면
@@ -3967,17 +2900,6 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .color-roll-arrows > button:active{ background: var(--press-tint); }
 .color-roll-arrows > button:focus-visible{ outline: 2px solid var(--ink); outline-offset: -2px; }
 .color-roll-arrows svg{ width: var(--s4); height: auto; fill: currentColor; }
-.compose-input { cursor:text; caret-color:var(--paper); color:transparent; font-family:inherit; }
-.compose-input:focus-visible { outline:none; }
-.sim-mine { width:100%; display:grid; place-items:center; }
-.color-reels { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s5); }
-.color-reel { border:0; min-width:0; text-align:center; }
-.color-reel legend { width:100%; margin-bottom:var(--s3); font-size:var(--fs-body); }
-.color-reel-track { height:calc(var(--btn-xl)*3); overflow-y:auto; scroll-snap-type:y mandatory; border:1px solid var(--line); border-radius:var(--r-xl); padding:var(--s3); display:flex; flex-direction:column; gap:var(--s3); }
-.color-reel-option { width:100%; min-height:var(--btn-xl); flex:none; scroll-snap-align:center; border:2px solid var(--line); border-radius:var(--r-s); cursor:pointer; }
-.color-reel-option[aria-pressed=true] { border:3px solid var(--brand-main); }
-.color-reel-option:disabled { cursor:not-allowed; }
-.swatch-mark { font-size:var(--fs-h3); }
 .cta-loading { font-size:var(--fs-h3); letter-spacing:var(--s1); }
 .primary-action[aria-busy=true] { background:var(--brand-strong); color:var(--paper); }
 .docking-simple { justify-content:flex-start; padding-top:var(--s7); }
@@ -4189,29 +3111,6 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .done-simple .done-after { border:0; padding:0; margin:0; font-size:var(--fs-body); color:var(--body-text); }
 .done-simple .done-home-link { flex:none; margin-top:var(--s7); }
 
-.compose-input { padding:0 var(--s3); box-sizing:border-box; }
-
-/* ─── 단계 표시 (2026-09-15 되살림) ────────────────────────────
-   스케치가 오른쪽 위에 '2 / 5 · 조율'을 둔다. 숫자를 Lineal로 찍으면
-   워드마크와 같은 얼굴이라 먼저 눈에 든다 — 본문 얼굴로 적어 물러나게 한다.
-   단계 이름도 스케치를 따라 2를 '특성'에서 '조율'로 바꿨다. */
-.z-step-of{
-  margin-left: auto;
-  font-family: var(--text-font);
-  font-size: var(--fs-cap);
-  font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--muted);
-  white-space: nowrap;
-}
-/* .z-header의 마지막 칸을 잉크색으로 올리는 규칙보다 뒤에 와야 한다 */
-.z-header > .z-step-of{ color: var(--muted); }
-/* 어두운 면 위에서는 회색이 묻힌다. --muted(#6b7684)는 검정 위 4.49:1로
-   AA에 한 끗 모자라서 한 칸 밝게 간다. */
-.compose-chrome .z-step-of{ color: var(--grey-500); }
-.tone-adjust .z-glyph-stage .z-step-of{ color: var(--paper); }
-
 /* ─── 성격: 손가락이 닿는 순간 ─────────────────────────────────
    닿는 순간 빨강으로 미리 보여 주던 규칙은 2026-09-29에 걷었다 — 이제 닿는
    순간 판이 그 칸으로 간다(PhaseGlyph). */
@@ -4224,10 +3123,8 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    같이 오지 못한 것이 하나 있다: .z-back:hover는 border-color를 바꾸는데
    .z-back에는 테두리가 없어서 처음부터 죽은 줄이었다. 옮기는 대신 지웠다. */
 @media (hover: hover) {
-  .mf-home-btn:hover{ color: var(--ink); }
   .home-link:hover,
   .done-home-link:hover{ color: var(--ink); }
-  .info-close:hover{ border-color: var(--ink); }
   .sim-replay:hover{ color: var(--ink); border-color: var(--ink); }
 }
 
@@ -4317,7 +3214,6 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 /* align-items: center였다 — 알약이 252px 고정폭이라 가운데 세웠다.
    눈금 줄은 화면 폭을 다 쓴다(다섯 칸을 나눠야 해서). stretch로 되돌린다. */
 
-
 /* ─── 5/5 미리보기 — 벽의 발화 부품을 액자 안에 (2026-09-24) ─────
    .wall-show는 벽에서 화면 전체를 덮는다(position: fixed). 여기서는 16:9
    액자가 곧 벽이므로 액자 안에 가둔다. 한 변(--big-side)은 PhasePreview가
@@ -4355,7 +3251,6 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .preview-screen .sim-replay{ border-color: color-mix(in srgb, var(--paper) var(--rule-mix), transparent); color: var(--grey-400); }
 .preview-screen .error-banner{ border-color: var(--grey-500); color: var(--paper); }
 @media (hover: hover){ .preview-screen .sim-replay:hover{ color: var(--paper); border-color: var(--paper); } }
-
 
 /* ─── 머리줄 밑 구분선 — 한 규칙 (2026-09-25) ─────────────────────
    내비게이션과 본문 사이에 선 하나. 튜토리얼 머리줄의 선(1px · --line ·

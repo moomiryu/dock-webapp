@@ -72,43 +72,9 @@ export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Prop
   const lang = useLang();
   const at = font ? STYLE_OPTIONS.findIndex(s => s.val === font) : -1;
 
-  /* 판의 자리 — 칸 하나를 1로 센 가로(x) · 세로(y), 0 ~ 1(2×2). 끄는 동안만 값이 있다 */
-  const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
-  const press = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
+  /* 누르면 그 칸으로 판이 미끄러진다. 끌기는 없다(2026-10-06 — 산만하다는 지적) */
   const radios = useRef<Array<HTMLButtonElement | null>>([]);
   const pickCell = (i: number) => { if (i !== at) { tick(); setFont(STYLE_OPTIONS[i].val); } };
-  const cellOf = (p: { x: number; y: number }) => Math.round(p.y) * 2 + Math.round(p.x);
-  /* 손가락 자리 → 판 가운데의 자리. 첫 칸 가운데에서 끝 칸 가운데까지만 간다 */
-  const posAt = (cx: number, cy: number) => {
-    const a = radios.current[0]?.getBoundingClientRect();
-    const b = radios.current[3]?.getBoundingClientRect();
-    if (!a || !b) return { x: 0, y: 0 };
-    const clamp = (v: number) => Math.min(1, Math.max(0, v));
-    return { x: clamp((cx - a.left - a.width / 2) / (b.left - a.left || 1)),
-             y: clamp((cy - a.top - a.height / 2) / (b.top - a.top || 1)) };
-  };
-  const down = (e: React.PointerEvent) => {
-    if (press.current) return;                                   // 한 손가락만 따른다(SnapSwitch와 같다)
-    press.current = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
-    list.current?.setPointerCapture(e.pointerId);
-  };
-  const moveTo = (e: React.PointerEvent) => {
-    const p = press.current;
-    if (!p || e.pointerId !== p.id) return;
-    if (!p.moved && Math.hypot(e.clientX - p.x, e.clientY - p.y) < 6) return;   // 누르기와 끌기를 가른다
-    p.moved = true;
-    const pos = posAt(e.clientX, e.clientY);
-    setDrag(pos);
-    pickCell(cellOf(pos));
-  };
-  const up = (e: React.PointerEvent) => {
-    const p = press.current;
-    if (!p || e.pointerId !== p.id) return;
-    press.current = null;
-    if (p.moved) setDrag(null);                                  // 놓으면 가까운 칸에 붙는다
-    else pickCell(cellOf(posAt(e.clientX, e.clientY)));          // 누르면 그 칸으로 미끄러진다
-  };
-  const cancel = (e: React.PointerEvent) => { if (press.current?.id === e.pointerId) { press.current = null; setDrag(null); } };
   /* 화살표 — 2×2 안에서 옆 · 위아래 칸으로. 고르기 전이면 초점이 있는 칸(첫 칸)에서 출발한다 */
   const key = (e: React.KeyboardEvent) => {
     const d = ({ ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] } as Record<string, [number, number]>)[e.key];
@@ -121,8 +87,7 @@ export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Prop
     pickCell(to);
     radios.current[to]?.focus();
   };
-  const shown = drag ?? (at >= 0 ? { x: at % 2, y: Math.floor(at / 2) } : null);
-  const shownCell = shown ? cellOf(shown) : -1;
+  const shown = at >= 0 ? { x: at % 2, y: Math.floor(at / 2) } : null;
 
   /**
    * 아래에 줄이 더 있는가 (2026-09-25).
@@ -160,10 +125,8 @@ export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Prop
         <p>{pick(T.lead, lang)}</p>
       </div>
 
-      <div ref={list} className={'style-cards' + (drag ? ' is-moving' : '')}
-        role="radiogroup" aria-label={pick(T.group, lang)}
-        onPointerDown={down} onPointerMove={moveTo} onPointerUp={up}
-        onPointerCancel={cancel} onLostPointerCapture={cancel} onKeyDown={key}>
+      <div ref={list} className="style-cards"
+        role="radiogroup" aria-label={pick(T.group, lang)} onKeyDown={key}>
         {/* 판 — 고르기 전에는 없다. 처음 서는 순간은 제자리에서 나타난다(미끄러져
             오지 않는다 — 올 곳이 없었다). app.css · .style-thumb */}
         {shown && <i className="style-thumb" aria-hidden
@@ -174,10 +137,9 @@ export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Prop
           <button key={s.val} type="button" role="radio" aria-checked={at === i}
             tabIndex={at === i || (at < 0 && i === 0) ? 0 : -1}
             ref={(el) => { radios.current[i] = el; }}
-            className={'style-card' + (shownCell === i ? ' on' : '')}
+            className={'style-card' + (at === i ? ' on' : '')}
             aria-label={name}
-            /* 자판(Enter · Space)과 낭독기로 고를 때. 손가락은 위 pointer가 맡는다 */
-            onClick={(e) => { if (e.detail === 0) pickCell(i); }}>
+            onClick={() => pickCell(i)}>
             {/* 서체마다 잉크가 차지하는 높이도 굵기도 달라 같은 크기·같은
                 굵기로 안 보인다. 잰 값은 palettes.ts에 있다. 이름은 낭독기가
                 버튼 이름(aria-label)으로 읽으므로 글자는 가린다.

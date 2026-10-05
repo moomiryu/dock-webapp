@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>속도 — 글자 흔들림 격자</title>
+<!-- 속도가 글자의 움직임에도 드러나게(2026-10-06, 디자이너 — "바람이 세차게 불 때 글자가 한 글자씩 중심축에서 회전하는 폭이 커진다").
+     글자만 제 가운데 축에서 돌고(형상은 가만히), 읽는 차례를 따라 바람이 훑고 간다. 세로 = 속도(느긋 · 보통 · 날렵),
+     가로 = 가장 날렵할 때의 회전 상한. 느긋은 상한의 0배, 보통은 절반, 날렵은 상한 그대로이고 박자도 빨라진다.
+     서체 · 모양은 앱 그대로(palettes.ts formFor). 개발 서버로 연다: npm run dev 뒤 http://localhost:5173/design/landscape-letter-sway.html -->
+<style>
+  html, body { margin: 0; background: var(--paper); }
+  body { display: block !important; min-height: 0; font: 500 var(--fs-body-s) var(--text-font); color: var(--ink); }
+  #bar, #grid { box-sizing: border-box; width: 100%; }
+  #bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-in-group); padding: var(--space-in-group) var(--space-group); border-bottom: 1px solid var(--line); }
+  #bar button { font: inherit; color: var(--ink); background: transparent; border: 1px solid var(--grey-300); border-radius: var(--r-button); padding: var(--s1) var(--s4); cursor: pointer; }
+  #bar button.on { border-color: var(--ink); font-weight: 700; }
+  #grid { display: grid; grid-template-columns: repeat(4, 300px); gap: var(--space-group); padding: var(--space-group); }
+  .cell h2 { font-size: var(--fs-body-s); font-weight: 500; margin: 0 0 var(--s2); color: var(--grey-600); }
+  .st { position: relative; width: 300px; height: 190px; background: var(--ink); overflow: hidden; display: grid; place-items: center; }
+  .tx { text-align: center; white-space: pre; line-height: 1.45; }
+  .ch { display: inline-block; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <span>성격</span>
+  <button data-f="ttoryeot" class="on">당당한</button><button data-f="chabun">차분한</button><button data-f="doran">다정한</button><button data-f="deulseok">유머있는</button>
+</div>
+<div id="grid"></div>
+<script type="module">
+import '/src/styles/global.css';
+import '/src/styles/app.css';
+import { fontMap, formFor } from '/src/lib/palettes.ts';
+
+const TEXT = '오늘은 바람이 세다\n내 말도 멀리 간다';
+const CAPS = [3, 6, 10, 15];               // 가장 날렵할 때의 회전 상한(°)
+const SPEEDS = [['느긋한', 0], ['보통', 0.5], ['날렵한', 1]];
+const COLOR = '#81BA99';
+const tv = getComputedStyle(document.documentElement).getPropertyValue('--t-hold').trim();
+const T = tv.endsWith('ms') ? parseFloat(tv) / 1000 : parseFloat(tv);
+const grid = document.getElementById('grid');
+let font = 'ttoryeot', cells = [];
+
+function build() {
+  grid.innerHTML = ''; cells = [];
+  for (const [name, s] of SPEEDS) for (const cap of CAPS) {
+    const f = formFor({ font, speed: s, weight: 0.5, manner: font === 'ttoryeot' || font === 'deulseok' ? 0 : undefined });
+    const amp = cap * s;                       // 느긋 0 · 보통 절반 · 날렵 상한
+    const per = 2.6 - 1.4 * s;                 // 박자(T의 배수) — 느긋 2.6 → 날렵 1.2
+    const cell = document.createElement('div'); cell.className = 'cell';
+    cell.innerHTML = `<h2>${name} (속도 ${s}) · 상한 ±${cap}° → 이 칸 ±${amp.toFixed(1)}° · 박자 ${per.toFixed(1)}T</h2><div class="st"><div class="tx"></div></div>`;
+    const tx = cell.querySelector('.tx');
+    Object.assign(tx.style, { fontFamily: fontMap[font], fontWeight: f.weight, fontVariationSettings: f.variation, letterSpacing: f.letterSpacing,
+      color: COLOR, fontSize: '28px', transform: `scale(${f.scaleX}, ${f.scaleY})` });
+    let i = 0;
+    const chars = [];
+    for (const line of TEXT.split('\n')) {
+      const row = document.createElement('div');
+      if (f.slant) row.style.cssText = `display:inline-block;transform:skewX(${-f.slant}deg)`;
+      for (const c of line) { if (c === ' ') { row.append(' '); continue; } const sp = document.createElement('span'); sp.className = 'ch'; sp.textContent = c; row.append(sp); chars.push({ sp, i: i++ }); }
+      tx.append(row, document.createElement('br'));
+    }
+    grid.append(cell); cells.push({ chars, amp, per });
+  }
+}
+document.getElementById('bar').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  font = b.dataset.f; document.querySelectorAll('#bar button').forEach((x) => x.classList.toggle('on', x === b)); build();
+});
+build();
+// 바람이 읽는 차례를 따라 훑는다 — 글자마다 위상이 0.5씩 늦다
+const t0 = performance.now();
+(function frame() {
+  const t = (performance.now() - t0) / 1000;
+  for (const c of cells) for (const { sp, i } of c.chars)
+    sp.style.transform = c.amp ? `rotate(${(c.amp * Math.sin((2 * Math.PI * t) / (c.per * T) - i * 0.5)).toFixed(2)}deg)` : '';
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -412,6 +412,28 @@ export function speedBarFor(font: string): { words: Pair<readonly string[]>; toS
   if (font === 'deulseok') return { words: RAIN_SPEED_WORDS, toSpeed: (v) => 0.5 + 0.5 * v, fromSpeed: (s) => Math.min(1, Math.max(0, (s - 0.5) / 0.5)) };
   return { words: SPEED_WORDS[font] ?? SIZE_WORDS, toSpeed: (v) => v, fromSpeed: (s) => s };
 }
+/**
+ * 속도가 글자의 움직임에 드러나는 몫(2026-10-06, 디자이너 — "바람이 세게 불 때 글자가 한 자씩 제 축에서 도는 폭이 커진다").
+ * 벽에서 글자만 제 가운데 축으로 돌고 형상은 가만히 있다. 격자(design/landscape-letter-sway.html)에서 날렵한 ±6° · 박자 1.2T를
+ * 골랐다(±3 · 10 · 15°는 버렸다). 느긋한은 0°(안 돈다), 보통은 절반 3°, 날렵한은 6°이고 박자는 느긋 2.6T → 날렵 1.2T로 곧게 줄어든다.
+ * speed가 없는 옛 글은 안 돈다 — 속도를 고른 적이 없다. 읽는 차례를 따라 SWAY_LAG(라디안)씩 늦어 바람이 글을 훑고 간다
+ */
+export const SWAY_LAG = 0.5;
+export function swayFor(speed?: number | null): { deg: number; per: number } {
+  if (speed === undefined || speed === null) return { deg: 0, per: 1 };
+  const s = Math.min(1, Math.max(0, speed));
+  return { deg: 6 * s, per: 2.6 - 1.4 * s };
+}
+/** 돌풍(2026-10-06, 디자이너 — "바람이 늘 있는 게 아니다. 몇 초마다 한 번"). 6~14초 무작위 간격으로 한 번, 5초쯤 분다. 풍경 전체가
+    한 바람을 맞되(벽의 돌 · 구름 · 나무와 비눗방울이 이 한 곳을 함께 읽는다) 왼쪽에서 오른쪽으로 쓸고 가(GUST_SWEEP초) 같은 순간에 다 돌지 않는다. 세기는 부드럽게 오르내린다(sin²) */
+export const GUST_DUR = 5, GUST_GAP: [number, number] = [6, 14], GUST_SWEEP = 1.5;
+let gustStart = NaN;
+/** x01(벽 가로 0~1)에 지금 닿은 돌풍의 세기 0~1. 한 돌풍이 벽 오른쪽 끝까지 지나가면 다음 돌풍을 잡는다 */
+export function gustAt(sec: number, x01: number): number {
+  if (Number.isNaN(gustStart) || sec > gustStart + GUST_DUR + GUST_SWEEP) gustStart = sec + GUST_GAP[0] / 2 + Math.random() * (GUST_GAP[1] - GUST_GAP[0]);
+  const u = (sec - gustStart - Math.min(1, Math.max(0, x01)) * GUST_SWEEP) / GUST_DUR;
+  return u > 0 && u < 1 ? Math.sin(Math.PI * u) ** 2 : 0;
+}
 /** 크기 막대를 세우는가 — 유머있는(비)은 벽 글자가 28px 하나라 크기를 묻지 않는다(2026-10-04, 디자이너 — 막대는 빠르기 · 무게 둘) */
 export const hasSizeBar = (font: string) => font !== 'deulseok';
 /** 막대 자리에서 가장 가까운 칸(0~4) */

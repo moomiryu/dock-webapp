@@ -21,6 +21,7 @@ import WallWalkers from '../components/WallWalkers';
 import WallRain, { type RainScene } from '../components/WallRain';
 import { BIG_SIDE_MAX_VW, BIG_SIDE_VH, WallShowMessage, cloudOf, colorsOf, isRainMsg, useDerivedStyle, type Land } from '../components/WallShowMessage';
 import { groundPx } from '../lib/ground';
+import { SWAY_LAG, gustAt, swayFor } from '../lib/palettes';
 import { SAMPLE_MESSAGES } from '../lib/samples';
 import RingBadge from '../components/RingBadge';
 import {
@@ -1627,6 +1628,23 @@ function cloudFrame(d: CloudDom, b: Body, f: Size, sec: number) {
     d.on = on;
   }
 }
+/** 글자 흔들림 — 속도가 정한 각도(deg)와 박자(per × T)로 글자마다 제 가운데 축에서 돈다. 읽는 차례를 따라 늦어 바람이 훑고 간다.
+    값은 블록이 data-sway-deg · data-sway-per로 들고 있다(WallBlock). 안 도는 글(deg 0)은 요소를 건드리지 않는다 */
+type SwayDom = { el: HTMLElement; chars: HTMLElement[]; deg: number; per: number; on: boolean };
+function swayDomOf(cache: Map<string, SwayDom>, id: string, el: HTMLElement): SwayDom {
+  const had = cache.get(id);
+  if (had && had.el === el) return had;
+  const d: SwayDom = { el, chars: [...el.querySelectorAll<HTMLElement>('.ch')], deg: Number(el.dataset.swayDeg) || 0, per: Number(el.dataset.swayPer) || 1, on: false };
+  cache.set(id, d);
+  return d;
+}
+function swayFrame(d: SwayDom, sec: number, g: number) {
+  const on = g > 0 && d.deg > 0;
+  if (!on && !d.on) return;
+  const w = (2 * Math.PI * sec) / (d.per * hold());
+  d.chars.forEach((c, i) => { c.style.transform = on ? `rotate(${(g * d.deg * Math.sin(w - i * SWAY_LAG)).toFixed(2)}deg)` : ''; });
+  d.on = on;
+}
 function prefersReducedMotion(): boolean {
   return typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
@@ -2051,6 +2069,7 @@ export default function WallSimulation() {
   const sizesRef = useRef(new Map<string, Size>());
   /** 구름의 펄럭임 · 작은 구름이 움직일 요소들(글마다). 요소가 바뀌면 다시 찾는다 */
   const cloudDomRef = useRef(new Map<string, CloudDom>());
+  const swayDomRef = useRef(new Map<string, SwayDom>());
   /** 새 · 박쥐의 부품(글마다). 요소가 바뀌면 다시 짓는다 */
   const crDomRef = useRef(new Map<string, CrDom>());
   /** 사진 새의 윤곽 · 글 상자(글마다). 요소가 바뀌면 다시 찾는다 */
@@ -2557,6 +2576,8 @@ export default function WallSimulation() {
           }
           cloudFrame(cloudDomOf(cloudDomRef.current, id, el, f), b, f, t / 1000);
         }
+        // 글자 흔들림 — 돌풍이 지나갈 때만, 돌 · 구름 · 나무의 글자가 속도만큼 제 축에서 돈다(쓸려 나간 몸은 건너뛴다)
+        if (b.kind !== 'float') swayFrame(swayDomOf(swayDomRef.current, id, el), t / 1000, moving && !b.away ? gustAt(t / 1000, b.x / w) : 0);
         el.style.transform = tf;
         // 돌의 빗금 결 — 기운 만큼 그늘이 빛을 따라 옮겨 간다(StoneArt가 2° 넘게 바뀌었을 때만 다시 셈한다)
         if (b.kind === 'stone') stoneLean(el, b.a ?? 0);
@@ -2748,6 +2769,7 @@ const WallBlock = memo(function WallBlock({ msg, ghost, onEl }: { msg: StoredMes
   const { lines, cloud, box } = useMemo(() => cloudOf(msg), [msg]);
   const kind = kindOf(cloud), scale = scaleOf(cloud);
   const drawn = useMemo(() => withBelly(cloud), [cloud]);
+  const sway = swayFor(msg.tone?.speed);
 
   // 자리는 CSS가 아니라 프레임 루프가 transform으로 적는다(위 useEffect).
   // 여기서 style에 자리를 주면 매 프레임 React를 거치게 된다.
@@ -2755,6 +2777,7 @@ const WallBlock = memo(function WallBlock({ msg, ghost, onEl }: { msg: StoredMes
     <div
       className={`wall-block is-${kind}${ghost ? ' is-ghost' : ''}`}
       data-id={msg.id}
+      data-sway-deg={sway.deg.toFixed(2)} data-sway-per={sway.per.toFixed(2)}
       ref={(el) => onEl(msg.id, el)}
     >
       {/* 숨은 구름마다 시작점이 다르다(cloud.ts의 phase0) — 열두 개가 같은 박자로 안 뛴다.
@@ -2762,7 +2785,7 @@ const WallBlock = memo(function WallBlock({ msg, ghost, onEl }: { msg: StoredMes
       <CloudBubble cloud={drawn} box={box} side={scale === 1 ? 'var(--echo-side)' : `calc(var(--echo-side) * ${scale})`} color={bg} still={!ECHO_MOTION}>
         <VoiceBubble text={lines.join('\n')} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght}
           width={scaleX} slant={skew} align={msg.tone?.align} size={msg.tone?.size} manner={msg.tone?.manner}
-          speed={msg.tone?.speed} weightPos={msg.tone?.weight} perChar={kind === 'cloud'}
+          speed={msg.tone?.speed} weightPos={msg.tone?.weight} perChar
           fontSize={`calc(var(--echo-side) * ${(box.unit * scale).toFixed(4)})`} />
       </CloudBubble>
     </div>

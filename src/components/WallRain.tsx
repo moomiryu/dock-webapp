@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef } from 'react';
 import type { StoredMessage } from '../lib/firebase';
-import { formFor, fontMap, rainShapeOf } from '../lib/palettes';
+import { SWAY_LAG, formFor, fontMap, gustAt, rainShapeOf, swayFor } from '../lib/palettes';
 import { messageColors } from '../lib/messageStyle';
 import { DROP, WALL_FS, bubbleLayout, bubbleMotionOf, bubbleMove, drawDrop, placeGlyph, rainBaseline, rainColor, rainFontsReady } from '../lib/rain';
 
@@ -20,7 +20,8 @@ export interface RainScene {
   /** 땅의 윗선(px) */
   land: number;
 }
-type Bubble = { el: HTMLDivElement; x: number; y: number; ph: [number, number] };
+/** span = 방울 안의 글자. cx · cy = 방울 가운데(글자의 기울기 축인 기준선 왼끝에서 잰 px) — 글자는 이 점을 축으로 돈다(돌풍) */
+type Bubble = { el: HTMLDivElement; span: HTMLSpanElement; x: number; y: number; ph: [number, number]; cx: number; cy: number; slant: number; turned: boolean };
 type Block = {
   msg: StoredMessage; next: number; on: boolean; bubbles: Bubble[]; fs: number;
   /** 자리 잡은 때 · 다 떠오른 자리(왼쪽 위, px) · 흘러가는 쪽(±1) · 쓸고 지나갈 자리 · 터지기 시작하는 때 */
@@ -87,7 +88,7 @@ export default memo(function WallRain({ msgs, scene, hideId }: { msgs: StoredMes
           span.style.cssText = `left:${(pl.tx * fs).toFixed(2)}px;top:${((pl.ty - base) * fs).toFixed(2)}px;font:${fs}px/1 ${family};` +
             `color:${color};font-variation-settings:${f.variation};transform-origin:0 ${base}em;transform:skewX(${-f.slant}deg)`;
           d.append(cv, span); el.append(d);
-          return { el: d, x: p.x * fs, y: p.y * fs, ph: [((seed0 + i * 7919) % 628) / 100, ((seed0 + i * 104729) % 628) / 100] };
+          return { el: d, span, cx: s / 2 - pl.tx * fs, cy: s / 2 - pl.ty * fs, slant: f.slant, turned: false, x: p.x * fs, y: p.y * fs, ph: [((seed0 + i * 7919) % 628) / 100, ((seed0 + i * 104729) % 628) / 100] };
         });
         Object.assign(b, { on: true, fs, t0: sec, x: t.x, y: t.y, dir: t.dir, swept: t.swept, popAt: sec + n * GROW + HOLD(n, T) });
       };
@@ -109,6 +110,13 @@ export default memo(function WallRain({ msgs, scene, hideId }: { msgs: StoredMes
             const [dx, dy, sx, sy] = still ? [0, 0, 1, 1] : bubbleMove(mo, i, sec, q.ph, T, b.msg.tone?.speed);
             const k = still ? 1 : pk > 0 ? 1 + 0.3 * pk : 0.6 + 0.4 * grow;
             const op = still ? (pk > 0 ? 0 : 1) : pk > 0 ? 1 - pk : grow;
+            // 돌풍 — 글자만 방울 가운데를 축으로 돈다(속도가 정한 각도 · 박자). 기울기는 그대로 뒤에 걸린다
+            const gu = still ? 0 : gustAt(sec, (b.x + side + q.x) / W), sw = swayFor(b.msg.tone?.speed);
+            if (gu > 0 && sw.deg > 0) {
+              const a = gu * sw.deg * Math.sin((2 * Math.PI * sec) / (sw.per * T) - i * SWAY_LAG);
+              q.span.style.transform = `translate(${q.cx.toFixed(2)}px, ${q.cy.toFixed(2)}px) rotate(${a.toFixed(2)}deg) translate(${(-q.cx).toFixed(2)}px, ${(-q.cy).toFixed(2)}px) skewX(${-q.slant}deg)`;
+              q.turned = true;
+            } else if (q.turned) { q.span.style.transform = `skewX(${-q.slant}deg)`; q.turned = false; }
             q.el.style.opacity = op.toFixed(3);
             q.el.style.transform = `translate3d(${(b.x + side + q.x + dx * fs).toFixed(1)}px, ${(b.y + up + q.y + dy * fs).toFixed(1)}px, 0) scale(${(sx * k).toFixed(3)}, ${(sy * k).toFixed(3)})`;
           });

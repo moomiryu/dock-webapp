@@ -326,14 +326,14 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
       {/* 주제와 예시는 읽는 결이 다르다. 목록의 이름과 설명으로 둔다 —
           예시가 버튼이 아니라는 것도 이 꼴이 말한다. */}
       <dl className="write-hint-list">
-        {pick(HINTS, lang).map((h, i) => (
+        {pick(HINTS, lang).map(h => (
           <div key={h.topic}>
-            <dt><strong>{i + 1}. {h.topic}</strong></dt>
+            <dt>{h.topic}</dt>
             {h.line.split('\n').map(line => <dd key={line}>{line}</dd>)}
           </div>
         ))}
         <div>
-          <dt><strong>{pick(T.hintRule, lang)}</strong></dt>
+          <dt>{pick(T.hintRule, lang)}</dt>
           <dd>{pick(T.hintRuleDetail, lang)}</dd>
         </div>
       </dl>

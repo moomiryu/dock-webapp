@@ -8,7 +8,7 @@ import { BODY, CLIP_H, EYE_FAR_DX, EYE_LOOK, EYE_SHUT, EYE_SMILE, EYE_WHITE, EYE
  * 홈 — 풍경 포스터와 스플래시(2026-10-06, 디자이너와 격자로 고름 · 견본 design/home-splash.html).
  *
  * 벽의 한 장면을 첫 화면에 건다: 왼쪽 가장자리로 잘리는 소나무 · 구름 · 바위를 --grey-200 면으로(윤곽 · 빗금 없음),
- * 땅도 같은 회색으로 화면 끝까지. 왼쪽 위 원은 부제가 두 바퀴 돌고(천천히 회전) 그 안에 Mega / Font.
+ * 땅도 같은 회색으로 화면 끝까지. 바닥에는 튜토리얼과 같은 빨강 기운(app.css .info-overlay::after를 같이 쓴다). 왼쪽 위 원은 부제가 두 바퀴 돌고(천천히 회전) 그 안에 Mega / Font.
  * 물음표 대신 오른쪽 아래 세로쓰기 '메가폰트에 대해 / 더 알아보기'.
  *
  * 처음 열 때 한 번: 큰 빨강 사람이 화면을 채우고 껌뻑껌뻑 → 옆으로 돌아 8걸음 뚜벅뚜벅 오른쪽 밖으로 — 그 사이 원 글이
@@ -77,7 +77,7 @@ function markPlayed() {
 }
 
 interface Lay {
-  W: number; H: number; G: number; u: number; cx: number; cy: number; fs: number; lh: number; fadeH: number;
+  W: number; H: number; G: number; u: number; cx: number; cy: number; fs: number; lh: number;
   cloud: { x: number; y: number; k: number }; tree: { x: number; y: number; w: number; h: number };
   rock: { cx: number; w: number; h: number }; pebble: { cx: number; w: number; h: number };
 }
@@ -89,7 +89,7 @@ function layout(frame: HTMLElement): Lay | null {
   const fr = frame.getBoundingClientRect();
   const W = fr.width, H = fr.height;
   const css = getComputedStyle(layer), root = getComputedStyle(document.documentElement);
-  const safeTop = parseFloat(css.paddingTop) || 16, padBottom = parseFloat(css.paddingBottom) || 24;
+  const safeTop = parseFloat(css.paddingTop) || 16;
   const cx = 16 + 14 + R, cy = safeTop + 14 + R;   // 바깥 글자 높이 14
   const top = cy + R + 14 + 8;
   const G = gate.getBoundingClientRect().top - fr.top - 24;   // --space-section: 풍경과 버튼은 다른 섹션
@@ -101,7 +101,6 @@ function layout(frame: HTMLElement): Lay | null {
     W, H, G, u, cx, cy,
     fs: parseFloat(root.getPropertyValue('--fs-home-mark')) || 44,
     lh: parseFloat(root.getPropertyValue('--lh-home-mark')) || 0.83,
-    fadeH: 125 * 0.6 + (parseFloat(root.getPropertyValue('--btn-xl')) || 56) + padBottom,   // app.css의 빨강 막과 같은 식
     cloud: { x: Math.max(W - 0.16 * u - cw / 2, cx + R + 14 + 12), y: cy - ch / 2, k },
     tree: { x: 0.08 * u - PINE.base * tw, y: G + SINK - th, w: tw, h: th },
     rock: { cx: W - 0.03 * u, w: rh * ROCK.aspect, h: rh },
@@ -114,9 +113,6 @@ const pts = (list: readonly (readonly [number, number])[], f: (x: number, y: num
   list.map(([x, y]) => f(x, y).map((v) => v.toFixed(1)).join(',')).join(' ');
 const stonePts = (s: typeof ROCK, cx: number, w: number, h: number, G: number) =>
   pts(s.pts, (x, y) => [cx - w / 2 + x * w, G + SINK - h + y * h]);
-
-/** 9단계 smoothstep — app.css 빨강 막(.info-overlay::after)과 같은 섞음. 가로줄이 생기지 않는다 */
-const FADE_STOPS = [[0, 0], [0.075, 4.3], [0.15, 15.6], [0.225, 31.6], [0.3, 50], [0.375, 68.4], [0.45, 84.4], [0.525, 95.7], [0.6, 100]];
 
 interface Props { onAbout: () => void; aboutLabel: string; }
 export default function HomePoster({ onAbout, aboutLabel }: Props) {
@@ -423,10 +419,6 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
               <feFlood className="hp-flood" result="c" />
               <feComposite in="c" in2="a" operator="in" />
             </filter>
-            <linearGradient id={id('fade')} x1="0" y1="0" x2="0" y2="1">
-              {FADE_STOPS.map(([o, m]) => <stop key={o} className="hp-fade-stop" offset={(o * 125) / L.fadeH} stopOpacity={m / 100} />)}
-              <stop className="hp-fade-stop" offset="1" />
-            </linearGradient>
             <mask id={id('ring')} maskUnits="userSpaceOnUse" x="0" y="0" width={L.W} height={L.H}>
               <circle data-p="arc" cx={L.cx} cy={L.cy} r={R + 7} fill="none" stroke="#fff" strokeWidth="34"
                 strokeDasharray={2 * Math.PI * (R + 7)} strokeDashoffset={2 * Math.PI * (R + 7)} transform={`rotate(180 ${L.cx} ${L.cy})`} />
@@ -436,7 +428,6 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
           </defs>
           <g data-p="land" style={{ opacity: 0 }}>
             <polygon className="hp-land" points={soil} />
-            <rect y={L.H - L.fadeH} width={L.W} height={L.fadeH} fill={`url(#${id('fade')})`} />
             {[CLOUD.pts, ...(CLOUD.extra ?? [])].map((s, i) => (
               <polygon key={i} className="hp-land" points={pts(s, (x, y) => [L.cloud.x + x * L.cloud.k, L.cloud.y + y * L.cloud.k])} />
             ))}

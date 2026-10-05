@@ -22,6 +22,7 @@ import WallRain, { type RainScene } from '../components/WallRain';
 import { BIG_SIDE_MAX_VW, BIG_SIDE_VH, WallShowMessage, cloudOf, colorsOf, isRainMsg, useDerivedStyle, type Land } from '../components/WallShowMessage';
 import { groundPx } from '../lib/ground';
 import { SAMPLE_MESSAGES } from '../lib/samples';
+import RingBadge from '../components/RingBadge';
 import {
   isFirebaseConfigured,
   submitMessage,
@@ -1041,7 +1042,7 @@ function fleeStep(b: Body, w: number, h: number, dt: number, now: number, edge: 
 function calmRestore(C: Calm, W: StoneWorld, map: Map<string, Body>, now: number) {
   for (const [id, b] of [...map]) {
     const p = C.snap?.get(id);
-    if (id === C.id) continue;
+    if (id === C.id || b.kind === 'cloud') continue;
     // 넘치는 가장 오래된 돌 — 쓸려 나간 그대로 둔다(벽이 명단에서 빼면 지워진다, STONE_MAX)
     if (C.retire.includes(id)) { b.away = true; if (b.mb) Matter.Composite.remove(W.engine.world, b.mb); continue; }
     if (!p) { if (b.swept || b.away) { if (b.mb) Matter.Composite.remove(W.engine.world, b.mb); map.delete(id); } continue; }
@@ -1123,7 +1124,7 @@ function calmStep(C: Calm, W: StoneWorld, map: Map<string, Body>, f: Size | unde
     // 큰 돌 오른쪽 끝의 빠르기(px/초) — 등장의 감속 곡선(easeOut3)을 미분한 것
     const edgeV = C.phase === 'enter' ? ((w / 2 + g.hw) * 3 * (1 - Math.min(1, t / CALM_IN)) ** 2) / CALM_IN : 0;
     for (const [id, b] of map) {
-      if (id === C.id || b.away) continue;
+      if (id === C.id || b.away || b.kind === 'cloud') continue;   // 구름은 쓸리지 않는다 — 돌 뒤에 어두운 실루엣으로 남는다(fieldRef 참고)
       // 새 · 박쥐 — 큰 돌이 닿기 전에 날아오른다. 가까운 새부터 — 늦는 만큼은 큰 돌에서 먼 만큼(날던 새는 곧장)
       if (b.cr) {
         if (!b.swept && (late || b.x - b.hw < front + FLEE_AHEAD * h)) {
@@ -2026,6 +2027,7 @@ export default function WallSimulation() {
   /** 바닥에 자리가 없어 기다리는 돌 — 명단의 돌이 빠지면(사흘 · 큰 돌) 비우고 다시 해 본다 */
   const noRoomRef = useRef(new Set<string>());
   const giantElRef = useRef<HTMLDivElement | null>(null);
+  const fieldRef = useRef<HTMLDivElement | null>(null);
   const calmRef = useRef<Calm | null>(null);
   const calmUndoRef = useRef<Calm | null>(null);
   const calmDoneRef = useRef<() => void>(() => {});
@@ -2561,10 +2563,16 @@ export default function WallSimulation() {
         // 차분한의 발화 — 쓸려 나간 몸은 숨기고, 복귀하는 동안 풍경이 스며든다. 그 글의 돌은 떨어지는 순간부터 보인다
         const Cn = calmRef.current;
         if (Cn) {
-          const op = b.away ? '0' : Cn.phase === 'return' && id !== Cn.id && b.kind !== 'stone' ? Cn.fade.toFixed(3) : '';
+          const op = b.away ? '0' : Cn.phase === 'return' && id !== Cn.id && b.kind !== 'stone' && b.kind !== 'cloud' ? Cn.fade.toFixed(3) : '';
           if (el.style.opacity !== op) el.style.opacity = op;
           if (id === Cn.id) el.style.visibility = Cn.dropped ? 'visible' : '';
         } else if (el.style.opacity || el.style.visibility) { el.style.opacity = ''; el.style.visibility = ''; }
+      }
+      // 큰 돌이 있는 동안 구름은 어두운 회색 실루엣(calm-tint), 비눗방울은 숨는다. 필터를 먼저 걸고 다음 프레임에 색을 올려야 스며든다
+      const fe = fieldRef.current, Cf = calmRef.current;
+      if (fe) {
+        fe.classList.toggle('calm-tint', !!Cf && Cf.phase !== 'return' && fe.classList.contains('calm-filter'));
+        fe.classList.toggle('calm-filter', !!Cf);
       }
       // 큰 돌 — 각도는 늘 0(밀려오고 밀려 나간다)
       const ge = giantElRef.current, gC = calmRef.current?.giant;
@@ -2676,7 +2684,15 @@ export default function WallSimulation() {
       <div className="wall-scenery">
         {mannequins.map((q) => <WallMannequin key={q.id} q={q} onEl={setBlockEl} />)}
       </div>
-      <div className="wall-field">
+      <div className="wall-field" ref={fieldRef}>
+        {/* 큰 돌 뒤의 구름 — 초기화면 실루엣 나무처럼 한 색(--grey-800)으로 덮는다. 색의 짙기는 CSS가 천천히 올린다(.calm-tint) */}
+        <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true" focusable="false">
+          <filter id="wall-calm-sil" colorInterpolationFilters="sRGB">
+            <feFlood className="calm-flood" result="f" />
+            <feComposite in="f" in2="SourceAlpha" operator="in" result="t" />
+            <feMerge><feMergeNode in="SourceGraphic" /><feMergeNode in="t" /></feMerge>
+          </filter>
+        </svg>
         {layered.filter((x) => x.kind !== 'cloud').map(({ msg }, i) => (
           <WallBlock key={msg.id} msg={msg} index={i} ghost={emphMsg?.id === msg.id} onEl={setBlockEl} />
         ))}
@@ -2696,6 +2712,8 @@ export default function WallSimulation() {
       {/* 벽의 작은 사람 둘 — 땅(바로 아래 WallGround)보다 먼저 놓여 땅 · 풀 뒤에 선다: 돌 → 작은 사람 → 풀 */}
       <WallWalkers />
       <WallGround />
+      {/* 홈의 돌아가는 원 — 왼쪽 위에 늘, 작게(2026-10-06 사용자) */}
+      <RingBadge className="wall-badge" />
 
       {showOverlay && (
         <div className="wall-overlay">

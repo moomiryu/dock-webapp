@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import pine from '../assets/trees/pine-764.png';
 import { CLOUD_PHOTOS } from '../lib/cloudPhoto.data';
 import { STONE_PHOTOS } from '../lib/stonePhoto.data';
+import { LINEAL_CAP as CAP, RING_R as R, RING_SUB as SUB } from './RingBadge';
 import { BODY, CLIP_H, EYE_FAR_DX, EYE_LOOK, EYE_SHUT, EYE_SMILE, EYE_WHITE, EYE_WIDE, HEAD, SIT, WALK } from '../character/walker';
 
 /**
@@ -16,11 +17,6 @@ import { BODY, CLIP_H, EYE_FAR_DX, EYE_LOOK, EYE_SHUT, EYE_SMILE, EYE_WHITE, EYE
  * 발견하고 곁에 앉아 이야기한다(WallWalkers와 같은 몸짓). 누르면 끝 장면으로. 움직임 줄이기면 끝 장면만.
  */
 
-const SUB = '대학 내 공공발화를 위한 카트, 메가폰트';
-/** 원 글 반지름 — 부제 한 벌 + 전각 빈칸이 284px(16px · Whois + Pretendard)이라 두 벌이 한 바퀴. 견본에서 쟀다 */
-const R = 90.4;
-/** Lineal VF 대문자 높이 / em(OS/2) — 두 줄을 원 가운데에 세울 때 쓴다 */
-const CAP = 0.706;
 /** 소나무 764 — 재료 png 안의 그림 영역과 밑동 자리(가로 몫). 검은 바탕을 뺀 상자 */
 const PINE = { w: 1535, h: 1280, box: [9, 18, 1447, 1256] as const, base: 0.5052 };
 const CLOUD = CLOUD_PHOTOS.find((c) => c.id === 'b03')!;

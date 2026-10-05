@@ -3519,6 +3519,9 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   --edge-bottom-paint: var(--brand-scrim);   /* 바닥의 빨강 기운(.info-overlay::after와 같은 규칙)을 주소창이 잇는다 */
 }
 .is-poster .home-gate{ margin-top: auto; }
+/* 원은 두 손가락으로 벌려 키운다 — 둘째 손가락은 화면 어디에 닿아도 되므로, 브라우저가 그 몸짓을 확대로 가로채지 않게 홈 전체에서 끈다
+   (홈은 스크롤이 없다. 잃는 것은 홈의 화면 확대 하나) */
+.home-frame.is-poster{ touch-action: none; }
 .home-poster{ position: absolute; inset: 0; z-index: var(--z-content); }
 .home-poster-art{ display: block; position: absolute; inset: 0; }
 .home-poster .hp-land{ fill: var(--grey-200); }

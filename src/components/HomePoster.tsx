@@ -60,7 +60,9 @@ const WIGGLE_SWAY = 0.03;     // 키에 대한 옆 흔들림
 /** 움직일 수 있다는 기미(2026-10-06 사용자) — 올리면 살짝, 누르면 손에 들린 만큼 커진다. 캐릭터는 올리면 들썩 · 누르면 바로 들린다 */
 const LIFT_HOVER = 1.03, LIFT_PRESS = 1.06, PEEK = 0.05;
 type Held = { x: number; feet: number; held: boolean; dropT: number; dropFrom: number; walk?: { from: number; to: number; t0: number; n: number } };
-const MOVED: { badge: [number, number]; about: [number, number]; chars: Partial<Record<'red' | 'cyan', Held>> } = { badge: [0, 0], about: [0, 0], chars: {} };
+const MOVED: { badge: [number, number]; badgeScale: number; about: [number, number]; chars: Partial<Record<'red' | 'cyan', Held>> } = { badge: [0, 0], badgeScale: 1, about: [0, 0], chars: {} };
+/** 원은 두 손가락으로 벌려 키운다(2026-10-06 사용자) — 가장 크게는 '화면 폭 − 양옆 여백'의 이만큼, 가장 작게는 처음 크기 */
+const BADGE_MAX_OF_WIDTH = 0.94;
 
 let playedThisLoad = false;
 function wasPlayed() {
@@ -227,10 +229,10 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
       if (gate) { gate.style.opacity = String(g); gate.style.pointerEvents = g > 0.5 ? '' : 'none'; }
       const n0 = performance.now(), f = 1 - Math.exp(-Math.min(0.1, (n0 - lastT) / 1000) * 14); lastT = n0;
       for (const k of ['badge', 'about', 'red', 'cyan'] as const) {
-        const want = hand?.kind === k ? LIFT_PRESS : hoverKind === k ? LIFT_HOVER : 1;
+        const want = k === 'badge' && pinch ? 1 : hand?.kind === k ? LIFT_PRESS : hoverKind === k ? LIFT_HOVER : 1;   // 벌리는 동안은 손가락 크기 그대로 — 여백을 넘지 않게
         grow[k] += (want - grow[k]) * (reduce ? 1 : f);
       }
-      badge.setAttribute('transform', `translate(${(MOVED.badge[0] + cx).toFixed(1)} ${(MOVED.badge[1] + cy).toFixed(1)}) scale(${grow.badge.toFixed(4)}) translate(${-cx} ${-cy})`);
+      badge.setAttribute('transform', `translate(${(MOVED.badge[0] + cx).toFixed(1)} ${(MOVED.badge[1] + cy).toFixed(1)}) scale(${(grow.badge * MOVED.badgeScale).toFixed(4)}) translate(${-cx} ${-cy})`);
       about.style.translate = `${MOVED.about[0].toFixed(1)}px ${MOVED.about[1].toFixed(1)}px`;
       about.style.scale = grow.about.toFixed(4);
       // 하늘 — 왼쪽에서 와 멈칫 발견(눈 동그랗게 · 살짝 뜀), 곁에 와서 오른쪽을 보며 앉는다
@@ -291,15 +293,15 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
     type Kind = 'badge' | 'about' | 'red' | 'cyan';
     let hand: { kind: Kind; id: number; x0: number; y0: number; ox: number; oy: number; moved: boolean; box: DOMRect } | null = null;
     let hoverKind: Kind | null = null, lastT = performance.now();
-    let lastTouch = performance.now(), back: { t0: number; badge: [number, number]; about: [number, number] } | null = null;
+    let lastTouch = performance.now(), back: { t0: number; badge: [number, number]; scale: number; about: [number, number] } | null = null;
     const HOME_X = { red: XR, cyan: XC } as const;
-    const displaced = () => MOVED.badge.some((v) => Math.abs(v) > 0.5) || MOVED.about.some((v) => Math.abs(v) > 0.5)
+    const displaced = () => MOVED.badge.some((v) => Math.abs(v) > 0.5) || Math.abs(MOVED.badgeScale - 1) > 0.005 || MOVED.about.some((v) => Math.abs(v) > 0.5)
       || (['red', 'cyan'] as const).some((k) => { const o = MOVED.chars[k]; return !!o && (Math.abs(o.x - HOME_X[k]) > 1 || o.feet < G + 2); });
     /** 5초 안 만지면 제자리로 — 원 · 링크는 미끄러지고(2 × --t-slow), 캐릭터는 걸어간다 */
     const settleBack = (n: number) => {
       if (!back) {
-        if (hand || n - lastTouch < IDLE || !displaced()) return;
-        back = { t0: n, badge: [...MOVED.badge], about: [...MOVED.about] };
+        if (hand || pinch || n - lastTouch < IDLE || !displaced()) return;
+        back = { t0: n, badge: [...MOVED.badge], scale: MOVED.badgeScale, about: [...MOVED.about] };
         for (const k of ['red', 'cyan'] as const) {
           const o = MOVED.chars[k];
           if (!o || o.held) continue;
@@ -310,6 +312,7 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
       }
       const pb = reduce ? 1 : EMPH(clamp((n - back.t0) / (2 * SLOW)));
       MOVED.badge = [lerp(back.badge[0], 0, pb), lerp(back.badge[1], 0, pb)];
+      MOVED.badgeScale = lerp(back.scale, 1, pb);
       MOVED.about = [lerp(back.about[0], 0, pb), lerp(back.about[1], 0, pb)];
       if (pb >= 1 && !MOVED.chars.red?.walk && !MOVED.chars.cyan?.walk) back = null;
     };
@@ -327,9 +330,47 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
     el.addEventListener('megafont-skip', skip);
 
     let swallowClick = false;
+    const ROUT = R + 14;   // 원의 바깥 반지름(바깥 글자까지)
+    const SMAX = Math.max(1, ((W - 2 * 16) * BADGE_MAX_OF_WIDTH) / (2 * ROUT));
+    /** 키운 원이 화면 밖으로 넘치면 안쪽으로 민다 */
+    const keepBadgeIn = () => {
+      const r = ROUT * MOVED.badgeScale;
+      const x = Math.max(16 + r, Math.min(W - 16 - r, cx + MOVED.badge[0]));
+      const y = Math.max(16 + r, Math.min(H - r, cy + MOVED.badge[1]));
+      MOVED.badge = [x - cx, y - cy];
+    };
+    const fingers = new Map<number, [number, number]>();
+    let pinch: { d0: number; s0: number } | null = null;
+    const spread = () => { const [a, b] = [...fingers.values()]; return Math.hypot(a[0] - b[0], a[1] - b[1]); };
+    const onPinchDown = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch' || (!reduce && now() - start.current! < T.all)) return;
+      const onBadge = !!(e.target as Element).closest?.('[data-drag="badge"]');
+      if (fingers.size === 0 && !onBadge) return;   // 첫 손가락은 원 위여야
+      if (fingers.size >= 2) return;
+      fingers.set(e.pointerId, [e.clientX, e.clientY]);
+      if (fingers.size === 2) {
+        pinch = { d0: Math.max(1, spread()), s0: MOVED.badgeScale };
+        hand = null;   // 옮기기는 멈추고 키우기로
+        lastTouch = now(); back = null;
+      }
+    };
+    const onPinchMove = (e: PointerEvent) => {
+      if (!fingers.has(e.pointerId)) return;
+      fingers.set(e.pointerId, [e.clientX, e.clientY]);
+      if (!pinch || fingers.size < 2) return;
+      e.preventDefault();
+      MOVED.badgeScale = Math.max(1, Math.min(SMAX, pinch.s0 * (spread() / pinch.d0)));
+      keepBadgeIn();
+      lastTouch = now();
+    };
+    const onPinchUp = (e: PointerEvent) => {
+      if (!fingers.delete(e.pointerId)) return;
+      if (fingers.size < 2) pinch = null;
+      lastTouch = now();
+    };
     const fr = () => frame.getBoundingClientRect();
     const onDown = (e: PointerEvent) => {
-      if (!e.isPrimary || (!reduce && now() - start.current! < T.all)) return;
+      if (!e.isPrimary || pinch || (!reduce && now() - start.current! < T.all)) return;
       const tgt = (e.target as Element).closest('[data-drag]');
       if (!tgt || !el.contains(tgt)) return;
       const kind = tgt.getAttribute('data-drag') as Kind;
@@ -355,7 +396,7 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
     };
     const onLeave = () => { hoverKind = null; };
     const onMove = (e: PointerEvent) => {
-      if (!hand || e.pointerId !== hand.id) return;
+      if (!hand || pinch || e.pointerId !== hand.id) return;
       const dx = e.clientX - hand.x0, dy = e.clientY - hand.y0;
       if (!hand.moved && Math.hypot(dx, dy) > DRAG_SLOP) {
         hand.moved = true;
@@ -385,6 +426,9 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
       hand = null;
     };
     const onClickCapture = (e: MouseEvent) => { if (swallowClick) { swallowClick = false; e.stopPropagation(); e.preventDefault(); } };
+    window.addEventListener('pointerdown', onPinchDown, true);
+    window.addEventListener('pointermove', onPinchMove, { passive: false });
+    window.addEventListener('pointerup', onPinchUp); window.addEventListener('pointercancel', onPinchUp);
     el.addEventListener('pointerdown', onDown);
     el.addEventListener('pointerover', onOver);
     el.addEventListener('pointerleave', onLeave);
@@ -394,6 +438,8 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
     about.addEventListener('click', onClickCapture, true);
     return () => {
       cancelAnimationFrame(raf); el.removeEventListener('megafont-skip', skip);
+      window.removeEventListener('pointerdown', onPinchDown, true); window.removeEventListener('pointermove', onPinchMove);
+      window.removeEventListener('pointerup', onPinchUp); window.removeEventListener('pointercancel', onPinchUp);
       el.removeEventListener('pointerdown', onDown); el.removeEventListener('pointerover', onOver); el.removeEventListener('pointerleave', onLeave);
       window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onUp);
       about.removeEventListener('click', onClickCapture, true);

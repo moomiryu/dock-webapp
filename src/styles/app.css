@@ -2684,11 +2684,11 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .wall-block.is-cloud{ mix-blend-mode: hard-light; }
 /* 차분한의 큰 돌이 있는 동안 — 구름은 쓸리지 않고 돌 뒤에 한 색 실루엣으로 남는다(초기화면 나무와 같은 방식, 검은 벽이라 어두운 회색).
    비눗방울(유머있는)은 숨는다. .calm-filter = 필터 걸림, .calm-tint = 색이 올라옴(한 프레임 늦게 — 그래야 스며든다) */
-.wall-rain{ transition: opacity var(--t-slow) var(--ease-standard); }
-.calm-flood{ flood-color: var(--grey-800); flood-opacity: 0; transition: flood-opacity var(--t-slow) var(--ease-standard); }
+.wall-rain{ transition: opacity calc(var(--t-slow) * 4) var(--ease-standard); }
+.calm-flood{ flood-color: var(--grey-800); flood-opacity: 0; transition: flood-opacity calc(var(--t-slow) * 4) var(--ease-standard); }
 .wall-field.calm-tint .calm-flood{ flood-opacity: 1; }
 .wall-field.calm-filter .wall-block.is-cloud{ filter: url(#wall-calm-sil); }
-.wall-field.calm-filter .wall-rain{ opacity: 0; }
+.wall-field.calm-rain-off .wall-rain{ opacity: 0; transition-duration: var(--t-slow); }   /* 숨을 땐 빨리, 돌아올 땐 천천히 */
 /* 나무는 처음 나타날 때만 종이가 펴지듯 — 바닥(상자 밑으로 이어지는 줄기의 끝, --tree-ext)을 축으로 뒤로 누운 90°에서 곧게.
    그 밖에는 가만히 선다. 원근은 벽 높이의 2.5배 앞에서 보는 것(견본과 같은 비).
    펴지기는 벽이 나무를 **처음 자리에 세운 순간**(data-placed, WallSimulation)에 시작한다 — 붙자마자 시작하면
@@ -3522,6 +3522,11 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .home-poster{ position: absolute; inset: 0; z-index: var(--z-content); }
 .home-poster-art{ display: block; position: absolute; inset: 0; }
 .home-poster .hp-land{ fill: var(--grey-200); }
+/* 사파리 주소창 뒤 색 — 화면 맨 아래는 '회색 땅 위에 빨강 기운'이다. 색을 읽는 쪽(viewport.ts colorAt)은 SVG의 칠을 못 보고
+   틀의 바탕(--grey-50)으로 읽어 주소창이 더 밝았다 — '써봤어요' 아래에 가로 경계가 생겼다(2026-10-06 아이폰). 위에서부터 겹치는
+   차례대로: 땅(빨강 기운) → 그림(회색 땅) */
+.home-poster .hp-soil{ --edge-bottom-paint: var(--brand-scrim); }
+.home-poster-art{ --edge-bottom-paint: var(--grey-200); }
 .home-poster .hp-flood{ flood-color: var(--grey-200); }
 .home-poster .hp-eye{ fill: var(--paper); }
 .home-poster .hp-red{ color: var(--brand-main); }

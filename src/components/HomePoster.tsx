@@ -423,7 +423,7 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
             <path id={id('path')} d={ringD} fill="none" />
           </defs>
           <g data-p="land" style={{ opacity: 0 }}>
-            <polygon className="hp-land" points={soil} />
+            <polygon className="hp-land hp-soil" points={soil} />
             {[CLOUD.pts, ...(CLOUD.extra ?? [])].map((s, i) => (
               <polygon key={i} className="hp-land" points={pts(s, (x, y) => [L.cloud.x + x * L.cloud.k, L.cloud.y + y * L.cloud.k])} />
             ))}

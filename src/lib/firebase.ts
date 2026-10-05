@@ -225,8 +225,9 @@ function buildRestClient(): FirestoreLike {
 }
 
 /** 운영 규칙(firestore.rules)에 **게시된** 정렬 값 — 여기 없는 값은 게시 전까지 가운데로 보낸다(toneForWall).
-    규칙을 게시한 뒤에만 더한다(마지막 게시: 2026-09-29, 콘솔) */
-const PUBLISHED_ALIGNS = ['left', 'center', 'right', 'distribute', 'trapezoid', 'arch', 'fan', 'smile', 'hang-up', 'hang-mid', 'hang-down', 'slant', 'vertical'];
+    규칙을 게시한 뒤에만 더한다(마지막 게시: 2026-10-06, 콘솔 — 유머있는의 둥실 · 흔들. 둥글 · 네모 · 뾰족은 10-04에 게시하고 여기 넣지 않아 벽에 가운데로 갔다) */
+const PUBLISHED_ALIGNS = ['left', 'center', 'right', 'distribute', 'trapezoid', 'arch', 'fan', 'smile', 'hang-up', 'hang-mid', 'hang-down', 'slant', 'vertical',
+  'round', 'square', 'pointy', 'float', 'wobble'];
 
 const MOCK_KEY = 'megafont.mock.messages.v1';
 

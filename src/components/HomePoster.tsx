@@ -59,7 +59,7 @@ const WIGGLE_DEG = 8;         // 옛 메가폰트 5°보다 크게 — 작은 �
 const WIGGLE_SWAY = 0.03;     // 키에 대한 옆 흔들림
 /** 움직일 수 있다는 기미(2026-10-06 사용자) — 올리면 살짝, 누르면 손에 들린 만큼 커진다. 캐릭터는 올리면 들썩 · 누르면 바로 들린다 */
 const LIFT_HOVER = 1.03, LIFT_PRESS = 1.06, PEEK = 0.05;
-type Held = { x: number; feet: number; held: boolean; dropT: number; dropFrom: number };
+type Held = { x: number; feet: number; held: boolean; dropT: number; dropFrom: number; walk?: { from: number; to: number; t0: number; n: number } };
 const MOVED: { badge: [number, number]; about: [number, number]; chars: Partial<Record<'red' | 'cyan', Held>> } = { badge: [0, 0], about: [0, 0], chars: {} };
 
 let playedThisLoad = false;
@@ -164,6 +164,7 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
       E.s.forEach((p) => { p.style.display = kind === 'smile' ? '' : 'none'; });
     };
 
+    const IDLE = tokenMs('--t-home-idle', 5000);   // 이만큼 안 만지면 옮긴 것들이 제자리로(2026-10-06 사용자 '5초')
     const HOLD = tokenMs('--t-hold', 700), SLOW = tokenMs('--t-slow', 400), RET = tokenMs('--t-return', 220), TURN = tokenMs('--t-home-ring', 40000);
     const STD = easeOf('--ease-standard'), EMPH = easeOf('--ease-emphasized');
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -259,6 +260,16 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
       const otherX = MOVED.chars[who === 'red' ? 'cyan' : 'red']?.x ?? (who === 'red' ? XC : XR);
       const face = otherX < o.x ? 1 : -1, n = performance.now();
       g.style.display = ''; g.style.opacity = '1';
+      if (o.walk) {   // 제자리로 걸어간다 — 스플래시와 같은 뚜벅뚜벅, 걸어가는 쪽을 본다
+        const w = o.walk, a = reduce ? 1 : clamp((n - w.t0) / (w.n * STEP));
+        const i = Math.min(w.n - 1, Math.floor(a * w.n)), sx = a >= 1 ? 1 : a * w.n - i;
+        const lift = a < 1 ? Math.sin(Math.PI * sx) : 0;
+        o.x = lerp(w.from, w.to, a >= 1 ? 1 : (i + STD(sx)) / w.n);
+        sd.style.display = ''; st.style.display = 'none'; setEye(E, 'look');
+        place(g, KS, o.x, G + 3 - lift * 0.06 * 541.8 * KS, w.to < w.from ? 1 : -1, (i % 2 ? 1 : -1) * 4 * lift);
+        if (a >= 1) { o.x = w.to; o.walk = undefined; }
+        return;
+      }
       if (o.held) {
         const s = n / 1000, k = reduce ? 0 : 1;
         const tilt = k * WIGGLE_DEG * (Math.sin(s * 2 * Math.PI * 2.6) + 0.35 * Math.sin(s * 2 * Math.PI * 4.1 + 1));
@@ -280,10 +291,33 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
     type Kind = 'badge' | 'about' | 'red' | 'cyan';
     let hand: { kind: Kind; id: number; x0: number; y0: number; ox: number; oy: number; moved: boolean; box: DOMRect } | null = null;
     let hoverKind: Kind | null = null, lastT = performance.now();
+    let lastTouch = performance.now(), back: { t0: number; badge: [number, number]; about: [number, number] } | null = null;
+    const HOME_X = { red: XR, cyan: XC } as const;
+    const displaced = () => MOVED.badge.some((v) => Math.abs(v) > 0.5) || MOVED.about.some((v) => Math.abs(v) > 0.5)
+      || (['red', 'cyan'] as const).some((k) => { const o = MOVED.chars[k]; return !!o && (Math.abs(o.x - HOME_X[k]) > 1 || o.feet < G + 2); });
+    /** 5초 안 만지면 제자리로 — 원 · 링크는 미끄러지고(2 × --t-slow), 캐릭터는 걸어간다 */
+    const settleBack = (n: number) => {
+      if (!back) {
+        if (hand || n - lastTouch < IDLE || !displaced()) return;
+        back = { t0: n, badge: [...MOVED.badge], about: [...MOVED.about] };
+        for (const k of ['red', 'cyan'] as const) {
+          const o = MOVED.chars[k];
+          if (!o || o.held) continue;
+          const d = Math.abs(o.x - HOME_X[k]);
+          o.feet = G + 3;
+          if (d > 1) o.walk = { from: o.x, to: HOME_X[k], t0: n, n: Math.max(1, Math.round(d / (0.07 * W))) };
+        }
+      }
+      const pb = reduce ? 1 : EMPH(clamp((n - back.t0) / (2 * SLOW)));
+      MOVED.badge = [lerp(back.badge[0], 0, pb), lerp(back.badge[1], 0, pb)];
+      MOVED.about = [lerp(back.about[0], 0, pb), lerp(back.about[1], 0, pb)];
+      if (pb >= 1 && !MOVED.chars.red?.walk && !MOVED.chars.cyan?.walk) back = null;
+    };
     const grow: Record<Kind, number> = { badge: 1, about: 1, red: 1, cyan: 1 };
     let raf = 0, done = false;
     const tick = () => {
       const t = reduce ? T.all : now() - start.current!;
+      if (t >= T.all) settleBack(now());
       draw(t);
       if (!done && t >= T.all) { done = true; markPlayed(); setSkippable(false); }
       raf = requestAnimationFrame(tick);
@@ -299,6 +333,8 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
       const tgt = (e.target as Element).closest('[data-drag]');
       if (!tgt || !el.contains(tgt)) return;
       const kind = tgt.getAttribute('data-drag') as Kind;
+      lastTouch = now(); back = null;
+      for (const k of ['red', 'cyan'] as const) { const c = MOVED.chars[k]; if (c) c.walk = undefined; }
       let ox: number, oy: number;
       if (kind === 'badge' || kind === 'about') [ox, oy] = MOVED[kind];
       else {
@@ -328,6 +364,7 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
       }
       if (!hand.moved) return;
       e.preventDefault();
+      lastTouch = now();
       const f = fr(), b = hand.box;
       // 화면 밖으로는 못 나간다 — 잡은 덩어리의 상자가 틀 안에 남게
       const cdx = Math.max(f.left - b.left, Math.min(f.right - b.right, dx));
@@ -341,6 +378,7 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
     };
     const onUp = (e: PointerEvent) => {
       if (!hand || e.pointerId !== hand.id) return;
+      lastTouch = now();
       if (hand.moved && hand.kind === 'about') swallowClick = true;   // 끌었으면 소개로 가지 않는다
       const o = hand.kind === 'red' || hand.kind === 'cyan' ? MOVED.chars[hand.kind] : null;
       if (o && o.held) { o.held = false; o.dropT = now(); o.dropFrom = o.feet; }

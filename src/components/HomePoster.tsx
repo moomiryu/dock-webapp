@@ -61,6 +61,8 @@ const lerp = (a: number, b: number, p: number) => a + (b - a) * p;
 const DRAG_SLOP = 6;          // 이만큼 움직여야 끌기 — 짧게 누르면 링크는 소개로 간다
 const WIGGLE_DEG = 8;         // 옛 메가폰트 5°보다 크게 — 작은 몸의 버둥거림
 const WIGGLE_SWAY = 0.03;     // 키에 대한 옆 흔들림
+/** 움직일 수 있다는 기미(2026-10-06 사용자) — 올리면 살짝, 누르면 손에 들린 만큼 커진다. 캐릭터는 올리면 들썩 · 누르면 바로 들린다 */
+const LIFT_HOVER = 1.03, LIFT_PRESS = 1.06, PEEK = 0.05;
 type Held = { x: number; feet: number; held: boolean; dropT: number; dropFrom: number };
 const MOVED: { badge: [number, number]; about: [number, number]; chars: Partial<Record<'red' | 'cyan', Held>> } = { badge: [0, 0], about: [0, 0], chars: {} };
 
@@ -230,8 +232,14 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
       const v = EMPH(clamp((t - T.vert) / (2 * SLOW))), g = STD(clamp((t - T.gate) / (2 * SLOW)));
       about.style.opacity = String(v); about.style.transform = `translateY(${(12 * (1 - v)).toFixed(1)}px)`; about.style.pointerEvents = v > 0.5 ? '' : 'none';
       if (gate) { gate.style.opacity = String(g); gate.style.pointerEvents = g > 0.5 ? '' : 'none'; }
-      badge.setAttribute('transform', `translate(${MOVED.badge[0].toFixed(1)} ${MOVED.badge[1].toFixed(1)})`);
+      const n0 = performance.now(), f = 1 - Math.exp(-Math.min(0.1, (n0 - lastT) / 1000) * 14); lastT = n0;
+      for (const k of ['badge', 'about', 'red', 'cyan'] as const) {
+        const want = hand?.kind === k ? LIFT_PRESS : hoverKind === k ? LIFT_HOVER : 1;
+        grow[k] += (want - grow[k]) * (reduce ? 1 : f);
+      }
+      badge.setAttribute('transform', `translate(${(MOVED.badge[0] + cx).toFixed(1)} ${(MOVED.badge[1] + cy).toFixed(1)}) scale(${grow.badge.toFixed(4)}) translate(${-cx} ${-cy})`);
       about.style.translate = `${MOVED.about[0].toFixed(1)}px ${MOVED.about[1].toFixed(1)}px`;
+      about.style.scale = grow.about.toFixed(4);
       // 하늘 — 왼쪽에서 와 멈칫 발견(눈 동그랗게 · 살짝 뜀), 곁에 와서 오른쪽을 보며 앉는다
       if (t < T.found - 5 * STEP) { cyan.style.display = 'none'; return; }
       cyan.style.display = '';
@@ -244,7 +252,11 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
       cSide.style.display = sitting ? 'none' : ''; cSit.style.display = sitting ? '' : 'none';
       setEye(cEyes, wide ? 'wide' : eye ?? 'look');
       place(cyan, KS, x, G + 3 - (lift * 0.06 + hop * 0.12 + dy) * 541.8 * KS, -1, (step % 2 ? 1 : -1) * 4 * lift);
-      if (t >= T.all) { movedChar('red', t); movedChar('cyan', t); }
+      if (t >= T.all) {
+        MOVED.chars.red ??= { x: XR, feet: G + 3, held: false, dropT: 0, dropFrom: G + 3 };
+        MOVED.chars.cyan ??= { x: XC, feet: G + 3, held: false, dropT: 0, dropFrom: G + 3 };
+        movedChar('red', t); movedChar('cyan', t);
+      }
     };
     // 옮긴 캐릭터 — 들려 있으면 매달려 버둥 · 놓으면 떨어져 앉는다 · 서로를 향해 돌아앉는다(그림은 왼쪽을 본다)
     const FALL_MS = 2 * RET;
@@ -266,12 +278,17 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
       const p = clamp((n - o.dropT) / FALL_MS);
       if (p < 1) { sd.style.display = ''; st.style.display = 'none'; setEye(E, 'wide'); place(g, KS, o.x, lerp(o.dropFrom, G + 3, p * p), face, 0); return; }
       const [dy, eye] = talk(t, who === 'red' ? 0 : 1);
-      sd.style.display = 'none'; st.style.display = ''; setEye(E, eye ?? 'look');
-      place(g, KS, o.x, G + 3 - dy * 541.8 * KS, face, 0);
+      const peek = (grow[who] - 1) / (LIFT_HOVER - 1);   // 올리면 0→1 — 들썩하며 눈을 동그랗게
+      sd.style.display = 'none'; st.style.display = ''; setEye(E, peek > 0.5 ? 'wide' : eye ?? 'look');
+      place(g, KS, o.x, G + 3 - (dy + PEEK * Math.min(1, peek)) * 541.8 * KS, face, 0);
     };
 
     const now = () => performance.now();
     if (start.current === null) start.current = wasPlayed() || reduce ? now() - T.all : now();
+    type Kind = 'badge' | 'about' | 'red' | 'cyan';
+    let hand: { kind: Kind; id: number; x0: number; y0: number; ox: number; oy: number; moved: boolean; box: DOMRect } | null = null;
+    let hoverKind: Kind | null = null, lastT = performance.now();
+    const grow: Record<Kind, number> = { badge: 1, about: 1, red: 1, cyan: 1 };
     let raf = 0, done = false;
     const tick = () => {
       const t = reduce ? T.all : now() - start.current!;
@@ -283,8 +300,6 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
     const skip = () => { start.current = Math.min(start.current!, now() - T.all); };
     el.addEventListener('megafont-skip', skip);
 
-    type Kind = 'badge' | 'about' | 'red' | 'cyan';
-    let hand: { kind: Kind; id: number; x0: number; y0: number; ox: number; oy: number; moved: boolean; box: DOMRect } | null = null;
     let swallowClick = false;
     const fr = () => frame.getBoundingClientRect();
     const onDown = (e: PointerEvent) => {
@@ -299,7 +314,18 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
         ox = o.x; oy = o.feet;
       }
       hand = { kind, id: e.pointerId, x0: e.clientX, y0: e.clientY, ox, oy, moved: false, box: tgt.getBoundingClientRect() };
+      if (kind === 'red' || kind === 'cyan') {   // 누르는 순간 집힌다 — 키의 6%만큼 들리며 버둥거리기 시작
+        const o = MOVED.chars[kind]!;
+        o.held = true; o.feet = Math.min(o.feet, G + 3 - 0.06 * 541.8 * KS); hand.oy = o.feet;
+      }
     };
+    // 마우스를 올리면 — 폰에는 없다(누르는 순간이 그 몫)
+    const onOver = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse' || (!reduce && now() - start.current! < T.all)) return;
+      const tgt = (e.target as Element).closest('[data-drag]');
+      hoverKind = tgt && el.contains(tgt) ? (tgt.getAttribute('data-drag') as Kind) : null;
+    };
+    const onLeave = () => { hoverKind = null; };
     const onMove = (e: PointerEvent) => {
       if (!hand || e.pointerId !== hand.id) return;
       const dx = e.clientX - hand.x0, dy = e.clientY - hand.y0;
@@ -330,13 +356,15 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
     };
     const onClickCapture = (e: MouseEvent) => { if (swallowClick) { swallowClick = false; e.stopPropagation(); e.preventDefault(); } };
     el.addEventListener('pointerdown', onDown);
+    el.addEventListener('pointerover', onOver);
+    el.addEventListener('pointerleave', onLeave);
     window.addEventListener('pointermove', onMove, { passive: false });
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onUp);
     about.addEventListener('click', onClickCapture, true);
     return () => {
       cancelAnimationFrame(raf); el.removeEventListener('megafont-skip', skip);
-      el.removeEventListener('pointerdown', onDown);
+      el.removeEventListener('pointerdown', onDown); el.removeEventListener('pointerover', onOver); el.removeEventListener('pointerleave', onLeave);
       window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onUp);
       about.removeEventListener('click', onClickCapture, true);
     };

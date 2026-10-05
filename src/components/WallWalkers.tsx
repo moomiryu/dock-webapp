@@ -56,7 +56,9 @@ const MEET = { chance: 0.7, reach: 0.8, gap: 1.9 };
 /** 맞았다고 보는 돌의 아래로 빠르기(벽 높이/초 — 1080 벽에서 초당 120px). 천천히 내려앉는 돌은 안 맞힌다 */
 const HIT_VY = 120 / 1080;
 
-type State = 'off' | 'pop' | 'walk' | 'sit' | 'knock' | 'down' | 'getup';
+/** 큰 돌(차분한의 발화) 앞에서 — 놀람(제자리 폴짝) → 달아남(오른쪽으로 뜀) → 돌 가장자리에 모여 섬 · 돌이 밀려 나갈 땐 화면 밖으로(away) */
+const GIANT = { startle: 0.5, flee: 4, run: 2.5, gap: 1.1, spread: 1.3, reach: 6, huddleWide: 2 };
+type State = 'off' | 'pop' | 'walk' | 'sit' | 'knock' | 'down' | 'getup' | 'startle' | 'flee' | 'huddle' | 'away';
 type Eye = 'look' | 'wide' | 'shut' | 'smile' | 'sad';
 type Parts = {
   svg: SVGSVGElement; flip: SVGGElement; walkLegs: SVGGElement; sitLegs: SVGGElement; far: SVGGElement; near: SVGGElement;
@@ -156,7 +158,7 @@ export default function WallWalkers() {
       const [a, b, c, d] = sitBox(x);
       return texts.some((q) => a < q[2] && c > q[0] && b < q[3] && d > q[1]);
     };
-    const spotTaken = (w: Walker, x: number) => ws.some((o) => o !== w && o.state !== 'off'
+    const spotTaken = (w: Walker, x: number) => ws.some((o) => o !== w && o.state !== 'off' && o.state !== 'away'
       && Math.abs((o.state === 'sit' ? o.x : o.tx) - x) < cw * MEET.gap * 0.95);
     const clampX = (x: number) => Math.min(W - cw, Math.max(cw, x));
     const pickTarget = (w: Walker) => {
@@ -233,17 +235,31 @@ export default function WallWalkers() {
       }
     };
 
+    // ── 큰 돌 — 화면에서 읽는다(오른쪽 끝 · 오른쪽 끝의 빠르기 px/초). 밀려오는 동안 → 가만히 섬(held) → 밀려 나감을 가른다
+    let giant: { l: number; r: number; v: number } | null = null, gPrevR = NaN, gMoved = false, gHeld = false;
+    const GV = 0.02;   // 이보다 느리면 선 것(벽 높이/초)
+    const readGiant = (dt: number) => {
+      const el = document.querySelector('.wall-calm');
+      const r = el?.getBoundingClientRect();
+      if (!r || r.right <= 0 || r.left >= W) { giant = null; gPrevR = NaN; gMoved = gHeld = false; return; }
+      const v = Number.isNaN(gPrevR) || dt <= 0 ? 0 : (r.right - gPrevR) / dt;
+      gPrevR = r.right;
+      if (v > GV * Hh) gMoved = true; else if (gMoved && v > -GV * Hh) gHeld = true;
+      giant = { l: r.left, r: r.right, v };
+    };
+
     // ── 한 걸음
     const step = (w: Walker, i: number, t: number, dt: number) => {
       const still = reduce.matches;
       if (w.state === 'off') {
+        if (giant) return;   // 큰 돌이 있는 동안은 나오지 않는다
         if (still || t > HOLD * T.popAt[i]) { popIn(w, t); if (still) { w.pop = 1; toSit(w, t); w.sitT = 1; w.until = Infinity; } }
         return;
       }
       // 움직임 줄이기를 도중에 켜도 앉은 자세로 멈춘다. 글이 뒤에 생기면 빈자리로만 옮긴다.
       if (still) {
         if (meet) endMeet(t);
-        w.state = 'sit'; w.sitGoal = w.sitT = w.pop = 1; w.ang = 0; w.walking = false;
+        w.state = 'sit'; w.sitGoal = w.sitT = w.pop = 1; w.ang = 0; w.walking = false; w.el.style.display = '';
         w.smileUntil = w.blinkUntil = w.sadUntil = 0;
         w.until = t + HOLD * T.sit[0];
         if (coversText(w.x)) w.x = freeX(w);
@@ -252,6 +268,11 @@ export default function WallWalkers() {
       if ((w.state === 'walk' || w.state === 'sit' || w.state === 'getup') && !still) {
         const r = fallingOn(w, t);
         if (r) return knock(w, t, r);
+      }
+      if (giant && (w.state === 'walk' || w.state === 'sit')) {   // 큰 돌이 나타났다 — 놀란다
+        if (meet) endMeet(t);
+        w.state = 'startle'; w.t0 = t; w.sitGoal = 0; w.walking = false;
+        w.face = (giant.l + giant.r) / 2 < w.x ? 1 : -1;
       }
       if ((w.state === 'walk' || w.state === 'sit') && t >= w.sadUntil && !still) {
         if (!w.nextSmile) w.nextSmile = t + HOLD * rnd(T.smileGap);
@@ -291,6 +312,32 @@ export default function WallWalkers() {
           if (t > w.nextBlink && t >= w.smileUntil) { w.blinkUntil = t + RET; w.nextBlink = t + HOLD * rnd(T.blink); }
           if (t > w.nextFlip && !w.talking && !still) { w.face = w.face === 1 ? -1 : 1; w.nextFlip = t + HOLD * rnd(T.flip); }
           break;
+        case 'startle':
+          if (t - w.t0 > HOLD * GIANT.startle) { w.state = 'flee'; w.t0 = t; }
+          break;
+        case 'flee':
+        case 'huddle': {
+          if (!giant) { toWalk(w, t); break; }   // 돌이 가고 나면 다시 제 걸음
+          const exiting = gHeld && giant.v > GV * Hh;
+          // 모일 자리 = 큰 돌 오른쪽 가장자리 바로 옆(둘이 나란히). 밀려오는 동안엔 돌 앞에 든 사람이 앞서 뛴다
+          const lim = W - cw - (ws.length - 1 - i) * cw * GIANT.spread;
+          const raw = Math.min(giant.r + cw * GIANT.gap + i * cw * GIANT.spread, lim);
+          const tx = exiting ? W + 2 * cw : !gHeld && w.x - giant.r < hc * GIANT.reach ? Math.min(lim, Math.max(raw, w.x + cw)) : raw;
+          const d = tx - w.x;
+          if (d > 3 && (w.state === 'flee' || exiting || d > cw * 0.5)) {
+            w.state = 'flee'; w.dir = 1; w.face = -1;
+            if (w.pace !== GIANT.flee) { w.pace = GIANT.flee; for (const a of w.p.anims) a.setAttribute('dur', `${Math.round(walkMs / GIANT.flee)}ms`); }
+            w.x += Math.min(Math.max(speed * GIANT.flee, hc * GIANT.run) * dt, d); w.walking = true;
+            if (exiting && w.x >= W + cw) { w.state = 'away'; w.walking = false; w.el.style.display = 'none'; }
+          } else {
+            if (w.state === 'flee') { w.state = 'huddle'; w.t0 = t; w.face = (giant.l + giant.r) / 2 < w.x ? 1 : -1; w.nextBlink = t + HOLD * rnd([2, 5]); }
+            if (t > w.nextBlink) { w.blinkUntil = t + RET; w.nextBlink = t + HOLD * rnd(T.blink); }
+          }
+          break;
+        }
+        case 'away':   // 큰 돌이 다 지나갔다 — 오른쪽 끝에서 걸어 들어온다
+          if (!giant) { w.x = W + cw * (1 + i * 3); w.pop = 1; w.el.style.display = ''; toWalk(w, t); }
+          break;
         case 'knock': {   // 놀라며 넘어진다 — 옆으로 밀리며 SLOW에 눕는다
           const p = Math.min(1, (t - w.t0) / SLOW);
           w.ang = w.side * 80 * easeEmph(p);
@@ -316,7 +363,7 @@ export default function WallWalkers() {
       w.p.eyes[w.eye].style.display = 'none'; w.p.eyes[e].style.display = ''; w.eye = e;
     };
     const draw = (w: Walker, t: number, dt: number) => {
-      if (w.state === 'off') return;
+      if (w.state === 'off' || w.state === 'away') return;
       const motionT = reduce.matches ? 0 : t;
       w.sitT += Math.sign(w.sitGoal - w.sitT) * Math.min(Math.abs(w.sitGoal - w.sitT), dt / RET);
       const seated = w.sitT > 0.5;
@@ -330,7 +377,8 @@ export default function WallWalkers() {
       }
       w.p.flip.setAttribute('transform', w.face === -1 ? `matrix(-1 0 0 1 ${2 * CX} 0)` : '');
       // 눈 — 넘어지는 동안 놀람 → 일어나며 질끈 → 3초 슬픔 · 이야기 중엔 말하는 쪽 쳐다봄↔웃음, 듣는 쪽 대개 웃음 · 평소 자주 웃음
-      const e: Eye = w.state === 'knock' || w.state === 'down' ? 'wide'
+      const e: Eye = w.state === 'knock' || w.state === 'down' || w.state === 'startle' || w.state === 'flee' ? 'wide'
+        : w.state === 'huddle' && t - w.t0 < HOLD * GIANT.huddleWide ? 'wide'
         : w.state === 'getup' ? (t - w.t0 < HOLD * 0.35 ? 'shut' : 'sad')
         : t < w.sadUntil ? 'sad'
         : w.talking ? (w.speaking ? (Math.floor(t / (HOLD * 0.6)) % 3 === 2 ? 'smile' : 'look') : (Math.floor(t / (HOLD * 2.2)) % 4 === 3 ? 'look' : 'smile'))
@@ -340,7 +388,8 @@ export default function WallWalkers() {
       // 몸짓 — 말하는 쪽은 작게 들썩(키의 3%), 듣는 쪽은 끄덕(키의 2% 내려앉음)
       const talkDy = !w.talking ? 0 : w.speaking ? -Math.abs(Math.sin((t / (HOLD * 0.5)) * Math.PI)) * hc * 0.03
         : (Math.max(0, Math.sin((t / (HOLD * 1.5)) * 2 * Math.PI) - 0.6) / 0.4) * hc * 0.02;
-      const rad = (w.ang * Math.PI) / 180, lift = (cw / 2) * Math.abs(Math.sin(rad));   // 누워도 아래 모서리가 땅 위에
+      const hop = w.state === 'startle' ? Math.sin(Math.min(1, (t - w.t0) / (HOLD * GIANT.startle)) * Math.PI) * hc * 0.18 : 0;   // 놀라 폴짝
+      const rad = (w.ang * Math.PI) / 180, lift = (cw / 2) * Math.abs(Math.sin(rad)) + hop;   // 누워도 아래 모서리가 땅 위에
       const ox = (CX - VB.x) * s, oy = (FOOT_Y - VB.y) * s, pop = Math.max(0.001, easeEmph(w.pop));
       w.el.style.transform = `translate3d(${(w.x - ox).toFixed(1)}px, ${(floor - oy - lift + talkDy).toFixed(1)}px, 0) rotate(${w.ang.toFixed(1)}deg) scale(${pop.toFixed(3)})`;
       const anim = w.walking && !reduce.matches;
@@ -358,6 +407,7 @@ export default function WallWalkers() {
       const dt = Math.min(0.1, (now - last) / 1000), t = (now - t0) / 1000;
       last = now;
       readTexts(t);
+      readGiant(dt);
       if (!reduce.matches) meetStep(t);
       ws.forEach((w, i) => step(w, i, t, dt));
       markStones(t);

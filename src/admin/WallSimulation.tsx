@@ -98,6 +98,10 @@ function writeSeen(id: string): void {
  *  나눴다가(넓게 보면 나무 · 돌, 확대하면 구름 · 새의 글만 읽혔다) 2026-10-04에 다시 한 화면 열둘로(디자이너 — 기본 화면에서 모든 글이
  *  보이고, 확대는 보통 카메라. 열둘 · 열여섯 중) */
 const WALL_N = 12;
+/** 땅(돌 + 나무)의 합 · 유머있는(비눗방울)의 수(2026-10-06, 견본에서 고르는 중). 돌 7 · 나무 8을 따로만 막으면 합이 열둘을 넘어 구름이
+    하나도 못 뜰 수 있었다 — 땅을 합쳐서 막아 하늘(구름 · 새)의 몫을 남긴다. 비눗방울은 작고 가벼워 열둘에 세지 않고 따로 센다 */
+const GROUND_MAX = 9;
+const RAIN_MAX = 4;
 /** 벽에 한 번에 서는 나무(당당한)의 최대 수(2026-10-01, 디자이너). 나무는 한 그루에 결 · 빗금 · 가닥이 많아 여러 그루가
     모이면 바닥이 소란했다(같은 벽에 여덟 · 셋을 세워 봤다). 여섯으로 정했다가 여덟로 고쳤다(같은 날). 넘치면 오래된 나무부터
     잠시 빠지고 그 자리를 다른 성격의 글이 채운다 — 열둘을 갈아 끼울 때(rotate) 빠졌던 나무도 제 차례에 돌아온다 */
@@ -207,6 +211,8 @@ type Body = {
   noRoom?: boolean;
   /** 돌 — 땅 밑에서 꾸물꾸물 올라오는 중(큰 돌이 나간 뒤, riseStep): 제자리 x · 시작 · 끝 높이(상자 가운데 px) · 각도 · 시작 시각(초) · 박자 */
   rise?: { x: number; y0: number; y1: number; a: number; t0: number; ph: number };
+  /** 나무 — 큰 돌에 깔려 넘어지는 중(calmStep): 돌 끝이 닿은 때(초) · 넘어진 정도 0~1(오른쪽으로 눕고 납작해진다) · 복귀에서 일어나기 시작한 때 · 그때의 정도 */
+  crush?: number; fall?: number; upT0?: number; upFrom?: number;
 };
 type RGB = [number, number, number];
 type Pt2 = [number, number];
@@ -905,7 +911,15 @@ function stepStones(W: StoneWorld, bodies: Body[], dt: number) {
 /** 큰 돌 — 화면 가로 · 세로의 이만큼 안에 드는 가장 큰 크기(디자이너 — "화면의 80%를 차지해도 된다") */
 const CALM_SIZE = 0.8;
 /** 밀려오기(초, 끝으로 갈수록 느려진다) · 퇴장: 물러나는 거리(벽 높이의 비율, 1080px에서 50px) · 시간(초) · 미끄러져 나가는 시간(초) */
-const CALM_IN = 6.5;
+const CALM_IN = 8;
+/** 도킹한 뒤 큰 돌이 기어나오기 전에 기다리는 시간(초, 2026-10-06 디자이너) · 돌이 다 나간 뒤 풍경이 돌아오기 전에 기다리는 시간(초) ·
+    나무가 깔려 넘어지는 데 걸리는 시간(초) · 복귀에서 다시 일어서는 시간(초) */
+const CALM_WAIT = 3;
+const CALM_GONE = 3;
+const CALM_CRUSH = 1;
+/** 도킹한 뒤 · 폰을 뗀 뒤 큰 상자가 나오고 내려앉기 전의 텀(ms) — 즉각 반영되면 어색했다(2026-10-06, 디자이너). 모든 성격이 같다 */
+const DOCK_TERM_MS = CALM_WAIT * 1000;
+const CALM_UP = 1.6;
 const CALM_BACK = 50 / 1080;
 const CALM_BACK_T = 1.0;
 const CALM_GLIDE = 5.5;
@@ -938,7 +952,7 @@ const FLEE_CLIMB = 0.12;
 const FLEE_EASE = 1.2;
 
 type Calm = {
-  id: string; phase: 'enter' | 'hold' | 'exit' | 'return'; t0: number;
+  id: string; phase: 'enter' | 'hold' | 'exit' | 'gone' | 'return'; t0: number;
   /** 큰 돌의 배율(벽의 한 변에 대해) · 물리 몸 · 반폭 · 반높이 · 퇴장을 시작한 자리(px) */
   G: number; giant: { mb: Matter.Body; mc: Pt2; hw: number; hh: number } | null; x0: number;
   /** 등장 전 풍경의 자리(상자 가운데 px · 각도) — 복귀 때 그대로 되돌린다 */
@@ -964,7 +978,6 @@ function stonePlan(id: string, me: Body, keep: readonly string[], bodies: Map<st
     retire.push(alive.pop()!);
   }
 }
-const easeOut3 = (t: number) => 1 - (1 - t) ** 3;
 const easeInOut3 = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2);
 
 /** 돌 몸을 상자 가운데 (x, y) · 각도 a에 둔다 — 무게중심은 mc를 돌려 뺀 곳 */
@@ -1044,6 +1057,7 @@ function calmRestore(C: Calm, W: StoneWorld, map: Map<string, Body>, now: number
   for (const [id, b] of [...map]) {
     const p = C.snap?.get(id);
     if (id === C.id || b.kind === 'cloud') continue;
+    if (b.kind === 'tree') { b.crush = undefined; b.upT0 = now; b.upFrom = b.fall ?? 0; continue; }   // 나무는 자리 그대로 — 다시 일어선다
     // 넘치는 가장 오래된 돌 — 쓸려 나간 그대로 둔다(벽이 명단에서 빼면 지워진다, STONE_MAX)
     if (C.retire.includes(id)) { b.away = true; if (b.mb) Matter.Composite.remove(W.engine.world, b.mb); continue; }
     if (!p) { if (b.swept || b.away) { if (b.mb) Matter.Composite.remove(W.engine.world, b.mb); map.delete(id); } continue; }
@@ -1103,28 +1117,37 @@ function calmStep(C: Calm, W: StoneWorld, map: Map<string, Body>, f: Size | unde
     C.giant = { mb, mc, hw, hh };
     Matter.Composite.add(W.engine.world, mb);
   }
-  const g = C.giant, t = now - C.t0, k = h / 1080;
+  const g = C.giant, t = now - C.t0, k = h / 1080, te = C.phase === 'enter' ? t - CALM_WAIT : t;
   // 큰 돌의 자리 — 등장: 왼쪽 밖에서 가운데까지(끝으로 갈수록 느리게). 퇴장: 물러났다가 오른쪽 밖으로 스르륵
   if (g) {
     let x = w / 2;
-    if (C.phase === 'enter') { const e = easeOut3(Math.min(1, t / CALM_IN)); x = -g.hw + (w / 2 + g.hw) * e; if (t >= CALM_IN) { C.phase = 'hold'; C.t0 = now; } }
+    if (C.phase === 'enter') { const e = easeInOut3(Math.max(0, Math.min(1, te / CALM_IN))); x = -g.hw + (w / 2 + g.hw) * e; if (te >= CALM_IN) { C.phase = 'hold'; C.t0 = now; } }   // 기다렸다가 아주 느리게 기어 나온다
     else if (C.phase === 'exit') {
       if (Number.isNaN(C.x0)) C.x0 = g.mb.position.x + g.mc[0];
       const back = CALM_BACK * h;
       x = t < CALM_BACK_T ? C.x0 - back * easeInOut3(t / CALM_BACK_T) : C.x0 - back + (w + g.hw - C.x0 + back + 60) * Math.min(1, (t - CALM_BACK_T) / CALM_GLIDE) ** 2.2;
     }
+    if (C.phase === 'gone') x = w + g.hw + 100;
     placeStone(g.mb, g.mc, x, giantGroundY(g, h), 0, true);
-    if (C.phase === 'exit' && x - g.hw > w + 40) {
+    // 다 나갔다 — CALM_GONE초 뒤에야 풍경이 돌아온다
+    if (C.phase === 'exit' && x - g.hw > w + 40) { C.phase = 'gone'; C.t0 = now; }
+    else if (C.phase === 'gone' && t >= CALM_GONE) {
       calmRestore(C, W, map, now);
       C.phase = 'return'; C.t0 = now;
     }
   }
   // 휩쓸림 — 큰 돌 앞에 든 것부터(등장 절반이 지나면 모두) 오른쪽 밖으로. 돌은 미끄럽게 굴러, 나머지는 바람에 밀리듯
-  if ((C.phase === 'enter' || C.phase === 'hold') && g) {
-    const edge = g.mb.bounds.max.x, front = edge + SWEEP_AHEAD * h, late = C.phase === 'hold' || t > CALM_IN / 2;
-    // 큰 돌 오른쪽 끝의 빠르기(px/초) — 등장의 감속 곡선(easeOut3)을 미분한 것
-    const edgeV = C.phase === 'enter' ? ((w / 2 + g.hw) * 3 * (1 - Math.min(1, t / CALM_IN)) ** 2) / CALM_IN : 0;
+  if ((C.phase === 'hold' || (C.phase === 'enter' && te >= 0)) && g) {
+    const edge = g.mb.bounds.max.x, front = edge + SWEEP_AHEAD * h, late = C.phase === 'hold' || te > CALM_IN / 2;
+    // 큰 돌 오른쪽 끝의 빠르기(px/초) — 등장 곡선(easeInOut3)을 미분한 것
+    const pe = Math.min(1, te / CALM_IN), edgeV = C.phase === 'enter' ? ((w / 2 + g.hw) * 12 * (pe < 0.5 ? pe * pe : (1 - pe) ** 2)) / CALM_IN : 0;
     for (const [id, b] of map) {
+      // 나무 — 큰 돌 끝이 닿으면 깔려서 오른쪽으로 넘어진다(눕고 납작해진다). 쓸려 나가지 않고 그 자리에 눕는다
+      if (b.kind === 'tree') {
+        if (b.crush === undefined && edge >= b.x - b.hw * 0.4) b.crush = now;
+        if (b.crush !== undefined) b.fall = Math.min(1, (now - b.crush) / CALM_CRUSH) ** 2;
+        continue;
+      }
       if (id === C.id || b.away || b.kind === 'cloud') continue;   // 구름은 쓸리지 않는다 — 돌 뒤에 어두운 실루엣으로 남는다(fieldRef 참고)
       // 새 · 박쥐 — 큰 돌이 닿기 전에 날아오른다. 가까운 새부터 — 늦는 만큼은 큰 돌에서 먼 만큼(날던 새는 곧장)
       if (b.cr) {
@@ -1165,7 +1188,14 @@ function calmStep(C: Calm, W: StoneWorld, map: Map<string, Body>, f: Size | unde
       own.rise = { x, y0: own.y, y1: h - own.hh, a: 0, t0: now, ph: Math.random() * Math.PI * 2 };
     }
     let rising = false;
-    for (const b of map.values()) if (b.rise && riseStep(b, now, h)) rising = true;
+    for (const b of map.values()) {
+      if (b.rise && riseStep(b, now, h)) rising = true;
+      if (b.upT0 !== undefined) {   // 나무가 다시 일어선다
+        const p = Math.min(1, (now - b.upT0) / CALM_UP);
+        b.fall = (b.upFrom ?? 0) * (1 - easeInOut3(p));
+        if (p >= 1) { b.fall = 0; b.upT0 = undefined; } else rising = true;
+      }
+    }
     if (C.dropped && !rising && t >= CALM_RETURN + 0.4) C.done = true;
   }
 }
@@ -2047,6 +2077,9 @@ export default function WallSimulation() {
   const giantElRef = useRef<HTMLDivElement | null>(null);
   const fieldRef = useRef<HTMLDivElement | null>(null);
   const calmRef = useRef<Calm | null>(null);
+  /** 도킹 텀 — 큰 상자를 아직 안 띄웠나 · 띄우기를 기다리는 타이머 */
+  const emphPendingRef = useRef(false);
+  const showWaitRef = useRef(0);
   const calmUndoRef = useRef<Calm | null>(null);
   const calmDoneRef = useRef<() => void>(() => {});
   const lingerTimerRef = useRef(0);
@@ -2223,8 +2256,20 @@ export default function WallSimulation() {
       clearTimeout(hideTimerRef.current);
       // 차분한 — 큰 돌이 물러났다가 밀려 나가고 풍경이 돌아온다. 끝은 프레임 루프가 알린다(calmDoneRef)
       const C = calmRef.current;
-      if (C && (C.phase === 'enter' || C.phase === 'hold')) { C.phase = 'exit'; C.t0 = performance.now() / 1000; C.x0 = NaN; return; }
+      if (C && (C.phase === 'enter' || C.phase === 'hold')) {
+        const now = performance.now() / 1000;
+        // 돌이 아직 나오기 전(도킹 텀)에 폰을 뗐다 — 나온 적이 없으니 바로 풍경을 돌려 놓는다
+        if (C.phase === 'enter' && now - C.t0 < CALM_WAIT) { C.phase = 'gone'; C.t0 = now - CALM_GONE; return; }
+        // 뗀 뒤에도 잠시 그대로 — 그러고 나서 물러났다가 밀려 나간다
+        hideTimerRef.current = window.setTimeout(() => {
+          if (calmRef.current === C && (C.phase === 'enter' || C.phase === 'hold')) { C.phase = 'exit'; C.t0 = performance.now() / 1000; C.x0 = NaN; }
+        }, DOCK_TERM_MS);
+        return;
+      }
       if (C) return;
+      // 큰 상자가 아직 나오기 전(도킹 텀)에 폰을 뗐다 — 보인 적 없으니 내려앉을 것도 없다
+      if (emphPendingRef.current) { clearTimeout(showWaitRef.current); emphPendingRef.current = false; settle(); return; }
+      const go = () => {
       const id = emphIdRef.current;
       // 움직임을 줄인 벽의 돌 — 큰 돌 장면이 없어 내려앉을 때 명단에 든다(넘치는 가장 오래된 돌은 이때 빠진다, STONE_MAX)
       const em = emphMsgRef.current;
@@ -2254,6 +2299,9 @@ export default function WallSimulation() {
         // 도착한 글을 한 바퀴 붙잡아 둔다(LINGER_MS). 다음 발화가 오면 그 글이 이어받는다
         settle();
       }, LAND_MS);
+      };
+      // 뗀 뒤 잠시 큰 상자가 그대로 있다가 내려앉는다(움직임을 줄인 화면은 바로)
+      if (prefersReducedMotion()) go(); else hideTimerRef.current = window.setTimeout(go, DOCK_TERM_MS);
     };
 
     const show = (msg: StoredMessage, startedAt: number) => {
@@ -2263,10 +2311,8 @@ export default function WallSimulation() {
       emphMsgRef.current = msg;
       holdIdRef.current = msg.id;
       landingRef.current = false;
-      setEmphStart(startedAt);
-      setEmphLand(null);
-      setEmphMsg(msg);
-      setEmphKey((k) => k + 1);
+      clearTimeout(showWaitRef.current);
+      const open = () => { emphPendingRef.current = false; setEmphStart(startedAt); setEmphLand(null); setEmphMsg(msg); setEmphKey((k) => k + 1); };
       // 차분한(돌) — 검정 대신 큰 돌이 밀려와 풍경을 쓸어 낸다. 움직임을 줄인 화면은 다른 성격처럼 검정 위의 큰 상자
       if (calmRef.current) calmUndoRef.current = calmRef.current;
       const { cloud, box } = cloudOf(msg);
@@ -2280,7 +2326,12 @@ export default function WallSimulation() {
         const { retire, spot } = stonePlan(msg.id, me, stoneKeepRef.current, bodiesRef.current, window.innerWidth, landHeight());
         calmRef.current = { id: msg.id, phase: 'enter', t0: performance.now() / 1000, G, giant: null, x0: NaN, snap: null, fade: 0, dropped: false, done: false, retire, kept: false, spot };
         setCalmMsg({ msg, G });
-      } else { calmRef.current = null; setCalmMsg(null); }
+        open();
+      } else {
+        calmRef.current = null; setCalmMsg(null);
+        // 다른 성격 — 도킹한 뒤 DOCK_TERM_MS 동안은 풍경이 그대로, 그다음 검정과 큰 상자가 선다(움직임을 줄인 화면은 바로)
+        if (prefersReducedMotion()) open(); else { emphPendingRef.current = true; showWaitRef.current = window.setTimeout(open, DOCK_TERM_MS); }
+      }
       // EMPHASIS_MS는 상한이고, 세는 곳은 **꽂힌 순간**이다. 벽이 신호를 몇
       // 초 늦게 알아채도 폰과 같은 시각에 끝난다. 대개는 아래 '폰이 빠졌다'가
       // 그보다 먼저 내려앉힌다.
@@ -2374,12 +2425,16 @@ export default function WallSimulation() {
     const isTree = (m: StoredMessage) => personaFor(m.tone?.font).edge === 'tree';
     const isStone = (m: StoredMessage) => personaFor(m.tone?.font).edge === 'stone';
     const out: StoredMessage[] = [];
-    let trees = 0;
+    let trees = 0, ground = 0, rains = 0, body = 0;
     const put = (m: StoredMessage, force = false) => {
       if (out.some((x) => x.id === m.id)) return;
-      if (!force && out.length >= WALL_N) return;
+      const rainy = isRainMsg(m), earth = isTree(m) || isStone(m);
+      if (!force && (rainy ? rains >= RAIN_MAX : body >= WALL_N)) return;
       if (!force && isStone(m) && !stoneKeep.includes(m.id)) return;
+      if (!force && earth && ground >= GROUND_MAX) return;
       if (isTree(m)) { if (!force && trees >= TREE_MAX) return; trees++; }
+      if (rainy) rains++; else body++;
+      if (earth) ground++;
       out.push(m);
     };
     // 발화 중인 글, 그리고 막 내려앉은 글(LINGER_MS)
@@ -2388,7 +2443,7 @@ export default function WallSimulation() {
       if (pinned) put(pinned, true);
     }
     const n = visible.length, start = n > WALL_N ? rotate : 0;
-    for (let i = 0; out.length < WALL_N && i < n; i++) put(visible[(i + start) % n]);
+    for (let i = 0; i < n; i++) put(visible[(i + start) % n]);
     return out;
   }, [visible, rotate, emphMsg, linger, stoneKeep]);
   // 유머있는(비)은 몸 없이 비 층이 그린다 — 벽에 서는 글 수(WALL_N)에는 함께 센다
@@ -2548,6 +2603,12 @@ export default function WallSimulation() {
           if (el.style.getPropertyValue('--tree-ext') !== ext) el.style.setProperty('--tree-ext', ext);
           // 처음 세운 순간 — 여기서부터 펴진다(app.css). React가 안 건드리는 data 속성이라 다시 그려도 남는다
           if (!el.dataset.placed) el.dataset.placed = '1';
+          // 큰 돌에 깔려 넘어진다 — 땅에 닿은 줄기 밑을 축으로 오른쪽으로 눕고, 눕는 만큼 납작해진다
+          if (b.fall) {
+            const oy = Math.max(0, h - b.y + b.hh).toFixed(1);
+            if (el.style.transformOrigin !== `${b.hw.toFixed(1)}px ${oy}px`) el.style.transformOrigin = `${b.hw.toFixed(1)}px ${oy}px`;
+            tf += ` rotate(${(90 * b.fall).toFixed(1)}deg) scale(1, ${(1 - 0.65 * b.fall).toFixed(3)})`;
+          } else if (el.style.transformOrigin) el.style.transformOrigin = '';
         }
         if (b.cr?.geo.photo) {
           // 사진 새 — 윤곽을 통째로 바꿔 그린다. 콩콩은 요소째 뛰고, 공중에서 돌아선 동안은 배가 그 자리에 닿게 옆으로 옮긴다
@@ -2584,7 +2645,7 @@ export default function WallSimulation() {
         // 차분한의 발화 — 쓸려 나간 몸은 숨기고, 복귀하는 동안 풍경이 스며든다. 그 글의 돌은 떨어지는 순간부터 보인다
         const Cn = calmRef.current;
         if (Cn) {
-          const op = b.away ? '0' : Cn.phase === 'return' && id !== Cn.id && b.kind !== 'stone' && b.kind !== 'cloud' ? Cn.fade.toFixed(3) : '';
+          const op = b.away ? '0' : Cn.phase === 'return' && id !== Cn.id && b.kind !== 'stone' && b.kind !== 'cloud' && b.kind !== 'tree' ? Cn.fade.toFixed(3) : '';
           if (el.style.opacity !== op) el.style.opacity = op;
           if (id === Cn.id) el.style.visibility = Cn.dropped ? 'visible' : '';
         } else if (el.style.opacity || el.style.visibility) { el.style.opacity = ''; el.style.visibility = ''; }
@@ -2592,8 +2653,12 @@ export default function WallSimulation() {
       // 큰 돌이 있는 동안 구름은 어두운 회색 실루엣(calm-tint), 비눗방울은 숨는다. 필터를 먼저 걸고 다음 프레임에 색을 올려야 스며든다
       const fe = fieldRef.current, Cf = calmRef.current;
       if (fe) {
-        fe.classList.toggle('calm-tint', !!Cf && Cf.phase !== 'return' && fe.classList.contains('calm-filter'));
-        fe.classList.toggle('calm-filter', !!Cf);
+        // 큰 돌이 기어나오기 시작한 때부터(도킹 뒤 CALM_WAIT초) 풍경이 돌아오는 때(return)까지가 '돌이 있는 동안'
+        const on = !!Cf && (Cf.phase !== 'enter' || t / 1000 - Cf.t0 >= CALM_WAIT);
+        fe.classList.toggle('calm-tint', on && Cf.phase !== 'return' && fe.classList.contains('calm-filter'));
+        fe.classList.toggle('calm-filter', !!Cf && (on || fe.classList.contains('calm-filter')));
+        fe.classList.toggle('calm-rain-off', on && Cf.phase !== 'return');
+        fe.classList.toggle('calm-gone', !!Cf && Cf.phase === 'gone');
       }
       // 큰 돌 — 각도는 늘 0(밀려오고 밀려 나간다)
       const ge = giantElRef.current, gC = calmRef.current?.giant;

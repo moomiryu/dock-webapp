@@ -241,7 +241,10 @@ export default function WallWalkers() {
     const readGiant = (dt: number) => {
       const el = document.querySelector('.wall-calm');
       const r = el?.getBoundingClientRect();
-      if (!r || r.right <= 0 || r.left >= W) { giant = null; gPrevR = NaN; gMoved = gHeld = false; return; }
+      if (!r || r.right <= 0 || r.left >= W) {
+        giant = document.querySelector('.calm-gone') ? { l: W + 50, r: W + 150, v: 0 } : null;   // 돌이 나갔어도 풍경이 돌아오기 전엔 나오지 않는다
+        gPrevR = NaN; gMoved = gHeld = false; return;
+      }
       const v = Number.isNaN(gPrevR) || dt <= 0 ? 0 : (r.right - gPrevR) / dt;
       gPrevR = r.right;
       if (v > GV * Hh) gMoved = true; else if (gMoved && v > -GV * Hh) gHeld = true;

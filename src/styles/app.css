@@ -190,19 +190,19 @@
    홈의 원형 물음표(.home-help)는 제 값(0.94)을 따로 든다. 움직임 줄이기에서는 크기를
    두고 색만 바뀐다. 제 transition을 가진 버튼은 거기에 scale을 함께 적는다
    (4/5 '이렇게 담을게요' — .color-panel > .primary-action). */
-.primary-action, .home-cta, .home-info-btn, .z-back, .tone-more, .hint-open, .hint-close,
+.primary-action, .home-cta, .home-info-btn, .z-back, .tone-more, .hint-open, .hint-close, .home-poster-about,
 .color-roll-arrows > button, .ask-answers > button, .done-home-link,
 .sim-replay, .feedback-send{
   transition: scale var(--t-return) var(--ease-standard);
 }
-:is(.primary-action, .home-cta, .home-info-btn, .z-back, .tone-more, .hint-open, .hint-close,
+:is(.primary-action, .home-cta, .home-info-btn, .z-back, .tone-more, .hint-open, .hint-close, .home-poster-about,
   .color-roll-arrows > button, .ask-answers > button, .done-home-link,
   .sim-replay, .feedback-send)[data-pressed]:not(:disabled){
   scale: var(--press-scale);
   transition-duration: calc(var(--t-return) / 4);
 }
 @media (prefers-reduced-motion: reduce){
-  :is(.primary-action, .home-cta, .home-info-btn, .z-back, .tone-more, .hint-open, .hint-close,
+  :is(.primary-action, .home-cta, .home-info-btn, .z-back, .tone-more, .hint-open, .hint-close, .home-poster-about,
     .color-roll-arrows > button, .ask-answers > button, .done-home-link,
     .sim-replay, .feedback-send)[data-pressed]{ scale: none; }
 }
@@ -3526,15 +3526,32 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   font-family: 'Lineal VF', sans-serif; font-weight: 900; font-variation-settings: 'wght' 1200;
   font-size: var(--fs-home-mark); letter-spacing: -0.01em;
 }
-/* 물음표 대신 — 오른쪽 아래 세로쓰기 두 줄, 밑줄은 줄 오른쪽. 글자와 선으로 누를 것을 알린다 */
+/* 물음표 대신 — 오른쪽 아래 세로쓰기 두 줄. 위계와 누름은 1단계 힌트(.hint-open)를 그대로(2026-10-06 사용자):
+   라벨 글꼴 14 · 본문 회색, 평소엔 옅은 선(--grey-300), 누르거나 올리면 글자색 선이 가운데에서 자란다.
+   세로쓰기라 선은 줄마다 오른쪽에 세로로, 위아래로 자란다. 두 줄은 위에서 같이 시작한다(버튼의 가운데 맞춤을 푼다 —
+   안 풀면 짧은 줄이 세로로 가운데에 와서 아래로 처졌다, 2026-10-06 아이폰) */
 .home-poster-about{
   position: absolute; right: var(--pad-x); z-index: 3;
-  writing-mode: vertical-rl;
-  font: inherit; font-size: var(--fs-body); font-weight: 500; line-height: 1.5;
-  color: var(--grey-800); background: none; border: 0; padding: 0; cursor: pointer;
-  text-decoration: underline; text-underline-position: right; text-underline-offset: 4px; text-decoration-thickness: 1px;
+  writing-mode: vertical-rl; text-align: start;
+  font-family: var(--label-font); font-size: var(--fs-cap); letter-spacing: 0.02em; line-height: 1.6;
+  color: var(--body-text); background: none; border: 0; padding: 0; cursor: pointer;
+  display: flex; flex-direction: column; gap: var(--s2); align-items: flex-start;   /* 세로쓰기에서 column = 오른쪽에서 왼쪽으로 줄이 선다 */
   -webkit-tap-highlight-color: transparent;
 }
+.home-poster-about > span{ position: relative; }
+.home-poster-about > span::before,
+.home-poster-about > span::after{
+  content: ''; position: absolute; top: 0; bottom: 0; right: calc(var(--s1) * -1); width: 1px; pointer-events: none;
+}
+.home-poster-about > span::before{ background: var(--grey-300); }
+.home-poster-about > span::after{
+  background: currentColor; transform: scaleY(0); transform-origin: center;
+  transition: transform var(--t-return) var(--ease-standard);
+}
+.home-poster-about:active > span::after,
+.home-poster-about:focus-visible > span::after{ transform: scaleY(1); }
+@media (hover: hover){ .home-poster-about:hover > span::after{ transform: scaleY(1); } }
+.home-poster-about:active{ color: var(--ink); }
 .home-poster-about:focus-visible{ outline: 2px solid var(--ink); outline-offset: 4px; }
 /* 스플래시 동안 화면 어디를 눌러도 끝 장면으로 */
 .home-poster-skip{ position: fixed; inset: 0; z-index: 2000; background: none; border: 0; padding: 0; -webkit-tap-highlight-color: transparent; }

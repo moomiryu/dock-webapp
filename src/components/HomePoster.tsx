@@ -135,7 +135,12 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
     const qa = (s: string) => [...svg.querySelectorAll(s)] as SVGElement[];
     const land = q<SVGGElement>('[data-p="land"]'), arc = q<SVGCircleElement>('[data-p="arc"]'), spin = q<SVGGElement>('[data-p="spin"]');
     const m1 = q<SVGTSpanElement>('[data-p="m1"]'), m2 = q<SVGTSpanElement>('[data-p="m2"]');
-    const m1y = Number(m1.getAttribute('y')), m2y = Number(m2.getAttribute('y'));
+    // 글자 상자를 재서 자리를 맞춘다 — 사파리는 같은 y에 글자를 9px쯤 낮게 그렸다(2026-10-06 아이폰). 크롬에서 고른 모습의
+    // 관계(상자 가운데 = 원 가운데 + 글자 크기 × 0.5125)를 어느 브라우저에서든 지킨다. 크롬에서는 0px 움직인다
+    const mark = m1.parentNode as SVGTextElement, mb = mark.getBBox();
+    const fix = mb.height ? lay.cy + 0.5125 * lay.fs - (mb.y + mb.height / 2) : 0;
+    const m1y = Number(m1.getAttribute('y')) + fix, m2y = Number(m2.getAttribute('y')) + fix;
+    m1.setAttribute('y', String(m1y)); m2.setAttribute('y', String(m2y));
     const red = q<SVGGElement>('[data-p="red"]'), cyan = q<SVGGElement>('[data-p="cyan"]');
     const rFront = red.querySelector('[data-p="front"]') as SVGGElement, rFrontEyes = red.querySelector('[data-p="front-eyes"]') as SVGGElement;
     const rSide = red.querySelector('[data-p="side"]') as SVGGElement, rSit = red.querySelector('[data-p="sit"]') as SVGGElement;
@@ -345,7 +350,7 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
       {L && (
         <button type="button" data-p="about" className="home-poster-about" style={{ bottom: L.H - (L.G - L.rock.h - 12), opacity: 0 }}
           aria-label={aboutLabel} onClick={onAbout}>
-          메가폰트에 대해<br />더 알아보기
+          <span>메가폰트에 대해</span><span>더 알아보기</span>
         </button>
       )}
       {skippable && (

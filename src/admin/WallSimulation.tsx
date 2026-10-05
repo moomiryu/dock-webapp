@@ -14,13 +14,15 @@ import CloudBubble from '../components/CloudBubble';
 import { stoneLean } from '../components/StoneArt';
 import { cloudForTone, cloudShape, convexHull, linesFor, personaFor, stoneBelly as stoneBellyOf, stoneWhole, type Cloud, type Creature, type CreaturePose } from '../lib/cloud';
 import { WALL_SIDE, bubbleAt, fillFromLegacySize, type Boxed } from '../lib/fit';
-import { fontMap } from '../lib/palettes';
+import { fontMap, rainShapeOf } from '../lib/palettes';
 import { palettes as legacyPalettes } from '../lib/palettes';
 import { moods } from '../lib/palettes-v2';
 import { EMPHASIS_MS, STAY_MS } from '../lib/wall';
 import VoiceBubble from '../components/VoiceBubble';
 import WallGround from '../components/WallGround';
 import WallWalkers from '../components/WallWalkers';
+import WallRain, { type RainScene } from '../components/WallRain';
+import RainPreview from '../components/RainPreview';
 import { groundPx } from '../lib/ground';
 import { SAMPLE_MESSAGES } from '../lib/samples';
 import {
@@ -1202,6 +1204,8 @@ function cloudOf(msg: StoredMessage): { lines: string[]; cloud: Cloud; box: Boxe
   return { lines, cloud, box: bubbleAt(lines, cloudShape(cloud), fillFromLegacySize(msg.tone?.size)) };
 }
 
+/** 유머있는 = 비(2026-10-04) — 몸(새)이 아니라 비 층(WallRain)이 그린다. 옛 서체 키(song)도 */
+const isRainMsg = (m: StoredMessage) => personaFor(m.tone?.font).key === 'deulseok';
 function boxSide(): number {
   return (window.innerHeight * ECHO_SIDE_VH) / 100;
 }
@@ -2404,15 +2408,18 @@ export default function WallSimulation() {
     for (let i = 0; out.length < WALL_N && i < n; i++) put(visible[(i + start) % n]);
     return out;
   }, [visible, rotate, emphMsg, linger, stoneKeep]);
+  // 유머있는(비)은 몸 없이 비 층이 그린다 — 벽에 서는 글 수(WALL_N)에는 함께 센다
+  const rain = useMemo(() => shown.filter(isRainMsg), [shown]);
+  const solid = useMemo(() => shown.filter((m) => !isRainMsg(m)), [shown]);
   // 마네킹 나무 — 나무 글이 MANNEQUIN_MIN그루보다 적으면 모자란 만큼(두 장면)
   const mannequins = useMemo(() => {
-    const trees = shown.filter((m) => kindOf(cloudOf(m).cloud) === 'tree').length;
+    const trees = solid.filter((m) => kindOf(cloudOf(m).cloud) === 'tree').length;
     return Array.from({ length: Math.max(0, Math.min(MANNEQUINS.length, MANNEQUIN_MIN - trees)) }, (_, i) => mannequinOf(i));
-  }, [shown]);
+  }, [solid]);
 
   // 프레임마다 한 걸음 걷고 자리를 요소에 적는다. transform만 건드리므로
   // 레이아웃을 다시 계산하지 않는다 — 파이에서 이게 프레임을 지킨다.
-  const shownKey = [...mannequins.map((q) => q.id), ...shown.map((m) => m.id)].join(',');
+  const shownKey = [...mannequins.map((q) => q.id), ...solid.map((m) => m.id)].join(',');
   // 물리 계산이 볼 수 있게 크기를 옮겨 둔다. 글·모양·크기가 그대로면 값도 같다.
   useEffect(() => {
     const m = new Map<string, Size>();
@@ -2422,7 +2429,7 @@ export default function WallSimulation() {
       w: q.box.w * GROUND_SCALE, h: (q.box.h + q.box.tail) * GROUND_SCALE, scale: GROUND_SCALE, kind: 'tree', tall: q.tall,
       pair: 1, over: 0, bg: dark, fg: dark, perch: perchesOf(q.cloud)
     });
-    for (const msg of shown) {
+    for (const msg of solid) {
       const { box, cloud } = cloudOf(msg);
       // 돌(차분한)은 떠다니지 않고 바닥에 앉는다 — 물리 계산이 알아야 한다. 윤곽은
       // 상자에 대한 비율(0~1)로 넘긴다 — 한 변(side)이 창과 함께 바뀌기 때문이다
@@ -2441,7 +2448,7 @@ export default function WallSimulation() {
       });
     }
     sizesRef.current = m;
-  }, [shown, mannequins]);
+  }, [solid, mannequins]);
   useEffect(() => {
     // 놓는 차례 — 나무 · 돌이 먼저 서야 구름이 하늘 띠(나무 꼭대기 위)를 보고 자리를 고른다. 마네킹은 나무 글 다음(글 있는 나무가 먼저
     // 자리를 고르고 마네킹이 빈 곳을 채운다)
@@ -2615,11 +2622,20 @@ export default function WallSimulation() {
 
   // 겹 안의 차례 — 키 큰 나무가 맨 뒤, 그다음 작은 나무 · 돌 · 떠다니는 말 · 구름(맨 앞, 곱하기)
   const layered = useMemo(() => {
-    return shown
+    return solid
       .map((msg) => ({ msg, kind: kindOf(cloudOf(msg).cloud), tall: tallOf(msg) }))
-      .sort((a, b) => RANK[a.kind] - RANK[b.kind] || (a.kind === 'tree' ? b.tall - a.tall : 0))
-      .map((x) => x.msg);
-  }, [shown]);
+      .sort((a, b) => RANK[a.kind] - RANK[b.kind] || (a.kind === 'tree' ? b.tall - a.tall : 0));
+  }, [solid]);
+  /** 비가 보는 풍경 — 구름(나오는 곳 · 그 글자 자리), 비킬 글자 자리(나무 · 돌 · 떠다니는 말, 둘레 TEXT_CLEAR), 땅의 윗선 */
+  const rainScene = useCallback((): RainScene => {
+    const h = landHeight(), m = TEXT_CLEAR * h, clouds: RainScene['clouds'] = [], letters: RainScene['letters'] = [];
+    for (const [id, b] of bodiesRef.current) {
+      if (b.away) continue;
+      if (b.kind === 'cloud') clouds.push({ id, x: b.x, y: b.y, hw: b.hw, hh: b.hh, letters: lettersOf(b, m) });
+      else { const l = lettersOf(b, m); if (l) letters.push(l); }
+    }
+    return { clouds, letters, land: h };
+  }, []);
 
   const retry = useCallback(() => {
     setError(null);
@@ -2700,7 +2716,12 @@ export default function WallSimulation() {
         {mannequins.map((q) => <WallMannequin key={q.id} q={q} onEl={setBlockEl} />)}
       </div>
       <div className="wall-field">
-        {layered.map((msg, i) => (
+        {layered.filter((x) => x.kind !== 'cloud').map(({ msg }, i) => (
+          <WallBlock key={msg.id} msg={msg} index={i} ghost={emphMsg?.id === msg.id} onEl={setBlockEl} />
+        ))}
+        {/* 비 — 나무 · 돌 앞, 구름 뒤(구름 밑에서 나온다). 글자 자리는 비킨다(WallRain) */}
+        <WallRain msgs={rain} scene={rainScene} hideId={emphMsg?.id ?? null} />
+        {layered.filter((x) => x.kind === 'cloud').map(({ msg }, i) => (
           <WallBlock key={msg.id} msg={msg} index={i} ghost={emphMsg?.id === msg.id} onEl={setBlockEl} />
         ))}
       </div>
@@ -2784,6 +2805,12 @@ export const WallShowMessage = memo(function WallShowMessage({ msg, land, center
   }, [msg]);
 
   const landing = land !== null;
+  // 유머있는(비) — 검정 위에 큰 줄기 하나가 내린다(폰 4/5 · 5/5와 같은 부품). 내려앉을 때는 검정과 함께 걷힌다
+  if (isRainMsg(msg)) return (
+    <div className={`wall-show is-rain${landing ? ' is-landing' : ''}`}>
+      <RainPreview text={msg.text} color={bg} shape={rainShapeOf(msg.tone?.align)} speed={msg.tone?.speed} weight={msg.tone?.weight} manner={msg.tone?.manner} />
+    </div>
+  );
   const boxStyle = land
     ? { transform: `translate(${land.dx.toFixed(1)}px, ${land.dy.toFixed(1)}px) scale(${land.scale.toFixed(4)})` }
     : undefined;

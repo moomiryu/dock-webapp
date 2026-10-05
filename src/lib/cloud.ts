@@ -587,7 +587,10 @@ const ARRANGEMENTS: Record<string, readonly Align[]> = {
   // 있게 코드를 둔다(빗금처럼). 세로쓰기(R19)는 다른 태도용으로 남겨 둔다
   chabun: ['hang-up', 'hang-mid', 'hang-down'],
   // 다정한 — 가운데 · 아치 · 미소(2026-09-30, 디자이너). 부채꼴은 칸에서 뺐다 — 부채꼴로 올라간 옛 글은 그대로 부채꼴로 선다
-  doran: ['center', 'arch', 'smile']
+  doran: ['center', 'arch', 'smile'],
+  // 유머있는(비) — 둥글 · 네모 · 뾰족(2026-10-04, 디자이너). 글자를 담는 원은 하나, 모양은 핸드젯의 낱알(palettes.ts RAIN_FACE).
+  // 옛 왼쪽 · 가운데 · 오른쪽 글은 둥글로 내린다(rainShapeOf)
+  deulseok: ['round', 'square', 'pointy']
 };
 export function arrangementsFor(font: string | undefined): readonly Align[] {
   return ARRANGEMENTS[BY_FONT[font ?? ''] ?? ''] ?? ['left', 'center', 'right'];

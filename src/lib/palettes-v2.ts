@@ -196,11 +196,14 @@ export const ATTITUDE_COLORS: Record<string, readonly ColorPair[]> = {
     cp('orchid', '난초', 'Orchid', '#BE80C7', '#142438'), cp('peach', '복숭아', 'Peach', '#FB9376', '#1E3655'),
     cp('lavender', '라벤더', 'Lavender', '#C9B6EE', '#1E3655'), cp('blush', '연분홍', 'Blush', '#FAC7DD', '#1E3655')
   ],
+  /* 유머있는 = 비(2026-10-04) — 칠한 면 없이 검은 바탕에 선 원 · 글자를 이 색 하나로 긋는다. 일렉트릭(#3A50A5 · 2.9:1) · 마젠타(#86437F ·
+     3.1:1)는 검정 위 가는 선으로 어두워 색상 · 채도는 그대로 밝기만 올렸다(7:1 — 여덟 중 가장 어두운 핫핑크 7.1과 같은 선, 디자이너).
+     둘째 값(글자색)은 비에서 쓰이지 않는다 — 두 색은 밝아진 칠 위에서도 읽히게 검정 */
   deulseok: [
     cp('neon-green', '형광 초록', 'Neon green', '#81BA99', '#000000'), cp('hot-pink', '핫핑크', 'Hot pink', '#DB779E', '#000000'),
-    cp('electric', '일렉트릭', 'Electric', '#3A50A5', '#FFE600'), cp('lime', '라임', 'Lime', '#C1CC65', '#1F2D80'),
+    cp('electric', '일렉트릭', 'Electric', '#7591EC', '#000000'), cp('lime', '라임', 'Lime', '#C1CC65', '#1F2D80'),
     cp('aqua', '아쿠아', 'Aqua', '#83BBB6', '#1F2D80'), cp('cyan', '시안', 'Cyan', '#9ED2E5', '#1F2D80'),
-    cp('magenta', '마젠타', 'Magenta', '#86437F', '#FFE600'), cp('ice', '얼음', 'Ice', '#CFE0DB', '#1F2D80')
+    cp('magenta', '마젠타', 'Magenta', '#C57DBC', '#000000'), cp('ice', '얼음', 'Ice', '#CFE0DB', '#1F2D80')
   ]
 };
 /** 이 성격이 고르는 여덟 짝. 성격을 모르는 글(옛 서체 키)은 당당한의 짝으로 */

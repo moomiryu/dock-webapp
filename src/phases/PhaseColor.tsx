@@ -3,9 +3,10 @@ import StepHeader from '../components/StepHeader';
 import SnapSwitch from '../components/SnapSwitch';
 import VoiceBubble from '../components/VoiceBubble';
 import CloudBubble from '../components/CloudBubble';
+import RainPreview from '../components/RainPreview';
 import { arrangementsFor, cloudForTone, cloudShape, defaultAlign, linesFor, stoneWhole } from '../lib/cloud';
 import { bubbleAt, fillFromLegacySize } from '../lib/fit';
-import { fontMap } from '../lib/palettes';
+import { fontMap, rainShapeOf } from '../lib/palettes';
 import { colorsFor, type ColorPair } from '../lib/palettes-v2';
 import { messageColors } from '../lib/messageStyle';
 import { pick, useLang } from '../lib/lang';
@@ -160,8 +161,8 @@ const PALE = new Set(['white', 'stone', 'ice', 'mist', 'cyan']);
  * 성격의 여덟 짝(pairs)을 같은 시간씩 차례로 도므로 어느 색도 권하지 않는다(절대원칙). 시작은 지금 색이다.
  * 움직임 줄이기를 켠 사람에게는 떨어지지도 돌지도 않는다.
  */
-function ColorDemo({ lines, tone, cloud, box, from, pairs }: {
-    lines: string[]; tone: ToneState; cloud: ReturnType<typeof cloudForTone>; box: ReturnType<typeof bubbleAt>; from: number;
+function ColorDemo({ text, lines, tone, cloud, box, from, pairs }: {
+    text: string; lines: string[]; tone: ToneState; cloud: ReturnType<typeof cloudForTone>; box: ReturnType<typeof bubbleAt>; from: number;
     pairs: readonly ColorPair[];
 }) {
     const [i, setI] = useState(from);
@@ -177,6 +178,7 @@ function ColorDemo({ lines, tone, cloud, box, from, pairs }: {
         return () => { window.clearTimeout(t); window.clearInterval(iv); };
     }, []);
     const m = pairs[i % pairs.length];
+    if (tone.font === 'deulseok') return <RainPreview text={text} color={m.bg} shape={rainShapeOf(tone.align)} speed={tone.speed} weight={tone.weight} />;
     return <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={m.bg} still centerText floor>
      <VoiceBubble text={lines.join('\n')} bg={m.bg} color={m.text} fontFamily={fontMap[tone.font]} font={tone.font}
        weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size} manner={tone.manner}
@@ -202,8 +204,10 @@ function ColorDemo({ lines, tone, cloud, box, from, pairs }: {
  * 같은 그림 안에서 일어나므로(useLayoutEffect) 튀지 않는다. 시간 · 곡선은 3/5 게이지가
  * 놓았을 때 붙는 값과 같다(--t-return · --ease-standard).
  */
-function ColorRoll({ at, onPick, labelledBy, lang, pairs }: {
+function ColorRoll({ at, onPick, labelledBy, lang, pairs, stroke = false }: {
     at: number; onPick: (i: number) => void; labelledBy: string; lang: ReturnType<typeof useLang>; pairs: readonly ColorPair[];
+    /** 획 처리(유머있는 = 비, 2026-10-04 디자이너) — 검은 알약에 색 테두리 · 색 이름. 비는 칠한 면도 짝 글자색도 없어 미리보기와 같은 모습으로 */
+    stroke?: boolean;
 }) {
     const win = useRef<HTMLDivElement>(null);
     const strip = useRef<HTMLDivElement>(null);
@@ -248,7 +252,7 @@ function ColorRoll({ at, onPick, labelledBy, lang, pairs }: {
         roll(dir, 0);
     };
     const pair = pairs[at];
-    return <div className="color-roll">
+    return <div className={'color-roll' + (stroke ? ' is-stroke' : '')}>
      <div ref={win} className="color-roll-window" role="spinbutton" tabIndex={0}
        aria-labelledby={labelledBy} aria-valuenow={at + 1} aria-valuemin={1} aria-valuemax={n}
        aria-valuetext={pick(pair.name, lang)}
@@ -283,7 +287,7 @@ function ColorRoll({ at, onPick, labelledBy, lang, pairs }: {
        {[-1, 0, 1].map((o) => {
            const m = pairs[wrap(at + o)];
            /* 창 안의 글자는 그 짝의 이름 — 바탕은 칠, 글자는 글자색. '가' 한 자였다(2026-09-29, 디자이너 — "실제 색 이름을") */
-           return <div key={o} className="color-roll-item" style={{ background: m.bg, color: m.text }} aria-hidden>
+           return <div key={o} className="color-roll-item" style={stroke ? { color: m.bg } : { background: m.bg, color: m.text }} aria-hidden>
             {pick(m.name, lang)}</div>;
        })}
       </div>
@@ -344,7 +348,7 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext, returni
   </div>
   <div className="color-stage color-demo" style={{ '--color-area': area } as CSSProperties}>
    {/* 늘 달아 둔다 — 넘길 때 위로 빠지는 장에 시연이 그대로 실려 간다 */}
-   <ColorDemo lines={lines} tone={tone} cloud={cloud} box={box} from={at} pairs={PAIRS} />
+   <ColorDemo text={text} lines={lines} tone={tone} cloud={cloud} box={box} from={at} pairs={PAIRS} />
   </div>
   <button type="button" className="tone-more" onClick={start}>{pick(T.start, lang)}</button>
  </section>}
@@ -354,12 +358,14 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext, returni
    {/* 제목과 안내는 첫 장으로 옮겼다(2026-09-28) — 3/5처럼 고르는 장은 위가
        미리보기, 아래가 조정판이다. 무엇을 하는 자리인지는 첫 장이 말한다 */}
    <div className="color-stage" style={{ '--color-area': area } as CSSProperties}>
-    <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={bg} centerText floor>
+    {tone.font === 'deulseok'
+     ? <RainPreview text={text} color={bg} shape={rainShapeOf(align)} speed={tone.speed} weight={tone.weight} />
+     : <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={bg} centerText floor>
      <VoiceBubble text={lines.join('\n')} bg={bg} color={fg} fontFamily={fontMap[tone.font]} font={tone.font}
        weight={tone.wght} width={tone.tone} slant={tone.slnt} align={align} size={tone.size} manner={tone.manner}
        speed={tone.speed} weightPos={tone.weight}
        fontSize={`calc(var(--color-area) * ${box.unit.toFixed(4)})`} />
-    </CloudBubble>
+    </CloudBubble>}
    </div>
   </div>
  </div></div>
@@ -369,7 +375,7 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext, returni
       보여 준다(바탕은 배경색, 가운데 '가'는 글자색). 한 번에 한 짝(위 ColorRoll). */}
   <div className="tslider">
    <span className="tslider-name" id="color-name">{pick(T.colour, lang)}</span>
-   <ColorRoll at={at} onPick={setAt} labelledBy="color-name" lang={lang} pairs={PAIRS} />
+   <ColorRoll at={at} onPick={setAt} labelledBy="color-name" lang={lang} pairs={PAIRS} stroke={tone.font === 'deulseok'} />
   </div>
   <div className="tslider">
    <span className="tslider-name" id="align-name">{pick(T.align, lang)}</span>

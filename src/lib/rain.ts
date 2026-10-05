@@ -16,6 +16,9 @@ export const DROP = { d: 1.5, ring: 0.078, gap: 0.06, space: 0.5 } as const;
  * (빠르기 막대는 보통 ~ 빠르게, palettes.ts speedBarFor). 벽 글자는 28px(1080 높이 기준 — 22px은 프로젝터 흉내에서 선과 획이 녹았다)
  */
 export const STREAM = { angle: 75, sec: [0.6, 0.35] as const, wallFs: 28 / 1080 } as const;
+/** 글의 색 — 검정 위 선 · 글자로 어두웠던 옛 일렉트릭 · 마젠타(palettes-v2.ts가 2026-10-04에 밝혔다)를 벽에 떠 있는 옛 글에서도 밝힌 값으로 */
+const LIFTED: Record<string, string> = { '#3A50A5': '#7591EC', '#86437F': '#C57DBC' };
+export const rainColor = (bg: string) => LIFTED[bg.toUpperCase()] ?? bg;
 /** speed(0.5 보통 ~ 1 빠르게)의 몫 0 ~ 1 */
 export const fastOf = (speed?: number) => Math.min(1, Math.max(0, ((speed ?? 0.5) - 0.5) / 0.5));
 export const secPerChar = (speed?: number) => STREAM.sec[0] + (STREAM.sec[1] - STREAM.sec[0]) * fastOf(speed);

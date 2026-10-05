@@ -590,9 +590,9 @@ const ARRANGEMENTS: Record<string, readonly Align[]> = {
   chabun: ['hang-up', 'hang-mid', 'hang-down'],
   // 다정한 — 가운데 · 아치 · 미소(2026-09-30, 디자이너). 부채꼴은 칸에서 뺐다 — 부채꼴로 올라간 옛 글은 그대로 부채꼴로 선다
   doran: ['center', 'arch', 'smile'],
-  // 유머있는(비) — 둥글 · 네모 · 뾰족(2026-10-04, 디자이너). 글자를 담는 원은 하나, 모양은 핸드젯의 낱알(palettes.ts RAIN_FACE).
-  // 옛 왼쪽 · 가운데 · 오른쪽 글은 둥글로 내린다(rainShapeOf)
-  deulseok: ['round', 'square', 'pointy']
+  // 유머있는(비눗방울) — 기본 · 둥실 · 흔들(2026-10-06, 디자이너 — 떠다니는 움직임. 모두 살랑을 기본으로 갖는다, lib/rain.ts bubbleMove).
+  // 글자는 둥글 하나. 2026-10-04 ~ 06의 둥글 · 네모 · 뾰족(낱알 모양) 글은 그 낱알 그대로 기본으로 떠다닌다(palettes.ts rainShapeOf)
+  deulseok: ['center', 'float', 'wobble']
 };
 export function arrangementsFor(font: string | undefined): readonly Align[] {
   return ARRANGEMENTS[BY_FONT[font ?? ''] ?? ''] ?? ['left', 'center', 'right'];

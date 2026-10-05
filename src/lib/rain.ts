@@ -36,6 +36,53 @@ export function slotsOf(text: string): { ch: string; at: number }[] {
 }
 
 /**
+ * 비눗방울(2026-10-06, 디자이너). 비의 줄기를 사선 덩어리로 바꿔 보다가 — 기울기 없이 왼쪽에서 오른쪽으로 읽히면 비 · 눈이 아니라
+ * 비눗방울이라고 정했다(칠하지 않은 선 원 · 한쪽 음영 · 검은 바탕이 이미 그렇다. 장난 · 가벼움 · 덧없음). 글은 가로줄 — 왼쪽 위에서
+ * 시작해 한 줄 7자 안에서 낱말 끝에 넘기고(그보다 긴 낱말만 끊는다), 방울 사이 0.15em(떠다녀도 서로 덜 닿게), 줄 간격 1.9em.
+ * 미리보기는 멈춰서 글 전체를 한 화면에 담는다(그전 줄기는 위에서 계속 내려와 긴 글이 한 번에 안 보였다)
+ */
+export const BUBBLE = { line: 7, gap: 0.15, pitch: 1.9 } as const;
+/** 글을 가로줄로 — 방울 가운데 자리(em, 첫 글자가 0 · 0, y 아래로). 띄어쓰기는 반 칸 */
+export function bubbleLayout(text: string): { ch: string; x: number; y: number }[] {
+  const words = text.replace(/\s+/g, ' ').trim().split(' '), lines: string[] = [];
+  let cur = '';
+  for (const w of words) {
+    const next = cur ? `${cur} ${w}` : w;
+    if ([...next].length <= BUBBLE.line) { cur = next; continue; }
+    if (cur) lines.push(cur);
+    cur = w;
+    while ([...cur].length > BUBBLE.line) { lines.push([...cur].slice(0, BUBBLE.line).join('')); cur = [...cur].slice(BUBBLE.line).join(''); }
+  }
+  if (cur) lines.push(cur);
+  const step = DROP.d + BUBBLE.gap, out: { ch: string; x: number; y: number }[] = [];
+  lines.forEach((ln, j) => {
+    let at = 0;
+    for (const ch of ln) {
+      if (ch === ' ') { at += DROP.space * step; continue; }
+      out.push({ ch, x: at, y: j * BUBBLE.pitch });
+      at += step;
+    }
+  });
+  return out;
+}
+/**
+ * 떠다니기 — 4/5 모양 칸(2026-10-06, 디자이너): 기본 · 둥실 · 흔들. 모든 방울이 **살랑**을 기본으로 갖고(읽는 차례를 따라 물결이
+ * 지나간다 — 바람이 글을 훑는 것처럼), 둥실은 방울마다 따로 천천히 오르내림을, 흔들은 비눗방울 막처럼 가로 · 세로가 번갈아 늘었다
+ * 줄었다 하는 떨림을 그 위에 더한다. 통통(차례로 튀기)은 뺐다. 박자는 --t-hold의 배수, 빠르기 막대가 빠를수록 박자가 빨라진다(빠르게 끝 1.6배).
+ * 저장 값: 기본 = center(옛 왼쪽 · 가운데 · 오른쪽과 2026-10-04 ~ 06의 둥글 · 네모 · 뾰족도 기본으로 떠다닌다), 둥실 = float, 흔들 = wobble
+ */
+export type BubbleMotion = 'center' | 'float' | 'wobble';
+export const bubbleMotionOf = (align?: string): BubbleMotion => (align === 'float' || align === 'wobble' ? align : 'center');
+/** 방울 하나의 움직임 — i = 읽는 차례, t = 초, ph = 방울마다 다른 위상 둘, T = --t-hold(초). [가로 · 세로 밀림(em), 가로 · 세로 늘임] */
+export function bubbleMove(m: BubbleMotion, i: number, t: number, ph: readonly [number, number], T: number, speed?: number): [number, number, number, number] {
+  const k = 1 + 0.6 * fastOf(speed), w = (2 * Math.PI * t * k) / T;
+  let dx = 0.04 * Math.cos(w / 4 - i * 0.55), dy = 0.14 * Math.sin(w / 4 - i * 0.55), sx = 1, sy = 1;
+  if (m === 'float') { dx += 0.05 * Math.sin(w / 7 + ph[1]); dy += 0.13 * Math.sin(w / 4.5 + ph[0]); }
+  if (m === 'wobble') { const q = Math.sin(w / 1.6 + ph[0]); sx = 1 + 0.05 * q; sy = 1 - 0.05 * q; }
+  return [dx, dy, sx, sy];
+}
+
+/**
  * 명암 — 굵기 그러데이션(2026-10-04, 디자이너 '라' · 양 '나'). 우리 빗금 그대로(／, 줄 자리 흔들림 · 굵기 떨림 — cloud.ts tex.hatch와 같은 값)
  * 을 바탕이 검정이라 글의 색으로 긋고, 빛은 벽에 하나(오른쪽 위)라 왼쪽 아래가 굵고 오른쪽 위로 가며 가늘어져 사라진다.
  * 길이는 글자 크기의 몫이라 폰 · 벽이 같은 결이다 — 벽 28px에서 5px 칸 · 1.7px 줄. reach = 빛 쪽으로 더 들어오는 몫, gain = 가장 굵은 줄 배수.

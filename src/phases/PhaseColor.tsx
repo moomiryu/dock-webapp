@@ -37,6 +37,9 @@ const T = {
     left: { ko: '왼쪽', en: 'Left' },
     center: { ko: '가운데', en: 'Centre' },
     right: { ko: '오른쪽', en: 'Right' },
+    /* 유머있는(비눗방울)의 떠다니기(2026-10-06) — 기본 칸은 BUBBLE_WORD가 '기본'으로 부른다 */
+    float: { ko: '둥실', en: 'Float' },
+    wobble: { ko: '흔들', en: 'Wobble' },
     round: { ko: '둥글', en: 'Round' },
     square: { ko: '네모', en: 'Square' },
     pointy: { ko: '뾰족', en: 'Pointy' },
@@ -64,6 +67,8 @@ const T = {
 };
 /** 나무(당당한)에서만 다르게 부르는 칸 — 가운데는 '기본', 구름 · 돌에게서 빌린 아치 · 올리기는 '휘기' · '기울이기' */
 const TREE_WORD: Partial<Record<Align, 'basic' | 'bend' | 'tilt'>> = { center: 'basic', arch: 'bend', 'hang-up': 'tilt' };
+/** 유머있는(비눗방울)의 가운데 칸은 '기본'(살랑만, 2026-10-06) */
+const BUBBLE_WORD: Partial<Record<Align, 'basic'>> = { center: 'basic' };
 
 /*
  * 정렬 잣대의 선택지는 성격이 정한다(cloud.ts · arrangementsFor, 2026-09-28). 차분한 · 유머있는은
@@ -178,7 +183,7 @@ function ColorDemo({ text, lines, tone, cloud, box, from, pairs }: {
         return () => { window.clearTimeout(t); window.clearInterval(iv); };
     }, []);
     const m = pairs[i % pairs.length];
-    if (tone.font === 'deulseok') return <RainPreview text={text} color={m.bg} shape={rainShapeOf(tone.align)} speed={tone.speed} weight={tone.weight} />;
+    if (tone.font === 'deulseok') return <RainPreview text={text} color={m.bg} shape={rainShapeOf(tone.align)} motion={tone.align} speed={tone.speed} weight={tone.weight} />;
     return <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={m.bg} still centerText floor>
      <VoiceBubble text={lines.join('\n')} bg={m.bg} color={m.text} fontFamily={fontMap[tone.font]} font={tone.font}
        weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size} manner={tone.manner}
@@ -359,7 +364,7 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext, returni
        미리보기, 아래가 조정판이다. 무엇을 하는 자리인지는 첫 장이 말한다 */}
    <div className="color-stage" style={{ '--color-area': area } as CSSProperties}>
     {tone.font === 'deulseok'
-     ? <RainPreview text={text} color={bg} shape={rainShapeOf(align)} speed={tone.speed} weight={tone.weight} />
+     ? <RainPreview text={text} color={bg} shape={rainShapeOf(align)} motion={align} speed={tone.speed} weight={tone.weight} />
      : <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={bg} centerText floor>
      <VoiceBubble text={lines.join('\n')} bg={bg} color={fg} fontFamily={fontMap[tone.font]} font={tone.font}
        weight={tone.wght} width={tone.tone} slant={tone.slnt} align={align} size={tone.size} manner={tone.manner}
@@ -381,7 +386,7 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext, returni
    <span className="tslider-name" id="align-name">{pick(T.align, lang)}</span>
    {/* 3/5 말투 스위치와 같은 부품이다(2026-09-28, 사용자 — "3단계 UI를 적극 활용",
        같은 앱이니 같은 분위기) — 칸 수는 성격의 정렬 수(셋 또는 넷) */}
-   <SnapSwitch labels={ALIGNS.map((a) => pick(tone.font === 'ttoryeot' && TREE_WORD[a] ? T[TREE_WORD[a]] : T[a as Exclude<Align, 'distribute' | 'trapezoid'>], lang))} at={ALIGNS.indexOf(align)}
+   <SnapSwitch labels={ALIGNS.map((a) => pick(tone.font === 'ttoryeot' && TREE_WORD[a] ? T[TREE_WORD[a]] : tone.font === 'deulseok' && BUBBLE_WORD[a] ? T[BUBBLE_WORD[a]] : T[a as Exclude<Align, 'distribute' | 'trapezoid'>], lang))} at={ALIGNS.indexOf(align)}
      onPick={(i) => setAlign(ALIGNS[i])} labelledBy="align-name" />
   </div>
   <button className="primary-action" onClick={() => onNext(current)}>{pick(T.next, lang)}</button>

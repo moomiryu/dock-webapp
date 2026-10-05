@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>유머있는 비눗방울 — 떠다니기</title>
+<!-- 유머있는 = 비눗방울(2026-10-06, 디자이너 — 기울기 없이 왼쪽에서 오른쪽으로 읽히는 가로줄이면 비 · 눈이 아니라 비눗방울: 칠하지 않은
+     선 원 · 한쪽 음영 · 검은 바탕이 이미 그렇다). 글은 가로줄(왼쪽 위에서, 낱말 끝에서 줄 넘김) 그대로 읽히게 두고, 방울마다 제자리
+     근처에서만 떠다닌다 — 움직임 넷을 폰 4/5 무대(358×590)에 나란히. 빗방울 부품은 앱 그대로(lib/rain.ts).
+     개발 서버로 연다: npm run dev 뒤 http://localhost:5173/design/landscape-bubbles.html -->
+<style>
+  html, body { margin: 0; background: var(--paper); }
+  body { display: block !important; min-height: 0; font: 500 var(--fs-body-s) var(--text-font); color: var(--ink); }
+  #bar, #grid { box-sizing: border-box; width: 100%; }
+  #bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-in-group); padding: var(--space-in-group) var(--space-group); border-bottom: 1px solid var(--line); }
+  #bar button { font: inherit; color: var(--ink); background: transparent; border: 1px solid var(--grey-300); border-radius: var(--r-button); padding: var(--s1) var(--s4); cursor: pointer; }
+  #bar button.on { border-color: var(--ink); font-weight: 700; }
+  #grid { display: flex; flex-wrap: wrap; gap: var(--space-group); padding: var(--space-group); }
+  .cell h2 { font-size: var(--fs-body); margin: 0 0 var(--s2); }
+  .cell p { margin: 0 0 var(--s3); color: var(--grey-600); max-width: 358px; }
+  .st { position: relative; width: 358px; height: 590px; background: var(--ink); overflow: hidden; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <span>글</span>
+  <button data-t="0" class="on">짧은 글</button><button data-t="1">긴 글(31자)</button><button data-t="2">아주 긴 글(49자)</button>
+</div>
+<div id="grid"></div>
+<script type="module">
+import '/src/styles/global.css';
+import '/src/styles/app.css';
+import { fontMap, formFor } from '/src/lib/palettes.ts';
+import { DROP, drawDrop, placeGlyph, rainBaseline, rainFontsReady } from '/src/lib/rain.ts';
+
+const TEXTS = ['점심 뭐 먹지', '오늘 발표 망한 줄 알았는데 다들 괜찮았대 이불킥은 내일 할게', '시험 끝나면 다 같이 바다 보러 가자 그때까지 다들 아프지 말고 밥 잘 챙겨 먹고 버티자'];
+const W = 358, H = 590, COLOR = '#81BA99';
+const tv = getComputedStyle(document.documentElement).getPropertyValue('--t-hold').trim();
+const T = tv.endsWith('ms') ? parseFloat(tv) / 1000 : parseFloat(tv);
+// 가로줄 — 한 줄 7자 안에서 낱말 끝에 넘긴다. 방울 사이 0.15em(떠다녀도 서로 덜 닿게), 줄 간격 1.9em
+const STEP = DROP.d + 0.15, PITCH = 1.9, L = 7;
+function layout(text) {
+  const lines = [];
+  let cur = '';
+  for (const w of text.split(' ')) { const nx = cur ? `${cur} ${w}` : w; if ([...nx].length <= L) cur = nx; else { if (cur) lines.push(cur); cur = w; } }
+  if (cur) lines.push(cur);
+  const out = [];
+  lines.forEach((ln, j) => { let at = 0; for (const ch of ln) { if (ch === ' ') { at += 0.5 * STEP; continue; } out.push({ ch, x: at, y: j * PITCH }); at += STEP; } });
+  return out;
+}
+// 움직임 — i = 읽는 차례, t = 초, ph = 방울마다 다른 위상. 돌려주는 값: [dx, dy](em), 늘임 [sx, sy]
+const rnd = (a, b) => a + Math.random() * (b - a);
+const MOTIONS = [
+  ['둥실', '방울마다 따로 천천히 오르내린다(위상이 제각각). 가장 조용하다', (i, t, ph) => [0.05 * Math.sin((2 * Math.PI * t) / (7 * T) + ph[1]), 0.13 * Math.sin((2 * Math.PI * t) / (4.5 * T) + ph[0]), 1, 1]],
+  ['살랑', '읽는 차례를 따라 물결이 지나간다 — 바람이 글을 훑는 것처럼', (i, t) => [0.04 * Math.cos((2 * Math.PI * t) / (4 * T) - i * 0.55), 0.14 * Math.sin((2 * Math.PI * t) / (4 * T) - i * 0.55), 1, 1]],
+  ['통통', '읽는 차례대로 하나씩 살짝 튀어 오른다 — 한 바퀴 돌고 잠깐 쉰다', (i, t, ph, n) => {
+    const cyc = n * 0.12 + 3 * T, k = (t % cyc) - i * 0.12, d = 0.6 * T;
+    const hop = k > 0 && k < d ? Math.sin((Math.PI * k) / d) : 0;
+    return [0, -0.32 * hop, 1 - 0.06 * hop, 1 + 0.06 * hop];
+  }],
+  ['흔들', '비눗방울 막처럼 제자리에서 말랑하게 떨린다(가로 · 세로가 번갈아 늘었다 줄었다)', (i, t, ph) => {
+    const w = Math.sin((2 * Math.PI * t) / (1.6 * T) + ph[0]);
+    return [0, 0.04 * Math.sin((2 * Math.PI * t) / (5 * T) + ph[1]), 1 + 0.05 * w, 1 - 0.05 * w];
+  }],
+];
+await rainFontsReady();
+const family = fontMap.deulseok, base = rainBaseline(family), form = formFor({ font: 'deulseok', speed: 0.5, weight: 0.5, align: 'round' });
+const grid = document.getElementById('grid'), cells = [];
+for (const [name, note, f] of MOTIONS) {
+  const c = document.createElement('div'); c.className = 'cell';
+  c.innerHTML = `<h2>${name}</h2><p>${note}</p><div class="st"></div>`;
+  grid.append(c); cells.push({ st: c.querySelector('.st'), f, drops: [] });
+}
+function build(text) {
+  const pts = layout(text), R1 = DROP.d / 2;
+  const x0 = Math.min(...pts.map((p) => p.x)) - R1, x1 = Math.max(...pts.map((p) => p.x)) + R1, y0 = Math.min(...pts.map((p) => p.y)) - R1, y1 = Math.max(...pts.map((p) => p.y)) + R1;
+  const m = 0.08 * W, fs = Math.min(36, (W - 2 * m) / (x1 - x0), (H - 2 * m) / (y1 - y0)), s = DROP.d * fs;
+  const ox = (W - (x1 - x0) * fs) / 2 - x0 * fs, oy = (H - (y1 - y0) * fs) / 2 - y0 * fs;
+  for (const cell of cells) {
+    cell.st.innerHTML = ''; cell.fs = fs; cell.n = pts.length;
+    cell.drops = pts.map((p, i) => {
+      const pl = placeGlyph(p.ch, 'round', form.weight, form.slant), d = document.createElement('div'), cv = document.createElement('canvas'), sp = document.createElement('span');
+      d.className = 'rain-drop'; d.style.width = d.style.height = `${s}px`;
+      drawDrop(cv, fs, Math.min(2, devicePixelRatio || 1), COLOR, pl.box, i * 13);
+      sp.textContent = p.ch;
+      sp.style.cssText = `left:${(pl.tx * fs).toFixed(2)}px;top:${((pl.ty - base) * fs).toFixed(2)}px;font:${fs}px/1 ${family};color:${COLOR};font-variation-settings:${form.variation}`;
+      d.append(cv, sp); cell.st.append(d);
+      return { el: d, x: ox + p.x * fs - s / 2, y: oy + p.y * fs - s / 2, ph: [rnd(0, 6.28), rnd(0, 6.28)] };
+    });
+  }
+}
+document.querySelectorAll('#bar button').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('#bar button').forEach((o) => o.classList.toggle('on', o === b)); build(TEXTS[+b.dataset.t]);
+}));
+build(TEXTS[0]);
+const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function loop() {
+  const t = performance.now() / 1000;
+  for (const cell of cells) cell.drops.forEach((d, i) => {
+    const [dx, dy, sx, sy] = still ? [0, 0, 1, 1] : cell.f(i, t, d.ph, cell.n);
+    d.el.style.transform = `translate3d(${(d.x + dx * cell.fs).toFixed(2)}px, ${(d.y + dy * cell.fs).toFixed(2)}px, 0) scale(${sx.toFixed(3)}, ${sy.toFixed(3)})`;
+  });
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

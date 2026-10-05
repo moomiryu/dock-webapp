@@ -69,7 +69,7 @@ export const WallShowMessage = memo(function WallShowMessage({ msg, land, center
   // 유머있는(비) — 검정 위에 큰 줄기 하나가 내린다(폰 4/5 · 5/5와 같은 부품). 내려앉을 때는 검정과 함께 걷힌다
   if (isRainMsg(msg)) return (
     <div className={`wall-show is-rain${landing ? ' is-landing' : ''}`}>
-      <RainPreview text={msg.text} color={bg} shape={rainShapeOf(msg.tone?.align)} speed={msg.tone?.speed} weight={msg.tone?.weight} manner={msg.tone?.manner} />
+      <RainPreview text={msg.text} color={bg} shape={rainShapeOf(msg.tone?.align)} motion={msg.tone?.align} speed={msg.tone?.speed} weight={msg.tone?.weight} manner={msg.tone?.manner} />
     </div>
   );
   const boxStyle = land

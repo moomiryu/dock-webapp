@@ -17,7 +17,9 @@ export type FontFamily = 'doran' | 'chabun' | 'botong' | 'ttoryeot' | 'deulseok'
  */
 export type Align = 'left' | 'center' | 'right' | 'distribute' | 'trapezoid' | 'arch' | 'fan' | 'smile' | 'hang-up' | 'hang-mid' | 'hang-down' | 'contour' | 'slant' | 'vertical'
   /* 유머있는(비)의 모양 — 핸드젯의 낱알 모양(2026-10-04, 디자이너 — palettes.ts RAIN_FACE) */
-  | 'round' | 'square' | 'pointy';
+  | 'round' | 'square' | 'pointy'
+  /* 유머있는(비눗방울)의 떠다니기 — 둥실 · 흔들(2026-10-06, 디자이너 — 기본은 center. lib/rain.ts bubbleMove) */
+  | 'float' | 'wobble';
 
 export interface ToneState {
   align?: Align;

@@ -61,7 +61,9 @@ service cloud.firestore {
         && (!('align' in t) || t.align in ['left', 'center', 'right', 'distribute', 'trapezoid', 'arch', 'fan', 'smile',
              'hang-up', 'hang-mid', 'hang-down', 'slant', 'vertical',
              // 2026-10-04: 유머있는(비)의 모양 — 둥글 · 네모 · 뾰족(palettes.ts RAIN_FACE)
-             'round', 'square', 'pointy'])
+             'round', 'square', 'pointy',
+             // 2026-10-06: 유머있는(비눗방울)의 떠다니기 — 둥실 · 흔들(기본은 center, lib/rain.ts bubbleMove)
+             'float', 'wobble'])
         && (!('manner' in t) || (t.manner is number && t.manner >= 0 && t.manner <= 1))
         && (!('speed' in t) || (t.speed is number && t.speed >= 0 && t.speed <= 1))
         && (!('weight' in t) || (t.weight is number && t.weight >= 0 && t.weight <= 1))

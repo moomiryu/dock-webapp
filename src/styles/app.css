@@ -3553,5 +3553,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 @media (hover: hover){ .home-poster-about:hover > span::after{ transform: scaleY(1); } }
 .home-poster-about:active{ color: var(--ink); }
 .home-poster-about:focus-visible{ outline: 2px solid var(--ink); outline-offset: 4px; }
+/* 손으로 옮기는 것들(원 · 링크 · 두 캐릭터) — 끄는 동안 화면이 움직이지 않게 */
+.home-poster [data-drag]{ touch-action: none; cursor: grab; -webkit-user-select: none; user-select: none; }
 /* 스플래시 동안 화면 어디를 눌러도 끝 장면으로 */
 .home-poster-skip{ position: fixed; inset: 0; z-index: 2000; background: none; border: 0; padding: 0; -webkit-tap-highlight-color: transparent; }

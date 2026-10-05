@@ -51,6 +51,19 @@ function easeOf(name: string): (p: number) => number {
 const clamp = (v: number) => Math.max(0, Math.min(1, v));
 const lerp = (a: number, b: number, p: number) => a + (b - a) * p;
 
+/**
+ * 손으로 옮기기(2026-10-06 사용자) — 원(원 글 + Mega Font) · '더 알아보기' · 두 캐릭터. 스플래시가 끝난 뒤부터.
+ * 2026-09-20에 '홈이 장난감이 되면 안 된다'며 좌우로 옮기기를 걷었던 것을 디자이너가 다시 열었다.
+ * 캐릭터는 집으면 옆모습으로 매달려 눈을 동그랗게 뜨고 버둥거린다 — 옛 큰 메가폰트(HomeCharacter)의 들어 올리기와 같은
+ * 두 박자(2.6 · 4.1Hz 기울기, 3.3Hz 옆 흔들림). 작은 몸이라 진폭은 그보다 크게. 놓으면 그 자리 땅으로 떨어져 앉고,
+ * 서로를 향해 돌아앉아 이야기를 잇는다
+ */
+const DRAG_SLOP = 6;          // 이만큼 움직여야 끌기 — 짧게 누르면 링크는 소개로 간다
+const WIGGLE_DEG = 8;         // 옛 메가폰트 5°보다 크게 — 작은 몸의 버둥거림
+const WIGGLE_SWAY = 0.03;     // 키에 대한 옆 흔들림
+type Held = { x: number; feet: number; held: boolean; dropT: number; dropFrom: number };
+const MOVED: { badge: [number, number]; about: [number, number]; chars: Partial<Record<'red' | 'cyan', Held>> } = { badge: [0, 0], about: [0, 0], chars: {} };
+
 let playedThisLoad = false;
 function wasPlayed() {
   if (playedThisLoad) return true;
@@ -143,6 +156,7 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
     const rFront = red.querySelector('[data-p="front"]') as SVGGElement, rFrontEyes = red.querySelector('[data-p="front-eyes"]') as SVGGElement;
     const rSide = red.querySelector('[data-p="side"]') as SVGGElement, rSit = red.querySelector('[data-p="sit"]') as SVGGElement;
     const cSide = cyan.querySelector('[data-p="side"]') as SVGGElement, cSit = cyan.querySelector('[data-p="sit"]') as SVGGElement;
+    const badge = q<SVGGElement>('[data-p="badge"]');
     const about = el.querySelector('[data-p="about"]') as HTMLElement, gate = frame.querySelector('.home-gate') as HTMLElement;
     const eyeSet = (g: SVGGElement) => ({ p: [...g.querySelectorAll('[data-p="pupil"]')] as SVGCircleElement[], s: [...g.querySelectorAll('[data-p="smile"]')] as SVGElement[] });
     const rEyes = eyeSet(red), cEyes = eyeSet(cyan);
@@ -216,6 +230,8 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
       const v = EMPH(clamp((t - T.vert) / (2 * SLOW))), g = STD(clamp((t - T.gate) / (2 * SLOW)));
       about.style.opacity = String(v); about.style.transform = `translateY(${(12 * (1 - v)).toFixed(1)}px)`; about.style.pointerEvents = v > 0.5 ? '' : 'none';
       if (gate) { gate.style.opacity = String(g); gate.style.pointerEvents = g > 0.5 ? '' : 'none'; }
+      badge.setAttribute('transform', `translate(${MOVED.badge[0].toFixed(1)} ${MOVED.badge[1].toFixed(1)})`);
+      about.style.translate = `${MOVED.about[0].toFixed(1)}px ${MOVED.about[1].toFixed(1)}px`;
       // 하늘 — 왼쪽에서 와 멈칫 발견(눈 동그랗게 · 살짝 뜀), 곁에 와서 오른쪽을 보며 앉는다
       if (t < T.found - 5 * STEP) { cyan.style.display = 'none'; return; }
       cyan.style.display = '';
@@ -228,14 +244,37 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
       cSide.style.display = sitting ? 'none' : ''; cSit.style.display = sitting ? '' : 'none';
       setEye(cEyes, wide ? 'wide' : eye ?? 'look');
       place(cyan, KS, x, G + 3 - (lift * 0.06 + hop * 0.12 + dy) * 541.8 * KS, -1, (step % 2 ? 1 : -1) * 4 * lift);
+      if (t >= T.all) { movedChar('red', t); movedChar('cyan', t); }
+    };
+    // 옮긴 캐릭터 — 들려 있으면 매달려 버둥 · 놓으면 떨어져 앉는다 · 서로를 향해 돌아앉는다(그림은 왼쪽을 본다)
+    const FALL_MS = 2 * RET;
+    const movedChar = (who: 'red' | 'cyan', t: number) => {
+      const o = MOVED.chars[who];
+      if (!o) return;
+      const [g, sd, st, E] = who === 'red' ? [red, rSide, rSit, rEyes] : [cyan, cSide, cSit, cEyes];
+      const otherX = MOVED.chars[who === 'red' ? 'cyan' : 'red']?.x ?? (who === 'red' ? XC : XR);
+      const face = otherX < o.x ? 1 : -1, n = performance.now();
+      g.style.display = ''; g.style.opacity = '1';
+      if (o.held) {
+        const s = n / 1000, k = reduce ? 0 : 1;
+        const tilt = k * WIGGLE_DEG * (Math.sin(s * 2 * Math.PI * 2.6) + 0.35 * Math.sin(s * 2 * Math.PI * 4.1 + 1));
+        const sway = k * WIGGLE_SWAY * 541.8 * KS * Math.sin(s * 2 * Math.PI * 3.3 + 0.5);
+        sd.style.display = ''; st.style.display = 'none'; setEye(E, 'wide');
+        place(g, KS, o.x + sway, o.feet, face, tilt);
+        return;
+      }
+      const p = clamp((n - o.dropT) / FALL_MS);
+      if (p < 1) { sd.style.display = ''; st.style.display = 'none'; setEye(E, 'wide'); place(g, KS, o.x, lerp(o.dropFrom, G + 3, p * p), face, 0); return; }
+      const [dy, eye] = talk(t, who === 'red' ? 0 : 1);
+      sd.style.display = 'none'; st.style.display = ''; setEye(E, eye ?? 'look');
+      place(g, KS, o.x, G + 3 - dy * 541.8 * KS, face, 0);
     };
 
     const now = () => performance.now();
     if (start.current === null) start.current = wasPlayed() || reduce ? now() - T.all : now();
-    if (reduce) { draw(T.all); markPlayed(); setSkippable(false); return; }
     let raf = 0, done = false;
     const tick = () => {
-      const t = now() - start.current!;
+      const t = reduce ? T.all : now() - start.current!;
       draw(t);
       if (!done && t >= T.all) { done = true; markPlayed(); setSkippable(false); }
       raf = requestAnimationFrame(tick);
@@ -243,7 +282,64 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
     raf = requestAnimationFrame(tick);
     const skip = () => { start.current = Math.min(start.current!, now() - T.all); };
     el.addEventListener('megafont-skip', skip);
-    return () => { cancelAnimationFrame(raf); el.removeEventListener('megafont-skip', skip); };
+
+    type Kind = 'badge' | 'about' | 'red' | 'cyan';
+    let hand: { kind: Kind; id: number; x0: number; y0: number; ox: number; oy: number; moved: boolean; box: DOMRect } | null = null;
+    let swallowClick = false;
+    const fr = () => frame.getBoundingClientRect();
+    const onDown = (e: PointerEvent) => {
+      if (!e.isPrimary || (!reduce && now() - start.current! < T.all)) return;
+      const tgt = (e.target as Element).closest('[data-drag]');
+      if (!tgt || !el.contains(tgt)) return;
+      const kind = tgt.getAttribute('data-drag') as Kind;
+      let ox: number, oy: number;
+      if (kind === 'badge' || kind === 'about') [ox, oy] = MOVED[kind];
+      else {
+        const o = MOVED.chars[kind] ?? (MOVED.chars[kind] = { x: kind === 'red' ? XR : XC, feet: G + 3, held: false, dropT: 0, dropFrom: G + 3 });
+        ox = o.x; oy = o.feet;
+      }
+      hand = { kind, id: e.pointerId, x0: e.clientX, y0: e.clientY, ox, oy, moved: false, box: tgt.getBoundingClientRect() };
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!hand || e.pointerId !== hand.id) return;
+      const dx = e.clientX - hand.x0, dy = e.clientY - hand.y0;
+      if (!hand.moved && Math.hypot(dx, dy) > DRAG_SLOP) {
+        hand.moved = true;
+        const o = hand.kind === 'red' || hand.kind === 'cyan' ? MOVED.chars[hand.kind] : null;
+        if (o) o.held = true;
+      }
+      if (!hand.moved) return;
+      e.preventDefault();
+      const f = fr(), b = hand.box;
+      // 화면 밖으로는 못 나간다 — 잡은 덩어리의 상자가 틀 안에 남게
+      const cdx = Math.max(f.left - b.left, Math.min(f.right - b.right, dx));
+      const cdy = Math.max(f.top - b.top, Math.min(f.bottom - b.bottom, dy));
+      if (hand.kind === 'badge' || hand.kind === 'about') MOVED[hand.kind] = [hand.ox + cdx, hand.oy + cdy];
+      else {
+        const o = MOVED.chars[hand.kind]!;
+        o.x = hand.ox + cdx;
+        o.feet = Math.min(G + 3, hand.oy + cdy);   // 땅 밑으로는 안 들어간다
+      }
+    };
+    const onUp = (e: PointerEvent) => {
+      if (!hand || e.pointerId !== hand.id) return;
+      if (hand.moved && hand.kind === 'about') swallowClick = true;   // 끌었으면 소개로 가지 않는다
+      const o = hand.kind === 'red' || hand.kind === 'cyan' ? MOVED.chars[hand.kind] : null;
+      if (o && o.held) { o.held = false; o.dropT = now(); o.dropFrom = o.feet; }
+      hand = null;
+    };
+    const onClickCapture = (e: MouseEvent) => { if (swallowClick) { swallowClick = false; e.stopPropagation(); e.preventDefault(); } };
+    el.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    about.addEventListener('click', onClickCapture, true);
+    return () => {
+      cancelAnimationFrame(raf); el.removeEventListener('megafont-skip', skip);
+      el.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onUp);
+      about.removeEventListener('click', onClickCapture, true);
+    };
   }, [lay]);
 
   const L = lay;
@@ -323,6 +419,7 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
             <polygon className="hp-land" points={stonePts(PEBBLE, L.pebble.cx, L.pebble.w, L.pebble.h, L.G)} />
             <polygon className="hp-land" points={stonePts(ROCK, L.rock.cx, L.rock.w, L.rock.h, L.G)} />
           </g>
+          <g data-p="badge" data-drag="badge">
           <g mask={`url(#${id('ring')})`}>
             <g data-p="spin">
               {[0, 1].map((k) => (
@@ -334,8 +431,11 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
             <tspan data-p="m1" x={L.cx} y={y1} style={{ opacity: 0 }}>Mega</tspan>
             <tspan data-p="m2" x={L.cx} y={y1 + L.lh * L.fs} style={{ opacity: 0 }}>Font</tspan>
           </text>
-          <g data-p="cyan" className="hp-cyan" style={{ display: 'none' }}>{side}{sit}</g>
-          <g data-p="red" className="hp-red" style={{ opacity: 0 }}>
+          {/* 원 안 빈 곳도 잡히게 — 글자만 잡히면 너무 가늘다 */}
+          <circle cx={L.cx} cy={L.cy} r={R + 12} fill="transparent" />
+          </g>
+          <g data-p="cyan" data-drag="cyan" className="hp-cyan" style={{ display: 'none' }}>{side}{sit}</g>
+          <g data-p="red" data-drag="red" className="hp-red" style={{ opacity: 0 }}>
             <g data-p="front">
               <circle fill="currentColor" cx={HEAD.cx} cy={HEAD.cy} r={HEAD.r} />
               <path fill="currentColor" d={BODY} />
@@ -346,7 +446,7 @@ export default function HomePoster({ onAbout, aboutLabel }: Props) {
         </svg>
       )}
       {L && (
-        <button type="button" data-p="about" className="home-poster-about" style={{ bottom: L.H - (L.G - L.rock.h - 12), opacity: 0 }}
+        <button type="button" data-p="about" data-drag="about" className="home-poster-about" style={{ bottom: L.H - (L.G - L.rock.h - 12), opacity: 0 }}
           aria-label={aboutLabel} onClick={onAbout}>
           <span>메가폰트에 대해</span><span>더 알아보기</span>
         </button>

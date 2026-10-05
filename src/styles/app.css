@@ -2914,8 +2914,10 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    설명이 지시를 밀어내지 않는다. 뜨고 지는 자리라 그림의 높이는 안 건드린다 */
 .dock-note { align-self:center; max-width:30ch; margin:var(--s5) 0 0; text-align:center; color:var(--muted); font-size:var(--fs-cap); }
 .dock-test-link { align-self:center; min-height:var(--btn-l); border:0; background:none; color:var(--muted); font:inherit; font-size:var(--fs-cap-s); }
-.onwall-screen { min-height:100dvh; width:100%; max-width:480px; background:var(--brand-strong); color:var(--paper); padding:var(--s6) var(--pad-x); display:flex; flex-direction:column; }
-.onwall-screen .onwall { justify-content:center; align-items:center; }
+.onwall-screen { min-height:100dvh; width:100%; max-width:480px; background:var(--brand-strong); color:var(--paper); padding:max(var(--s6), var(--top-safe)) var(--pad-x) max(var(--s6), env(safe-area-inset-bottom, 0px)); display:flex; flex-direction:column; }
+/* 개발용 '폰을 뺐어요'(?dev=1)는 아래에 띄운다 — 흐름에 끼면 한가운데 묶음이 밀린다 */
+.onwall-screen { position:relative; }
+.onwall-screen .onwall { position:absolute; inset-inline:0; bottom:var(--s6); align-items:center; }
 .onwall-release { border:0; background:none; color:var(--paper); font:inherit; font-size:var(--fs-cap); min-height:var(--btn-l); margin-top:var(--s7); }
 
 /* ─── 한 번 더 묻는 창 ─────────────────────────────────────────
@@ -3016,44 +3018,41 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    하는 말이라 영어 화면에서는 Whois다. 참여자가 쓰는 글은 그대로 둔다 */
 .write-lead:lang(en){ font-family: var(--text-font); }
 
-/* ─── 07 바닥 한 줄: 눈 · 남은 초 ──────────────────────────────
-   숫자가 화면 아래 20%를 차지한다. 줄높이가 1이라 --count-size가 곧 그
-   띠의 높이다.
+/* ─── 07 두 눈 · 남은 초 (2026-10-06) ──────────────────────────────
+   그전엔 바닥 한 줄(왼쪽 눈 한 짝 · 오른쪽 숫자)이었다. 지금은 두 눈이 화면
+   맨 위에 폭을 채워 서고, 숫자가 화면 한가운데 선다. 크기의 차이가 확실해야
+   한다(사용자) — 눈이 가장 크고 숫자가 그다음이다. 그래서 '눈은 숫자 잉크의
+   반'이던 비례는 걷었다. 둘은 한 칸(grid 1/1)에 겹쳐 서서 눈은 위에 붙고
+   숫자는 가운데에 선다.
 
-   vw 상한이 붙은 까닭은 '30'이 두 자이기 때문이다. 이 글꼴(Lineal)을 재면
-   숫자 잉크는 em의 0.72, '30'의 폭은 1.326em이다(canvas 실측, 200px).
-   눈이 0.36em이고 사이가 16이므로 한 줄이 쓰는 폭은 1.686em + 16 —
-   좌우 여백 20씩을 빼고 풀면 상한이 0.593 × 화면폭 − 33이 나온다.
-   그 식을 그대로 적는다. 이게 없으면 좁고 긴 화면에서 '30'이 눈을 밀어낸다.
+   --count-size의 식은 바닥 한 줄 시절 그대로다 — vw 상한은 눈과 숫자가 한
+   줄을 나눠 쓰던 때의 몫이라 지금은 남는 폭이 있다. 숫자 크기는 디자이너가
+   정한다.
 
-   눈은 숫자 잉크 높이의 **반**이다(0.72 × 0.5 = 0.36). 둘 다 한 값에서
-   나오므로 화면이 커지고 작아져도 '숫자가 눈의 두 배'는 흐트러지지 않는다. */
+   숫자는 Whois 400(2026-10-06 사용자). 굵기는 굵기별 Whois 판이 맞춘다
+   (global.css) — 400 판의 세로획이 그전 숫자(Lineal 400)와 같은 0.0725em이다. */
 .onwall-floor{
   --count-size: min(20vh, calc(52vw - 34px));
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: var(--s5);
+  --eye-w: 85%;   /* 100 · 85 · 70 격자에서 골랐다(2026-10-06 사용자) */
+  flex: 1;
+  display: grid;
+  place-items: center;
 }
+.onwall-floor > *{ grid-area: 1 / 1; }
 .onwall-floor .onwall-count{
-  font-family: var(--label-font);
+  font-family: var(--mark-font);
+  font-weight: 400;
   font-size: var(--count-size);
   line-height: 1;
   letter-spacing: -0.03em;
   color: var(--paper);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  /* 30 → 9로 자릿수가 줄어도 오른쪽 끝은 제자리다 */
-  margin-left: auto;
 }
 .onwall-eye{
-  flex: none;
-  width: calc(var(--count-size) * 0.36);
-  height: calc(var(--count-size) * 0.36);
+  align-self: start;
+  width: var(--eye-w);
+  height: auto;
+  aspect-ratio: 412.12 / 172.43;   /* 작가 화판 그대로 — 눈 둘 */
   overflow: visible;
-  /* 관심을 표할 때 숫자 쪽으로 기운다. 도는 축은 눈의 한가운데. */
-  transform-origin: center;
-  transition: transform 620ms var(--ease-emphasized);
 }
 .onwall-eye-white{ fill: var(--paper); }
 /* 눈동자는 뚫린 자리다 — 화면 색을 그대로 쓴다 */
@@ -3095,14 +3094,12 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   .mf-eye-wink{ opacity: 0; }
 }
 
-/* 열 셈이 남으면 눈이 숫자 쪽으로 기운다. 끝이 가까워졌다는 것을
-   숫자보다 몸짓이 먼저 말한다. 눈동자는 숫자 쪽으로 붙고, 눈 자체가
-   그쪽으로 고개를 꺾는다 — 둘이 같이 가야 '본다'로 읽힌다.
-   14도인 이유: 그보다 더 꺾으면 활 모양 눈동자가 바로 서지 못하고
-   기울어진 도형으로 읽힌다. */
-.onwall-floor.is-keen .onwall-eye{ transform: rotate(14deg); }
+/* 열 셈이 남으면 눈이 숫자를 내려다본다. 끝이 가까워졌다는 것을
+   숫자보다 몸짓이 먼저 말한다. 숫자가 눈 아래로 오면서(2026-10-06) 고개를
+   옆으로 꺾던 14도는 걷었다 — 두 눈동자가 함께 아래로 붙는다.
+   13%는 화판 높이의 13%(22.4) — 바닥 한 줄 시절 옆으로 붙던 거리와 같다. */
 .onwall-eye-pupil{ transition: transform 620ms var(--ease-emphasized); }
-.onwall-floor.is-keen .onwall-eye-pupil{ transform: translateX(13%); }
+.onwall-floor.is-keen .onwall-eye-pupil{ transform: translateY(13%); }
 @media (prefers-reduced-motion: reduce){
   .onwall-eye-open, .onwall-eye-shut{ animation: none; }
   .onwall-eye-shut{ opacity: 0; }

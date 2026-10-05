@@ -108,36 +108,39 @@ export default function PhaseOnWall({ startedAt, session, onDone }: Props) {
 
     return <div className="onwall-screen">
  {isDevMode() && <div className="onwall"><button className="onwall-release" onClick={handleTestRelease}>{pick(T.test, lang)}</button></div>}
- {/* 바닥 한 줄 — 왼쪽에 눈, 오른쪽에 남은 초.
-     '최대 30초'는 걷어냈다. 숫자가 이만큼 커지면 그게 무엇인지는 줄어드는
-     것만 봐도 알고, 상한은 이미 첫 숫자가 말하고 있다. */}
+ {/* 화면 한가운데 한 묶음 — 위에 두 눈, 아래에 남은 초(2026-10-06, 그전엔 바닥 한 줄에
+     왼쪽 눈 한 짝 · 오른쪽 숫자). '최대 30초'는 걷어냈다. 숫자가 이만큼 커지면
+     그게 무엇인지는 줄어드는 것만 봐도 알고, 상한은 이미 첫 숫자가 말하고 있다. */}
  <div className={'onwall-floor' + (left <= KEEN_SEC ? ' is-keen' : '')}>
-  <Eye/>
+  <Eyes/>
   <div className="onwall-count" aria-label={pick(T.count, lang)}>{Math.ceil(left)}</div>
  </div>
 </div>;
 }
 
 /**
- * 눈 하나.
+ * 두 눈.
  *
  * 도형은 작가의 것을 그대로 가져왔다 (`by_moomiryu/Renewal_v1/Character/eye/eye_general.svg`,
- * `eye_twinkle.svg`). 화판이 412.12×172.43에 눈이 둘이라, 왼쪽 눈 한 짝만
- * 172.43 정사각으로 잘라 쓴다 — 좌표는 원본 그대로다(가운데 86.21, 반지름 86.21).
+ * `eye_twinkle.svg`). 화판 412.12×172.43에 눈 둘 — 좌표는 원본 그대로다(가운데 86.21 ·
+ * 325.9, 반지름 86.21). 2026-10-06까지는 왼쪽 눈 한 짝만 정사각으로 잘라 썼다.
  *
  * 깜빡임은 눈을 **누르는** 것이 아니라 **갈아 끼우는** 것이다. 동그란
  * 눈동자(general)가 아래로 굽은 활(twinkle)로 한 순간 바뀌었다 돌아온다.
  * 세로로 눌러 감으면 눈이 감긴 게 아니라 도형이 납작해진 것으로 보인다.
  *
  * 흰자는 흰색 붙박이, 눈동자는 화면 색이다 — 눈동자가 뚫린 자리처럼 보여야
- * 이 화면(빨강) 위에 얹힌 한 짝의 눈으로 읽힌다.
+ * 이 화면(빨강) 위에 얹힌 눈으로 읽힌다.
  */
-function Eye() {
-    return <svg className="onwall-eye" viewBox="0 0 172.43 172.43" aria-hidden focusable="false">
+function Eyes() {
+    return <svg className="onwall-eye" viewBox="0 0 412.12 172.43" aria-hidden focusable="false">
   <circle className="onwall-eye-white" cx="86.21" cy="86.21" r="86.21"/>
+  <circle className="onwall-eye-white" cx="325.9" cy="86.21" r="86.21"/>
   <g className="onwall-eye-pupil">
    <circle className="onwall-eye-open" cx="86.21" cy="86.21" r="52.48"/>
+   <circle className="onwall-eye-open" cx="325.9" cy="86.21" r="52.48"/>
    <path className="onwall-eye-shut" d="M129.96,86.21c5.01,0,8.77,4.55,7.87,9.48-4.46,24.46-25.87,43-51.63,43s-47.16-18.54-51.62-43c-.9-4.93,2.86-9.48,7.87-9.48h0c3.86,0,7.17,2.76,7.86,6.56,3.1,17,18.01,29.92,35.88,29.92s32.79-12.92,35.89-29.92c.69-3.8,4-6.56,7.86-6.56h0Z"/>
+   <path className="onwall-eye-shut" d="M369.65,86.21c5.01,0,8.77,4.55,7.87,9.48-4.46,24.46-25.87,43-51.63,43s-47.16-18.54-51.62-43c-.9-4.93,2.86-9.48,7.87-9.48h0c3.86,0,7.17,2.76,7.86,6.56,3.1,17,18.01,29.92,35.88,29.92s32.79-12.92,35.89-29.92c.69-3.8,4-6.56,7.86-6.56h0Z"/>
   </g>
  </svg>;
 }

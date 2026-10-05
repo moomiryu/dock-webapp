@@ -3624,7 +3624,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    되고, 그 가장자리에서 물결이 번진다. 화면을 누르면 도로 들어온다.
 
    수치는 참고 자료(motion reference_2.gif)를 프레임마다 재서 나온 것이다.
-   components/WaveBox.tsx의 WaveRing 주석에 그 표가 있다. */
+   components/WaveBox.tsx의 WaveRing 주석에 그 표가 있었다 — 아무도 안 불러 2026-10-06에 지웠다(git 기록에 있다). */
 /* minmax(0,1fr)이 있어야 한다. 격자의 기본 칸은 max-content라, 60자를 한 줄로
    편 너비(1012px)까지 칸이 부풀고 글이 판 밖으로 흘러 나간다. */
 .compose-pane{ position: relative; width: 100%; height: 100%; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center;

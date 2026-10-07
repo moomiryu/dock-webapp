@@ -2129,8 +2129,10 @@ export function step3Svg(raw: string, key: string, dur = 12): string {
 /* ─── 새 삽화(2026-10-07, 작가가 도킹 화면과 사용 안내 Step 2를 따로 다시 그렸다) ─────────────────────
    위의 slideSvg는 컷의 화판이 모두 같아야 이어 준다. 새 Step 2는 앞 두 컷(429.88×417.42)과 마지막 컷(393.27×269.61)의
    화판이 다르다 — 그래서 컷을 큰 화판 하나 안에 겹쳐 넣고 CSS가 오간다. 시간은 --t-hold의 배수, 이징은 --ease-standard다. */
-/** 그림자(#5a5580 타원)는 제 색으로 깔면 인물보다 먼저 눈에 든다 — app.css의 .mf-ground와 같은 값(옅게)을 직접 건다 */
-const softGround = (svg: string) => svg.replace(/<ellipse class="(cls-\d+-[^"]+)"/g, '<ellipse class="$1" style="fill:var(--char-shade);opacity:.2"');
+/** 그림자(#5a5580 타원)는 제 색으로 깔면 인물보다 먼저 눈에 든다 — app.css의 .mf-ground와 같은 옅은 색(--char-shade를 바탕에 20%)이되,
+    **투명도로 옅게 하지 않고 그 색을 그대로 칠한다**(2026-10-07, 사용자). 투명으로 두면 두 타원이 겹친 자리(3번 컷의 두 그림자)와
+    컷이 겹쳐 바뀌는 동안(② 가 ① 위에 떠오를 때)이 겹친 만큼 진해져 색이 변한다 — 불투명이면 몇 겹이든 같은 색이다 */
+const softGround = (svg: string) => svg.replace(/<ellipse class="(cls-\d+-[^"]+)"/g, '<ellipse class="$1" style="fill:color-mix(in srgb,var(--char-shade) 20%,var(--paper))"');
 const bare = (svg: string) => svg.replace(/<\?xml[^>]*\?>\s*/, '');
 
 /**
@@ -2188,24 +2190,107 @@ export function dockScreenSvg(raw: string, bangRaw: string, key: string): string
 }
 
 /**
- * 사용 안내 Step 2(꽂기) 삽화 — 세 컷. ① 폰을 꽂는 중 → ② 꽂혔다(느낌표) 는 한 자리에서 부드럽게 겹쳐 바뀌고(② 가 ① 위에서
- * 떠오른다), ② → ③(구경꾼이 놀란다)은 장면이 바뀌어 옆으로 넘긴다. 돌아올 때도 옆으로 넘기고 그 사이에 ②를 걷어 ①로 돌아간다.
- * ③은 멀리서 본 컷이라 폭을 큰 화판에 맞춘다(캐릭터가 작아지는 것은 작가의 구도 — 실측: 캐릭터 폭 168 → 119, 땅선은 둘 다 화판의 96%).
- * 화판 하나 안에 넣어 두므로 page CSS(--art · --reach · --focus)는 한 장짜리 삽화로 본다
+ * 사용 안내 Step 2(꽂기) 삽화 — 세 컷. 컷 사이를 겹쳐 바꾸지 않고 **요소가 움직인다**(2026-10-07, 사용자 — "정적이고 노잼, 커브를 잘 조정").
+ *
+ *  ① 폰을 꽂는 중 → ② 꽂혔다: ①의 폰(8° 기울어 손에 든)이 ②의 자리(똑바로 서서 위로 21.7 · 3.05 옆)로 가고, 넘쳤다 자리 잡는다.
+ *     손도 따라가고(앞손 → 홈 뒤의 ②의 손으로 바꿔 든다), 폰의 아랫부분은 홈 앞판 아래로 가려진다(클립 높이가 400 → 217로 줄어든다).
+ *     글줄은 사라지고 ②의 느낌표가 튕겨 오른다. 좌표는 ① ②가 같은 화판이라 ②의 값을 그대로 쓴다(실측).
+ *  ② → ③: 장면이 바뀌어 옆으로 넘긴다. ③에서는 빨간 느낌표가 튕겨 나오고 구경꾼이 깜짝 뛴다. 돌아올 때 옆으로 넘기고, 그 사이
+ *     ①의 자세로 되돌린다.
+ *
+ * 곡선은 토큰만 쓴다(--ease-emphasized · --ease-standard). 튕김은 새 곡선이 아니라 키프레임 단계(넘쳤다 돌아옴)로 만든다.
+ * 시간은 Step 1을 따른다: 넘김 0.303초(step1Svg의 move), 컷이 머무는 시간 1.5~2.1초. 폰이 꽂히는 데 0.45초.
+ * ③은 멀리서 본 컷이라 폭을 큰 화판에 맞춘다(캐릭터 폭 168 → 119, 땅선은 둘 다 화판의 96% — 실측). 화판 하나 안에 넣어 두므로
+ * page CSS(--art · --reach · --focus)는 한 장짜리 삽화로 본다. 구조가 다르면(작가가 파일을 바꿔 못 찾으면) 꽂힌 컷 하나만 준다
  */
 export function step2Svg(cuts: readonly [string, string, string], key: string): string {
-  const W = 429.88, H = 417.42, last = { w: 393.27, h: 269.61 };
-  const h3 = (W * last.h) / last.w;
-  const nest = (raw: string, k: string, at: string) => softGround(bare(scopeSvg(raw, `${key}${k}`)))
-    .replace(/<svg\b/, `<svg ${at} preserveAspectRatio="xMidYMax meet" class="s2-${k}-${key}"`);
-  const box = `x="0" y="0" width="${W}" height="${H}"`;
-  const css = `.s2a-${key}{animation:s2a-${key} calc(var(--t-hold) * 20) linear infinite}` +
-    `.s2b-${key}{animation:s2b-${key} calc(var(--t-hold) * 20) linear infinite;transform:translateX(${W}px)}` +
-    `.s2-b-${key}{animation:s2o-${key} calc(var(--t-hold) * 20) linear infinite;opacity:0}` +
-    `@keyframes s2a-${key}{0%,48%{transform:translateX(0);animation-timing-function:var(--ease-standard)}58%,82%{transform:translateX(-${W}px);animation-timing-function:var(--ease-standard)}92%,100%{transform:translateX(0)}}` +
-    `@keyframes s2b-${key}{0%,48%{transform:translateX(${W}px);animation-timing-function:var(--ease-standard)}58%,82%{transform:translateX(0);animation-timing-function:var(--ease-standard)}92%,100%{transform:translateX(${W}px)}}` +
-    `@keyframes s2o-${key}{0%,16%{opacity:0}26%,69%{opacity:1}70%,100%{opacity:0}}`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" style="--focus:50%;--reach:1;--art:${r2(W / H)}"><style>${css}</style>` +
-    `<g class="s2a-${key}">${nest(cuts[0], 'a', box)}${nest(cuts[1], 'b', box)}</g>` +
-    `<g class="s2b-${key}">${nest(cuts[2], 'c', `x="0" y="${r2(H - h3)}" width="${W}" height="${r2(h3)}"`)}</g></svg>`;
+  try {
+    const W = 429.88, H = 417.42, last = { w: 393.27, h: 269.61 };
+    const h3 = (W * last.h) / last.w;
+    const parse = (raw: string, k: string) => new DOMParser().parseFromString(softGround(bare(scopeSvg(raw, `${key}${k}`))), 'image/svg+xml').documentElement;
+    const A = parse(cuts[0], 'a'), B = parse(cuts[1], 'b'), C = parse(cuts[2], 'c');
+    const innerOf = (r: Element) => r.querySelector('g')?.firstElementChild;
+    const a = innerOf(A), b = innerOf(B), c = innerOf(C);
+    if (!a || !b || !c) return scopeSvg(cuts[1], key);
+    const aKids = Array.from(a.children), phone = aKids[aKids.length - 2], hand = aKids[aKids.length - 1];
+    const bKids = Array.from(b.children), bang = bKids[bKids.length - 1];
+    const backHand = Array.from(b.firstElementChild?.children ?? []).find((e) => e.tagName === 'circle' && e.getAttribute('cx') === '264.45');
+    const text = phone?.querySelector('g[id^="message"]');
+    const cKids = Array.from(c.children);
+    const exclaim = cKids.find((e) => e.tagName === 'path' && (e.getAttribute('d') ?? '').startsWith('M280.22,48.98'));
+    if (phone?.tagName !== 'g' || hand?.tagName !== 'circle' || !backHand || bang?.tagName !== 'path' || !text || !exclaim) return scopeSvg(cuts[1], key);
+    const NS = 'http://www.w3.org/2000/svg', doc = A.ownerDocument;
+    /* 이름표는 덧붙인다 — 원래 색을 정하는 cls-N을 덮어쓰면 검게 나온다 */
+    const mark = (el: Element, cls: string) => el.setAttribute('class', `${el.getAttribute('class') ?? ''} ${cls}`.trim());
+
+    /* ── 시간(초) ── */
+    const at = { head: 0.8, move: 0.45, hold2: 2.1, slide: 0.303, holdB: 2.1, tail: 0.7 };
+    const total = at.head + at.move + at.hold2 + at.slide + at.holdB + at.slide + at.tail;
+    const pc = (sec: number) => r2((sec / total) * 100);
+    const t1 = at.head, t2 = t1 + at.move, t3 = t2 + at.hold2, t4 = t3 + at.slide, t5 = t4 + at.holdB, t6 = t5 + at.slide;
+    const m = (t4 + t5) / 2;                                   // 컷 ①이 화면 밖에 있는 때 — 이때 ①의 자세로 되돌린다
+    const dur = `${r2(total)}s`;
+    const E = 'animation-timing-function:var(--ease-emphasized)', S = 'animation-timing-function:var(--ease-standard)';
+
+    /* ── 컷 ①: 클립 · 앞손 · 폰 · 글줄 · 뒤손 · 느낌표 ── */
+    const defs = A.querySelector('defs')!;
+    const clipId = `s2clip-${key}`;
+    const clip = doc.createElementNS(NS, 'clipPath'), cr = doc.createElementNS(NS, 'rect'), an = doc.createElementNS(NS, 'animate');
+    clip.setAttribute('id', clipId);
+    for (const [k, v] of Object.entries({ x: 250, y: 0, width: 120, height: 400 })) cr.setAttribute(k, String(v));
+    // 폰이 꽂히는 동안 클립의 아랫변이 400 → 217(②의 홈 앞판 윗선)로 올라온다. SMIL — 클립의 geometry는 CSS로 못 움직이는 브라우저가 있다
+    const kt = [0, t1, t2, m, m + 0.01, total].map((x) => r2(x / total));
+    for (const [k, v] of Object.entries({ attributeName: 'height', dur, repeatCount: 'indefinite', calcMode: 'spline',
+      values: '400;400;217;217;400;400', keyTimes: kt.join(';'), keySplines: '0 0 1 1;0.4 0 0.2 1;0 0 1 1;0 0 1 1;0 0 1 1' })) an.setAttribute(k, v);
+    cr.append(an); clip.append(cr); defs.append(clip);
+    const wrap = doc.createElementNS(NS, 'g');
+    wrap.setAttribute('clip-path', `url(#${clipId})`);
+    a.insertBefore(wrap, phone); wrap.append(phone);
+    mark(phone, `s2ph-${key}`); mark(text, `s2tx-${key}`); mark(hand, `s2fh-${key}`);
+    const bh = doc.importNode(backHand, true) as Element;
+    bh.removeAttribute('class'); bh.setAttribute('fill', '#cf5b4c'); mark(bh, `s2bh-${key}`);
+    a.insertBefore(bh, wrap);                                  // ②의 손은 폰(앞판 뒤)보다 뒤에 선다
+    const bg = doc.importNode(bang, true) as Element;
+    bg.removeAttribute('class'); bg.setAttribute('fill', '#fff'); mark(bg, `s2bg-${key}`);
+    a.append(bg);
+
+    /* ── 컷 ③: 느낌표 · 구경꾼 ── */
+    mark(exclaim, `s2ex-${key}`);
+    const hop = doc.createElementNS(NS, 'g');
+    mark(hop, `s2hop-${key}`);
+    const body = cKids.slice(-5);                              // 머리 · 몸 · 흰 눈 · 눈동자 · 입(실측: 이 다섯이 구경꾼)
+    c.insertBefore(hop, body[0]); body.forEach((e) => hop.append(e));
+
+    const place = (r: Element, y: number, h: number) => {
+      r.setAttribute('x', '0'); r.setAttribute('y', String(y)); r.setAttribute('width', String(W)); r.setAttribute('height', String(h));
+      r.setAttribute('preserveAspectRatio', 'xMidYMax meet'); r.setAttribute('class', `s2-${key}`);
+      return new XMLSerializer().serializeToString(r);
+    };
+    const pose1 = 'translate(0px,0px) rotate(0deg)', over = 'translate(4.4px,-27px) rotate(-10.5deg)', pose2 = 'translate(3.05px,-21.7px) rotate(-8deg)';
+    const css =
+      `.s2a-${key}{animation:s2a-${key} ${dur} linear infinite}.s2b-${key}{animation:s2b-${key} ${dur} linear infinite;transform:translateX(${W}px)}` +
+      `.s2ph-${key}{transform-box:view-box;transform-origin:299.95px 215px;animation:s2ph-${key} ${dur} linear infinite}` +
+      `.s2fh-${key}{animation:s2fh-${key} ${dur} linear infinite}.s2bh-${key}{opacity:0;animation:s2bh-${key} ${dur} linear infinite}` +
+      `.s2tx-${key}{animation:s2tx-${key} ${dur} linear infinite}` +
+      `.s2bg-${key}{opacity:0;transform-box:view-box;transform-origin:303px 181px;animation:s2bg-${key} ${dur} linear infinite}` +
+      `.s2ex-${key}{transform-box:view-box;transform-origin:276.1px 64px;transform:scale(0);animation:s2ex-${key} ${dur} linear infinite}` +
+      `.s2hop-${key}{animation:s2hop-${key} ${dur} linear infinite}` +
+      // 장면 넘김(Step 1과 같은 빠르기)
+      `@keyframes s2a-${key}{0%,${pc(t3)}%{transform:translateX(0);${S}}${pc(t4)}%,${pc(t5)}%{transform:translateX(-${W}px);${S}}${pc(t6)}%,100%{transform:translateX(0)}}` +
+      `@keyframes s2b-${key}{0%,${pc(t3)}%{transform:translateX(${W}px);${S}}${pc(t4)}%,${pc(t5)}%{transform:translateX(0);${S}}${pc(t6)}%,100%{transform:translateX(${W}px)}}` +
+      // 폰이 꽂힌다 — 넘쳤다 자리 잡고, 손이 따라간다
+      `@keyframes s2ph-${key}{0%,${pc(t1)}%{transform:${pose1};${E}}${pc(t1 + at.move * 0.6)}%{transform:${over};${E}}${pc(t2)}%,${pc(m)}%{transform:${pose2}}${pc(m + 0.01)}%,100%{transform:${pose1}}}` +
+      `@keyframes s2fh-${key}{0%,${pc(t1)}%{transform:translate(0px,0px);opacity:1;${E}}${pc(t1 + at.move * 0.6)}%{transform:translate(4px,-14.1px);opacity:1;${E}}${pc(t2)}%{transform:translate(3.48px,-12.25px);opacity:1}${pc(t2 + 0.01)}%,${pc(m)}%{transform:translate(3.48px,-12.25px);opacity:0}${pc(m + 0.01)}%,100%{transform:translate(0px,0px);opacity:1}}` +
+      `@keyframes s2bh-${key}{0%,${pc(t2)}%{opacity:0}${pc(t2 + 0.01)}%,${pc(m)}%{opacity:1}${pc(m + 0.01)}%,100%{opacity:0}}` +
+      `@keyframes s2tx-${key}{0%,${pc(t1 + at.move * 0.5)}%{opacity:1}${pc(t1 + at.move * 0.5 + 0.01)}%,${pc(m)}%{opacity:0}${pc(m + 0.01)}%,100%{opacity:1}}` +
+      // ② 느낌표가 튕겨 오른다 · ③ 느낌표와 구경꾼
+      `@keyframes s2bg-${key}{0%,${pc(t2 + 0.05)}%{opacity:0;transform:scale(0);${E}}${pc(t2 + 0.2)}%{opacity:1;transform:scale(1.35);${E}}${pc(t2 + 0.4)}%,${pc(m)}%{opacity:1;transform:scale(1)}${pc(m + 0.01)}%,100%{opacity:0;transform:scale(0)}}` +
+      `@keyframes s2ex-${key}{0%,${pc(t3 + 0.15)}%{transform:scale(0);${E}}${pc(t4 + 0.1)}%{transform:scale(1.35);${E}}${pc(t4 + 0.3)}%,${pc(t6)}%{transform:scale(1)}${pc(t6 + 0.01)}%,100%{transform:scale(0)}}` +
+      `@keyframes s2hop-${key}{0%,${pc(t4 + 0.05)}%{transform:translateY(0px);${E}}${pc(t4 + 0.2)}%{transform:translateY(-18px);${E}}${pc(t4 + 0.42)}%{transform:translateY(0px);${E}}${pc(t4 + 0.55)}%{transform:translateY(-6px);${E}}${pc(t4 + 0.7)}%,100%{transform:translateY(0px)}}`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" style="--focus:50%;--reach:1;--art:${r2(W / H)}"><style>${css}</style>` +
+      `<g class="s2a-${key}">${place(A, 0, H)}</g>` +
+      `<g class="s2b-${key}">${place(C, r2(H - h3), r2(h3))}</g></svg>`;
+  } catch {
+    return scopeSvg(cuts[1], key);
+  }
 }

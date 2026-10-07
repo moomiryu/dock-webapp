@@ -6,6 +6,7 @@ import {
   clearWait,
   fakeSwitch,
   isFirebaseConfigured,
+  readDock,
   startBroadcast,
   subscribeDock,
   waitIsFree,
@@ -21,8 +22,14 @@ const T = {
   title: { ko: '앞쪽 홈에 폰을 꽂으면 발화가 시작됩니다.', en: 'Put your phone in the slot at the front to start speaking.' },
   how: { ko: '세로로, 윗부분을 먼저 넣어주세요.', en: 'Hold it upright and put the top end in first.' },
   /* 개발용 버튼(?dev=1)이라 참여자는 못 본다 */
-  test: { ko: '꽂았어요', en: "I've docked it" }
+  test: { ko: '꽂았어요', en: "I've docked it" },
+  /* 꽂았는데 안 넘어갈 때(3초 뒤) — 눌러서 지금 꽂혀 있는지 다시 본다 */
+  stuck: { ko: '꽂았는데 안 넘어가요', en: "I've docked it but nothing happens" },
+  notYet: { ko: '아직 안 꽂혔어요. 다시 꽂아 보세요.', en: "It isn't docked yet. Try putting it in again." }
 };
+
+/** 이만큼 지나도 안 넘어가면 '꽂았는데 안 넘어가요'가 나온다 */
+const STUCK_MS = 3_000;
 
 interface Props {
   /** 방금 보낸 글의 id — 벽이 '어느 글을 띄울지' 알아야 한다 */
@@ -202,7 +209,29 @@ export default function PhaseDocking({ messageId, onDocked, onHome }: Props) {
       () => POLL_MS
     );
 
+    // 폰을 홈에 꽂으면 화면에 손이 닿지 않아 곧 꺼진다. 꺼지면 브라우저가 위의
+    // 확인을 멈추고, 송출을 시작하는 쪽은 이 폰뿐이라 벽이 몇 분 뒤에야 반응한다.
+    // 화면을 켜 둔다. 브라우저는 탭이 가려질 때 잠금을 거두므로 돌아오면 다시 건다.
+    // 지원하지 않는 브라우저는 그냥 지나간다 — 없어도 전과 같이 동작한다.
+    let lock: WakeLockSentinel | null = null;
+    let gone = false;
+    const hold = () => {
+      if (gone || document.visibilityState !== 'visible') return;
+      navigator.wakeLock?.request('screen').then(
+        (l) => {
+          if (gone) void l.release();
+          else lock = l;
+        },
+        () => {}
+      );
+    };
+    hold();
+    document.addEventListener('visibilitychange', hold);
+
     return () => {
+      gone = true;
+      document.removeEventListener('visibilitychange', hold);
+      void lock?.release();
       unsub();
       // 넘어간 뒤에는 startBroadcast가 이미 자리를 비웠다. 여기서 도는 것은
       // 사람이 '처음으로'로 나갔거나 화면을 닫은 경우다 — 자리를 쥔 채
@@ -213,6 +242,32 @@ export default function PhaseDocking({ messageId, onDocked, onHome }: Props) {
   }, []);
 
   const dev = isDevMode();
+
+  /** 3초가 지나도 안 넘어가면 '꽂았는데 안 넘어가요'를 낸다. 눌러도 지금 정말 꽂혀 있을 때만 넘어간다 */
+  const [stuck, setStuck] = useState(false);
+  const [unplugged, setUnplugged] = useState(false);
+  useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+    const id = window.setTimeout(() => setStuck(true), STUCK_MS);
+    return () => clearTimeout(id);
+  }, []);
+
+  async function handleStuck() {
+    if (firedRef.current) return;
+    const s = await readDock().catch(() => null);
+    const session = sessionRef.current;
+    const taken = !!s && !!s.switchId && s.startId.startsWith(`${s.switchId}:`) && s.startSession !== session;
+    if (!s || !s.plugged || !s.switchId || taken) return setUnplugged(true);
+    const started = await startBroadcast({
+      session,
+      messageId,
+      startedAt: sensibleStart(s.switchAt, Date.now()),
+      switchId: s.switchId
+    });
+    if (!started) return setUnplugged(true);
+    firedRef.current = true;
+    onDocked(started.startedAt, session);
+  }
 
   /** 파이가 없는 자리에서 꽂음을 흉내 낸다. 가는 길은 실제와 같다 */
   function handleTestDock() {
@@ -235,6 +290,11 @@ export default function PhaseDocking({ messageId, onDocked, onHome }: Props) {
           <p className="dock-note" role="status">
             {pick(NOTES[note], lang)}
           </p>
+        )}
+        {stuck && !dev && (
+          <button className="dock-stuck" onClick={() => void handleStuck()}>
+            {pick(unplugged ? T.notYet : T.stuck, lang)}
+          </button>
         )}
         {dev && (
           <button className="dock-test-link" onClick={handleTestDock}>

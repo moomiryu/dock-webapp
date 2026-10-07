@@ -29,7 +29,11 @@ const RAVEN_SHARE = 0.25;
 type Pts = readonly (readonly [number, number])[];
 interface Species { w: number; h: number; face: 1 | -1; poses: [Pts, Pts, Pts] }   // 올림 · 수평 · 내림
 
-const SPECIES: Species[] = BIRD_PHOTOS.flatMap((b) => (b.fly ? [{ w: b.w, h: b.h, face: b.face, poses: [b.fly.up, b.fly.mid, b.fly.down] as [Pts, Pts, Pts] }] : []));
+/** 상공에서 나는 새로 안 읽히는 새(2026-10-07) — 세워진 몸에 머리가 안 보이거나(r870 · r1062), 날개 없이 막대 같다(r254).
+    나무에 내려앉으려는 자세 — 몸을 세우고 꼬리를 내린다 — 도 뺐다(r1148, 디자이너가 봤고 r561이 같은 자세) */
+const NOT_BIRDLIKE = ['r870', 'r1062', 'r254', 'r1148', 'r561'];
+
+const SPECIES: Species[] = BIRD_PHOTOS.filter((b) => !NOT_BIRDLIKE.includes(b.id)).flatMap((b) => (b.fly ? [{ w: b.w, h: b.h, face: b.face, poses: [b.fly.up, b.fly.mid, b.fly.down] as [Pts, Pts, Pts] }] : []));
 const RAVEN: Species = { w: RAVEN_FLY.w, h: RAVEN_FLY.h, face: -1, poses: [RAVEN_FLY.up, RAVEN_FLY.mid, RAVEN_FLY.down] };
 
 const pathOf = (P: Pts) => `M${P.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join('L')}Z`;

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_레이어_2" data-name="레이어 2" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 429.88 417.42">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: url(#_무제_그라디언트_5-2);
+      }
+
+      .cls-2 {
+        fill: #5a5580;
+      }
+
+      .cls-3 {
+        fill: url(#_무제_그라디언트_5);
+      }
+
+      .cls-4 {
+        fill: #fff;
+      }
+
+      .cls-5 {
+        fill: none;
+      }
+
+      .cls-6 {
+        fill: #272c32;
+      }
+
+      .cls-7 {
+        fill: #2ce9f7;
+      }
+
+      .cls-8 {
+        fill: url(#_무제_그라디언트_44);
+      }
+
+      .cls-9 {
+        fill: #cf5b4c;
+      }
+
+      .cls-10 {
+        clip-path: url(#clippath);
+      }
+
+      .cls-11 {
+        fill: url(#_무제_그라디언트_5-3);
+      }
+    </style>
+    <linearGradient id="_무제_그라디언트_44" data-name="무제 그라디언트 44" x1="303.02" y1="152.89" x2="303.02" y2="122.4" gradientTransform="translate(0 157.46)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#cf5b4c"/>
+      <stop offset="1" stop-color="#77261c" stop-opacity=".3"/>
+    </linearGradient>
+    <linearGradient id="_무제_그라디언트_5" data-name="무제 그라디언트 5" x1="-188.21" y1="645.97" x2="-188.21" y2="637.47" gradientTransform="translate(403.45 -429.61)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2ce9f7"/>
+      <stop offset="1" stop-color="#2579da" stop-opacity=".4"/>
+    </linearGradient>
+    <linearGradient id="_무제_그라디언트_5-2" data-name="무제 그라디언트 5" x1="-190.8" y1="-202.92" x2="-190.8" y2="-211.42" gradientTransform="translate(581.59 419.28)" xlink:href="#_무제_그라디언트_5"/>
+    <linearGradient id="_무제_그라디언트_5-3" data-name="무제 그라디언트 5" x1="194.35" y1="263.85" x2="194.35" y2="235.23" gradientTransform="translate(108.67 16.01)" xlink:href="#_무제_그라디언트_5"/>
+    <clipPath id="clippath">
+      <rect class="cls-5" x="268.63" y="135.75" width="65.22" height="80.97"/>
+    </clipPath>
+  </defs>
+  <g id="_레이어_1-2" data-name="레이어 1">
+    <g>
+      <g>
+        <ellipse class="cls-2" cx="303.02" cy="356.39" rx="126.86" ry="10.64"/>
+        <path class="cls-9" d="M216,0h174.04C392.8,0,395.04,2.24,395.04,5v329.35h-184.04V5C211,2.24,213.24,0,216,0Z"/>
+        <path class="cls-7" d="M406.99,356.41c6.6,0,11.95-5.35,11.95-11.95v-202.54c0-23.76-19.25-43.02-43.02-43.02h-145.8c-23.76,0-43.02,19.26-43.02,43.02v202.54c0,6.6,5.35,11.95,11.95,11.95h0c6.6,0,11.95-5.35,11.95-11.95v-202.54c0-10.56,8.56-19.12,19.12-19.12h145.8c10.55,0,19.12,8.58,19.12,19.12v202.54c0,6.6,5.35,11.95,11.95,11.95h0Z"/>
+        <rect class="cls-7" x="211" y="173.56" width="184.04" height="77.1"/>
+        <rect class="cls-7" x="211" y="250.24" width="184.04" height="29.1"/>
+        <rect class="cls-8" x="211" y="279.86" width="184.04" height="30.49"/>
+        <rect class="cls-3" x="176.69" y="207.86" width="77.1" height="8.5" transform="translate(3.14 427.36) rotate(-90)"/>
+        <rect class="cls-1" x="352.24" y="207.86" width="77.1" height="8.5" transform="translate(602.9 -178.68) rotate(90)"/>
+        <rect class="cls-11" x="211" y="251.24" width="184.04" height="28.62"/>
+        <rect class="cls-2" x="264.45" y="204.44" width="77.14" height="12.28" rx="4.99" ry="4.99"/>
+        <ellipse class="cls-2" cx="155.14" cy="401.09" rx="155.14" ry="16.32"/>
+        <circle class="cls-9" cx="176.99" cy="211.12" r="83.99"/>
+        <path class="cls-9" d="M92.99,211.12v167.97s0,0,0,0v13.87c0,4.49,3.64,8.13,8.13,8.13h55.74c4.48,0,8.13-3.64,8.13-8.13v-13.87c0-6.63,5.37-12,12-12,6.63,0,12,5.37,12,12v13.87c0,4.49,3.64,8.13,8.13,8.13h55.74c4.49,0,8.13-3.64,8.13-8.13v-181.84s-167.98,0-167.98,0Z"/>
+        <circle class="cls-4" cx="218.93" cy="201.66" r="30.17"/>
+        <circle class="cls-9" cx="226.82" cy="201.66" r="18.36"/>
+        <circle class="cls-9" cx="264.45" cy="247.37" r="19.72"/>
+        <g class="cls-10">
+          <g>
+            <rect class="cls-6" x="275.42" y="140.99" width="55.19" height="104.69" rx="9" ry="9"/>
+            <rect class="cls-9" x="279.89" y="150.73" width="46.26" height="84.4" rx="3" ry="3"/>
+            <path class="cls-4" d="M296.53,145.05h12.98c.45,0,.81.36.81.81h0c0,.45-.36.81-.81.81h-12.98c-.45,0-.81-.36-.81-.81h0c0-.45.36-.81.81-.81Z"/>
+            <path class="cls-4" d="M296.53,239.59h12.98c.45,0,.81.36.81.81h0c0,.45-.36.81-.81.81h-12.98c-.45,0-.81-.36-.81-.81h0c0-.45.36-.81.81-.81Z"/>
+          </g>
+        </g>
+      </g>
+      <path class="cls-4" d="M305.27,195.54h-4.62c-.19-1.04-.37-2.25-.53-3.63-.16-1.38-.28-2.86-.36-4.43-.09-1.57-.13-3.15-.13-4.72v-6.07h6.76v6.07c0,1.62-.05,3.23-.15,4.82-.1,1.59-.23,3.07-.4,4.43-.17,1.37-.36,2.55-.58,3.54ZM302.98,204.04c-.92,0-1.71-.32-2.36-.96-.65-.64-.98-1.41-.98-2.31s.33-1.7.98-2.34c.65-.64,1.44-.96,2.36-.96s1.68.32,2.34.96c.67.64,1,1.42,1,2.34s-.33,1.67-1,2.31c-.67.64-1.45.96-2.34.96Z"/>
+    </g>
+  </g>
+</svg>

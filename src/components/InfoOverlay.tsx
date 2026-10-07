@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import BackButton from './BackButton';
 import { HomeX } from './StepHeader';
-import { scopeSvg, slideSvg, step1Svg, step3Svg } from '../lib/svgAsset';
+import { dockScreenSvg, scopeSvg, step1Svg, step2Svg, step3Svg } from '../lib/svgAsset';
 import { pick, useLang, type Pair } from '../lib/lang';
 
 // 작가가 삽화를 컷으로 나눠 준다. 컷 사이를 이어 도는 일은 svgAsset이 한다.
@@ -28,9 +28,13 @@ import artGlyphs1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_4_1.
 import artGlyphs2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_4_2.svg?raw';
 import artGlyphs3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_4_3.svg?raw';
 import artGlyphs4 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_4_4.svg?raw';
-import artDock2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_2.svg?raw';
-import artDock3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_3.svg?raw';
-import artDock4 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3_4.svg?raw';
+/* 2026-10-07 작가가 Step 2(꽂기)와 도킹 화면을 따로 다시 그렸다 — 둘은 더는 같은 그림이 아니다.
+   Step 2의 앞 두 파일 이름 앞에 공백이 붙어 있다(작가 파일 그대로) */
+import artDock1 from '../../by_moomiryu/Renewal_v1/Tutorial/ step2_1007_1.svg?raw';
+import artDock2 from '../../by_moomiryu/Renewal_v1/Tutorial/ step2_1007_2.svg?raw';
+import artDock3 from '../../by_moomiryu/Renewal_v1/Tutorial/step2_1007_3.svg?raw';
+import artHover from '../../by_moomiryu/Renewal_v1/Tutorial/dock_1.svg?raw';
+import artSlot from '../../by_moomiryu/Renewal_v1/Tutorial/dock_2_v2.svg?raw';
 
 /* 두 가지로 연다(2026-09-27). 홈의 물음표는 About 한 장만(about), '처음이에요'는
    Step 1·2·3 세 장을 넘기는 사용 안내다. About이 안내의 첫 장이던 때는 '처음이에요'를
@@ -144,6 +148,18 @@ function Built({ name, still, make }: { name: string; still: string; make: (key:
   const key = off ? `${name}-still` : name;
   if (!morphed.has(key)) morphed.set(key, off ? scopeSvg(still, key) : make(key));
   return <span dangerouslySetInnerHTML={{ __html: morphed.get(key)! }} />;
+}
+
+
+/** Step 2(꽂기) 삽화 — 세 컷(svgAsset · step2Svg). 모션을 끈 사람에게는 꽂힌 컷 하나 */
+export function DockArt() {
+  return <Built name="dock" still={artDock2}
+    make={(k) => step2Svg([artDock1, artDock2, artDock3], k)} />;
+}
+
+/** 도킹 화면(06) 삽화 — 폰이 홈에 내려와 꽂히고 올라가기를 되풀이한다(svgAsset · dockScreenSvg). 모션을 끈 사람에게는 꽂힌 모습 */
+export function DockScreenArt() {
+  return <Built name="dockscreen" still={artSlot} make={(k) => dockScreenSvg(artHover, artSlot, k)} />;
 }
 
 
@@ -270,8 +286,7 @@ const GUIDE: Slide[] = [
        빈 메가폰만 서 있던 첫 컷(example_step3_1)은 2026-09-22에 뺐다.
        고리가 '폰 든 사람 → 꽂힘 → 느낌표 → 폰 든 사람'으로 바로 돌아,
        기다리는 컷 없이 동작만 남는다. */
-    art: <Built name="dock" still={artDock4}
-      make={(k) => slideSvg([[artDock2, artDock3], artDock4], k, 10)} />,
+    art: <DockArt />,
     /* is-eased: 이 장만 칸을 55.6% 채워 다른 셋(34.6~39.4)보다 불쑥
        컸다. 기계 클로즈업이라 큰 색면 하나가 존재감을 다 먹는다 —
        큰 화면에서 85%로 눌러 앉힌다. 값과 고른 이유는 app.css가 든다. */

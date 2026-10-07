@@ -2125,3 +2125,87 @@ export function step3Svg(raw: string, key: string, dur = 12): string {
     return scopeSvg(raw, key);
   }
 }
+
+/* ─── 새 삽화(2026-10-07, 작가가 도킹 화면과 사용 안내 Step 2를 따로 다시 그렸다) ─────────────────────
+   위의 slideSvg는 컷의 화판이 모두 같아야 이어 준다. 새 Step 2는 앞 두 컷(429.88×417.42)과 마지막 컷(393.27×269.61)의
+   화판이 다르다 — 그래서 컷을 큰 화판 하나 안에 겹쳐 넣고 CSS가 오간다. 시간은 --t-hold의 배수, 이징은 --ease-standard다. */
+/** 그림자(#5a5580 타원)는 제 색으로 깔면 인물보다 먼저 눈에 든다 — app.css의 .mf-ground와 같은 값(옅게)을 직접 건다 */
+const softGround = (svg: string) => svg.replace(/<ellipse class="(cls-\d+-[^"]+)"/g, '<ellipse class="$1" style="fill:var(--char-shade);opacity:.2"');
+const bare = (svg: string) => svg.replace(/<\?xml[^>]*\?>\s*/, '');
+
+/**
+ * 도킹 화면(06) 삽화 — 폰이 홈 위에 떠 있다가(dock_1) 내려와 꽂히고(dock_2_v2), 잠시 멈췄다 올라가 되풀이한다.
+ * 꽂히는 순간 폰 화면의 글줄이 사라지고 흰 느낌표가 뜬다(dock_2_v2의 느낌표 — 올라가면 글줄로 돌아간다).
+ * 그림은 작가의 dock_1 그대로이고 폰 묶음만 CSS가 내린다. 꽂힌 폰은 홈 아랫선에서 잘린다(dock_2의 클립과 같은 자리 —
+ * dock_2는 dock_1보다 화판이 45.8 짧아 같은 자리가 y 187.17이다). 내려가는 거리 57.29는 두 컷의 폰 자리 차다
+ */
+export function dockScreenSvg(raw: string, bangRaw: string, key: string): string {
+  try {
+    const NS = 'http://www.w3.org/2000/svg';
+    const doc = new DOMParser().parseFromString(scopeSvg(raw, key), 'image/svg+xml');
+    const root = doc.documentElement;
+    const vb = (root.getAttribute('viewBox') ?? '').split(/[ ,]+/).map(Number);
+    const layer = root.querySelector('g'), phone = layer?.lastElementChild, defs = root.querySelector('defs');
+    if (!layer || !phone || !defs || vb.length !== 4) return scopeSvg(raw, key);
+    const clipId = `dock-clip-${key}`, cls = `dk-phone-${key}`, bangCls = `dk-bang-${key}`, textCls = `dk-text-${key}`;
+    const clip = doc.createElementNS(NS, 'clipPath'), rect = doc.createElementNS(NS, 'rect');
+    clip.setAttribute('id', clipId);
+    for (const [k, v] of Object.entries({ x: 60, y: -60, width: 132, height: 247.17 })) rect.setAttribute(k, String(v));
+    clip.append(rect); defs.append(clip);
+    const wrap = doc.createElementNS(NS, 'g');
+    wrap.setAttribute('clip-path', `url(#${clipId})`);
+    layer.insertBefore(wrap, phone); wrap.append(phone);
+    phone.setAttribute('class', cls);
+    /* 느낌표 — dock_2_v2에서 그대로 가져온다. 그 컷은 dock_1보다 화판이 45.8 짧아 같은 자리가 45.8 아래다. 폰 묶음 밖(클립 밖)에 서서
+       폰이 내려오는 동안 제자리에 있다가, 다 꽂히면 글줄과 자리를 바꿔 뜬다 */
+    const bangSrc = new DOMParser().parseFromString(bangRaw, 'image/svg+xml').documentElement.querySelector('g > g')?.lastElementChild;
+    const text = phone.querySelector('g[id^="message"]');
+    if (bangSrc && text) {
+      const bang = doc.importNode(bangSrc, true) as Element;
+      bang.setAttribute('class', `cls-2-${key} ${bangCls}`);
+      bang.setAttribute('transform', 'translate(0 45.8)');
+      layer.append(bang);
+      text.setAttribute('class', textCls);
+    }
+    const style = doc.createElementNS(NS, 'style');
+    style.textContent = `.${cls}{animation:dkIn-${key} calc(var(--t-hold) * 12) infinite}` +
+      `@keyframes dkIn-${key}{0%,22%{transform:translateY(0);animation-timing-function:var(--ease-standard)}` +
+      `42%,72%{transform:translateY(57.29px);animation-timing-function:var(--ease-standard)}88%,100%{transform:translateY(0)}}` +
+      `.${bangCls}{opacity:0;animation:dkBang-${key} calc(var(--t-hold) * 12) linear infinite}` +
+      `.${textCls}{animation:dkText-${key} calc(var(--t-hold) * 12) linear infinite}` +
+      `@keyframes dkBang-${key}{0%,40%{opacity:0}46%,72%{opacity:1}78%,100%{opacity:0}}` +
+      `@keyframes dkText-${key}{0%,40%{opacity:1}46%,72%{opacity:0}78%,100%{opacity:1}}`;
+    defs.append(style);
+    /* 둘레에 여백을 둔 화판(2026-10-07, 사용자 — 도킹 화면에서 그림이 너무 컸다). 작가의 화판은 그림에 딱 붙어 있어
+       다른 장의 삽화(그린 것이 화판의 절반쯤)보다 꽉 차 보였다. 그림은 그대로 두고 화판만 36씩 넓힌다 */
+    const pad = 36, board = [vb[0] - pad, vb[1] - pad, vb[2] + 2 * pad, vb[3] + 2 * pad];
+    root.setAttribute('viewBox', board.join(' '));
+    root.setAttribute('style', `--focus:50%;--reach:1;--art:${r2(board[2] / board[3])}`);
+    return new XMLSerializer().serializeToString(root);
+  } catch {
+    return scopeSvg(raw, key);
+  }
+}
+
+/**
+ * 사용 안내 Step 2(꽂기) 삽화 — 세 컷. ① 폰을 꽂는 중 → ② 꽂혔다(느낌표) 는 한 자리에서 부드럽게 겹쳐 바뀌고(② 가 ① 위에서
+ * 떠오른다), ② → ③(구경꾼이 놀란다)은 장면이 바뀌어 옆으로 넘긴다. 돌아올 때도 옆으로 넘기고 그 사이에 ②를 걷어 ①로 돌아간다.
+ * ③은 멀리서 본 컷이라 폭을 큰 화판에 맞춘다(캐릭터가 작아지는 것은 작가의 구도 — 실측: 캐릭터 폭 168 → 119, 땅선은 둘 다 화판의 96%).
+ * 화판 하나 안에 넣어 두므로 page CSS(--art · --reach · --focus)는 한 장짜리 삽화로 본다
+ */
+export function step2Svg(cuts: readonly [string, string, string], key: string): string {
+  const W = 429.88, H = 417.42, last = { w: 393.27, h: 269.61 };
+  const h3 = (W * last.h) / last.w;
+  const nest = (raw: string, k: string, at: string) => softGround(bare(scopeSvg(raw, `${key}${k}`)))
+    .replace(/<svg\b/, `<svg ${at} preserveAspectRatio="xMidYMax meet" class="s2-${k}-${key}"`);
+  const box = `x="0" y="0" width="${W}" height="${H}"`;
+  const css = `.s2a-${key}{animation:s2a-${key} calc(var(--t-hold) * 20) linear infinite}` +
+    `.s2b-${key}{animation:s2b-${key} calc(var(--t-hold) * 20) linear infinite;transform:translateX(${W}px)}` +
+    `.s2-b-${key}{animation:s2o-${key} calc(var(--t-hold) * 20) linear infinite;opacity:0}` +
+    `@keyframes s2a-${key}{0%,48%{transform:translateX(0);animation-timing-function:var(--ease-standard)}58%,82%{transform:translateX(-${W}px);animation-timing-function:var(--ease-standard)}92%,100%{transform:translateX(0)}}` +
+    `@keyframes s2b-${key}{0%,48%{transform:translateX(${W}px);animation-timing-function:var(--ease-standard)}58%,82%{transform:translateX(0);animation-timing-function:var(--ease-standard)}92%,100%{transform:translateX(${W}px)}}` +
+    `@keyframes s2o-${key}{0%,16%{opacity:0}26%,69%{opacity:1}70%,100%{opacity:0}}`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" style="--focus:50%;--reach:1;--art:${r2(W / H)}"><style>${css}</style>` +
+    `<g class="s2a-${key}">${nest(cuts[0], 'a', box)}${nest(cuts[1], 'b', box)}</g>` +
+    `<g class="s2b-${key}">${nest(cuts[2], 'c', `x="0" y="${r2(H - h3)}" width="${W}" height="${r2(h3)}"`)}</g></svg>`;
+}

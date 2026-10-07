@@ -729,13 +729,6 @@
 
 /* ─── 06 도킹 안내 그림 ─────────────────────────────────────── */
 
-.dock-guide{
-  display: flex;
-  justify-content: center;
-  padding: var(--s2) 0;
-  color: var(--ink);
-}
-
 .dock-phone{
   animation: dockDrop 2.6s ease-in-out infinite;
 }
@@ -2888,19 +2881,9 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .cta-loading { font-size:var(--fs-h3); letter-spacing:var(--s1); }
 .primary-action[aria-busy=true] { background:var(--brand-strong); color:var(--paper); }
 .docking-simple { justify-content:flex-start; padding-top:var(--s7); }
-.docking-simple .dock-guide { flex:1; align-items:center; }
-/* 그림이 이 화면의 본문이다 — 꽂는 동작은 말로 설명하기 어려워서 그림에게
-   맡겼는데, 정작 그림이 152px로 박혀 있어 500px짜리 자리 한가운데 떠 있었다.
-   그 크기에서는 설명이 아니라 각주로 읽힌다. 준 자리를 쓰게 하되 상한을
-   둔다 — 세로가 짧은 기기에서 제목과 부제를 밀어내면 안 된다. */
-.docking-simple .dock-guide{ flex-direction: column; }
-.docking-simple .dock-guide > svg{ flex: 1 1 auto; min-height: 0; max-height: 260px; width: auto; }
 /* 07 아래 한 줄 — 왜 아직 안 넘어가는지. 지시(p)보다 물러난 얼굴이라
    설명이 지시를 밀어내지 않는다. 뜨고 지는 자리라 그림의 높이는 안 건드린다 */
 .dock-note { align-self:center; max-width:30ch; margin:var(--s5) 0 0; text-align:center; color:var(--muted); font-size:var(--fs-cap); }
-/* 07에서 3초가 지나도 안 넘어갈 때 나오는 차선책 — 선으로 된 칸이라 글자만인 것보다 눈에 들어온다 */
-.dock-stuck { align-self:center; min-height:var(--btn-l); margin-top:var(--s5); padding:0 var(--pad-btn-x); border:1px solid var(--ink); border-radius:var(--r-button); background:none; color:var(--ink); font:inherit; font-size:var(--fs-btn); font-weight:500; cursor:pointer; }
-.dock-stuck:active { background:var(--grey-200); }
 .dock-test-link { align-self:center; min-height:var(--btn-l); border:0; background:none; color:var(--muted); font:inherit; font-size:var(--fs-cap-s); }
 .onwall-screen { min-height:100dvh; width:100%; max-width:480px; background:var(--brand-strong); color:var(--paper); padding:max(var(--s6), var(--top-safe)) var(--pad-x) max(var(--s6), env(safe-area-inset-bottom, 0px)); display:flex; flex-direction:column; }
 /* 개발용 '폰을 뺐어요'(?dev=1)는 아래에 띄운다 — 흐름에 끼면 한가운데 묶음이 밀린다 */
@@ -2933,6 +2916,9 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   border-radius: var(--r-xl);
   padding: var(--s6) var(--s5) var(--s5);
   display: flex;
+/* 07에서 5초가 지나도 안 넘어갈 때 나오는 차선책 — 선으로 된 칸이라 글자만인 것보다 눈에 들어온다 */
+.dock-stuck { align-self:flex-start; min-height:var(--btn-l); padding:0 var(--pad-btn-x); border:1px solid var(--ink); border-radius:var(--r-button); background:none; color:var(--ink); font:inherit; font-size:var(--fs-btn); font-weight:500; cursor:pointer; }
+.dock-stuck:active { background:var(--grey-200); }
   flex-direction: column;
   gap: var(--s3);
   text-align: center;
@@ -3539,6 +3525,14 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .home-poster-art{ display: block; position: absolute; inset: 0; }
 .home-poster .hp-land{ fill: var(--grey-200); }
 /* 사파리 주소창 뒤 색 — 화면 맨 아래는 '회색 땅 위에 빨강 기운'이다. 색을 읽는 쪽(viewport.ts colorAt)은 SVG의 칠을 못 보고
+/* 푸터는 검정 바탕(2026-10-07, 사용자 — '더 있었으면 하는 것'부터 만든 사람 줄까지). 위 선은 바탕 경계가 대신한다.
+   안의 글자는 검정 위에서 읽히게 뒤집는다: 제목 · 보내기 · 고마움 --paper, 보조 글자 --grey-400(검정 위 약 10:1),
+   오류 --grey-300. 입력칸은 흰 칸 그대로(글 · 안내문 색이 칸 안에서 정해져 있다). 포커스 테두리는 검정 위라 --paper */
+.done-footer{ background: var(--ink); border-top: 0; }
+.done-footer .feedback-title, .done-footer .feedback-send, .done-footer .feedback-done{ color: var(--paper); }
+.done-footer .feedback-desc, .done-footer .done-credits{ color: var(--grey-400); }
+.done-footer .feedback-error{ color: var(--grey-300); }
+.done-footer .feedback-input:focus-visible{ outline-color: var(--paper); }
    틀의 바탕(--grey-50)으로 읽어 주소창이 더 밝았다 — '써봤어요' 아래에 가로 경계가 생겼다(2026-10-06 아이폰). 위에서부터 겹치는
    차례대로: 땅(빨강 기운) → 그림(회색 땅) */
 .home-poster .hp-soil{ --edge-bottom-paint: var(--brand-scrim); }

@@ -20,7 +20,7 @@ import WallGround from '../components/WallGround';
 import WallFlock from '../components/WallFlock';
 import WallWalkers from '../components/WallWalkers';
 import WallRain, { type RainScene } from '../components/WallRain';
-import { BIG_SIDE_MAX_VW, BIG_SIDE_VH, WallShowMessage, cloudOf, colorsOf, isRainMsg, useDerivedStyle, type Land } from '../components/WallShowMessage';
+import { BIG_SIDE_MAX_VW, BIG_SIDE_VH, WallShowMessage, cloudOf, colorsOf, isRainMsg, useDerivedStyle, type Land, type Rooted } from '../components/WallShowMessage';
 import { groundPx } from '../lib/ground';
 import { SWAY_LAG, gustAt, swayFor } from '../lib/palettes';
 import { SAMPLE_MESSAGES } from '../lib/samples';
@@ -102,6 +102,8 @@ const WALL_N = 12;
 /** 땅(돌 + 나무)의 합 · 유머있는(비눗방울)의 수(2026-10-06, 견본에서 고르는 중). 돌 7 · 나무 8을 따로만 막으면 합이 열둘을 넘어 구름이
     하나도 못 뜰 수 있었다 — 땅을 합쳐서 막아 하늘(구름 · 새)의 몫을 남긴다. 비눗방울은 작고 가벼워 열둘에 세지 않고 따로 센다 */
 const GROUND_MAX = 9;
+/** 빠지는 나무가 땅 밑으로 가라앉는 시간(ms) — app.css treeSink(--t-hold × 2 = 1400ms)보다 조금 길게 */
+const TREE_LEAVE_MS = 1500;
 const RAIN_MAX = 4;
 /** 벽에 한 번에 서는 나무(당당한)의 최대 수(2026-10-01, 디자이너). 나무는 한 그루에 결 · 빗금 · 가닥이 많아 여러 그루가
     모이면 바닥이 소란했다(같은 벽에 여덟 · 셋을 세워 봤다). 여섯으로 정했다가 여덟로 고쳤다(같은 날). 넘치면 오래된 나무부터
@@ -162,6 +164,16 @@ const CREATURE_SCALE = 0.68;
 const ECHO_MOTION = true;
 /** 큰 목소리가 잔상으로 내려앉는 시간 */
 const LAND_MS = 1200;
+/**
+ * 당당한의 발화 — 검정 대신 풍경이 회색 실루엣으로 물러나고 큰 나무가 땅에서 솟는다(2026-10-07, 디자이너 — 움직이는 견본 넷 중
+ * C '들썩 → 솟구침', 움직임은 app.css bigTreeRise). 키 = 벽 높이의 89%(위 9%를 비운다) · 폭은 벽의 94%까지 · 상자 밑(줄기가
+ * 이어지는 자리)은 벽 높이의 98.1% — 땅 띠 뒤로 묻힌다. 이 크기면 글이 검정 위 큰 상자 때보다 커진다(견본 글에서 2.4배, 디자이너 승인)
+ */
+const TREE_BIG = { h: 0.89, w: 0.94, foot: 0.981 };
+function rootedOf(msg: StoredMessage): Rooted {
+  const { box } = cloudOf(msg), W = window.innerWidth, H = window.innerHeight;
+  return { side: Math.min((TREE_BIG.h * H) / box.h, (TREE_BIG.w * W) / box.w), bottom: (1 - TREE_BIG.foot) * H };
+}
 
 /** CSS가 같은 치수를 보게 내려준다. 벽의 루트에 한 번 */
 const WALL_VARS = {
@@ -2062,6 +2074,8 @@ export default function WallSimulation() {
   const [emphMsg, setEmphMsg] = useState<StoredMessage | null>(null);
   const [emphLand, setEmphLand] = useState<Land | null>(null);
   const [emphKey, setEmphKey] = useState(0);
+  /** 당당한의 발화는 땅에 뿌리 박은 큰 나무(TREE_BIG) — 움직임을 줄인 화면은 다른 성격처럼 검정 위에 */
+  const emphRooted = useMemo(() => (emphMsg && cloudOf(emphMsg).cloud.tree && !prefersReducedMotion() ? rootedOf(emphMsg) : null), [emphMsg]);
   /** 그 발화가 시작된 순간(파이가 잰 값). 잦아듦과 상한이 여기서 센다 */
   const [emphStart, setEmphStart] = useState(0);
   /** 막 내려앉은 글. LINGER_MS 동안 풍경에 붙잡아 둔다 */
@@ -2078,6 +2092,8 @@ export default function WallSimulation() {
   const giantElRef = useRef<HTMLDivElement | null>(null);
   const fieldRef = useRef<HTMLDivElement | null>(null);
   const calmRef = useRef<Calm | null>(null);
+  /** 당당한의 큰 나무가 서 있나(on) · 가라앉으며 풍경 색이 돌아오는 중인가(off, t0 = 초). 그동안 풍경 전체가 회색 실루엣 */
+  const treeSceneRef = useRef<{ phase: 'on' | 'off'; t0: number } | null>(null);
   /** 도킹 텀 — 큰 상자를 아직 안 띄웠나 · 띄우기를 기다리는 타이머 */
   const emphPendingRef = useRef(false);
   const showWaitRef = useRef(0);
@@ -2271,6 +2287,14 @@ export default function WallSimulation() {
       // 큰 상자가 아직 나오기 전(도킹 텀)에 폰을 뗐다 — 보인 적 없으니 내려앉을 것도 없다
       if (emphPendingRef.current) { clearTimeout(showWaitRef.current); emphPendingRef.current = false; settle(); return; }
       const go = () => {
+      // 당당한의 큰 나무 — 날아가 앉지 않고 땅 밑으로 가라앉는다(app.css is-rooted.is-landing, --t-hold × 2). 그동안 풍경 색이
+      // 돌아오고(프레임 루프), 다 가라앉으면 그 글의 작은 나무가 숨었던 제자리에서 솟는다(is-ghost가 풀릴 때 treeRise)
+      if (treeSceneRef.current?.phase === 'on') {
+        treeSceneRef.current = { phase: 'off', t0: performance.now() / 1000 };
+        setEmphLand(SINK);
+        hideTimerRef.current = window.setTimeout(settle, hold() * 2000);
+        return;
+      }
       const id = emphIdRef.current;
       // 움직임을 줄인 벽의 돌 — 큰 돌 장면이 없어 내려앉을 때 명단에 든다(넘치는 가장 오래된 돌은 이때 빠진다, STONE_MAX)
       const em = emphMsgRef.current;
@@ -2314,6 +2338,8 @@ export default function WallSimulation() {
       landingRef.current = false;
       clearTimeout(showWaitRef.current);
       const open = () => { emphPendingRef.current = false; setEmphStart(startedAt); setEmphLand(null); setEmphMsg(msg); setEmphKey((k) => k + 1); };
+      // 서 있던 큰 나무는 다음 발화에 자리를 내준다 — 풍경 색이 돌아오기 시작한다
+      if (treeSceneRef.current?.phase === 'on') treeSceneRef.current = { phase: 'off', t0: performance.now() / 1000 };
       // 차분한(돌) — 검정 대신 큰 돌이 밀려와 풍경을 쓸어 낸다. 움직임을 줄인 화면은 다른 성격처럼 검정 위의 큰 상자
       if (calmRef.current) calmUndoRef.current = calmRef.current;
       const { cloud, box } = cloudOf(msg);
@@ -2330,8 +2356,11 @@ export default function WallSimulation() {
         open();
       } else {
         calmRef.current = null; setCalmMsg(null);
-        // 다른 성격 — 도킹한 뒤 DOCK_TERM_MS 동안은 풍경이 그대로, 그다음 검정과 큰 상자가 선다(움직임을 줄인 화면은 바로)
-        if (prefersReducedMotion()) open(); else { emphPendingRef.current = true; showWaitRef.current = window.setTimeout(open, DOCK_TERM_MS); }
+        // 다른 성격 — 도킹한 뒤 DOCK_TERM_MS 동안은 풍경이 그대로, 그다음 검정과 큰 상자가 선다(움직임을 줄인 화면은 바로).
+        // 당당한은 검정 대신 풍경이 실루엣으로 물러나고 큰 나무가 솟는다(움직임을 줄인 화면은 다른 성격처럼 검정 위의 큰 나무)
+        const rooted = !!cloud.tree && !prefersReducedMotion();
+        const go = () => { open(); if (rooted) treeSceneRef.current = { phase: 'on', t0: performance.now() / 1000 }; };
+        if (prefersReducedMotion()) go(); else { emphPendingRef.current = true; showWaitRef.current = window.setTimeout(go, DOCK_TERM_MS); }
       }
       // EMPHASIS_MS는 상한이고, 세는 곳은 **꽂힌 순간**이다. 벽이 신호를 몇
       // 초 늦게 알아채도 폰과 같은 시각에 끝난다. 대개는 아래 '폰이 빠졌다'가
@@ -2449,7 +2478,29 @@ export default function WallSimulation() {
   }, [visible, rotate, emphMsg, linger, stoneKeep]);
   // 유머있는(비)은 몸 없이 비 층이 그린다 — 벽에 서는 글 수(WALL_N)에는 함께 센다
   const rain = useMemo(() => shown.filter(isRainMsg), [shown]);
-  const solid = useMemo(() => shown.filter((m) => !isRainMsg(m)), [shown]);
+  const solidShown = useMemo(() => shown.filter((m) => !isRainMsg(m)), [shown]);
+  // 빠지는 나무 — 바로 지우지 않고 TREE_LEAVE_MS 동안 땅 밑으로 가라앉게 둔다(퇴장 장면). 다시 서면 취소
+  const leaveRef = useRef(new Map<string, { msg: StoredMessage; until: number }>());
+  const prevSolidRef = useRef<StoredMessage[]>([]);
+  const [leaveTick, setLeaveTick] = useState(0);
+  const { solid, leavingIds } = useMemo(() => {
+    const now = Date.now(), L = leaveRef.current;
+    for (const m of prevSolidRef.current) {
+      if (!L.has(m.id) && !solidShown.some((x) => x.id === m.id) && kindOf(cloudOf(m).cloud) === 'tree') L.set(m.id, { msg: m, until: now + TREE_LEAVE_MS });
+    }
+    for (const [id, l] of L) if (l.until <= now || solidShown.some((x) => x.id === id)) L.delete(id);
+    prevSolidRef.current = solidShown;
+    return { solid: [...solidShown, ...[...L.values()].map((l) => l.msg)], leavingIds: new Set(L.keys()) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [solidShown, leaveTick]);
+  const leaveKey = [...leavingIds].join(',');
+  useEffect(() => {
+    if (!leaveKey) return;
+    // 가장 먼저 끝나는 나무의 때에 맞춘다 — 집합이 새로 만들어져도(같은 나무들) 타이머를 다시 걸지 않는다
+    const next = Math.min(...[...leaveRef.current.values()].map((l) => l.until));
+    const t = window.setTimeout(() => setLeaveTick((n) => n + 1), Math.max(0, next - Date.now()) + 30);
+    return () => clearTimeout(t);
+  }, [leaveKey]);
   // 마네킹 나무 — 나무 글이 MANNEQUIN_MIN그루보다 적으면 모자란 만큼(두 장면)
   const mannequins = useMemo(() => {
     const trees = solid.filter((m) => kindOf(cloudOf(m).cloud) === 'tree').length;
@@ -2653,12 +2704,18 @@ export default function WallSimulation() {
       }
       // 큰 돌이 있는 동안 구름은 어두운 회색 실루엣(calm-tint), 비눗방울은 숨는다. 필터를 먼저 걸고 다음 프레임에 색을 올려야 스며든다
       const fe = fieldRef.current, Cf = calmRef.current;
+      // 큰 나무가 가라앉고 풍경 색이 다 돌아오면(.calm-flood의 --t-slow × 4 = 1.6초, 여유를 두고 --t-hold × 3) 실루엣을 걷는다
+      const Tf = treeSceneRef.current;
+      if (Tf?.phase === 'off' && t / 1000 - Tf.t0 > hold() * 3) treeSceneRef.current = null;
       if (fe) {
         // 큰 돌이 기어나오기 시작한 때부터(도킹 뒤 CALM_WAIT초) 풍경이 돌아오는 때(return)까지가 '돌이 있는 동안'
         const on = !!Cf && (Cf.phase !== 'enter' || t / 1000 - Cf.t0 >= CALM_WAIT);
-        fe.classList.toggle('calm-tint', on && Cf.phase !== 'return' && fe.classList.contains('calm-filter'));
-        fe.classList.toggle('calm-filter', !!Cf && (on || fe.classList.contains('calm-filter')));
-        fe.classList.toggle('calm-rain-off', on && Cf.phase !== 'return');
+        const tint = (on && Cf.phase !== 'return') || treeSceneRef.current?.phase === 'on';
+        fe.classList.toggle('calm-tint', tint && fe.classList.contains('calm-filter'));
+        fe.classList.toggle('calm-filter', (!!Cf || !!treeSceneRef.current) && (tint || fe.classList.contains('calm-filter')));
+        // 큰 나무 앞에서는 구름뿐 아니라 나무 · 돌 · 새까지 실루엣이 된다(큰 돌은 그것들을 쓸어 내므로 구름만)
+        fe.classList.toggle('calm-all', !!treeSceneRef.current);
+        fe.classList.toggle('calm-rain-off', tint);
         fe.classList.toggle('calm-gone', !!Cf && Cf.phase === 'gone');
       }
       // 큰 돌 — 각도는 늘 0(밀려오고 밀려 나간다)
@@ -2782,7 +2839,7 @@ export default function WallSimulation() {
           </filter>
         </svg>
         {layered.filter((x) => x.kind !== 'cloud').map(({ msg }, i) => (
-          <WallBlock key={msg.id} msg={msg} index={i} ghost={emphMsg?.id === msg.id} onEl={setBlockEl} />
+          <WallBlock key={msg.id} msg={msg} index={i} ghost={emphMsg?.id === msg.id} leaving={leavingIds.has(msg.id)} onEl={setBlockEl} />
         ))}
         {/* 비눗방울 — 나무 · 돌 앞, 구름 뒤. 글자 자리는 비킨다(WallRain) */}
         <WallRain msgs={rain} scene={rainScene} hideId={emphMsg?.id ?? null} />
@@ -2793,7 +2850,7 @@ export default function WallSimulation() {
       </div>
 
       {/* 발화 — 검정 위에 큰 상자 하나 */}
-      {emphMsg && !calmMsg && <WallShowMessage key={emphKey} msg={emphMsg} land={emphLand} startedAt={emphStart} />}
+      {emphMsg && !calmMsg && <WallShowMessage key={emphKey} msg={emphMsg} land={emphLand} startedAt={emphStart} rooted={emphRooted} />}
       {calmMsg && <WallCalmStone key={calmMsg.msg.id} msg={calmMsg.msg} G={calmMsg.G} elRef={giantElRef} />}
 
       {/* 땅 — 맨 아래 띠와 사진 풀. 큰 돌 · 발화와 같은 층의 뒤에 놓여 그 위에 그려진다(풀이 돌 앞에 선다) */}
@@ -2831,7 +2888,7 @@ const WallMannequin = memo(function WallMannequin({ q, onEl }: { q: Mannequin; o
   );
 });
 
-const WallBlock = memo(function WallBlock({ msg, ghost, onEl }: { msg: StoredMessage; index: number; ghost: boolean; onEl: (id: string, el: HTMLElement | null) => void }) {
+const WallBlock = memo(function WallBlock({ msg, ghost, leaving, onEl }: { msg: StoredMessage; index: number; ghost: boolean; leaving?: boolean; onEl: (id: string, el: HTMLElement | null) => void }) {
   const { bg, text, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
   const { lines, cloud, box } = useMemo(() => cloudOf(msg), [msg]);
   const kind = kindOf(cloud), scale = scaleOf(cloud);
@@ -2844,6 +2901,7 @@ const WallBlock = memo(function WallBlock({ msg, ghost, onEl }: { msg: StoredMes
     <div
       className={`wall-block is-${kind}${ghost ? ' is-ghost' : ''}`}
       data-id={msg.id}
+      data-leaving={leaving ? '' : undefined}
       data-sway-deg={sway.deg.toFixed(2)} data-sway-per={sway.per.toFixed(2)}
       ref={(el) => onEl(msg.id, el)}
     >

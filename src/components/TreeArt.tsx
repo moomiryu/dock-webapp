@@ -185,7 +185,10 @@ export default function TreeArt({ cloud, unit, color, quiet, hold }: { cloud: Cl
       if (k === key && painter) return;
       key = k;
       // 나무 판 — 받은 판(키 1280)을 이 나무의 크기로 한 번 줄여 둔다
-      const tw = Math.max(1, Math.round(w * dpr)), th = Math.max(1, Math.round(fullPx * dpr));
+      // 판은 화면 높이까지만 — 상자 위가 화면 안이니 그 아래로 화면 높이를 넘는 줄기는 보일 일이 없다. 벽의 큰 나무(땅에 뿌리 박은
+      // 당당한의 발화)는 줄기가 화면 밑으로 한참 이어져 판이 화면의 두 배였고, 그 판을 짓고 올리느라 솟기 전에 1.7초 멈췄다(2026-10-07)
+      const thFull = Math.round(fullPx * dpr);
+      const tw = Math.max(1, Math.round(w * dpr)), th = Math.max(1, Math.min(thFull, Math.round(window.innerHeight * dpr)));
       const tree = document.createElement('canvas'); tree.width = tw; tree.height = th;
       const tc = tree.getContext('2d', { willReadFrequently: true })!;
       tc.imageSmoothingEnabled = true; tc.imageSmoothingQuality = 'high';
@@ -196,20 +199,23 @@ export default function TreeArt({ cloud, unit, color, quiet, hold }: { cloud: Cl
       const { y0, y1, k: kT } = t.trunk, d0 = dev(y0), d1 = dev(y0 + (y1 - y0) * kT);
       tc.drawImage(img, 0, 0, iw, row(y0), 0, 0, tw, d0);
       tc.drawImage(img, 0, row(y0), iw, row(y1) - row(y0), 0, d0, tw, d1 - d0);
-      tc.drawImage(img, 0, row(y1), iw, ih - row(y1), 0, d1, tw, th - d1);
+      tc.drawImage(img, 0, row(y1), iw, ih - row(y1), 0, d1, tw, thFull - d1);
       tc.setTransform(1, 0, 0, 1, 0, 0);
       // 그늘 띠의 마감(둥근 봉우리 · 밑자락 끝까지) — 가닥을 늘어뜨리기 전에(가닥이 그늘을 이어받는다). 수관의 세로 배율로 잰다
-      const sv = row(y0) > 0 ? d0 / row(y0) : th / ih;
+      const sv = row(y0) > 0 ? d0 / row(y0) : thFull / ih;
       finishShade(tc, tw, th, 0.07 * ih * sv, 0.012 * ih * sv);
       // 가닥 길이는 늘이기 전의 키에 대어(줄기가 길어져도 가닥이 따라 길어지지 않게)
       if (t.drape) drape(tc, tw, th, t.drape.seed, (t.drape.L * t.base) / t.full, dpr);
       // 글자 자리 판 — 초록 = 바람을 멈추는 곳(글자 + 여백 + 가장 크게 밀리는 만큼, 흐리게), 빨강 = 빗금을 걷는 곳(둥글게)
+      // 큰 판(벽의 큰 나무)은 반 크기로 번져 늘인다 — 흐린 판이라 달라 보이지 않는데, 번짐이 판 넓이에 비례해 0.3초 멈췄다(2026-10-07)
+      const zk = tw * th > 1e6 ? 0.5 : 1;
       const zone = document.createElement('canvas'); zone.width = tw; zone.height = th;
-      const zc = zone.getContext('2d', { willReadFrequently: true })!, s = uPx * dpr;
+      const zsrc = zk === 1 ? zone : Object.assign(document.createElement('canvas'), { width: Math.round(tw * zk), height: Math.round(th * zk) });
+      const zc = zsrc.getContext('2d', { willReadFrequently: true })!, s = uPx * dpr * zk;
       const rect = (r: readonly number[], e: number, rad: number) => { zc.beginPath(); zc.roundRect(r[0] * s - e, r[1] * s - e, (r[2] - r[0]) * s + 2 * e, (r[3] - r[1]) * s + 2 * e, rad); zc.fill(); };
       if (!quiet) {
-        const e = (pr.gap * uPx + flutter + sway) * dpr;
-        zc.filter = `blur(${(8 * side * dpr) / 401.76}px)`; zc.fillStyle = 'rgb(0,255,0)';
+        const e = (pr.gap * uPx + flutter + sway) * dpr * zk;
+        zc.filter = `blur(${(8 * side * dpr * zk) / 401.76}px)`; zc.fillStyle = 'rgb(0,255,0)';
         for (const r of t.zones) rect(r, e, 0);
       }
       const lr = pr.lift * s;
@@ -221,6 +227,7 @@ export default function TreeArt({ cloud, unit, color, quiet, hold }: { cloud: Cl
         for (let j = 0; j < k; j++) { zc.beginPath(); zc.arc((r[0] + ((j + 0.5) * (r[2] - r[0])) / k) * s, cy, 0.62 * em * s + lr, 0, 2 * Math.PI); zc.fill(); }
       }
       zc.filter = 'none'; zc.globalCompositeOperation = 'source-over';
+      if (zk !== 1) zone.getContext('2d', { willReadFrequently: true })!.drawImage(zsrc, 0, 0, tw, th);
       // 그릴 캔버스 — 상자 왼쪽 위에서 둘레 여유만큼 밖으로
       cv.width = tw + 2 * Math.round(M * dpr); cv.height = th + 2 * Math.round(M * dpr);
       Object.assign(cv.style, { left: `${-M}px`, top: `${-M}px`, width: `${cv.width / dpr}px`, height: `${cv.height / dpr}px` });

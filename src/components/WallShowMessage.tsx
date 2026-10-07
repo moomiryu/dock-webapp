@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, type CSSProperties } from 'react';
 import CloudBubble from './CloudBubble';
 import VoiceBubble from './VoiceBubble';
 import RainPreview from './RainPreview';
@@ -57,7 +57,10 @@ export const isRainMsg = (m: StoredMessage) => personaFor(m.tone?.font).key === 
 
 /* 말풍선 때는 물결이 30초에 걸쳐 잦아들어 잔상의 세기에 닿았다(calmAt).
    구름은 강조와 잔상이 같은 숨(중)을 쉰다 — 크기만 내려앉는다. */
-export const WallShowMessage = memo(function WallShowMessage({ msg, land, centerText }: { msg: StoredMessage; land: Land | null; startedAt: number; centerText?: boolean }) {
+/** 땅에 뿌리 박고 서는 큰 나무(당당한의 발화, 벽만) — 한 변(px)과 아래 여백(px). WallSimulation이 벽 크기로 정한다 */
+export type Rooted = { side: number; bottom: number };
+
+export const WallShowMessage = memo(function WallShowMessage({ msg, land, centerText, rooted }: { msg: StoredMessage; land: Land | null; startedAt: number; centerText?: boolean; rooted?: Rooted | null }) {
   const { bg, text, fontFamily, wght, scaleX, skew } = useDerivedStyle(msg);
   // 돌은 배까지 한 덩이로(cloud.ts stoneWhole, 2026-10-04) — 바닥 없이 서는 큰 상자(폰 5/5 미리보기가 빌려 쓴다)
   const { lines, cloud, box } = useMemo(() => {
@@ -72,12 +75,14 @@ export const WallShowMessage = memo(function WallShowMessage({ msg, land, center
       <RainPreview text={msg.text} color={bg} shape={rainShapeOf(msg.tone?.align)} motion={msg.tone?.align} speed={msg.tone?.speed} weight={msg.tone?.weight} manner={msg.tone?.manner} />
     </div>
   );
-  const boxStyle = land
+  // 뿌리 박은 나무는 날아가 앉지 않고 땅 밑으로 가라앉는다(app.css is-rooted.is-landing)
+  const boxStyle = land && !rooted
     ? { transform: `translate(${land.dx.toFixed(1)}px, ${land.dy.toFixed(1)}px) scale(${land.scale.toFixed(4)})` }
     : undefined;
+  const showStyle = rooted ? { '--big-side': `${rooted.side.toFixed(1)}px`, paddingBottom: `${rooted.bottom.toFixed(1)}px` } as CSSProperties : undefined;
 
   return (
-    <div className={`wall-show${landing ? ' is-landing' : ''}`}>
+    <div className={`wall-show${rooted ? ' is-rooted' : ''}${landing ? ' is-landing' : ''}`} style={showStyle}>
       <div className="wall-show-box" style={boxStyle}>
         <CloudBubble cloud={cloud} box={box} side="var(--big-side)" color={bg} centerText={centerText}>
           <VoiceBubble text={lines.join('\n')} bg={bg} color={text} fontFamily={fontFamily} font={msg.tone?.font} weight={wght}

@@ -17,6 +17,7 @@ import { WALL_SIDE, bubbleAt, fillFromLegacySize, type Boxed } from '../lib/fit'
 import { EMPHASIS_MS, STAY_MS } from '../lib/wall';
 import VoiceBubble from '../components/VoiceBubble';
 import WallGround from '../components/WallGround';
+import WallFlock from '../components/WallFlock';
 import WallWalkers from '../components/WallWalkers';
 import WallRain, { type RainScene } from '../components/WallRain';
 import { BIG_SIDE_MAX_VW, BIG_SIDE_VH, WallShowMessage, cloudOf, colorsOf, isRainMsg, useDerivedStyle, type Land } from '../components/WallShowMessage';
@@ -2768,6 +2769,7 @@ export default function WallSimulation() {
       {/* 기본 전체 화면의 풍경. 마네킹 나무는 말들과 섞이지 않게 뒤 겹에(app.css) */}
       <div className="wall-world">
       <div className="wall-scenery">
+        <WallFlock />
         {mannequins.map((q) => <WallMannequin key={q.id} q={q} onEl={setBlockEl} />)}
       </div>
       <div className="wall-field" ref={fieldRef}>

@@ -34,7 +34,7 @@ import artDock1 from '../../by_moomiryu/Renewal_v1/Tutorial/ step2_1007_1.svg?ra
 import artDock2 from '../../by_moomiryu/Renewal_v1/Tutorial/ step2_1007_2.svg?raw';
 import artDock3 from '../../by_moomiryu/Renewal_v1/Tutorial/step2_1007_3.svg?raw';
 import artHover from '../../by_moomiryu/Renewal_v1/Tutorial/dock_1.svg?raw';
-import artSlot from '../../by_moomiryu/Renewal_v1/Tutorial/dock_2_v2.svg?raw';
+import artSlot from '../../by_moomiryu/Renewal_v1/Tutorial/dock2_v3.svg?raw';
 
 /* 두 가지로 연다(2026-09-27). 홈의 물음표는 About 한 장만(about), '처음이에요'는
    Step 1·2·3 세 장을 넘기는 사용 안내다. About이 안내의 첫 장이던 때는 '처음이에요'를

@@ -2158,25 +2158,36 @@ export function dockScreenSvg(raw: string, bangRaw: string, key: string): string
     wrap.setAttribute('clip-path', `url(#${clipId})`);
     layer.insertBefore(wrap, phone); wrap.append(phone);
     phone.setAttribute('class', cls);
-    /* 느낌표 — dock_2_v2에서 그대로 가져온다. 그 컷은 dock_1보다 화판이 45.8 짧아 같은 자리가 45.8 아래다. 폰 묶음 밖(클립 밖)에 서서
-       폰이 내려오는 동안 제자리에 있다가, 다 꽂히면 글줄과 자리를 바꿔 뜬다 */
+    /* 느낌표 — dock2_v3에서 그대로 가져온다. 그 컷은 dock_1보다 화판이 45.8 짧아 같은 자리가 45.8 아래다. 가로는 3.16 옮긴다: v3는
+       폰 · 홈 윗선 · 느낌표가 한 줄로 서 있지만(폰 123.21 · 느낌표 122.96) 통째로 상자 가운데(126.37)보다 왼쪽이다 — 이 조합의 폰은
+       dock_1의 것(126.37)이라 느낌표를 같은 만큼 오른쪽으로 옮겨야 폰 한가운데에 선다(v2의 느낌표는 폰보다 2.1 왼쪽이라 어긋나 보였다).
+       폰 묶음 밖(클립 밖)에 서서 폰이 내려오는 동안 제자리에 있다가, 다 꽂히면 글줄과 자리를 바꿔 튕겨 오른다 */
     const bangSrc = new DOMParser().parseFromString(bangRaw, 'image/svg+xml').documentElement.querySelector('g > g')?.lastElementChild;
     const text = phone.querySelector('g[id^="message"]');
     if (bangSrc && text) {
       const bang = doc.importNode(bangSrc, true) as Element;
       bang.setAttribute('class', `cls-2-${key} ${bangCls}`);
-      bang.setAttribute('transform', 'translate(0 45.8)');
-      layer.append(bang);
+      // 옮김은 바깥 묶음이 든다 — 안쪽 느낌표는 CSS가 scale로 튕기는데, transform 속성이 있으면 CSS가 덮어써 제자리를 잃는다
+      const shift = doc.createElementNS(NS, 'g');
+      shift.setAttribute('transform', 'translate(3.16 45.8)');
+      shift.append(bang); layer.append(shift);
       text.setAttribute('class', textCls);
     }
+    /* 시간(초, 2026-10-07 — "좀 느리다, 느낌표는 띠용"). 처음 8.4초 한 바퀴를 5초로: 위에 0.5 · 내려옴 0.5 · 꽂힌 채 2.6 · 올라감 0.5 · 쉼 0.9.
+       느낌표는 꽂히자마자 0.4초 안에 튕긴다 — 0 → 1.6배 → 0.85 → 1.12 → 1(곡선은 토큰, 튕김은 키프레임 단계) */
+    const at = { head: 0.5, down: 0.5, stay: 2.6, up: 0.5, rest: 0.9 };
+    const total = at.head + at.down + at.stay + at.up + at.rest;
+    const pc = (sec: number) => r2((sec / total) * 100);
+    const t1 = at.head, t2 = t1 + at.down, t3 = t2 + at.stay, t4 = t3 + at.up;
+    const dur = `${r2(total)}s`;
+    const E = 'animation-timing-function:var(--ease-emphasized)', S = 'animation-timing-function:var(--ease-standard)';
     const style = doc.createElementNS(NS, 'style');
-    style.textContent = `.${cls}{animation:dkIn-${key} calc(var(--t-hold) * 12) infinite}` +
-      `@keyframes dkIn-${key}{0%,22%{transform:translateY(0);animation-timing-function:var(--ease-standard)}` +
-      `42%,72%{transform:translateY(57.29px);animation-timing-function:var(--ease-standard)}88%,100%{transform:translateY(0)}}` +
-      `.${bangCls}{opacity:0;animation:dkBang-${key} calc(var(--t-hold) * 12) linear infinite}` +
-      `.${textCls}{animation:dkText-${key} calc(var(--t-hold) * 12) linear infinite}` +
-      `@keyframes dkBang-${key}{0%,40%{opacity:0}46%,72%{opacity:1}78%,100%{opacity:0}}` +
-      `@keyframes dkText-${key}{0%,40%{opacity:1}46%,72%{opacity:0}78%,100%{opacity:1}}`;
+    style.textContent = `.${cls}{animation:dkIn-${key} ${dur} linear infinite}` +
+      `@keyframes dkIn-${key}{0%,${pc(t1)}%{transform:translateY(0);${E}}${pc(t2)}%,${pc(t3)}%{transform:translateY(57.29px);${S}}${pc(t4)}%,100%{transform:translateY(0)}}` +
+      `.${bangCls}{opacity:0;transform-box:view-box;transform-origin:122.96px 85.45px;animation:dkBang-${key} ${dur} linear infinite}` +
+      `.${textCls}{animation:dkText-${key} ${dur} linear infinite}` +
+      `@keyframes dkBang-${key}{0%,${pc(t2 + 0.04)}%{opacity:0;transform:scale(0);${E}}${pc(t2 + 0.14)}%{opacity:1;transform:scale(1.6);${S}}${pc(t2 + 0.24)}%{opacity:1;transform:scale(0.85);${S}}${pc(t2 + 0.32)}%{opacity:1;transform:scale(1.12);${S}}${pc(t2 + 0.4)}%,${pc(t3)}%{opacity:1;transform:scale(1)}${pc(t3 + 0.05)}%,100%{opacity:0;transform:scale(0)}}` +
+      `@keyframes dkText-${key}{0%,${pc(t2 - 0.1)}%{opacity:1}${pc(t2)}%,${pc(t3)}%{opacity:0}${pc(t3 + 0.1)}%,100%{opacity:1}}`;
     defs.append(style);
     /* 둘레에 여백을 둔 화판(2026-10-07, 사용자 — 도킹 화면에서 그림이 너무 컸다). 작가의 화판은 그림에 딱 붙어 있어
        다른 장의 삽화(그린 것이 화판의 절반쯤)보다 꽉 차 보였다. 그림은 그대로 두고 화판만 36씩 넓힌다 */

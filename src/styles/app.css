@@ -2126,7 +2126,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    --body-text로 올려 뒀었는데, 그러면 제목과 본문이 같은 세기로 읽힌다.
    기본 선언(.z-ask p · .guide-hero p)이 원래 --muted였다 — 거기로 돌린다.
    검은 바탕인 03·04는 뒤에서 흰색으로 덮는다(.tone-adjust …). */
-.z-ask p, .guide-hero p, .info-said p, .send-copy p{ color: var(--muted); }
+.z-ask p, .guide-hero p, .info-said p, .send-copy p{ color: var(--muted); text-wrap: pretty; }   /* 안내 문장 — 마지막 줄에 낱말 하나만 남지 않게(2026-10-07) */
 .dock-arrow{ color: var(--brand-main); }
 
 /* ─── 버튼은 전부 완전히 둥근 사각형 ─────────────────────────────

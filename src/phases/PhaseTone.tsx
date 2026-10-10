@@ -155,7 +155,7 @@ function Slider({ name, words, value, onChange }: {
     const [moving, setMoving] = useState(false);
     const live = useRef(value);
     live.current = value;
-    /* 칸 수는 말의 개수다 — 다섯(당당한의 세 칸 무게는 2026-10-06 둥켈로 되돌리며 말투 버튼 둘로 갈음했다) */
+    /* 칸 수는 말의 개수다 — 다섯(당당한도 2026-10-10부터 다섯 칸 무게) */
     const STOPS = words.length;
     const stopAt = (t: number) => Math.round(Math.min(1, Math.max(0, t)) * (STOPS - 1));
     const snap = (t: number) => stopAt(t) / (STOPS - 1);
@@ -305,10 +305,13 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
         const H = box.clientHeight;
         if (!fs || !W || !H) return;
         // 글자 크기 1px당 폭·높이 — 시연이 걸어 둔 배율(scale)은 offset 값에 안 들어간다.
-        // 속도 양 끝은 서체의 축(당당한의 폭 축)까지 바꾸므로 세 자리를 각각 잰다
-        const at = (fv: string) => { span.style.fontVariationSettings = fv; return { w: span.offsetWidth / fs, h: span.offsetHeight / fs }; };
-        const m0 = at(fvs(slow)), mm = at(fvs(mid)), m1 = at(fvs(fast));
-        span.style.fontVariationSettings = '';
+        // 속도 양 끝은 서체의 축과 자간(당당한의 진중한 +0.06em, 2026-10-10)까지 바꿀 수 있어 세 자리를 각각 잰다
+        const at = (f: typeof mid) => {
+            span.style.fontVariationSettings = fvs(f); span.style.letterSpacing = f.letterSpacing;
+            return { w: span.offsetWidth / fs, h: span.offsetHeight / fs };
+        };
+        const m0 = at(slow), mm = at(mid), m1 = at(fast);
+        span.style.fontVariationSettings = ''; span.style.letterSpacing = '';
         if (!mm.w || !mm.h) return;
         // 기울기는 배율보다 먼저 걸린다(app.css) — 기운 만큼 넓어진 폭에 가로 배율이 곱해진다
         const tan = Math.tan((fast.slant * Math.PI) / 180);
@@ -423,7 +426,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
         setCompare(c => !c);
     };
 
-    /* --optical-stroke: 무게 축이 없는 서체(당당한·다정한)에 획으로 대신
+    /* --optical-stroke: 무게 축이 없는 서체(다정한)에 획으로 대신
        답한다. 축이 있는 서체는 '0'이라 아무 일도 일어나지 않는다(palettes.ts). */
     const face = {
         fontFamily: fontMap[shown.font], fontWeight: form.weight,
@@ -459,9 +462,9 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
         않으므로 이 움직임이 참여자가 고른 값에 닿을 길이 없다. */}
     <div ref={figure} className="tone-figure" aria-hidden="true"
       style={{ fontFamily: fontMap[tone.font], letterSpacing: mid.letterSpacing,
-        '--sx0': slow.scaleX, '--sy0': slow.scaleY, '--fv0': fvs(slow),
-        '--sxm': mid.scaleX, '--sym': mid.scaleY, '--fvm': fvs(mid),
-        '--sx1': fast.scaleX, '--sy1': fast.scaleY, '--fv1': fvs(fast), '--sk1': `${-fast.slant}deg`,
+        '--sx0': slow.scaleX, '--sy0': slow.scaleY, '--fv0': fvs(slow), '--ls0': slow.letterSpacing,
+        '--sxm': mid.scaleX, '--sym': mid.scaleY, '--fvm': fvs(mid), '--lsm': mid.letterSpacing,
+        '--sx1': fast.scaleX, '--sy1': fast.scaleY, '--fv1': fvs(fast), '--ls1': fast.letterSpacing, '--sk1': `${-fast.slant}deg`,
         ...(fig ? { '--fig': `${fig.toFixed(1)}px` } : null) } as CSSProperties}>
      <span ref={figText} className="tone-figure-text">{lines.join('\n')}</span>
     </div>
@@ -522,7 +525,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
        높이가 같아서 도구를 옮겨도 화면이 흔들리지 않는다. */}
    {/* ── 편집 패널 ─────────────────────────────────────────────────
        막대 셋을 한꺼번에 세운다(2026-09-25, 배치 A). 크기 · 속도, 그리고 무게
-       (차분한·다정한) 또는 말투 스위치(당당한·유머있는). 도구를 골라 하나씩
+       (2026-10-10부터 넷 다 — 말투 스위치는 MANNER에 든 서체가 생기면 다시 선다). 도구를 골라 하나씩
        만지던 탭은 걷었다. 작은 화면(320)에서는 이 판이 줄지 않고 위의 견본
        칸이 줄어든다(견본 칸은 남는 자리를 받는다). */}
    <div className="tone-panel">

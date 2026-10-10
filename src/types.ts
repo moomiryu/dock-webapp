@@ -3,7 +3,7 @@
 //   doran    다정한    (Mapo Dacapo)
 //   chabun   차분한    (source-han-serif-kr-variable)
 //   botong   보통      (없어진 칸 — 옛 문서용)
-//   ttoryeot 당당한    (sandoll-achim 500 — 2026-10-01까지 dunkel-sans-variable)
+//   ttoryeot 당당한    (29CM Editorial VF — 2026-10-10. 그전 둥켈 · 아침 · 이사만루 · 김정철 고딕)
 //   deulseok 유머있는  (Handjet)
 // Older Firestore docs may still carry legacy keys (mono/gothic/myeongjo/song);
 // fontMap keeps those for back-compat rendering.

@@ -145,7 +145,7 @@ export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Prop
                 버튼 이름(aria-label)으로 읽으므로 글자는 가린다.
 
                 모양은 **3/5의 기본형** 그대로다(2026-09-25) — 막대 셋이 가운데
-                ('보통'), 말투는 첫째 칸. 당당한은 폭 700 · 세로 75%, 유머있는은
+                ('보통'), 말투는 첫째 칸. 당당한은 무게 가운데(29CM, 2026-10-10 — 그전 둥켈 폭 700 · 세로 75%), 유머있는은
                 굵기 840, 차분한은 무게 620 · 자간 −25(2026-10-04, 그전 445), 다정한은 획 0.46pt(2026-10-04, 그전 0.1pt). 여기서
                 고르고 3/5로 넘어가도 글자 모양이 바뀌지 않는다. */}
             <span className="style-card-name" aria-hidden style={faceOf(s.val)}>
@@ -174,7 +174,7 @@ export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Prop
           onClick={() => {
             if (!font) return;
             /* 성격이 바뀌면 말투는 그 성격의 앞 칸에서 시작한다(palettes.ts · mannerDefault). 말투가 없는 성격(무게를
-               묻는 성격)은 말투를 비워 둔다. 당당한은 10-04 ~ 10-06에 무게를 묻다가 둥켈로 되돌리며 다시 말투를 묻는다.
+               묻는 성격)은 말투를 비워 둔다. 당당한은 10-06 ~ 10-10에만 말투를 물었고 29CM으로 갈리며 다시 무게를 묻는다.
                같은 성격으로 돌아온 길이면 고른 말투를 그대로 둔다 */
             const base = initialTone ?? DEFAULT_TONE;
             const keep = initialTone?.font === font && base.manner !== undefined;

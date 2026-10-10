@@ -106,7 +106,7 @@ export interface Persona {
   };
   /** 줄 높이(글자 크기의 배수). 없으면 LINE_HEIGHT(1.5). 글에 바짝 붙는 형상(나무)이 좁힌다 */
   lh?: number;
-  /** 당당한 — 사진 나무(treeFor · treePhoto.data.ts, 2026-09-30). 말투가 종을 고른다: 예리한 = 소나무, 온화한 = 버드나무.
+  /** 당당한 — 사진 나무(treeFor · treePhoto.data.ts, 2026-09-30). 무게가 종을 고른다: 보통까지 = 버드나무, 무거운 둘 = 소나무(2026-10-10).
       값의 근거는 design/landscape.md '나무' */
   tree?: {
     /** 사선 배열(R24) — 글자 자리가 그리는 사선의 각도(도, 시계 방향. 글자는 돌리지 않는다) · 다음 줄 머리까지의
@@ -333,9 +333,11 @@ export function personaFor(font?: string): Persona {
    2026-10-01 당당한이 아침 Medium으로 갈렸다. 같은 방법(100px, 글자를 먼저 올리고 기다림)으로 쟀다 —
    한글 고정폭 0.92 · 띄어쓰기 0.30. 둥켈을 함께 재서 0.678 · 0.116이 그대로 나와 방법을 확인했다.
    아침에는 폭 축이 없어 아래 TTORYEOT_WIDE와 advanceFor의 보간은 쓰이지 않았다(wdth가 안 온다).
-   2026-10-06: 당당한을 둥켈산스로 되돌려(디자이너) 둥켈 값(폭 700에서 0.678 · 0.116)과 폭 축 보간이 다시 쓰인다. */
+   2026-10-06: 당당한을 둥켈산스로 되돌려(디자이너) 둥켈 값(폭 700에서 0.678 · 0.116)과 폭 축 보간이 다시 쓰인다.
+   2026-10-10: 당당한이 29CM Editorial로 갈렸다. 우리 파일이라 hmtx를 직접 읽었다 — 한글 고정폭 0.865 · 띄어쓰기 0.20,
+   굵기 300 · 550 · 800 모두 같다. 폭 축이 없어 TTORYEOT_WIDE와 보간은 다시 쓰이지 않는다. */
 const ADVANCE: Record<string, { hangul: number; space: number }> = {
-  ttoryeot: { hangul: 0.678, space: 0.116 },  // 둥켈산스 폭 700(10-06 되돌림 — 그사이 김정철 고딕 0.90 · 0.29, 이사만루 0.92 · 0.25)
+  ttoryeot: { hangul: 0.865, space: 0.20 },   // 29CM Editorial(10-10 — 그전 둥켈 폭 700 0.678 · 0.116, 김정철 고딕 0.90 · 0.29)
   chabun: { hangul: 0.97, space: 0.31 },
   doran: { hangul: 1, space: 0.35 },
   deulseok: { hangul: 0.79, space: 0.177 },
@@ -563,7 +565,7 @@ interface Options {
   track?: number;
   /** 3/5 말투 — 나무가 머리를 고른다(1 = 예리한 · 0 = 온화한, palettes.ts의 MANNER와 같은 차례) */
   manner?: number;
-  /** 3/5 무게 막대 자리(0~1) — 2026-10-04부터 당당한은 말투 대신 무게가 나무를 고른다(treeFor) */
+  /** 3/5 무게 막대 자리(0~1) — 당당한은 무게가 나무를 고른다(treeFor. 10-04 ~ 10-06 · 10-10부터) */
   weightPos?: number;
   /** 나무를 하나로 정한다(TREE_PHOTOS의 id) — 벽의 마네킹 나무가 셋 다 다른 나무로 서게(2026-10-04, 디자이너). 없거나 모르는 id면 종에서 고른다 */
   tree?: string;
@@ -1284,8 +1286,8 @@ function pointOnRun(run: readonly Pt[], s: number): [number, number, number] {
 }
 
 // ─── 당당한 — 사진 나무 (2026-09-30) ────────────────────────────────
-// 사진(위키미디어 CC0)에서 뗀 한 그루 13장(design/tree-photo, 재는 판은 treePhoto.data.ts) 가운데서 고른다. 말투가 종을
-// 고른다 — 예리한 = 소나무, 온화한 = 버드나무. 고른 과정과 버린 것은 design/landscape.md '나무'. 값은 PERSONAS.ttoryeot.tree.
+// 사진(위키미디어 CC0)에서 뗀 한 그루 13장(design/tree-photo, 재는 판은 treePhoto.data.ts) 가운데서 고른다. 무게가 종을
+// 고른다 — 보통까지 = 버드나무, 무거운 둘 = 소나무(2026-10-10. 말투가 남은 옛 글은 말투로). 고른 과정과 버린 것은 design/landscape.md '나무'. 값은 PERSONAS.ttoryeot.tree.
 
 type Rect4 = readonly [number, number, number, number];
 /** 나무 한 장의 칸 격자 — 칠 밖 · 그늘의 누적합(칸 네모 안에 몇 칸인가를 한 번에 센다), 수관 가운데(칸).
@@ -1484,9 +1486,9 @@ function treeFor(pr: Persona, rule: 'B' | 'C', lines: readonly string[], font: s
   const flip = R() < t.flip;
   const fb = [Math.min(...foot.map((r) => r[0])), Math.min(...foot.map((r) => r[1])), Math.max(...foot.map((r) => r[2])), Math.max(...foot.map((r) => r[3]))];
   const widths = treeWidths((fb[2] - fb[0]) / Math.max(0.01, fb[3] - fb[1]), t.stretch);
-  // 종 — 말투가 고른다(1 = 예리한 = 소나무 · 0 = 온화한 = 버드나무). 2026-10-04 ~ 10-06엔 당당한이 말투 대신 무게를 물었고
-  // 그때 쓴 글(말투가 빈 글)은 무게가 고른다: 가볍게 = 버드나무 · 그 밖 = 소나무. 10-06 둥켈로 되돌리며 말투가 돌아왔다(디자이너)
-  const sp = typeof o.manner === 'number' ? (o.manner === 1 ? 'pine' : 'willow') : (o.weightPos ?? 0.5) < 0.25 ? 'willow' : 'pine';
+  // 종 — 무게가 고른다(2026-10-10, 디자이너): 매우 가볍게 · 가볍게 · 보통 = 버드나무, 무겁게 · 매우 무겁게 = 소나무.
+  // 말투가 남은 옛 글(10-06 ~ 10-10, 둥켈)은 말투로 고른다(1 = 예리한 = 소나무 · 0 = 온화한 = 버드나무) — 벽에 떠 있는 나무가 안 바뀐다
+  const sp = typeof o.manner === 'number' ? (o.manner === 1 ? 'pine' : 'willow') : (o.weightPos ?? 0.5) <= 0.5 ? 'willow' : 'pine';
   const one = o.tree ? TREE_PHOTOS.filter((s) => s.id === o.tree) : [];
   const kin = one.length ? one : TREE_PHOTOS.filter((s) => s.species === sp);
   // 글에 맞춤(hug) — 크기 막대는 글자만 정하고, 나무는 글이 겨우 드는 가장 작은 키 × hug(구름처럼 글이 틀을 정한다). 비교 중

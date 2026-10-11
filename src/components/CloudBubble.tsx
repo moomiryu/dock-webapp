@@ -46,10 +46,7 @@ import { tokenS } from '../lib/motion';
  * 꼬리가 물결치며 흐르던 움직임은 껐고(뱀의 몸짓이었다), 혹이 뿌리에서 끝으로 차례로 부풀고 조각이 끝 너머로 떠났다 돌아온다.
  * 09-28의 구슬 구름(한 크기 구슬 · 곁의 작은 구름)은 걷었다.
  *
- * ── 새 · 박쥐 (유머있는, 2026-09-29) ───────────────────────────────────
- * 말투가 가른다(cloud.ts · creatureFor) — 귀여운은 새(원 둘 · 부리 세모 · 꼬리 띠), 시니컬한은 박쥐(윤곽 하나).
- * 도형을 그대로 겹쳐 한 색으로 칠한다 — 번지지도 숨 쉬지도 않는다. pose로 자세를 고른다: 안 주면 폰의 자세(rest),
- * 벽은 sit · fly를 줄 수 있다(없는 자세면 rest). 박쥐의 매달림은 형상만 뒤집혀 있고 글은 바로 선다.
+ * 유머있는(비눗방울)은 여기서 그리지 않는다 — RainPreview · WallRain. 그전의 새 · 박쥐 · 사진 새는 2026-10-11에 걷었다.
  */
 const K = 100;
 /** 픽셀 구름을 다시 찍는 간격. 12fps면 계단이 옮겨 가는 것이 보이되 파이에 짐이 안 된다 */
@@ -70,8 +67,6 @@ interface Props {
   still?: boolean;
   className?: string;
   style?: CSSProperties;
-  /** 새 · 박쥐의 자세 — 안 주면 폰의 자세(rest). 벽이 앉음(sit, 새만) · 날기(fly)를 고른다 */
-  pose?: 'rest' | 'sit' | 'fly';
   /** 글을 상자 한가운데로 — 띠 구름을 통째로 옮겨 글의 가운데를 상자의 가운데에 맞춘다(폰 미리보기 4/5 · 5/5).
       구름의 실루엣과 별개로 글이 딱 중앙에 있게(2026-09-30, 디자이너). 띠 구름만 — 나무는 글이 머리에 서는 것이 모양의 뜻이다 */
   centerText?: boolean;
@@ -144,7 +139,7 @@ function prefersStill(): boolean {
   return typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-export default function CloudBubble({ cloud, box, side, color, still, className, style, pose, centerText, floor, children }: Props) {
+export default function CloudBubble({ cloud, box, side, color, still, className, style, centerText, floor, children }: Props) {
   const filterId = 'cloud' + useId().replace(/[^a-zA-Z0-9]/g, '');
   const quiet = still || prefersStill();
   const W = cloud.w * K, H = cloud.h * K;
@@ -167,7 +162,7 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
   }, [cloud, quiet]);
 
   const art = useMemo(() => {
-    if (pr.edge === 'pixel' || cloud.stone || cloud.tree || cloud.photo || cloud.creature || cloud.bird) return null;
+    if (pr.edge === 'pixel' || cloud.stone || cloud.tree || cloud.photo) return null;
     return (
       <>
         {cloud.circles.map((c, i) => (
@@ -227,14 +222,6 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [photo, motion, quiet, cloud.w, cloud.text.w, cloud.text.h]);
-  const creature = cloud.creature, shape = creature ? (pose && creature.poses[pose]) || creature.poses.rest : null;
-  // 사진 새 — 앉은 윤곽 하나를 한 색으로. 글은 새 윤곽으로 잘린다(글만 1.65배라 새 밖으로 넘친다): 글 상자에 대한 % 다각형 —
-  // SVG 참조(url(#…))는 아이폰 사파리에서 HTML에 안 먹을 수 있어 어디서나 되는 polygon()으로
-  const bird = cloud.bird;
-  const birdD = useMemo(() => (bird ? 'M' + bird.pts.map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join('L') + 'Z' : ''), [bird]);
-  const birdClip = useMemo(() => (bird
-    ? `polygon(${bird.pts.map((p) => `${(((p[0] - t.x) / t.w) * 100).toFixed(2)}% ${(((p[1] - t.y) / t.h) * 100).toFixed(2)}%`).join(',')})`
-    : undefined), [bird, t.x, t.y, t.w, t.h]);
   // 나무 · 구슬 구름은 글 배치를 형상이 정한다(cloud.ts의 layout — 다시 나눈 줄 · 줄마다 자간 · 한 자씩의 자리).
   // 줄 맞춤은 가운데 — 나무 · 뭉게구름은 가운데 맞춘 줄을 품게 지었다
   const lay = cloud.layout;
@@ -280,13 +267,6 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
           </>
         ) : photo ? (
           cloudArt ? null : <path ref={photoRef} d={photoD} fill={color} />
-        ) : bird ? (
-          <path className="bird-art" d={birdD} fill={color} />
-        ) : shape ? (
-          <g fill={color}>
-            {shape.polys.map((P, i) => <path key={'p' + i} d={'M' + P.map((p) => `${(p[0] * K).toFixed(1)},${(p[1] * K).toFixed(1)}`).join('L') + 'Z'} />)}
-            {shape.discs.map((d, i) => <circle key={'d' + i} cx={(d.cx * K).toFixed(1)} cy={(d.cy * K).toFixed(1)} r={(d.r * K).toFixed(1)} />)}
-          </g>
         ) : (
           <>
             <defs>
@@ -309,8 +289,7 @@ export default function CloudBubble({ cloud, box, side, color, still, className,
         left: `${((t.x / cloud.w) * 100).toFixed(3)}%`, top: `${((t.y / cloud.h) * 100).toFixed(3)}%`,
         width: `${((t.w / cloud.w) * 100).toFixed(3)}%`, height: `${((t.h / cloud.h) * 100).toFixed(3)}%`,
         // 걸기 — 글 상자를 제 가운데로 돌려 곧은 윗변과 나란히 둔다(cloud.ts stoneFor)
-        ...(lay?.rotate ? { transform: `rotate(${lay.rotate.toFixed(4)}rad)` } : {}),
-        ...(birdClip ? { clipPath: birdClip, WebkitClipPath: birdClip } : {})
+        ...(lay?.rotate ? { transform: `rotate(${lay.rotate.toFixed(4)}rad)` } : {})
       }}>{kids}</div>
     </div>
   );

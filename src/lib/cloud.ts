@@ -4,7 +4,6 @@ import type { Align } from '../types';
 import { CLOUD_PHOTOS, type PhotoShape } from './cloudPhoto.data';
 import { TREE_PHOTOS, type TreeShape } from './treePhoto.data';
 import { STONE_PHOTOS, type StoneShape } from './stonePhoto.data';
-import { birdFor, type BirdBuilt, type BirdOptions } from './birdPhoto';
 import { rng } from './hatch';
 
 /**
@@ -53,7 +52,7 @@ export const LAMBDA = 8;
 /** 조각이 옮겨 다니는 거리 (u). 조각만 자리를 옮긴다 */
 export const DRIFT = 0.6;
 
-export type Edge = 'spike' | 'smooth' | 'cumulus' | 'pixel' | 'stone' | 'tree' | 'photo' | 'creature';
+export type Edge = 'spike' | 'smooth' | 'cumulus' | 'pixel' | 'stone' | 'tree' | 'photo' | 'rain';
 
 export interface Persona {
   key: string;
@@ -182,44 +181,6 @@ export interface Persona {
     /** 빗금 결(2026-10-04, CloudArt) — 있으면 칠 위에 밑 띠의 그늘을 ／ 빗금으로. 지우면 한 색 구름(SVG)으로 돌아간다 */
     tex?: CloudTex;
   };
-  /** 유머있는 — 사진에서 딴 새(2026-10-01, birdPhoto.ts): 귀여운 = 배가 둥근 작은 새, 시니컬한 = 까마귀. 있으면 아래 기하
-      새 · 박쥐(creature) 대신 쓴다 — 지우면 기하가 되살아난다. 값의 근거는 birdPhoto.ts · design/landscape.md '새' */
-  bird?: BirdOptions;
-  /** 유머있는(옛) — 말투가 형상을 가른다: 귀여운 = 새, 시니컬한 = 박쥐(creatureFor). 기하 도형만(원 · 세모 · 띠 · 원호).
-      몸은 글을 따르고, 붙는 것(꼬리 · 귀 · 날개)은 길이가 정해져 있다. 값의 근거는 design/landscape.md '새' · '박쥐' */
-  creature?: {
-    bird: {
-      /** 몸 = 글 + 여백 네모의 네 모서리를 지나는 원 × grow */
-      grow: number;
-      /** 머리 원 — 반지름(몸 R의 배수) · 자리(도, 화면 각도라 −가 위) · 몸 밖으로 나온 몫(머리 반지름의 배수) */
-      head: { r: number; at: number; out: number };
-      /** 부리 세모 — 길이 · 밑변 반(머리 반지름의 배수) */
-      beak: { len: number; half: number };
-      /** 꼬리 — 길이 · 반폭(u, 고정 — 몸 쪽 뿌리 · 끝: 몸 쪽으로 갈수록 좁아지는 사다리꼴) · 몸에서 나오는 자리(R의 배수) ·
-          방향(from = 나오는 각, to = 뻗는 각): 글이 고르는 둘(뒤로 조금 위 · 아래로 늘어뜨림)과 날 때(곧게 뒤로) */
-      tail: { len: number; half: { root: number; tip: number }; root: number; up: { from: number; to: number }; down: { from: number; to: number }; fly: { from: number; to: number } };
-      /** 날개(벽, 날 때) — 부채(원의 조각): 뿌리(R 배수 · 각) · 반지름(R 배수) · 가운데 각 · 벌어짐(도) */
-      wing: { root: number; at: number; r: number; dir: number; span: number };
-    };
-    bat: {
-      /** 귀 — 높이(u) · 안쪽 밑 · 바깥 밑 · 끝의 가로 자리(높이의 배수, 가운데에서) */
-      ear: { h: number; in: number; out: number; tip: number };
-      /** 아래 끝 · 날개 폭 · 날개 들림의 단위 · 윗변이 글 + 여백 위로 뜨는 거리 · 옆선이 글 + 여백 밖으로 나가는 거리 ·
-          옆선의 끝이 글 + 여백 아래로 내려가는 거리 (모두 u, 고정) */
-      foot: number; span: number; unit: number; top: number; side: number; hip: number;
-      /** 날개가 내려오는 높이 — 두 줄 견본의 날개 높이(u). 여기에 들림 × unit을 더한다. 그 아래는 옆선이 곧다 */
-      reach: number;
-      /** 아랫변 파임 — 현 길이에 대한 부풂 */
-      sag: number;
-      /** 자세 — 들림(unit 배수, −는 처짐) · 파임 수 · 손가락 끝이 처지는 정도(unit 배수). 매달림은 이것을 뒤집는다 */
-      fly: { lift: number; n: number; drop: number };
-      hang: { lift: number; n: number; drop: number };
-      /** 벽 — 매달린 채의 몸짓(2026-09-29): 날개를 조금 들었다 내림(움찔) · 넓게 폈다 접음(span = 날개 폭의 배수).
-          매달림과 n이 같아야 한다 — 벽이 두 윤곽 사이의 점을 옮겨 움직인다 */
-      twitch: { lift: number; n: number; drop: number };
-      stretch: { lift: number; n: number; drop: number; span: number };
-    };
-  };
 }
 
 /**
@@ -287,22 +248,9 @@ export const PERSONAS: Record<string, Persona> = {
       tex: { q: 0.35, blur: 3.75 / 401.76, edge: 0.05, edgeGrain: 1.2 / 401.76, drop: 0.0225, light: [0.6, -0.8], band: [0.45, 0.5], bandBlur: 2 / 401.76,
         hatch: { period: 5 / 401.76, gap: 3.3 / 401.76, ink: 1.6, wob: [0.7 / 401.76, 0.2 / 401.76, 0.1], grain: [6 / 401.76, 0.7 / 401.76, 4 / 401.76] },
         fade: [0.5, 1.3], bare: 0.0275 } } },
-  // 사진 새 (2026-10-01). 귀여운 = 배가 둥근 작은 새 9, 시니컬한 = 까마귀 12 — 글만 1.65배로 넘치고 새 윤곽으로 잘린다(격자
-  // landscape-bird-photo-clip-*.png). 후보는 벽 글자가 가장 큰 새의 70% 안(near), 상한은 구름과 같은 18u. 아래 creature는 옛 기하 새.
-  // 새 · 박쥐 (2026-09-29). 픽셀 구름 → 나비(시안) → 말투가 가른다: 귀여운 = 새, 시니컬한 = 박쥐. 기하 도형만.
-  // 원을 부풀리지 않아 lobe · fill · gap · spread · cell은 쓰이지 않는다(cell은 옛 픽셀 구름의 격자 — 그리는 코드가 남아 있다).
-  // 새: 몸 원 · 머리 0.55R · 꼬리 4u(글이 두 방향 중 하나). 박쥐: 한 몸, 귀 · 아래 끝 · 날개는 두 줄 견본에서 잰 길이 그대로.
-  // 고른 과정과 200개로 잰 것은 design/landscape.md '새' · '박쥐'.
-  deulseok: { key: 'deulseok', edge: 'creature', lobe: [1.1, 1.6], fill: [0.55, 0.75], gap: 1.7, spread: [0, 0.8], sat: 0, blur: 0, cell: 0.5,
-    bird: { text: 1.65, cap: 18, near: 0.7 },
-    creature: {
-      bird: { grow: 1.02, head: { r: 0.55, at: -38, out: 0.5 }, beak: { len: 0.34, half: 0.2 },
-        tail: { len: 4, half: { root: 0.18, tip: 0.5 }, root: 0.78, up: { from: 200, to: 195 }, down: { from: 165, to: 150 }, fly: { from: 185, to: 185 } },
-        wing: { root: 0.3, at: 250, r: 1.3, dir: 232, span: 58 } },
-      bat: { ear: { h: 2.1, in: 0.12, out: 0.85, tip: 0.93 }, foot: 1.9, span: 3.4, unit: 2.1, top: 0.63, side: 0.15, hip: 0.5,
-        reach: 5.32, sag: 0.22, fly: { lift: 0.7, n: 3, drop: 0.7 }, hang: { lift: -0.3, n: 2, drop: 0.9 },
-        // 매달린 채의 몸짓 — 움직이는 견본에서 고른 값(2026-09-29, 디자이너 — "모두 반영")
-        twitch: { lift: 0.05, n: 2, drop: 0.6 }, stretch: { lift: 1.1, n: 2, drop: 0.5, span: 1.6 } } } }
+  // 유머있는 = 비눗방울(2026-10-06) — 벽은 WallRain, 폰 4/5 · 5/5는 RainPreview가 그린다. 이 성격의 구름은 그려지지 않는다(혹시 불리면
+  // 아래 값의 원 구름이 된다). 그전의 새 · 박쥐(09-29, 기하) · 사진 새 · 까마귀(10-01)는 10-11에 걷었다 — git 기록과 design/landscape.md '새'.
+  deulseok: { key: 'deulseok', edge: 'rain', lobe: [1.1, 1.6], fill: [0.55, 0.75], gap: 1.7, spread: [0, 0.8], sat: 0, blur: 0, cell: 0.5 }
 };
 
 /** 성격 → 구름. 옛 Firestore 문서의 서체 키는 fontMap과 같은 칸으로 보낸다 */
@@ -431,8 +379,6 @@ export interface Tree {
   shrink: number;
   /** 글자가 차지하는 네모들(u) — 그 밑의 빗금을 걷고 바람을 멈춘다 */
   zones: readonly (readonly [number, number, number, number])[];
-  /** 새가 앉는 끝(u) — 꼭대기 · 수관 양쪽의 높은 윗선 */
-  perch: readonly Pt[];
   /** 좌우를 뒤집었나 · 옆으로 늘인 배수 — 그리는 판도 이대로(TreeArt) */
   flip: boolean;
   sx: number;
@@ -457,24 +403,6 @@ export interface Photo {
   x0: number; x1: number;
   /** 빗금 결(CloudArt)이 쓰는 글자 — 한 em(u) · 획의 평균 굵기(u, 빗금 틈이 이를 넘지 않게) */
   ink?: { em: number; ink: number };
-}
-
-/** 유머있는의 새 · 박쥐 한 자세 — 원과 다각형. 원점 = 구름 상자 왼쪽 위, u 단위 */
-export interface CreaturePose { discs: { cx: number; cy: number; r: number }[]; polys: Pt[][] }
-/**
- * 유머있는의 새(귀여운) · 박쥐(시니컬한). 자세마다 한 벌 — rest는 폰(4/5 · 5/5)의 자세이고 상자(w · h)는 이것으로 잰다:
- * 새는 앉되 원을 자르지 않고, 박쥐는 거꾸로 매달린다(형상만 뒤집고 글은 바로 선다). sit · fly는 벽이 고르는 자세 —
- * 새는 앉음(원을 자르지 않는다 — 폰의 자세와 같다, 2026-09-29) · 날기(부채 날개, 꼬리를 곧게), 박쥐는 날기(펼침). 상자 밖으로 나갈 수 있다
- */
-/**
- * 유머있는의 사진 새(2026-10-01, birdPhoto.ts). pts = 앉은 윤곽(폰 4/5 · 5/5, 벽에 앉았을 때) — 상자(w · h)는 이것으로 잰다.
- * fly = 날갯짓 세 장면(올림 · 수평 · 내림, 벽이 날 때 --t-hold에 한 번). 원점 = 구름 상자 왼쪽 위, u. 글은 새 윤곽으로 잘린다
- * (CloudBubble). face = 머리가 오른쪽이면 1. scale = 글자 칸 배수(1.65) — cloudShape가 넘긴다
- */
-export type Bird = Pick<BirdBuilt, 'id' | 'kind' | 'face' | 'pts' | 'fly' | 'scale'>;
-export interface Creature {
-  kind: 'bird' | 'bat';
-  poses: { rest: CreaturePose; fly: CreaturePose; sit?: CreaturePose; twitch?: CreaturePose; stretch?: CreaturePose };
 }
 
 /** 휜 배치의 글자 한 자 — 글 상자 왼쪽 위에서 가운데까지(em), 기울기(rad) */
@@ -507,10 +435,6 @@ export interface Cloud {
   tree?: Tree;
   /** 다정한의 띠 구름. 있으면 circles · spikes는 비어 있다 */
   photo?: Photo;
-  /** 유머있는의 사진 새. 있으면 circles · spikes는 비어 있다 */
-  bird?: Bird;
-  /** 유머있는의 옛 기하 새 · 박쥐. 있으면 circles · spikes는 비어 있다 */
-  creature?: Creature;
   /** 형상이 정한 글 배치. 없으면 들어온 줄 그대로 */
   layout?: TextLayout;
   /** 구름 상자 (u) */
@@ -680,14 +604,6 @@ export function cloudFor(lines: readonly string[], font: string | undefined, o: 
     }
     return photoFor(pr, rule, { x0: 0, y0: 0, x1: TW, y1: TH }, charCenters(lines, font, optic, scaleX, o.wdth, o.track ?? 0, TW, LH), R, undefined, ink);
   }
-  // 말투가 없는 옛 글은 귀여운(새)이다 — 0이 귀여운, 1이 시니컬한(palettes.ts의 MANNER 차례)
-  if (pr.edge === 'creature' && pr.bird) {
-    const b = birdFor(o.manner === 1 ? 1 : 0, TW, TH, PAD, R, pr.bird);
-    if (b) return { persona: pr, rule, circles: [], spikes: [], bird: { id: b.id, kind: b.kind, face: b.face, pts: b.pts, fly: b.fly, scale: b.scale },
-      w: b.w, h: b.h, text: b.text };
-  }
-  if (pr.edge === 'creature' && pr.creature) return creatureFor(pr, rule, TW, TH, R, o.manner === 1 ? 'bat' : 'bird');
-
   const circles: Circle[] = [];
   const put = (x: number, y: number, r: number, kind: Circle['kind']) =>
     circles.push({ x, y, r, kind, p1: 0, p2: R(), sx: R() > 0.5 ? 1 : -1, sy: R() > 0.5 ? 1 : -1, p3: R(), p4: R() });
@@ -1511,7 +1427,7 @@ function treeFor(pr: Persona, rule: 'B' | 'C', lines: readonly string[], font: s
   const G = treeGrid(s, flip, sx);
   const at = treePlace(G, H0, g, foot, true) ?? { X: 0, Y: 0, c: (H0 * g) / G.H, fx: 0, fy: 0 };
   const c = at.c, dx = at.X * c - at.fx, dy = at.Y * c - at.fy;   // 글 좌표 → 나무 좌표(u, 나무 왼쪽 위)
-  const W = G.W * c, kx = W / s.gw;                    // kx = 받은 격자 한 칸이 몇 u인가(가로)
+  const W = G.W * c;
   // 줄기만 늘이기 — 줄기의 from~to 구간(위는 가지 끄트머리, 밑은 뿌리 쪽이라 뺀다)을 k배. 나무 전체 키 full
   const base = G.H * c, tk = t.trunk, y0 = (s.trunk + tk.from * (G.H - s.trunk)) * c, y1 = (s.trunk + tk.to * (G.H - s.trunk)) * c;
   // 더 키울 길이(u) — 상한까지 남은 틈 안에서 뽑는다. 늘인 뒤 상한에서 자르면 보통 크기 나무의 60% 넘게가 꼭 상한 높이에
@@ -1546,8 +1462,7 @@ function treeFor(pr: Persona, rule: 'B' | 'C', lines: readonly string[], font: s
     tree: {
       id: s.id, species: s.species, img: s.img, full, base, trunk: { y0, y1, k: kT }, tall: full * unitK * shrink, shrink, flip, sx: W / (s.gw * c),
       ...(s.drape ? { drape: { seed: Math.floor(R() * 2 ** 31), L: t.drape } } : {}),
-      zones: zones.map((r): Rect4 => [r[0] + dx, r[1] + dy, r[2] + dx, r[3] + dy]),
-      perch: s.perch.map(([px, py]): Pt => [(flip ? s.gw - px : px) * kx, py * c])
+      zones: zones.map((r): Rect4 => [r[0] + dx, r[1] + dy, r[2] + dx, r[3] + dy])
     },
     w: W, h,
     text: { x: tb.x0, y: tb.y0, w: tb.x1 - tb.x0, h: tb.y1 - tb.y0 },
@@ -1881,129 +1796,11 @@ export function photoWave(photo: Photo, w: number, m: PhotoMotion, phase: number
   };
 }
 
-// ─── 유머있는 — 새 · 박쥐 (2026-09-29) ─────────────────────────────────
-// 말투가 가른다: 귀여운 = 새, 시니컬한 = 박쥐. 기하 도형만이고 곡선을 다듬지 않는다. 몸은 글을 따르고, 붙는 것
-// (꼬리 · 귀 · 날개)은 길이가 정해져 있다. 고른 과정과 200개로 잰 것은 design/landscape.md '새' · '박쥐'.
-// 값은 PERSONAS.deulseok.creature. 두 형상 모두 글 + 여백 네모를 품는 것이 구조로 보장된다 — 새의 몸은 네모의 네
-// 모서리를 지나는 원, 박쥐의 윤곽은 네모 바깥으로만 지나간다(파인 아랫변은 날개 높이만큼만 내려온다).
-
-const DEG = Math.PI / 180;
-
-/** A에서 B까지의 원호(A는 빼고 B까지) — toward 쪽으로 현 길이 × sag만큼 부푼다. 박쥐 날개의 파인 아랫변 */
-function scallopArc(A: Pt, B: Pt, toward: Pt, sag: number, n = 24): Pt[] {
-  const c = Math.hypot(B[0] - A[0], B[1] - A[1]), s = sag * c, mx = (A[0] + B[0]) / 2, my = (A[1] + B[1]) / 2;
-  if (c < 1e-6) return [B];
-  let nx = -(B[1] - A[1]) / c, ny = (B[0] - A[0]) / c;
-  if (nx * (toward[0] - mx) + ny * (toward[1] - my) < 0) { nx = -nx; ny = -ny; }
-  const r = (c * c / 4 + s * s) / (2 * s), ox = mx - nx * (r - s), oy = my - ny * (r - s);
-  const a0 = Math.atan2(A[1] - oy, A[0] - ox), a1 = Math.atan2(B[1] - oy, B[0] - ox), am = Math.atan2(my + ny * s - oy, mx + nx * s - ox);
-  const norm = (x: number) => ((x % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-  // a0에서 a1로 가되 부푼 점(am)을 지나는 쪽으로
-  let d = norm(a1 - a0);
-  if (norm(am - a0) > d) d -= 2 * Math.PI;
-  return Array.from({ length: n }, (_, i): Pt => { const t = a0 + (d * (i + 1)) / n; return [ox + r * Math.cos(t), oy + r * Math.sin(t)]; });
-}
-
-/**
- * 점 줄(P)의 끝 호(마지막 n점)를 뒤 40%에서 곡선으로 바꿔, 끝점에 이어질 선(끝점 → next)과 같은 방향으로 들어가게 한다.
- * 곡선은 호의 그 자리 방향으로 떠나 끝점에 닿는 3차 베지어다 — 점 수는 그대로(바뀌는 모양끼리 점을 옮겨 움직일 수 있게)
- */
-function smoothInto(P: Pt[], n: number, next: Pt): Pt[] {
-  const s0 = P.length - n, j = s0 + Math.floor(n * 0.6), A = P[j], B = P[P.length - 1];
-  const tx = P[j + 1][0] - P[j - 1][0], ty = P[j + 1][1] - P[j - 1][1], tl = Math.hypot(tx, ty) || 1;
-  const nx = next[0] - B[0], ny = next[1] - B[1], nl = Math.hypot(nx, ny) || 1;
-  const L = Math.hypot(B[0] - A[0], B[1] - A[1]) * 0.45;
-  const C1: Pt = [A[0] + (tx / tl) * L, A[1] + (ty / tl) * L], C2: Pt = [B[0] - (nx / nl) * L, B[1] - (ny / nl) * L];
-  const m = P.length - 1 - j;
-  const bez = (u: number): Pt => { const v = 1 - u;
-    return [v * v * v * A[0] + 3 * v * v * u * C1[0] + 3 * v * u * u * C2[0] + u * u * u * B[0], v * v * v * A[1] + 3 * v * v * u * C1[1] + 3 * v * u * u * C2[1] + u * u * u * B[1]]; };
-  return [...P.slice(0, j + 1), ...Array.from({ length: m }, (_, i) => bez((i + 1) / m))];
-}
-
-function creatureFor(pr: Persona, rule: 'B' | 'C', TW: number, TH: number, R: () => number, kind: 'bird' | 'bat'): Cloud {
-  const cr = pr.creature!;
-  const x0 = -PAD, y0 = -PAD, x1 = TW + PAD, y1 = TH + PAD, HW = (x1 - x0) / 2, HH = (y1 - y0) / 2, CX = TW / 2, CY = TH / 2;
-  let poses: Creature['poses'];
-  if (kind === 'bird') {
-    const b = cr.bird, Rr = Math.hypot(HW, HH) * b.grow;
-    const at = (r: number, deg: number): Pt => [CX + r * Math.cos(deg * DEG), CY + r * Math.sin(deg * DEG)];
-    const body = { cx: CX, cy: CY, r: Rr };
-    const hr = b.head.r * Rr, [hx, hy] = at(Rr - hr * (1 - b.head.out), b.head.at), head = { cx: hx, cy: hy, r: hr };
-    // 부리 — 머리 앞, 가운데보다 조금 아래에 밑변을 물린다
-    const bl = hr * b.beak.len, bh = hr * b.beak.half, bx = hx + hr * 0.92, by = hy + hr * 0.1;
-    const beak: Pt[] = [[bx - bh, by - bh], [bx + bl, by], [bx - bh, by + bh]];
-    // 꼬리 — 몸 쪽 뿌리가 좁고 끝이 넓은 사다리꼴(2026-09-29, 디자이너). 곧은 띠였다
-    const tail = (t: { from: number; to: number }): Pt[] => {
-      const [px, py] = at(Rr * b.tail.root, t.from), dx = Math.cos(t.to * DEG), dy = Math.sin(t.to * DEG), nx = -dy, ny = dx, L = b.tail.len;
-      const w0 = b.tail.half.root, w1 = b.tail.half.tip;
-      return [[px + nx * w0, py + ny * w0], [px + dx * L + nx * w1, py + dy * L + ny * w1], [px + dx * L - nx * w1, py + dy * L - ny * w1], [px - nx * w0, py - ny * w0]];
-    };
-    const mine = R() < 0.5 ? b.tail.up : b.tail.down;   // 글이 고른다 — 같은 글은 언제나 같은 꼬리
-    const wc = at(Rr * b.wing.root, b.wing.at), wr = Rr * b.wing.r;
-    const fan: Pt[] = [wc, ...Array.from({ length: 41 }, (_, i): Pt => {
-      const t = (b.wing.dir - b.wing.span / 2 + (b.wing.span * i) / 40) * DEG; return [wc[0] + wr * Math.cos(t), wc[1] + wr * Math.sin(t)]; })];
-    poses = {
-      rest: { discs: [body, head], polys: [beak, tail(mine)] },
-      // 앉음 — 몸의 원을 자르지 않는다(2026-09-29, 디자이너). 원을 0.92R 아래로 잘라 바닥을 평평하게 했었다 — 둥근 밑의 한 점으로 앉는다
-      sit: { discs: [body, head], polys: [beak, tail(mine)] },
-      fly: { discs: [body, head], polys: [beak, tail(b.tail.fly), fan] }
-    };
-  } else {
-    const t = cr.bat, E = t.ear.h;
-    // 한 몸: 귀 → 날개 윗변(손목) → 날개 끝 → 파인 아랫변 → 옆선 → 아래 끝 → 반대쪽. 매달림은 이것을 위아래로 뒤집는다
-    const outline = (p: { lift: number; n: number; drop: number; span?: number }, flip: boolean): Pt[] => {
-      const top = y0 - t.top, span = t.span * (p.span ?? 1);
-      const tip = (s: number): Pt => [CX + s * (HW + span), top - p.lift * t.unit];
-      const wrist = (s: number): Pt => [CX + s * (HW + span * 0.3), top - (p.lift * 0.5 + 0.15) * t.unit];
-      const ear = (s: number): Pt[] => [[CX + s * E * t.ear.in, top], [CX + s * E * t.ear.tip, top - E], [CX + s * E * t.ear.out, top]];
-      const hip = (s: number): Pt => [CX + s * (HW + t.side), y1 + t.hip];
-      // 날개는 크기가 정해져 있다 — 견본의 날개 높이만큼만 내려오고, 글이 길면 그 아래는 옆선이 곧게 내려간다
-      const end = (s: number): Pt => [hip(s)[0], Math.min(hip(s)[1], tip(s)[1] + t.reach + p.lift * t.unit)];
-      const hem = (s: number): Pt[] => {
-        const T = tip(s), B = end(s), W = wrist(s), out: Pt[] = [];
-        let prev = T;
-        for (let k = 1; k <= p.n; k++) {
-          const f = k / p.n, q: Pt = k === p.n ? B : [T[0] + (B[0] - T[0]) * f, T[1] + (B[1] - T[1]) * f + t.unit * p.drop * Math.sin(f * Math.PI)];
-          out.push(...scallopArc(prev, q, [(T[0] + W[0]) / 2, W[1]], t.sag));
-          prev = q;
-        }
-        // 날개 아랫변이 몸 옆선으로 들어가는 곳을 매끄럽게(2026-09-29, 디자이너 — 베지어). 마지막 호가 옆선에 모서리로 꺾여
-        // 들어갔다 — 호의 뒤 40%를, 호의 방향으로 떠나 옆선(옆선이 없으면 아래 끝으로 가는 선)과 같은 방향으로 들어오는 곡선으로
-        const H = hip(s), next: Pt = Math.abs(H[1] - B[1]) < 1e-6 ? [CX, y1 + t.foot] : H;
-        return smoothInto(out, 24, next);
-      };
-      const [rIn, rTip, rOut] = ear(1), [lIn, lTip, lOut] = ear(-1);
-      const P: Pt[] = [rIn, rTip, rOut, wrist(1), tip(1), ...hem(1), hip(1), [CX, y1 + t.foot], hip(-1), ...[tip(-1), ...hem(-1)].reverse(), wrist(-1), lOut, lTip, lIn];
-      return flip ? P.map(([x, y]): Pt => [x, 2 * CY - y]) : P;
-    };
-    poses = { rest: { discs: [], polys: [outline(t.hang, true)] }, fly: { discs: [], polys: [outline(t.fly, false)] },
-      twitch: { discs: [], polys: [outline(t.twitch, true)] }, stretch: { discs: [], polys: [outline(t.stretch, true)] } };
-  }
-  // 상자는 폰 자세(rest)로 잰다 — 벽의 다른 자세는 이 상자 밖으로 나갈 수 있다
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  const see = (x: number, y: number) => { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); };
-  for (const d of poses.rest.discs) { see(d.cx - d.r, d.cy - d.r); see(d.cx + d.r, d.cy + d.r); }
-  for (const P of poses.rest.polys) for (const [x, y] of P) see(x, y);
-  const move = (q: CreaturePose): CreaturePose => ({
-    discs: q.discs.map((d) => ({ cx: d.cx - minX, cy: d.cy - minY, r: d.r })),
-    polys: q.polys.map((P) => P.map(([x, y]): Pt => [x - minX, y - minY]))
-  });
-  const moved: Creature['poses'] = { rest: move(poses.rest), fly: move(poses.fly), ...(poses.sit ? { sit: move(poses.sit) } : {}),
-    ...(poses.twitch ? { twitch: move(poses.twitch) } : {}), ...(poses.stretch ? { stretch: move(poses.stretch) } : {}) };
-  return {
-    persona: pr, rule, circles: [], spikes: [], creature: { kind, poses: moved },
-    w: maxX - minX, h: maxY - minY,
-    text: { x: -minX, y: -minY, w: TW, h: TH }
-  };
-}
-
 /** fit.ts와 잇는 계약. 구름은 글이 정하므로 tw·th를 안 받고 제 상자를 답한다 */
 export function cloudShape(cloud: Cloud): BoxShape {
   return {
     body: (_tw, _th, u) => ({ w: cloud.w * u, h: cloud.h * u }),
     tail: () => 0,
-    // 사진 새 — 글자만 text배(1.65). 새는 글 + 여백을 품는 크기라 글이 새 밖으로 넘친다(잘림은 CloudBubble)
-    ...(cloud.bird ? { scale: cloud.bird.scale } : {}),
     // 나무 — 글자는 크기 막대의 text배(1.4)로 앉고, 벽 한 칸에 맞춰 줄이지 않는다(나무가 바닥에 서서 제 키로 선다). 키 상한에
     // 걸린 나무만 글과 함께 shrink배로 줄인다
     ...(cloud.tree ? { scale: (cloud.persona.tree?.text ?? 1) * cloud.tree.shrink, free: true } : {})

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { registerSW } from 'virtual:pwa-register';
 import { trackEdgeTint, trackViewport } from './lib/viewport';
+import { tokenMs } from './lib/motion';
 import './styles/global.css';
 import './styles/app.css';
 
@@ -34,10 +35,7 @@ function trackPress() {
   let fading: HTMLElement | null = null;   // 떼었지만 최소 시간을 채우는 중인 버튼
   let since = 0;
   let timer = 0;
-  const minHold = () => {
-    const v = getComputedStyle(document.documentElement).getPropertyValue('--t-return').trim();
-    return ((parseFloat(v) || 0) * (v.endsWith('ms') ? 1 : 1000) || 220) / 2;   // 빌드가 220ms를 .22s로 적는다
-  };
+  const minHold = () => tokenMs('--t-return', 220) / 2;
   const clearFading = () => { window.clearTimeout(timer); fading?.removeAttribute('data-pressed'); fading = null; };
   document.addEventListener('pointerdown', (e) => {
     clearFading();

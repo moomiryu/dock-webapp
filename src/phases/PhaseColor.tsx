@@ -10,6 +10,7 @@ import { fontMap, rainShapeOf } from '../lib/palettes';
 import { colorsFor, type ColorPair } from '../lib/palettes-v2';
 import { messageColors } from '../lib/messageStyle';
 import { pick, useLang } from '../lib/lang';
+import { tokenMs } from '../lib/motion';
 import type { Align, ToneState } from '../types';
 import { phoneSide } from '../lib/fit';   // 폰 미리보기 한 변(2026-09-29) — 아래 area
 import { tick } from '../components/SnapSwitch';   // 룰렛이 한 칸 멈출 때의 진동(2026-09-29)
@@ -123,16 +124,6 @@ interface Props {
  * 다 쓴다.
  */
 const AREA = 'min(96cqw, 96cqh)';
-
-/**
- * 시간 토큰(--t-*)을 ms로 읽는다 — **단위를 보고.** 빌드가 220ms를 .22s로, 700ms를 .7s로
- * 고쳐 적어서, 숫자만 읽으면 dev에서는 멀쩡하고 라이브에서만 1000배 빨라진다(2026-09-29,
- * 라이브 벽 구름이 같은 까닭으로 순간이동했다 — f202187). 값은 tokens.css 한 곳에만 산다.
- */
-function tokenMs(name: string, fallback: number) {
-    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    return (parseFloat(v) || 0) * (v.endsWith('ms') ? 1 : 1000) || fallback;
-}
 
 /**
  * 룰렛이 도는 짝 — **성격마다 제 여덟 짝**(2026-09-29, 디자이너 확정 · palettes-v2 ATTITUDE_COLORS).

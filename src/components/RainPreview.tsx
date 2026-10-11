@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { formFor, fontMap, type RainShape } from '../lib/palettes';
 import { DROP, bubbleLayout, bubbleMotionOf, bubbleMove, drawDrop, placeGlyph, rainBaseline, rainColor, rainFontsReady } from '../lib/rain';
+import { tokenS } from '../lib/motion';
 
 /**
  * 유머있는(비눗방울)의 미리보기 — 폰 4/5 · 5/5와 벽의 크게 보여 주기. 2026-10-06부터 **글 전체를 한 화면에** 담고(디자이너 —
@@ -76,8 +77,7 @@ export default function RainPreview({ text, color, shape, motion, speed, weight,
         live.current.push({ cv, span, box: p.box, fs, dpr, seed: seed0 + i * 13 });
       });
       if (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-      const m2 = bubbleMotionOf(motion), tv = getComputedStyle(document.documentElement).getPropertyValue('--t-hold').trim();
-      const T = tv.endsWith('ms') ? parseFloat(tv) / 1000 : parseFloat(tv) || 0.7;
+      const m2 = bubbleMotionOf(motion), T = tokenS('--t-hold', 0.7);
       const loop = () => {
         if (dead) return;
         const t = performance.now() / 1000;

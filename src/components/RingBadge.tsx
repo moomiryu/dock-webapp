@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react';
+import { tokenS } from '../lib/motion';
 
 /**
  * 돌아가는 원형 메시지 + Mega / Font — 홈의 원(HomePoster)과 같은 것을 다른 화면에 거는 부품(2026-10-06, 벽 왼쪽 위).
@@ -11,16 +12,10 @@ export const RING_R = 90.4;
 /** Lineal VF 대문자 높이 / em(OS/2) — 두 줄을 원 가운데에 세울 때 쓴다 */
 export const LINEAL_CAP = 0.706;
 
-/** 토큰을 숫자로 — 시간은 단위를 보고 초로(빌드가 ms를 s로 고쳐 적는다) */
+/** 토큰을 숫자로(크기 · 행간) — 시간은 lib/motion.ts */
 function tokenNum(name: string, fallback: number): number {
   const n = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
   return Number.isFinite(n) ? n : fallback;
-}
-function tokenSeconds(name: string, fallback: number): number {
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  const n = parseFloat(v);
-  if (!Number.isFinite(n)) return fallback;
-  return /ms$/.test(v) ? n / 1000 : n;
 }
 
 export default function RingBadge({ className }: { className?: string }) {
@@ -28,7 +23,7 @@ export default function RingBadge({ className }: { className?: string }) {
   const [m, setM] = useState({ fs: 44, lh: 0.83, turn: 40, still: true });
   useEffect(() => {
     setM({
-      fs: tokenNum('--fs-home-mark', 44), lh: tokenNum('--lh-home-mark', 0.83), turn: tokenSeconds('--t-home-ring', 40),
+      fs: tokenNum('--fs-home-mark', 44), lh: tokenNum('--lh-home-mark', 0.83), turn: tokenS('--t-home-ring', 40),
       still: window.matchMedia('(prefers-reduced-motion: reduce)').matches
     });
   }, []);

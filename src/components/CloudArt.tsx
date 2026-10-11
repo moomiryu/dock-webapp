@@ -9,10 +9,6 @@ const DPR_MAX = 2;
 const GRID_PER_SIDE = 200;
 /** 윤곽을 다시 그리는 간격(ms) — CloudBubble의 한 색 구름과 같다 */
 const FRAME_MS = 33;
-/** 벽에서는 이 배율로 그려 둔다 — 카메라가 확대해 들어가면(.wall-world, WallSimulation ZOOM_K) 1배로 그린 그림을 늘리니 가장자리 ·
-    빗금이 흐렸다(한 색 구름은 SVG라 늘 또렷했다). 카메라가 없는 벽에서는 1배 */
-const WALL_ZOOM = 3;
-
 type Ring = readonly (readonly [number, number])[];
 type Bit = { img: HTMLCanvasElement; ox: number; oy: number; c0: readonly [number, number]; s0: number };
 type Prep = {
@@ -229,7 +225,7 @@ export default function CloudArt({ cloud, unit, color, quiet, hold }: { cloud: C
     const size = () => {
       const w = el.clientWidth;
       if (w < 2) return;
-      const dpr = Math.min(DPR_MAX, window.devicePixelRatio || 1) * (el.closest('.wall-world') ? WALL_ZOOM : 1), k = `${w}|${dpr}`;
+      const dpr = Math.min(DPR_MAX, window.devicePixelRatio || 1), k = `${w}|${dpr}`;
       if (k === key) return;
       key = k;
       const uPx = w / cloud.w, side = uPx / unit, M = ((motion?.billow ?? 0) + 0.5) * uPx;

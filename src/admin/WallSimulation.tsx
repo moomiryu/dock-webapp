@@ -13,6 +13,7 @@ import Matter from 'matter-js';
 import CloudBubble from '../components/CloudBubble';
 import { stoneLean } from '../components/StoneArt';
 import { cloudForTone, cloudShape, convexHull, linesFor, personaFor, stoneBelly as stoneBellyOf, type Cloud } from '../lib/cloud';
+import { tokenS } from '../lib/motion';
 import { WALL_SIDE, bubbleAt, fillFromLegacySize, type Boxed } from '../lib/fit';
 import { EMPHASIS_MS, STAY_MS } from '../lib/wall';
 import VoiceBubble from '../components/VoiceBubble';
@@ -333,8 +334,8 @@ const SKY_PATCH_SCALE = 3;
     구름 ×0.56). 이름은 남겨 둔다 — 다시 나누게 되면 여기서 */
 const GROUND_SCALE = 1;
 const CLOUD_SCALE = 1;
-/** 마네킹 나무 — 글 없는 풍경 나무(디자이너). 나무 글이 MANNEQUIN_MIN그루보다 적으면 모자란 만큼(최대 셋) 선다 — 새가 앉을 곳 ·
-    확대할 나무 꼭대기가 늘 있게. 키는 정해 준다(벽 높이의 비율 — 글이 없으니 글이 정하는 키가 없다). 나무는 셋 다 다르게 정해 준다
+/** 마네킹 나무 — 글 없는 풍경 나무(디자이너). 나무 글이 MANNEQUIN_MIN그루보다 적으면 모자란 만큼(최대 셋) 선다 — 처음엔 새가 앉을 곳 ·
+    확대할 꼭대기로 두었고, 둘 다 걷힌 지금은 풍경으로 선다. 키는 정해 준다(벽 높이의 비율 — 글이 없으니 글이 정하는 키가 없다). 나무는 셋 다 다르게 정해 준다
     (2026-10-04, 디자이너 — 씨앗 글에 맡기니 소나무 656을 뺀 뒤 셋이 다 764가 되어 한 모양이 되풀이됐다). 좌우 뒤집기 · 폭은 씨앗 글이 */
 const MANNEQUIN_MIN = 4;
 const MANNEQUINS: readonly { seed: string; tall: number; tree: string }[] = [
@@ -352,13 +353,7 @@ function skyRange(h: number, hh: number): Pt2 {
     단위를 보고 읽는다: 빌드가 CSS를 줄이며 700ms를 .7s로 고쳐 적는다. ms로만 읽었더니 라이브에서만
     0.0007초가 되어 구름이 한 프레임에 600px씩 건너뛰고 펄럭임 · 엇걸음이 1000배로 떨었다(2026-09-29) */
 let HOLD_S = 0;
-function hold(): number {
-  if (!HOLD_S) {
-    const v = getComputedStyle(document.documentElement).getPropertyValue('--t-hold').trim();
-    HOLD_S = (parseFloat(v) || 0) * (v.endsWith('ms') ? 0.001 : 1) || 0.7;
-  }
-  return HOLD_S;
-}
+function hold(): number { return HOLD_S || (HOLD_S = tokenS('--t-hold', 0.7)); }
 /** 글 → 0~1. 같은 글은 같은 값(나무 키의 흔들림 · 짝을 찾나 · 얼마나 겹치나) */
 function seed01(text: string): number {
   let h = 2166136261;

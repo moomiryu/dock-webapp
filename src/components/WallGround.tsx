@@ -7,17 +7,17 @@ import { tokenS } from '../lib/motion';
  * 벽의 땅 — 화면 맨 아래 늘 같은 두께의 띠와 그 위의 사진 풀(2026-10-04). 값과 고른 까닭은 lib/ground.ts.
  *
  * 풍경(.wall-field) 위 · 큰 돌과 발화(같은 층)보다 뒤에 놓여 그 위에 그려진다 — 땅이 돌의 묻힌 아랫부분과 줄기 밑을 덮고,
- * 풀은 돌 · 나무 앞에 선다(디자이너). 확대해도 화면에 그대로 남는다(풍경과 따로 논다).
+ * 풀은 돌 · 나무 앞에 선다(디자이너).
  *
  * 글을 가리지 않는다: 화면에 뜬 글자(.message-line-fill)의 자리를 읽어, 그 둘레에 걸린 포기는 서서히 걷고 글이 떠나면
- * 다시 돋운다(--t-slow). 벽 속 계산을 몰라도 되게 화면에서 읽는다 — 큰 돌 · 발화 · 확대된 글도 그대로 잡힌다.
+ * 다시 돋운다(--t-slow). 벽 속 계산을 몰라도 되게 화면에서 읽는다 — 큰 돌 · 발화도 그대로 잡힌다.
  *
  * 바람은 30fps로 다시 그린다(띠 구름 · 나무와 같다). 움직임 줄이기를 켠 화면에서는 가만히 있고, 걷고 돋을 때만 다시 그린다.
  */
 
+/** 다시 그리는 빠르기 — 바람도 글자 자리 읽기(scan)도. 글자 자리를 200ms마다 읽었더니 카메라가 훑던 때(10-04까지) 지나가는 글 위에
+    풀이 남았다(글자 픽셀의 1.5%, 벽에서 잼). 카메라는 걷혔다 — 더 드물게 읽으려면 큰 나무가 솟는 장면(글이 빠르게 땅을 지난다)에서 다시 잴 것 */
 const FPS = 30;
-/** 글자 자리는 다시 그릴 때마다 읽는다 — 확대한 카메라가 훑는 동안 글이 빠르게 지나가, 200ms마다 읽고 천천히 걷었더니
-    지나가는 글 위에 풀이 남았다(글자 픽셀의 1.5%, 2026-10-04 벽에서 잼) */
 /** 휘는 띠 한 칸(px) — 2px마다 옆으로 옮겨 그린다(견본과 같다) */
 const BAND = 2;
 
@@ -89,7 +89,7 @@ export default function WallGround() {
       document.querySelectorAll('.wall .message-line-fill').forEach((el) => {
         const r = el.getBoundingClientRect();
         if (r.width < 1 || r.bottom < top - r.height * MEADOW.clear) return;
-        const m = r.height * MEADOW.clear;   // 옆으로는 두 배 — 훑는 카메라를 따라 글이 옆으로 다가온다
+        const m = r.height * MEADOW.clear;   // 옆으로는 두 배 — 카메라가 훑던 때(10-04까지) 글이 옆으로 다가와서 정했다
         boxes.push([r.left - 2 * m, r.top - top - m, r.right + 2 * m, r.bottom - top + m]);
       });
       plants.forEach((p, i) => {

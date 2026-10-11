@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef } from 'react';
 import type { StoredMessage } from '../lib/firebase';
+import { tokenS } from '../lib/motion';
 import { SWAY_LAG, formFor, fontMap, gustAt, rainShapeOf, swayFor } from '../lib/palettes';
 import { messageColors } from '../lib/messageStyle';
 import { DROP, WALL_FS, bubbleLayout, bubbleMotionOf, bubbleMove, drawDrop, placeGlyph, rainBaseline, rainColor, rainFontsReady } from '../lib/rain';
@@ -31,7 +32,7 @@ type Block = {
 const RISE = 0.12, RISE_T = 8, DRIFT = 0.012, GROW = 0.06, POP = 0.12, POP_T = 0.18;
 /** 떠다니는 시간 — 6T + 글자마다 0.35초. 다 터진 뒤 쉬는 시간 — T의 4 ~ 10배 */
 const HOLD = (n: number, T: number) => 6 * T + 0.35 * n, REST: [number, number] = [4, 10];
-const holdS = () => { const v = getComputedStyle(document.documentElement).getPropertyValue('--t-hold').trim(); return v.endsWith('ms') ? parseFloat(v) / 1000 : parseFloat(v) || 0.7; };
+const holdS = () => tokenS('--t-hold', 0.7);
 const hit = (a: number[], b: number[]) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
 const ease = (k: number) => 1 - (1 - k) ** 3;
 

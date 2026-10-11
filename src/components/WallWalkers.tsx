@@ -1,6 +1,7 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { BODY, CLIP_H, EYE_LOOK, EYE_SAD, EYE_SHUT, EYE_SMILE, EYE_WHITE, EYE_WIDE, FOOT_Y, HEAD, SIT, VIEW, WALK } from '../character/walker';
 import { groundPx } from '../lib/ground';
+import { easeOf, tokenS } from '../lib/motion';
 
 /**
  * 벽의 작은 사람 둘(2026-10-04, 디자이너가 움직이는 견본 design/landscape-character-wall.html에서 골랐다).
@@ -12,31 +13,10 @@ import { groundPx } from '../lib/ground';
  * - 아주 자주 웃는다(작가의 아치 눈). 빠르게 떨어지는 돌이 몸에 닿으면 놀라며 넘어지고, 일어나면 3초 동안 슬픈 눈
  * - 가끔 한 명이 뛰어와(걸음 2배) 앉아 있는 다른 한 명 곁에 앉고, 마주 보고 몸짓으로 이야기한다(글자 · 말풍선 없음)
  *
- * 돌 · 글의 자리는 화면에서 읽는다(WallGround와 같다) — 벽 속 계산과 엮이지 않아 큰 돌 · 발화 · 확대에서도 그대로 맞는다.
- * 땅처럼 화면에 고정이다(확대해도 커지지 않는다). 물리 엔진은 쓰지 않는다 — 땅에만 닿고 돌과 부딪히지 않으니 넘어짐만 몸짓으로 짓는다.
+ * 돌 · 글의 자리는 화면에서 읽는다(WallGround와 같다) — 벽 속 계산과 엮이지 않아 큰 돌 · 발화에서도 그대로 맞는다.
+ * 땅처럼 화면에 고정이다. 물리 엔진은 쓰지 않는다 — 땅에만 닿고 돌과 부딪히지 않으니 넘어짐만 몸짓으로 짓는다.
  * 움직임 줄이기를 켠 화면에서는 빈 땅에 앉아 가만히 있다.
  */
-
-/** 시간 토큰(초) — 단위를 보고 읽는다: 빌드가 700ms를 .7s로 고쳐 적는다(CloudBubble · holdS와 같은 까닭) */
-function tokenS(name: string, fallback: number): number {
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  const n = parseFloat(v);
-  if (!Number.isFinite(n)) return fallback;
-  return /ms$/.test(v) ? n / 1000 : n;
-}
-/** 이징 토큰(cubic-bezier) → 0~1 함수 */
-function easeOf(name: string): (p: number) => number {
-  const nums = getComputedStyle(document.documentElement).getPropertyValue(name).match(/-?[\d.]+/g)?.map(Number);
-  const [x1, y1, x2, y2] = nums && nums.length === 4 ? nums : [0.2, 0, 0, 1];
-  const f = (a: number, b: number, t: number) => 3 * a * t * (1 - t) ** 2 + 3 * b * t * t * (1 - t) + t ** 3;
-  return (p) => {
-    if (p <= 0) return 0;
-    if (p >= 1) return 1;
-    let lo = 0, hi = 1, t = p;
-    for (let i = 0; i < 22; i++) { t = (lo + hi) / 2; if (f(x1, x2, t) < p) lo = t; else hi = t; }
-    return f(y1, y2, t);
-  };
-}
 
 /** 키 = 벽 높이의 6.5%(실물 약 9cm) — 4.5 · 6.5 · 9% 중(벽 돌이 높이 8~10%라 그 3분의 2쯤) */
 const SIZE = 0.065;
@@ -130,10 +110,7 @@ export default function WallWalkers() {
     };
     const lastStone = new WeakMap<Element, { y: number; t: number }>();
     const hits = new WeakMap<Element, Set<Walker>>();
-    // 확대 · 훑기 중에는 따지지 않는다 — 카메라가 움직이면 돌이 화면에서 빠르게 움직여 떨어지는 것처럼 보인다
-    const cameraStill = () => !(document.querySelector('.wall-world') as HTMLElement | null)?.style.transform;
     const fallingOn = (w: Walker, t: number): DOMRect | null => {
-      if (!cameraStill()) return null;
       const x0 = w.x - cw / 2, x1 = w.x + cw / 2, y0 = floor - (w.state === 'sit' ? SIT_H : STAND_H) * s;
       for (const el of document.querySelectorAll('.wall-block.is-stone')) {
         const r = el.getBoundingClientRect(), prev = lastStone.get(el);

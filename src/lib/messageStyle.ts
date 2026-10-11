@@ -1,6 +1,5 @@
 import { moods } from './palettes-v2';
 import type { ToneState } from '../types';
-export const MESSAGE_COLORS = ['#000000', '#FFFFFF', '#00FF88', '#FFFF00', '#FF6B6B', '#1E2A52', '#0033FF', '#FFEE00', '#FF0080', '#E4002B', '#FFD93D'] as const;
 /**
  * 아직 색을 고르기 전, 쓰는 동안의 바탕.
  *
@@ -21,4 +20,3 @@ export function messageColors(tone: ToneState) {
     const text = (tone.textColor ?? legacy.text).toUpperCase();
     return { bg: bg.toUpperCase() === '#000000' ? '#FFFFFF' : bg, text: text.toUpperCase() === bg.toUpperCase() ? (bg === '#FFFFFF' ? '#000000' : '#FFFFFF') : text };
 }
-export function sizeScale(size: number) { return Math.min(60, Math.max(28, size)) / 44; }

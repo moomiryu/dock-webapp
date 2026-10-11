@@ -47,14 +47,6 @@ export function fitFontSize(text: string, { min = 6, max = 200 }: Options = {}):
   return `clamp(${min}px, min(${byWidth}cqw, ${byHeight}cqh), ${max}px)`;
 }
 
-/** 그 글자가 실제 벽에서 몇 cm가 되는지 */
-export function glyphCm(text: string, wallWidthM: number): number {
-  const lines = text.split('\n');
-  const latin = isLatinText(text);
-  const longest = Math.max(1, ...lines.map((l) => lineCells(l, latin)));
-  return Math.round(((wallWidthM * 100) / longest) * 0.88);
-}
-
 // ─────────────────────────────────────────────────────────────────────
 // 글 → 틀. 위 계산과 반대 방향이다.
 //

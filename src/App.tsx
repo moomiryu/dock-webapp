@@ -18,6 +18,7 @@ import {
   updateDraftTone
 } from './lib/draft';
 import { clearStageFromUrl, getStageFromUrl } from './lib/stage';
+import type { PartialTone } from './lib/tone';
 import type { Draft, ToneState } from './types';
 
 /**
@@ -41,8 +42,6 @@ type Screen =
   | 'submit'   // 전송 중 → 도킹 안내
   | 'onwall'   // 벽에 떠 있는 동안
   | 'done';    // 완료 — 폰을 가져가는 자리
-
-type PartialTone = Omit<ToneState, 'paletteIdx' | 'graphicIdx'>;
 
 function toPartial(tone: ToneState): PartialTone {
   const { paletteIdx, graphicIdx, ...rest } = tone;

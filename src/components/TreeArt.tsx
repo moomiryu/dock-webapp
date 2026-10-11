@@ -1,18 +1,13 @@
 import { useEffect, useRef } from 'react';
 import type { Cloud } from '../lib/cloud';
 import { TreePainter, rgb01, treeImage } from '../lib/treeGL';
-import { blur } from '../lib/hatch';
+import { blur, rng } from '../lib/hatch';
 
 /** 바람을 다시 그리는 간격 — 30fps(띠 구름과 같다). 잎이 --t-hold × 2에 한 결 지나갈 만큼 느려서 더 촘촘할 까닭이 없다 */
 const FRAME_MS = 33;
 /** 캔버스의 해상도 상한(기기 px 배수) — 레티나 3배까지 그리면 벽 나무 여럿을 파이가 못 따라온다 */
 const DPR_MAX = 2;
 
-/** 씨앗 → 0~1 (cloud.ts rng와 같은 꼴) */
-function rng(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => { a += 0x6D2B79F5; let t = Math.imul(a ^ (a >>> 15), 1 | a); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-}
 /** 행마다 켜진 칸에서 가장 가까운 꺼진 칸까지의 가로 거리 */
 function runH(on: Uint8Array, w: number, h: number): Float32Array {
   const out = new Float32Array(w * h);

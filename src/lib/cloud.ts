@@ -5,6 +5,7 @@ import { CLOUD_PHOTOS, type PhotoShape } from './cloudPhoto.data';
 import { TREE_PHOTOS, type TreeShape } from './treePhoto.data';
 import { STONE_PHOTOS, type StoneShape } from './stonePhoto.data';
 import { birdFor, type BirdBuilt, type BirdOptions } from './birdPhoto';
+import { rng } from './hatch';
 
 /**
  * 발화 배경 — 구름.
@@ -518,15 +519,7 @@ export interface Cloud {
   text: { x: number; y: number; w: number; h: number };
 }
 
-function rng(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a += 0x6D2B79F5;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+/** 글 → 씨앗. hatch.ts의 hash와 달리 글자(코드 포인트)로 센다 — 합치면 이모지가 든 글의 무작위 모양이 바뀐다 */
 function hash(s: string): number {
   let h = 2166136261;
   for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }

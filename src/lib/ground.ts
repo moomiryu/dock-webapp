@@ -7,6 +7,7 @@
  * 값은 모두 벽 높이에 비례한다(1080px 벽에서 고른 값 — U = 그 벽의 1px).
  */
 import { GRASS_PHOTOS, type GrassSpecies } from './grassPhoto.data';
+import { rng } from './hatch';
 
 const U = 1 / 1080;
 
@@ -51,15 +52,6 @@ export function groundPx(h: number): number {
   return Math.round(h * GROUND.thick);
 }
 
-function mulberry32(a: number): () => number {
-  return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
 /** 가로 x(px)에서 땅 윗선이 바닥선보다 솟은 높이(px) — 굴곡 + 잔결, 늘 0 이상 */
 export function swellAt(x: number, h: number, knots: readonly number[]): number {
   const u = x / h;
@@ -72,7 +64,7 @@ export function swellAt(x: number, h: number, knots: readonly number[]): number 
 
 /** 잔결의 무작위 높이들(−1~1) — 같은 벽은 늘 같은 땅 */
 export function grainKnots(seed = 4): number[] {
-  const r = mulberry32(seed);
+  const r = rng(seed);
   return Array.from({ length: 512 }, () => r() * 2 - 1);
 }
 
@@ -85,7 +77,7 @@ export interface Plant {
 
 /** 벽 폭 w · 높이 h에 풀을 흩뿌린다 — 같은 벽 크기면 늘 같은 풀밭(씨앗 고정). 글 둘레는 그릴 때 걷는다(글이 오고 가므로) */
 export function meadowFor(w: number, h: number, seed = 7): Plant[] {
-  const r = mulberry32(seed);
+  const r = rng(seed);
   const gauss = () => Math.sqrt(-2 * Math.log(1 - r())) * Math.cos(2 * Math.PI * r());
   const bySp: Record<GrassSpecies, number[]> = { fox: [], dan: [], clo: [] };
   GRASS_PHOTOS.forEach((g, i) => bySp[g.species].push(i));

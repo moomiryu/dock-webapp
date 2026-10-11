@@ -1,5 +1,5 @@
 // 벽 — 구름 결의 무게. 나무 · 돌 · 구름(빗금 결)을 띄우고 CPU를 rate배 느리게(파이 흉내) 해서 잰다:
-//   켜질 때(구름마다 결을 셈하는 동안) 가장 긴 프레임 · 넓게 본 장면의 초당 프레임 · 확대(×3) 장면의 초당 프레임
+//   켜질 때(구름마다 결을 셈하는 동안) 가장 긴 프레임 · 넓게 본 장면의 초당 프레임(확대 장면은 10-04 카메라와 함께 없어졌다)
 //   node perf_cloud.mjs [rate=4]
 const D = await import(new URL('../../lib/drive.mjs', import.meta.url).href);
 const rate = +(process.argv[2] ?? 4), now = Date.now(), M = [];
@@ -34,13 +34,6 @@ const hatched = await page.evaluate(() => document.querySelectorAll('.wall-block
 console.log(`CPU ${rate}배 · 빗금 구름 ${hatched}`);
 console.log('  켜질 때(0~6초)', JSON.stringify(await span(0, 6000)));
 console.log('  넓게(8~12초)', JSON.stringify(await span(8000, 12000)));
-let z = 1;
-for (let i = 0; i < 120 && z < 2.95; i++) { await page.waitForTimeout(1000); z = await page.evaluate(() => { const w = document.querySelector('.wall-world'); return w ? new DOMMatrix(getComputedStyle(w).transform).a : 1; }); }
-if (z >= 2.95) {
-  const t = await page.evaluate(() => performance.now() - window.__frames[0]);
-  await page.waitForTimeout(5000);
-  console.log('  확대 ×3(5초)', JSON.stringify(await span(t, t + 5000)));
-} else console.log('  확대 장면을 못 잡음');
 await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
 console.log('  오류', errs.length ? errs.slice(0, 3) : '없음');
 await close();

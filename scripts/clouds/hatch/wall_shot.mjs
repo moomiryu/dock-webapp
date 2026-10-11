@@ -1,4 +1,4 @@
-// 벽에 나무 · 돌 · 구름을 함께 띄우고 두 장면(넓게 · 확대)을 멈춘 한 순간으로 찍는다 — 구름 결을 그 위에 얹어 '다 같이 있을 때'를 본다(c5.py).
+// 벽에 나무 · 돌 · 구름을 함께 띄우고 멈춘 한 순간으로 찍는다 — 구름 결을 그 위에 얹어 '다 같이 있을 때'를 본다(c5.py).
 // 구름마다 윤곽(path d) · 그림판(svg) 자리 · 말풍선 한 변(side) · 글자 하나하나의 네모 · 글자 크기를 wall_shot.json에.
 // 가짜 글은 이 브라우저의 localStorage에만(저장소에 쓰지 않는다). 시계는 Playwright clock으로 멈춘다. 개발 서버가 떠 있어야 한다
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -61,13 +61,7 @@ await freeze();
 const wide = await grab(tones);
 await page.screenshot({ path: `${OUT}wall-wide.png` });
 console.log('넓게: 확대', wide.zoom.toFixed(2), '구름', wide.clouds.length);
-await page.clock.resume();
-let zoomed = null;
-for (let i = 0; i < 120; i++) {
-  await page.waitForTimeout(1000);
-  const z = await page.evaluate(() => { const w = document.querySelector('.wall-world'); return w ? new DOMMatrix(getComputedStyle(w).transform).a : 1; });
-  if (z > 2.95) { await page.waitForTimeout(6000); await freeze(); zoomed = await grab(tones); await page.screenshot({ path: `${OUT}wall-zoom.png` }); break; }
-}
-console.log('확대:', zoomed ? `확대 ${zoomed.zoom.toFixed(2)} 구름 ${zoomed.clouds.length}` : '못 잡음', '| 오류', errs.length ? errs.slice(0, 3) : '없음');
-writeFileSync(`${OUT}wall_shot.json`, JSON.stringify({ wide, zoomed }));
+// 확대 장면은 없다 — 카메라는 10-04에 빠졌다(전엔 여기서 ×3을 2분까지 기다려 wall-zoom을 찍었다). c5.py는 없는 장면을 건너뛴다
+console.log('오류', errs.length ? errs.slice(0, 3) : '없음');
+writeFileSync(`${OUT}wall_shot.json`, JSON.stringify({ wide }));
 await close();

@@ -659,6 +659,8 @@ R17~R20)을 하나씩 넣었다. 이름은 일단 원론적인 이름으로(디�
 
 ### 새 · 까마귀 — 유머있는 (2026-10-01 실사 윤곽으로 다시, 10-02 벽. 코드: `cloud.ts`의 `PERSONAS.deulseok.bird`, `birdPhoto.ts` · `birdPhoto.data.ts`, 벽 `WallSimulation`의 `birdGeoOf` · `birdFrame`)
 
+> **2026-10-11 코드를 걷었다**(디자이너). 유머있는이 비눗방울이 된(10-06) 뒤로 이 형상은 폰에도 벽에도 서지 않았는데, 이 코드에 딸려 폰이 새 윤곽 자료를 약 100KB 받고 있었다. 지운 것: `birdPhoto.ts` · `cloud.ts`의 `bird` · `CloudBubble`의 새 그리기 · `WallSimulation`의 앉기 · 날기 · 몸짓(아래 '벽의 몸짓'까지). 사진 자료 `birdPhoto.data.ts`는 남는다 — 벽 하늘의 새 떼(`WallFlock`)가 쓴다. 되살릴 때는 git 기록(10-11 커밋 'Remove the bird- and bat-shaped messages').
+
 > 값은 코드가 맞다. 여기엔 무엇을 골랐고 왜 그랬는지를 둔다. 아래 '새' · '박쥐' · '벽의 몸짓'은 옛 기하 새의 기록이다 —
 > 코드에 남겨 두었다(`PERSONAS.deulseok.bird`를 지우면 되살아난다).
 
@@ -695,6 +697,8 @@ R17~R20)을 하나씩 넣었다. 이름은 일단 원론적인 이름으로(디�
 격자 `landscape-bird-photo-*.png`.
 
 ### 새 — 유머있는 · 귀여운 (2026-09-29 기하 — 2026-10-01 사진 새로 갈음, 코드: `cloud.ts`의 `creatureFor` · `PERSONAS.deulseok.creature.bird`)
+
+> 2026-10-11 코드를 걷었다 — 위 '새 · 까마귀'의 첫 줄.
 
 > 값은 코드에 들어가면 코드가 맞다. 아래 숫자는 견본에서 고를 때의 값이다.
 > u = 글자 크기, R = 몸 원의 반지름.
@@ -733,6 +737,8 @@ R17~R20)을 하나씩 넣었다. 이름은 일단 원론적인 이름으로(디�
 (2026-09-29) 같은 글 200개 × 두 말투 × 모든 자세로 다시 재도 글 + 여백을 못 품은 것 0.
 
 ### 박쥐 — 유머있는 · 시니컬한 (2026-09-29 기하 — 2026-10-01 까마귀로 갈음, 코드: `cloud.ts`의 `creatureFor` · `PERSONAS.deulseok.creature.bat`)
+
+> 2026-10-11 코드를 걷었다 — 위 '새 · 까마귀'의 첫 줄.
 
 > 값은 코드에 들어가면 코드가 맞다. 아래 숫자는 견본에서 고를 때의 값이다. u = 글자 크기.
 
@@ -841,6 +847,8 @@ R17~R20)을 하나씩 넣었다. 이름은 일단 원론적인 이름으로(디�
 [landscape-two-scenes.html](landscape-two-scenes.html)(고개 들기 세 방식). 개발 서버로 연다.
 
 ## 벽의 몸짓 — 새 · 박쥐 (2026-09-29 기하 — 2026-10-02부터 사진 새는 위 '새 · 까마귀' · '두 장면'. 코드: `WallSimulation`의 CREATURE_SCALE · spotsFor · takeOff · creatureFrame)
+
+> 2026-10-11 코드를 걷었다 — 위 '새 · 까마귀'의 첫 줄. 나무의 앉을 자리(`perch`)도 셈하지 않는다(자료 `treePhoto.data.ts`에는 남아 있다).
 
 > 값은 코드가 맞다. 여기엔 무엇을 골랐고 왜 그랬는지를 둔다. T = `--t-hold`.
 

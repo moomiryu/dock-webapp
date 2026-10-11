@@ -4,6 +4,7 @@ import { CLOUD_PHOTOS } from '../lib/cloudPhoto.data';
 import { STONE_PHOTOS } from '../lib/stonePhoto.data';
 import { LINEAL_CAP as CAP, RING_R as R, RING_SUB as SUB } from './RingBadge';
 import { BODY, CLIP_H, EYE_FAR_DX, EYE_LOOK, EYE_SHUT, EYE_SMILE, EYE_WHITE, EYE_WIDE, HEAD, SIT, WALK } from '../character/walker';
+import { easeOf, tokenMs } from '../lib/motion';
 
 /**
  * 홈 — 풍경 포스터와 스플래시(2026-10-06, 디자이너와 격자로 고름 · 견본 design/home-splash.html).
@@ -25,25 +26,6 @@ const PEBBLE = STONE_PHOTOS.find((s) => s.id === 'stone-moon')!;
 const SINK = 8;   // 나무 · 바위를 땅 물결(±3.6) 아래까지 묻는다 — 안 묻으면 오목한 곳에서 떠 보였다
 const PLAYED_KEY = 'megafont.splash.v1';
 
-/** 시간 토큰(ms) — 단위를 보고 읽는다: 빌드가 700ms를 .7s로 고쳐 적는다 */
-function tokenMs(name: string, fallback: number): number {
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  const n = parseFloat(v);
-  if (!Number.isFinite(n)) return fallback;
-  return /ms$/.test(v) ? n : n * 1000;
-}
-function easeOf(name: string): (p: number) => number {
-  const nums = getComputedStyle(document.documentElement).getPropertyValue(name).match(/-?[\d.]+/g)?.map(Number);
-  const [x1, y1, x2, y2] = nums && nums.length === 4 ? nums : [0.2, 0, 0, 1];
-  const f = (a: number, b: number, t: number) => 3 * a * t * (1 - t) ** 2 + 3 * b * t * t * (1 - t) + t ** 3;
-  return (p) => {
-    if (p <= 0) return 0;
-    if (p >= 1) return 1;
-    let lo = 0, hi = 1, t = p;
-    for (let i = 0; i < 22; i++) { t = (lo + hi) / 2; if (f(x1, x2, t) < p) lo = t; else hi = t; }
-    return f(y1, y2, t);
-  };
-}
 const clamp = (v: number) => Math.max(0, Math.min(1, v));
 const lerp = (a: number, b: number, p: number) => a + (b - a) * p;
 

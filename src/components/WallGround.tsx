@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { GRASS_PHOTOS } from '../lib/grassPhoto.data';
 import { GROUND, MEADOW, WIND, groundPx, grainKnots, meadowFor, swellAt, type Plant } from '../lib/ground';
+import { tokenS } from '../lib/motion';
 
 /**
  * 벽의 땅 — 화면 맨 아래 늘 같은 두께의 띠와 그 위의 사진 풀(2026-10-04). 값과 고른 까닭은 lib/ground.ts.
@@ -13,14 +14,6 @@ import { GROUND, MEADOW, WIND, groundPx, grainKnots, meadowFor, swellAt, type Pl
  *
  * 바람은 30fps로 다시 그린다(띠 구름 · 나무와 같다). 움직임 줄이기를 켠 화면에서는 가만히 있고, 걷고 돋을 때만 다시 그린다.
  */
-
-/** 시간 토큰(초) — 단위를 보고 읽는다: 빌드가 700ms를 .7s로 고쳐 적는다(CloudBubble · holdS와 같은 까닭) */
-function tokenS(name: string, fallback: number): number {
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  const n = parseFloat(v);
-  if (!Number.isFinite(n)) return fallback;
-  return /ms$/.test(v) ? n / 1000 : n;
-}
 
 const FPS = 30;
 /** 글자 자리는 다시 그릴 때마다 읽는다 — 확대한 카메라가 훑는 동안 글이 빠르게 지나가, 200ms마다 읽고 천천히 걷었더니

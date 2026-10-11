@@ -4,6 +4,7 @@ import TreeArt from './TreeArt';
 import StoneArt from './StoneArt';
 import CloudArt from './CloudArt';
 import type { Boxed } from '../lib/fit';
+import { tokenS } from '../lib/motion';
 
 /**
  * 구름 하나 — 배경과 그 안의 글.
@@ -56,12 +57,7 @@ const PIXEL_MS = 80;
 /** 띠 구름의 윤곽을 다시 그리는 간격 — 30fps. 봉우리가 6초에 한 번 부풀 만큼 느려서 더 촘촘할 까닭이 없고, 벽의 구름 여럿을 파이가 그린다 */
 const FRAME_MS = 33;
 
-/** --t-hold(초) — 단위를 보고 읽는다: 빌드가 700ms를 .7s로 고쳐 적는다(WallSimulation · hold, PhaseColor · tokenMs와 같은 까닭) */
-function holdS(): number {
-  if (typeof document === 'undefined') return 0.7;
-  const v = getComputedStyle(document.documentElement).getPropertyValue('--t-hold').trim();
-  return (parseFloat(v) || 0) * (v.endsWith('ms') ? 0.001 : 1) || 0.7;
-}
+const holdS = () => tokenS('--t-hold', 0.7);
 
 interface Props {
   cloud: Cloud;

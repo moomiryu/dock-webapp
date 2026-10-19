@@ -1,0 +1,367 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>키비주얼 — 폰</title>
+<!-- 키비주얼(2026-10-20 디자이너 확정, 그날 세션의 스크래치패드 kv/kv-phone.html을 옮김). 메가폰트가 점을 쏘아 말 하나를 짓는다(꼬리부터 · 성격별 박자),
+     곁의 두 사람이 놀라고 웃는다, 지난 말은 회색으로 물러나 있다. 브라우저로 열면 돈다 — 서체 · 그림은 이 저장소를 file:///로 읽는다.
+     window.KV_LAYOUT으로 판 · 자리를 바꿔 홈 같은 다른 화면에 얹을 수 있다(그날의 홈 미리보기들이 그렇게 했다) -->
+<link rel="stylesheet" href="file:///C:/dev/megafont-webapp/src/styles/tokens.css">
+<style>
+@font-face{font-family:'29CM Editorial';src:url('file:///C:/dev/megafont-webapp/public/fonts/29CM-Editorial-VF.woff2') format('woff2');font-weight:100 900}
+@font-face{font-family:'Mapo Dacapo';src:url('file:///C:/dev/megafont-webapp/public/fonts/MapoDacapo.woff2') format('woff2')}
+@font-face{font-family:'Handjet';src:url('file:///C:/dev/megafont-webapp/public/fonts/HandjetVF.woff2') format('woff2');font-weight:100 900}
+body{margin:0;background:var(--grey-900);color:var(--grey-300);font:var(--fs-cap)/1.45 'Pretendard Variable',sans-serif;padding:var(--space-section)}
+h1{font-size:var(--fs-body);color:var(--paper);margin:0 0 var(--space-title-desc)}
+.note{color:var(--grey-500);margin:0 0 var(--space-in-group);max-width:640px}
+canvas{display:block;width:390px;height:844px;border:1px solid var(--grey-700)}
+</style></head><body>
+<h1>키비주얼 — 메가폰트가 쏜 점이 말 하나로 태어난다</h1>
+<p class="note">폰 세로 · 밝은 바탕. 네 성격이 차례로 — 당당 쿵 · 다정 몽글 · 차분 착 · 유머 뿅(등장은 10-20 확정값 그대로). 점은 입에서 작게 나와 날아가며 커지고(C1), 먼 점부터 붙는다. 낱개로 머묾 → 모여 뭉침 → 꼬리가 메가폰트 쪽으로 솟음 → 꼬리 끝부터 터짐. 작은 사람 둘은 첫 발에 깜짝 뛰어오르고(놀란 눈 · 손 · 젖혀짐) 박자마다 움찔한 뒤 말을 올려다보고, 꼬리가 솟으면 터질 때까지 웃는다. 하늘의 지난 말은 회색(--grey-400) 고리로 물러나 있다 — 글자 없이(벽의 광각). 메가폰트 — 떠 있는 그림자(홈과 같은 규칙), 표정: 겨눔(입 쪽을 봄) → 쏘는 동안 성격마다(당당 angry · 다정 happy · 차분 tired · 유머 twinkle) → 지켜봄 → 꼬리 솟으면 happy → 터질 때 surprise.</p>
+<canvas id="kv"></canvas>
+<p class="note" id="now" style="color:var(--paper);margin-top:var(--space-title-desc)"></p>
+<script>
+let seed = 7; const rand = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const LAY = window.KV_LAYOUT ?? {}, W = LAY.W ?? 390, H = LAY.H ?? 844;   // 폰 세로 기본, 홈에 얹을 땐 KV_LAYOUT
+const U = 24, G = U * 0.3, RD = G * 0.46, RF = G / Math.sqrt(3) + 0.15, M = 1.45 * 1.1 * U;
+const ADV = 4 * G, SP = G, ROW = G * 0.866, LH = 6 * ROW;
+const easeOut = (t) => 1 - (1 - t) ** 3, easeIO = (t) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2), clamp = (t) => Math.max(0, Math.min(1, t)), rnd = (a, b) => a + rand() * (b - a), lerp = (a, b, t) => a + (b - a) * t;
+const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)), mix = (a, b, t) => `rgb(${hex(a).map((v, i) => Math.round(lerp(v, hex(b)[i], t))).join(',')})`;
+const inPoly = (P, x, y) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c; } return c; };
+const ngon = (n, R, r, rot = -Math.PI / 2) => Array.from({ length: n * (r ? 2 : 1) }, (_, i) => { const t = rot + (i * Math.PI * 2) / (n * (r ? 2 : 1)), q = r && i % 2 ? r : R; return [Math.cos(t) * q, Math.sin(t) * q]; });
+// 모듈 — 당당 사각형 · 다정 원 · 차분 마름모 · 유머 별 (aggregate.html과 같다)
+const MOD = {
+  '원': (dx, dy, s) => dx * dx + dy * dy <= (s / 2) ** 2,
+  '사각형': (dx, dy, s) => Math.abs(dx) <= s * 0.44 && Math.abs(dy) <= s * 0.44,
+  '마름모': (dx, dy, s) => Math.abs(dx) + Math.abs(dy) <= s * 0.6,
+  '별': (dx, dy, s) => inPoly(ngon(5, s * 0.62, s * 0.3), dx, dy)
+};
+const OUTLINE = {
+  '마름모': (s) => { const a = 0.6 * s; return [[0, -a], [a, 0], [0, a], [-a, 0]]; },
+  '사각형': (s) => { const a = 0.44 * s; return [[-a, -a], [a, -a], [a, a], [-a, a]]; },
+  '별': (s) => ngon(5, s * 0.62, s * 0.3)
+};
+function beads(shape, s) {
+  const P = OUTLINE[shape]?.(s), out = []; if (!P) return out;
+  P.forEach(([x0, y0], i) => { const [x1, y1] = P[(i + 1) % P.length], n = Math.max(2, Math.round(Math.hypot(x1 - x0, y1 - y0) / G)); for (let k = 0; k < n; k++) out.push([x0 + ((x1 - x0) * k) / n, y0 + ((y1 - y0) * k) / n]); });
+  return out;
+}
+const latCache = {};
+function lattice(shape, s) {
+  const key = shape + s.toFixed(2); if (latCache[key]) return latCache[key];
+  const out = [], n = Math.ceil(s / G) + 1;
+  for (let j = -n; j <= n; j++) for (let i = -n; i <= n; i++) { const x = i * G + (j & 1 ? G / 2 : 0), y = j * ROW; if (MOD[shape](x, y, s)) out.push([x, y, i, j]); }
+  return (latCache[key] = out);
+}
+// 말 하나의 글자 자리 — 말 가운데를 (0, 0)으로 둔 제 좌표. 화면에는 옮기고 키워서 놓는다
+function layout(lines, adv, lh, arrive = 3.3) {
+  const spread = (adv + arrive * G) / adv, items = [], y0 = Math.round((-((lines.length - 1) / 2) * lh) / (2 * ROW)) * 2 * ROW;
+  lines.forEach((ln, j) => {
+    const chars = [...ln], w = chars.reduce((m, ch) => m + (ch === ' ' ? SP : adv), 0) - adv; let x = Math.round(-w / 2 / G) * G;
+    chars.forEach((ch) => { if (ch === ' ') { x += SP; return; } items.push({ ch, x, y: y0 + j * lh, ax: x * spread, ay: (y0 + j * lh) * 1.3 }); x += adv; });
+  });
+  return items;
+}
+// 한 말의 점들 — m = 0 낱개(벌어져 하나하나) → 1 뭉침. dev = 기기 자리(그 말의 좌표로)
+function shapeOf(items, shape, m, k, dev) {
+  const s = M * (1 + 0.12 * m) * k, pos = items.map((it) => [it.ax + (it.x - it.ax) * m, it.ay + (it.y - it.ay) * m]);
+  const xs0 = items.map((i) => i.x), lastY = Math.max(...items.map((i) => i.y));
+  let fi = 0, best = Infinity; items.forEach((it, i) => { const d = Math.hypot(it.x - dev[0], it.y - dev[1]); if (it.y === lastY && d < best) { best = d; fi = i; } });   // 맨 아래 줄에서 기기에 가장 가까운 글자 — 가운데 선 말은 가운데서 나온다
+  const [fx, fy] = pos[fi], du = Math.hypot(dev[0] - items[fi].x, dev[1] - items[fi].y), ux = (dev[0] - items[fi].x) / du, uy = (dev[1] - items[fi].y) / du;
+  const span = Math.max(...xs0) - Math.min(...xs0) + s, w = Math.max(0.055 * span, 0.77 * U), L = Math.max(0.2 * span, 2.25 * U), ax = ux * s * 0.45, ay = uy * s * 0.45, b = [ax - ux * w, ay - uy * w];
+  const T = [[b[0] - uy * w, b[1] + ux * w], [ax + ux * L, ay + uy * L], [b[0] + uy * w, b[1] - ux * w]];
+  const dots = [];
+  pos.forEach(([px, py], i) => { for (const [x, y] of [...lattice(shape, s), ...beads(shape, s)]) dots.push({ x: px + x, y: py + y, r: 1, mod: i }); });
+  const tx = T.map((q) => q[0]), ty = T.map((q) => q[1]);
+  for (let j = Math.floor(Math.min(...ty) / ROW) - 1; j <= Math.max(...ty) / ROW + 1; j++) for (let i = Math.floor(Math.min(...tx) / G) - 1; i <= Math.max(...tx) / G + 1; i++) {
+    const x = i * G + (j & 1 ? G / 2 : 0), y = j * ROW;
+    if (!inPoly(T, x, y) || MOD[shape](x, y, s)) continue;
+    const t = clamp(((x - b[0]) * ux + (y - b[1]) * uy) / (L + w));
+    dots.push({ x: fx + x, y: fy + y, r: t < 0.5 ? 1 : 1 - 1.3 * (t - 0.5), mod: -1, t });
+  }
+  if (m > 0) {   // 모듈 사이 좁은 틈이 점으로 메워진다(한 칸 부풀렸다 한 칸 깎기)
+    const key = (i, j) => i + ',' + j, has = new Set(), nb = (i, j) => (j & 1 ? [[i - 1, j], [i + 1, j], [i, j - 1], [i + 1, j - 1], [i, j + 1], [i + 1, j + 1]] : [[i - 1, j], [i + 1, j], [i - 1, j - 1], [i, j - 1], [i - 1, j + 1], [i, j + 1]]);
+    items.forEach((it) => { const gi = Math.round(it.x / G), gj = Math.round(it.y / ROW); for (const [, , i, j] of lattice(shape, s)) has.add(key(gi + i, gj + j)); });
+    const grown = new Set(has); for (const q of has) { const [i, j] = q.split(',').map(Number); for (const [a, c] of nb(i, j)) grown.add(key(a, c)); }
+    for (const q of grown) { if (has.has(q)) continue; const [i, j] = q.split(',').map(Number); if (nb(i, j).every(([a, c]) => grown.has(key(a, c)))) dots.push({ x: i * G + (j & 1 ? G / 2 : 0), y: j * ROW, r: m ** 3, mod: -1 }); }
+  }
+  const P = OUTLINE[shape]?.(s);
+  return { pos, dots, polys: P ? pos.map(([px, py]) => P.map(([x, y]) => [px + x, py + y])) : [], perp: [-uy, ux], tip: [fx + ax + ux * L, fy + ay + uy * L], anchor: fi };
+}
+// 그리기 — 점마다 fly(나는 중: 메움 없음) · p(터지는 중). o = { polyA, textA, mt(모듈마다 내려앉는 몸짓), time, ph }
+function paint(ctx, st, sh, dots, items, o) {
+  const om = (2 * Math.PI) / 3.8, wave = Math.sin(om * o.time + o.ph) + 0.35 * Math.sin(2.3 * om * o.time + o.ph);
+  const MT = (i) => (i >= 0 && o.mt ? o.mt(i) : null);   // 모듈마다 [가로 배율, 세로 배율, 회전] — 내려앉는 몸짓
+  const tf = (i, x, y) => { const q = MT(i); if (!q) return [x, y]; const [cx, cy] = sh.pos[i], dx = (x - cx) * q[0], dy = (y - cy) * q[1]; return [cx + dx * Math.cos(q[2]) - dy * Math.sin(q[2]), cy + dx * Math.sin(q[2]) + dy * Math.cos(q[2])]; };
+  const at = (d) => {
+    let x = d.x, y = d.y; if (d.fly) return [x, y, 1];
+    if (d.t !== undefined) { const sw = 1.2 * G * d.t ** 1.6 * wave; x += sh.perp[0] * sw; y += sh.perp[1] * sw; }   // 꼬리는 끝으로 갈수록 나부낀다
+    const q = MT(d.mod); return [...tf(d.mod, x, y), q ? Math.sqrt(q[0] * q[1]) : 1];
+  };
+  ctx.fillStyle = st.bg;
+  sh.polys.forEach((P, i) => { if (!o.polyA(i)) return; ctx.beginPath(); P.forEach(([x, y]) => ctx.lineTo(...tf(i, x, y))); ctx.fill(); });
+  for (const d of dots) { if (d.fly || d.p) continue; const [x, y, b] = at(d); ctx.beginPath(); ctx.arc(x, y, RF * d.r * b, 0, 7); ctx.fill(); }   // 같은 색 메움 — 붙은 점만
+  for (const d of dots) { const p = d.p || 0, [x, y, b] = at(d); ctx.globalAlpha = 1 - p; ctx.beginPath(); ctx.arc(x, y, RD * d.r * b * (1 + 0.6 * p), 0, 7); ctx.fill(); }
+  ctx.fillStyle = st.fg; ctx.font = st.font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  items.forEach((it, i) => { const a = o.textA(i); if (a <= 0) return; const q = MT(i), [cx, cy] = sh.pos[i]; ctx.save(); ctx.globalAlpha = a; ctx.translate(cx + (it.dx ?? 0), cy + 1 + (it.dy ?? 0)); if (q) { ctx.rotate(q[2]); ctx.scale(q[0], q[1]); } ctx.fillText(it.ch, 0, 0); ctx.restore(); });
+  ctx.globalAlpha = 1;
+}
+const LAND = {
+  thump: (t) => { const k = Math.exp(-12 * t); return [1 + 0.1 * k, 1 - 0.16 * k, 0]; },   // 쿵 — 눌렸다 바로 선다(되튐 없음)
+  swell: (t) => { const b = 1 - 0.18 * Math.exp(-5 * t); return [b, b, 0]; },   // 몽글 — 살짝 작게 와서 부드럽게 부푼다
+  snap: () => [1, 1, 0],   // 착 — 움직임 없이 선다
+  spring: (t) => { const b = 1 + 0.2 * Math.exp(-7 * t) * Math.sin(16 * t); return [b, b, 0.15 * Math.exp(-6 * t) * Math.sin(14 * t)]; }   // 뿅 — 튀었다 흔들리며 선다
+};
+// 키비주얼 — 폰 세로 · 밝은 바탕 · 메가폰트가 쏜 점이 말 하나로 태어난다. 네 성격이 차례로.
+// 순서: 쏘기(성격마다 박자) → 낱개로 머묾 → 모여 뭉침 → 꼬리가 메가폰트 쪽으로 솟음 → 머묾 → 꼬리 끝부터 터짐
+const A = {
+  당당: { shape: '사각형', k: 1, adv: 4, rows: 6, bg: '#59A173', fg: '#000000', font: "513 21px '29CM Editorial'", ent: { name: '쿵', beat: [0.42], speed: 1700, burst: 0.08, order: 'far', path: 'straight', land: 'thump' } },
+  다정: { shape: '원', k: 1, adv: 4, rows: 6, bg: '#FFA400', fg: '#1E3655', font: "400 20px 'Mapo Dacapo'", ent: { name: '몽글', beat: [0.3], speed: 900, burst: 0.45, order: 'far', path: 'curve', land: 'swell' } },
+  차분: { shape: '마름모', k: 1, adv: 4, rows: 6, bg: '#B5D0F2', fg: '#1E3655', font: "500 19px 'source-han-serif-kr-variable','Noto Serif KR','Batang',serif", ent: { name: '착', beat: [0.55], speed: 1000, burst: 0.35, order: 'edge', path: 'straight', land: 'snap' } },
+  유머: { shape: '별', k: 1.3, adv: 5, rows: 8, arrive: 5.3, bg: '#DB779E', fg: '#000000', font: "500 25px 'Handjet'", ent: { name: '뿅', beat: [0.22, 0.48, 0.18, 0.4, 0.3], speed: 1300, burst: 0.3, order: 'random', path: 'straight', land: 'spring' } }
+};
+const LINES = [['당당', ['끝까지', '간다']], ['다정', ['밥은', '먹었어?']], ['차분', ['내일', '비 온대']], ['유머', ['ㅋㅋ', '진짜?']]];
+const HOLD = 2.2, GATHER = 0.7, SPROUT = 0.6, STAY = 2.6, GAP = 0.7;   // 낱개로 머묾 · 모임 · 꼬리 솟음 · 뭉친 채 머묾 · 다음 말까지
+
+// 자리 — 폰 세로 390 기준. 홈에 얹을 때는 KV_LAYOUT으로 땅(G = 앞줄 발밑)과 하늘 위끝(T = 원 아래)을 받는다
+// 홈에서는 아래 장면(메가폰트 · 사람 · 땅 띠)을 scene배(0.85)로 — 원과 땅 사이 하늘이 좁아 말이 작아지므로(디자이너 10-20).
+// 가로 자리는 폭에 맞춰 펼치고(XS), 크기만 줄인다(SC). 하늘이 땅 띠 네 개보다 낮으면(작은 폰) 조연은 뒷줄만, 땅은 주인공 줄까지만
+const XS = W / 390, SC = XS * (LAY.scene ?? 1), SKY = LAY.T ?? 0, BAND = 106 * SC;
+const COMPACT = LAY.compact ?? (LAY.G != null && LAY.G - SKY < 4 * BAND);   // 홈 덩어리 배치는 장면이 커서 이 셈이 늘 참이 된다 — compact:false로 끈다
+const GB = (LAY.G ?? 0.975 * H) + (COMPACT ? (BAND * 0.075) / 0.125 : 0), row = (r) => GB - (BAND * (0.975 - r)) / 0.125;
+const ASSET = LAY.asset ?? 'file:///C:/dev/megafont-webapp/';
+
+// 메가폰트 — 작가 원본 'left' 자세(입이 왼쪽). 오른쪽 아래에서 나팔을 TILT만큼 들어 왼쪽 위를 향한다(10-16 C1 구도)
+// 점은 각자 자리로 곧게 간다 — 나팔 입이 90°로 벌어져 있어 말 전체가 그 부채꼴 안에 든다
+const MF_PIVOT = [979, 538], MF_MOUTH = 787.6 - 979, MF_K = 0.2 * SC, TILT = ((LAY.tilt ?? 15) * Math.PI) / 180, TILT_IDLE = ((LAY.tiltIdle ?? 0) * Math.PI) / 180;   // 평소엔 작가 그림 그대로 곧게 서 있다(0°) · 쏠 때 입을 15° 든다(디자이너 10-20)
+// 메가폰트 높이 — 그림자 줄이 주인공들과 같은 땅(row 0.9)에 오게. 실루엣 바닥 = 몸 가운데에서 가장 아래 꼭짓점
+const SIL_PTS = [[787.57, 249.03], [787.57, 830.96], [1102, 539.5], [1169.17, 643.11], [1169.17, 436.9]];
+const silBottom = (tl) => Math.max(...SIL_PTS.map(([x, y]) => ((x - MF_PIVOT[0]) * Math.sin(tl) + (y - MF_PIVOT[1]) * Math.cos(tl)) * MF_K));
+// mfX = 오른쪽 끝에서 몸 가운데까지(390 기준 · SC배)
+const PIV_AT = (tl) => [LAY.mfX != null ? W - LAY.mfX * SC : W - 80 * SC, row(0.9) - silBottom(tl)], PIV = PIV_AT(TILT_IDLE), MSG = [LAY.msgX != null ? LAY.msgX * W : W / 2 - 6 * SC, SKY + (row(0.85) - SKY) * (LAY.msgY ?? 0.424)];   // 홈 로고는 화면 한가운데(msgX 0.5)   // 말의 높이 — 하늘에서의 몫(홈 로고는 위로)
+const DEV = [PIV_AT(TILT)[0] + Math.cos(TILT) * MF_MOUTH * MF_K, PIV_AT(TILT)[1] + Math.sin(TILT) * MF_MOUTH * MF_K];   // 쏠 때의 입   // 입 — 점이 나오는 곳
+
+// 작은 사람 둘 — 작가 원본 Character_*_hand.svg의 오른쪽 보기(메가폰트 쪽). 발밑 가운데를 원점으로
+const P_K = 0.085 * SC, GY = row(0.9), FEET = [1606.61, 956.68], P_H = 541.8;
+const BODY = new Path2D('M1440.5,580.98v332.2s.01,0,.01,0v27.43c0,8.88,7.19,16.07,16.07,16.07h110.23c8.87,0,16.07-7.19,16.07-16.07v-27.43c0-13.11,10.62-23.73,23.73-23.73s23.73,10.62,23.73,23.73v27.43c0,8.88,7.19,16.07,16.07,16.07h110.23c8.88,0,16.07-7.19,16.07-16.07v-359.63s-332.21,0-332.21,0Z');
+const EYE = [1689.55, 562.26], WHITE = 59.67, PUPIL = 36.32, PUPIL_SURPRISE = WHITE * (17.32 / 86.21);   // 놀란 눈 = eye_surprise.svg의 눈동자 비율
+// 웃는 눈 = eye_happy.svg 왼눈의 아치(흰자 반지름 86.21) — 벽의 작은 사람(walker.ts EYE_SMILE)과 같은 것
+const SMILE = new Path2D('M42.46,86.22c-5.01,0-8.77-4.55-7.87-9.48,4.46-24.46,25.87-43,51.63-43s47.16,18.54,51.62,43c.9,4.93-2.86,9.48-7.87,9.48h0c-3.86,0-7.17-2.76-7.86-6.56-3.1-17-18.01-29.92-35.88-29.92s-32.79,12.92-35.89,29.92c-.69,3.8-4,6.56-7.86,6.56h0Z');
+
+// 홈에서는 태어나는 말이 곧 로고타입 'MegaFont'(디자이너 10-20) — LAY.lines · LAY.font로 글과 서체를 바꾸고, 뭉친 폭(LAY.fit × 폭)에 맞춘다.
+// 낱개로 벌어지는 폭은 LAY.spread배(한 줄 여덟 글자라 그대로 벌리면 화면을 넘는다)
+const measure = document.createElement('canvas').getContext('2d');
+// 로고타입 — 글자는 서체의 실제 너비에 자간(track em)만 더해 붙인다. 가운데는 글자 칸이 아니라 **잉크**(획이 닿는 끝)로 잡고,
+// 모듈은 그 잉크 폭 안에 좌우 대칭으로 고르게(넓은 M · 좁은 t에 모듈을 하나씩 붙이면 말풍선이 오른쪽으로 쏠린다).
+// 세로는 대문자 높이의 가운데를 모듈 가운데에 — g의 내림 획은 셈에 넣지 않는다(시각보정)
+function tightLayout(lines, font, track) {
+  measure.font = font; measure.textAlign = 'center'; measure.textBaseline = 'middle';
+  const px = parseFloat(font.match(/([\d.]+)px/)[1]), lh = 6 * ROW, y0 = Math.round((-((lines.length - 1) / 2) * lh) / (2 * ROW)) * 2 * ROW;
+  const cap = measure.measureText('H'), dy = (cap.actualBoundingBoxAscent - cap.actualBoundingBoxDescent) / 2 - 1, items = [];   // -1 = paint가 글자를 1 내려 그리는 몫을 되돌림
+  lines.forEach((ln, j) => {
+    const chars = [...ln], ms = chars.map((ch) => measure.measureText(ch));
+    let x = 0; const ps = ms.map((m) => { const p = x + m.width / 2; x += m.width + track * px; return p; });
+    const inkL = Math.min(...ps.map((p, i) => p - ms[i].actualBoundingBoxLeft)), inkR = Math.max(...ps.map((p, i) => p + ms[i].actualBoundingBoxRight)), mid = (inkL + inkR) / 2;
+    const n = chars.length, inset = ms.reduce((s, m) => s + m.width, 0) / n / 2, half = (inkR - inkL) / 2 - inset, cs = [];
+    for (let i = 0; i < n; i++) { const c = n > 1 ? -half + (2 * half * i) / (n - 1) : 0; cs[i] = i < n / 2 ? Math.round(c / G) * G : -cs[n - 1 - i]; }   // 점 격자에 맞추되 좌우 거울로
+    if (n % 2) cs[(n - 1) / 2] = 0;
+    chars.forEach((ch, i) => { const y = y0 + j * lh; items.push({ ch, x: cs[i], y, ax: cs[i], ay: y, dx: ps[i] - mid - cs[i], dy }); });
+  });
+  return items;
+}
+function plan(T, att, text) {
+  const a = { ...A[att], ...(LAY.font ? { font: LAY.font } : {}), ...(LAY.color ?? {}) }, k = a.k, pad = 1.2 * M * k;
+  const items = LAY.tight != null ? tightLayout(text, a.font, LAY.tight) : layout(text, a.adv * G, a.rows * ROW, (a.arrive ?? 3.3) * (LAY.spread ?? 1));
+  const xs = items.map((i) => i.ax), ys = items.map((i) => i.ay), sx = items.map((i) => i.x);
+  const arrW = Math.max(...xs) - Math.min(...xs) + pad, arrH = Math.max(...ys) - Math.min(...ys) + pad, tail = Math.max(0.2 * (Math.max(...sx) - Math.min(...sx) + M * k), 2.25 * U) + 0.45 * M * k;
+  const doneW = Math.max(...sx) - Math.min(...sx) + pad;
+  const S = Math.min(LAY.fit ? (LAY.fit * W) / doneW : (0.8 * W) / arrW, LAY.fit ? (0.92 * W) / arrW : Infinity, (DEV[1] - MSG[1] - (LAY.tailGap ?? (COMPACT ? 24 : 70)) * SC) / (arrH / 2 + tail), (MSG[1] - SKY - 8) / (arrH / 2)), [X, Y] = MSG;   // 폭의 80%까지 — 꼬리 끝이 메가폰트에 닿지 않게
+  const dev = [(DEV[0] - X) / S, (DEV[1] - Y) / S], sh0 = shapeOf(items, a.shape, 0, k, dev);
+  const E = a.ent, shots = sh0.dots.filter((d) => d.t === undefined).map((d) => ({ ...d })), far = (d) => Math.hypot(d.x - dev[0], d.y - dev[1]), fly = (d) => (S * far(d)) / E.speed;
+  let t = T + 0.4;
+  const tailShots = LAY.tailFirst ? sh0.dots.filter((d) => d.t !== undefined).map((d) => ({ ...d })).sort((p, q) => q.t - p.t) : [];
+  tailShots.forEach((d, n) => { d.e = t + (0.4 * n) / Math.max(1, tailShots.length - 1); d.arrive = d.e + fly(d); });
+  if (tailShots.length) t += 0.5;
+  const letterStart = [], modDone = items.map((_, i) => {
+    const [cx, cy] = sh0.pos[i], mine = shots.filter((d) => d.mod === i);
+    if (E.order === 'far') mine.sort((p, q) => far(q) - far(p));
+    if (E.order === 'edge') mine.sort((p, q) => Math.hypot(q.x - cx, q.y - cy) - Math.hypot(p.x - cx, p.y - cy));
+    if (E.order === 'random') mine.sort(() => rand() - 0.5);
+    mine.forEach((d, n) => {
+      d.e = t + (E.burst * n) / Math.max(1, mine.length - 1); d.arrive = d.e + fly(d);
+      if (E.path === 'curve') { const side = i % 2 ? 1 : -1, vx = d.x - dev[0], vy = d.y - dev[1]; d.cp = [(dev[0] + d.x) / 2 - vy * 0.3 * side, (dev[1] + d.y) / 2 + vx * 0.3 * side]; }
+    });
+    letterStart.push(t); t += E.beat[i % E.beat.length];
+    return Math.max(...mine.map((d) => d.arrive));
+  });
+  shots.push(...tailShots);
+  const merge = Math.max(...shots.map((d) => d.arrive)) + HOLD, sprout = merge + GATHER, popAt = sprout + SPROUT + STAY;
+  const big = shapeOf(items, a.shape, 1, k, dev), tp = big.pos.map(([x, y]) => popAt + Math.hypot(x - big.tip[0], y - big.tip[1]) / 520);
+  const popEnd = Math.max(...big.dots.map((d) => popAt + Math.hypot(d.x - big.tip[0], d.y - big.tip[1]) / 520)) + 0.2;
+  return { att, a, items, T, S, X, Y, dev, sh0, shots, modDone, letterStart, merge, sprout, popAt, tp, big, ph: rnd(0, 6), next: popEnd + GAP };
+}
+
+(async () => {
+  for (const a of Object.values(A)) await document.fonts.load(a.font, '가').catch(() => {});
+  if (LAY.font) await document.fonts.load(LAY.font, 'MegaFont').catch(() => {});
+  const MF = new Image(); MF.src = ASSET + 'by_moomiryu/Renewal_v1/Character/megafont/left.svg'; await MF.decode();
+  const cv = document.getElementById('kv'), DPR = Math.max(2, devicePixelRatio || 1); cv.width = (LAY.cw ?? W) * DPR; cv.height = (LAY.ch ?? H) * DPR;
+  const ctx = cv.getContext('2d'), PAPER = css('--paper');
+  const PLAN = []; let T = 0.3; for (const [att, text] of LAY.lines ? LINES.map(([att]) => [att, LAY.lines]) : LINES) { const p = plan(T, att, text); PLAN.push(p); T = p.next; }
+  const LOOP = T;
+  const place = (X, Y, S, draw) => { ctx.save(); ctx.translate(X, Y); ctx.scale(S, S); draw(); ctx.restore(); };
+
+  // 표정 — 작가의 eye_*.svg(메가폰트 눈의 정확히 2배)를 눈 자리에 얹는다(홈 eyeMarkup과 같은 방식)
+  const FACES = ['general', 'see right', 'angry', 'happy', 'tired', 'twinkle', 'surprise'], EYES = {};
+  for (const f of FACES) { const im = new Image(); im.src = `${ASSET}by_moomiryu/Renewal_v1/Character/eye/eye_${f}.svg`; await im.decode(); EYES[f] = im; }
+  const SHOOT_FACE = { 당당: 'angry', 다정: 'happy', 차분: 'tired', 유머: 'twinkle' };   // 쏘는 동안의 얼굴 — 성격마다
+  function faceOf(t, g) {
+    if (!g) return 'general';
+    const last = Math.max(...g.modDone);
+    if (t < g.letterStart[0]) return 'see right';   // 겨눈다 — 입 쪽(말이 설 곳)을 본다. 작가 파일의 'see right'가 화면 왼쪽(입 쪽)으로 눈동자를 민다
+    if (t < last) return SHOOT_FACE[g.att];
+    if (t < g.sprout) return 'see right';   // 다 쏘고 낱개로 선 말을 지켜본다
+    if (t < g.popAt) return 'happy';   // 꼬리가 솟아 말이 다 지어졌다 — 사람들과 같이 웃는다
+    return t < g.popAt + 0.5 ? 'surprise' : 'general';   // 터질 때 놀랐다가 돌아온다
+  }
+  // 그림자 — 홈처럼 떠 있다: 실루엣 바닥 아래로 조금 띄우고, 폭은 실루엣 폭의 0.62배(HomeCharacter SHADE_W)
+  const silAt = (tl) => [[787.57, 249.03], [787.57, 830.96], [1102, 539.5], [1169.17, 643.11], [1169.17, 436.9]].map(([x, y]) => {
+    const dx = (x - MF_PIVOT[0]) * MF_K, dy = (y - MF_PIVOT[1]) * MF_K, P = PIV_AT(tl); return [P[0] + dx * Math.cos(tl) - dy * Math.sin(tl), P[1] + dx * Math.sin(tl) + dy * Math.cos(tl)];
+  });
+  const shadeAt = (tl) => { const q = silAt(tl), xs = q.map((p) => p[0]); return [(Math.min(...xs) + Math.max(...xs)) / 2, row(0.9), 0.62 * (Math.max(...xs) - Math.min(...xs)) / 2]; };   // 그림자는 주인공처럼 기준선 위
+  const SIL = silAt(TILT_IDLE), MF_SHADE = shadeAt(TILT_IDLE);
+  // 평소엔 곧게 서 있다가 쏘기 직전 0.35초에 기울고, 다 쏜 뒤 0.6초에 다시 선다(디자이너 10-20 "평상시엔 수직, 15도만 기울여서")
+  const tiltOf = (t, g) => {
+    if (!g || TILT === TILT_IDLE) return TILT_IDLE;
+    const s0 = g.letterStart[0], last = Math.max(...g.modDone);
+    const u = t < last ? easeIO(clamp((t - (s0 - 0.45)) / 0.35)) : 1 - easeIO(clamp((t - last - 0.1) / 0.6));
+    return lerp(TILT_IDLE, TILT, u);
+  };
+
+  const MF_BODY = css('--brand-main');
+  function megafont(kick, face, tl = TILT) {   // 쏠 때마다 짧게 뒤로 밀렸다 돌아온다(반동)
+    const [sx, sy, srx] = shadeAt(tl); ctx.fillStyle = SHADE; ctx.beginPath(); ctx.ellipse(sx, sy, srx * (1 - 0.06 * kick), srx * 0.18 * (1 - 0.06 * kick), 0, 0, 7); ctx.fill();
+    ctx.save(); const P = PIV_AT(tl); ctx.translate(P[0] + Math.cos(tl) * 5 * kick, P[1] + Math.sin(tl) * 5 * kick); ctx.rotate(tl);
+    ctx.scale(MF_K * (1 - 0.08 * kick), MF_K * (1 + 0.05 * kick)); ctx.drawImage(MF, -MF_PIVOT[0], -MF_PIVOT[1], 1920, 1080);
+    ctx.fillStyle = MF_BODY; ctx.beginPath(); ctx.arc(793.94 - MF_PIVOT[0], 537.02 - MF_PIVOT[1], 43.6, 0, 7); ctx.arc(913.78 - MF_PIVOT[0], 537.02 - MF_PIVOT[1], 43.6, 0, 7); ctx.fill();   // 원래 고리 눈을 몸 색으로 덮는다 — 안 덮으면 표정 가장자리에 흰 실선이 남는다
+    ctx.drawImage(EYES[face], 750.83 - MF_PIVOT[0], 493.91 - MF_PIVOT[1], 412.12 / 2, 172.43 / 2);   // 눈 두 개(793.94 · 913.78, 반지름 43.11) 위에 그대로
+    ctx.restore();
+  }
+
+  // 메가폰트가 쏘면 놀란다 — 첫 발에 깜짝 뛰어오르며 눈동자가 작아지고 손이 튀어나오고 뒤로 젖혀진다.
+  // 다음 박자마다 움찔(성격마다 박자가 다르니 반응도 따라 다르다). 놀란 뒤에는 태어나는 말을 올려다본다
+  // 회색 조연(군중)은 10-20에 넣었다가 뺐다(디자이너 "군중 삭제") — 줄 맞춤 · 둘러섬 · 한 줄을 견준 판은 kv-main.with-crowd.js
+  const KIDS = LAY.kids ?? [56, 112];   // 주인공 둘의 가로 자리(390 기준)
+  const PEOPLE = [{ x: KIDS[0] * XS, y: GY, k: P_K, body: css('--brand-main'), dl: 0, hop: 0.34 }, { x: KIDS[1] * XS, y: GY, k: P_K, body: css('--char-cyan'), dl: 0.08, hop: 0.26 }];
+  PEOPLE.sort((a, b) => a.y - b.y);   // 뒤에서 앞으로
+  const SHADE = css('--char-shade');
+
+  // 배경 말 — 지난 말들은 회색으로 물러나 위에서부터 틈 없이 쌓여 있다(결정 4 하늘 쌓기 — 이웃과 0.25u, 가장 높이 · 같으면 가운데).
+  // 흰 바탕이라 벽의 --grey-800 대신 같은 만큼 물러나는 --grey-400(검정 위 1.9:1 ↔ 흰 위 2.0:1). 글자는 안 보이게. 꼬리는 메가폰트 쪽
+  const BG_TEXTS = [['다정', ['오늘 많이 추우니까', '따뜻하게 입고 다녀']], ['유머', ['ㅋㅋ진짜?']], ['당당', ['이번 학기는', '끝까지 간다']], ['차분', ['내일 비 온대']], ['다정', ['밥은 먹었어?']], ['차분', ['도서관 3층', '자리 많아요']], ['당당', ['할 수 있다']], ['유머', ['학식 줄이', '도서관까지 섰음']], ['다정', ['오늘도 수고했어']], ['차분', ['내일은 비가 온대요']]];
+  const BG_BG = css('--grey-400'), RING = { k: (LAY.bgScale ?? 0.55) * SC };   // 지난 말은 주인공보다 작게
+  const PACK_DEPTH = LAY.packDepth ?? 0.3 * H, COL = G * RING.k, GAP_PX = 0.25 * U * RING.k;
+  const skyline = new Map();   // 칸마다 지금까지 쌓인 아랫변
+  const BG = [];
+  for (let n = 0; n < 24; n++) {
+    const [att, text] = BG_TEXTS[n % BG_TEXTS.length], a = A[att], items = layout(text, a.adv * G, a.rows * ROW, a.arrive);
+    const probe = shapeOf(items, a.shape, 1, a.k, [(DEV[0] - W / 2) / RING.k, (DEV[1] - 40) / RING.k]), prof = new Map();
+    for (const d of probe.dots) { if (d.t > 0.35) continue; const c = Math.round((d.x * RING.k) / COL), r = RF * d.r * RING.k, v = prof.get(c) || [Infinity, -Infinity]; v[0] = Math.min(v[0], d.y * RING.k - r); v[1] = Math.max(v[1], d.y * RING.k + r); prof.set(c, v); }
+    const lo = 0, hi = Math.floor(W / COL);   // 가운데가 화면 안이면 된다 — 가장자리에서 잘리며 끝까지 메운다
+    let best = null;
+    for (let xc = lo; xc <= hi; xc++) {
+      let y = -Infinity; for (const [c, [t0]] of prof) { const bt = skyline.get(c + xc); y = Math.max(y, (bt === undefined ? 0 : bt + GAP_PX) - t0); }
+      const sc = y + Math.abs(xc * COL - W / 2) * 0.04; if (!best || sc < best.sc) best = { x: xc * COL, y, sc };
+    }
+    if (!best) continue;
+    if (best.y + Math.min(...[...prof.values()].map((v) => v[0])) > PACK_DEPTH) break;   // 이만큼 내려오면 그만
+    for (const [c, [, b0]] of prof) skyline.set(c + Math.round(best.x / COL), Math.max(skyline.get(c + Math.round(best.x / COL)) ?? -Infinity, best.y + b0));
+    const dev = [(DEV[0] - best.x) / RING.k, (DEV[1] - best.y) / RING.k];
+    BG.push({ a, items, x: best.x, y: best.y, rot: 0, sh: shapeOf(items, a.shape, 1, a.k, dev), ph: rnd(0, 6), dr: [rnd(0, 6), rnd(0, 6)] });
+  }
+  function background(t) {   // 둥실 ±2px — 하늘의 말과 같은 결
+    for (const b of BG) {
+      ctx.save(); ctx.translate(b.x + 2 * Math.sin(t * 0.35 + b.dr[0]), b.y + 1.5 * Math.sin(t * 0.5 + b.dr[1])); ctx.rotate(b.rot); ctx.scale(RING.k, RING.k);
+      paint(ctx, { bg: BG_BG }, b.sh, b.sh.dots, b.items, { polyA: () => true, textA: () => 0, time: t, ph: b.ph }); ctx.restore();
+    }
+  }
+  function person(p, t, g) {
+    let lift = 0, sq = 0, big = 0, sur = 0, look = null;
+    if (g) {
+      const s0 = g.letterStart[0] + p.dl, w = t - s0, u = w / 0.42;
+      if (u > 0 && u < 1) lift = p.hop * 4 * u * (1 - u);
+      if (u >= 1) sq = 0.14 * Math.exp(-14 * (w - 0.42));   // 내려앉으며 눌림
+      if (w >= 0) { big = w < 1 ? 1 : Math.exp(-6 * (w - 1)); sur = big; look = [g.X, g.Y]; }
+      for (let i = 1; i < g.letterStart.length; i++) { const v = t - (g.letterStart[i] + p.dl); if (v >= 0) { const e = Math.exp(-9 * v); sq = Math.max(sq, 0.08 * e); sur = Math.max(sur, 0.7 * e); } }
+    }
+    const k = p.k, y = p.y - lift * P_H * k, sh = 1 - 0.35 * lift;
+    // 그림자는 땅에 — 뛰면 작아진다. 작가 옆모습 그대로 몸보다 넓고 왼쪽 뒤로 빠진다
+    ctx.fillStyle = SHADE; ctx.beginPath(); ctx.ellipse(p.x + (1523.21 - FEET[0]) * k, p.y, 266.63 * k * sh, 32.28 * k * sh, 0, 0, 7); ctx.fill();
+    ctx.save(); ctx.translate(p.x, y); ctx.rotate(-0.14 * big); ctx.scale(k * (1 + 0.7 * sq), k * (1 - sq)); ctx.translate(-FEET[0], -FEET[1]);
+    ctx.fillStyle = p.body; ctx.beginPath(); ctx.arc(1606.61, 580.97, 166.1, 0, 7); ctx.fill(); ctx.fill(BODY);
+    if (big > 0.3) { ctx.beginPath(); ctx.arc(1772.71, 676.89, 39, 0, 7); ctx.fill(); }   // 손이 튀어나온다
+    const pr = lerp(PUPIL, PUPIL_SURPRISE, sur), room = WHITE - pr;
+    let ox = 10, oy = 0;   // 평소엔 원본 그대로 — 메가폰트 쪽
+    if (look) { const ex = p.x + (EYE[0] - FEET[0]) * k, ey = y + (EYE[1] - FEET[1]) * k, dx = look[0] - ex, dy = look[1] - ey, d = Math.hypot(dx, dy); ox = (dx / d) * room * 0.75; oy = (dy / d) * room * 0.75; }
+    ctx.fillStyle = PAPER; ctx.beginPath(); ctx.arc(EYE[0], EYE[1], WHITE, 0, 7); ctx.fill();
+    ctx.fillStyle = p.body;
+    if (g && t >= g.sprout) { ctx.translate(...EYE); ctx.scale(WHITE / 86.21, WHITE / 86.21); ctx.translate(-86.21, -86.21); ctx.fill(SMILE); }   // 꼬리가 솟아 말이 다 지어지면 터질 때까지 웃는다
+    else { ctx.beginPath(); ctx.arc(EYE[0] + ox, EYE[1] + oy, pr, 0, 7); ctx.fill(); }
+    ctx.restore();
+  }
+
+  // 홈 그래픽은 형상에 글자를 넣지 않는다(디자이너 10-20 "굳이 그럴 필요가 없다")
+  const TXT = (f) => (LAY.noText ? () => 0 : f);
+  // 카메라 — 장면(W × H)을 화면에 z배로, (x, y)만큼 옮겨 건다. clip = 화면에서 그래픽이 보이는 칸
+  const CAM = LAY.cam ?? { z: 1, x: 0, y: 0 };
+  function render(t) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.save();
+    if (LAY.clip) { const [x, y, w, h] = LAY.clip; ctx.beginPath(); ctx.rect(x * DPR, y * DPR, w * DPR, h * DPR); ctx.clip(); }
+    ctx.setTransform(DPR * CAM.z, 0, 0, DPR * CAM.z, DPR * CAM.x, DPR * CAM.y);
+    try { draw(t); } finally { ctx.restore(); }
+  }
+  function draw(t) {
+    t = ((t % LOOP) + LOOP) % LOOP;
+    if (!LAY.clear) { ctx.fillStyle = PAPER; ctx.fillRect(0, 0, W, H); }
+    const g = PLAN.find((p) => t >= p.T && t < p.next);
+    if (LAY.bg !== false) background(t);   // 회색 지난 말 — 홈에서 빼 보는 중(디자이너 10-20 "한번 다 없애봐")
+    let kick = 0; if (g) for (const s of g.letterStart) if (t >= s) kick = Math.max(kick, Math.exp(-14 * (t - s)));
+    for (const p of PEOPLE) if (p.y < MF_SHADE[1]) person(p, t, g);   // 그림자 줄이 메가폰트의 깊이 — 그보다 뒤의 사람은 가린다
+    megafont(kick, faceOf(t, g), tiltOf(t, g));
+    for (const p of PEOPLE) if (p.y >= MF_SHADE[1]) person(p, t, g);
+    if (!g) return;
+    const NOW = document.getElementById('now'); if (NOW) NOW.textContent = `지금 — ${g.att} · ${g.a.ent.name}`;
+    if (t < g.merge) {   // 쏘기 — 입에서 작게 나와 날아가며 커지고, 먼 점부터 붙는다. 낱개로 머묾(꼬리 없음)
+      const dots = [];
+      for (const d of g.shots) {
+        if (t < d.e) continue;
+        if (t < d.arrive) { const u = easeOut((t - d.e) / (d.arrive - d.e)), v = 1 - u, r = d.r * (0.35 + 0.65 * u); dots.push(d.cp ? { x: v * v * g.dev[0] + 2 * v * u * d.cp[0] + u * u * d.x, y: v * v * g.dev[1] + 2 * v * u * d.cp[1] + u * u * d.y, r, fly: true } : { x: lerp(g.dev[0], d.x, u), y: lerp(g.dev[1], d.y, u), r, fly: true }); }
+        else dots.push(d);
+      }
+      place(g.X, g.Y, g.S, () => paint(ctx, g.a, g.sh0, dots, g.items, { polyA: (i) => t >= g.modDone[i], textA: TXT((i) => clamp((t - g.modDone[i]) / 0.08)), mt: (i) => (t >= g.modDone[i] ? LAND[g.a.ent.land](t - g.modDone[i]) : null), time: t, ph: g.ph }));
+      return;
+    }
+    if (t < g.sprout + SPROUT) {   // 그 자리에서 모여 뭉침 → 꼬리가 밑동부터 메가폰트 쪽으로 솟음
+      const m = easeOut(clamp((t - g.merge) / GATHER)), gt = easeOut(clamp((t - g.sprout) / SPROUT)), sh = m >= 1 ? g.big : shapeOf(g.items, g.a.shape, m, g.a.k, g.dev);
+      const dots = []; for (const d of sh.dots) { if (d.t === undefined) { dots.push(d); continue; } const k = LAY.tailFirst ? 1 : clamp((gt * 1.15 - d.t) / 0.15); if (k > 0) dots.push({ ...d, r: d.r * k }); }   // 꼬리부터 나온 말은 이미 꼬리가 있다
+      place(g.X, g.Y, g.S, () => paint(ctx, g.a, sh, dots, g.items, { polyA: () => true, textA: TXT(() => 1), time: t, ph: g.ph }));
+      return;
+    }
+    const sh = g.big, dots = [];   // 머묾 → 꼬리 끝부터 연쇄로 터짐
+    for (const d of sh.dots) { const p = (t - (g.popAt + Math.hypot(d.x - sh.tip[0], d.y - sh.tip[1]) / 520)) / 0.18; if (p < 1) dots.push(p > 0 ? { ...d, p } : d); }
+    place(g.X, g.Y, g.S, () => paint(ctx, g.a, sh, dots, g.items, { polyA: (i) => t < g.tp[i], textA: TXT((i) => clamp(1 - (t - g.tp[i]) / 0.18)), time: t, ph: g.ph }));
+  }
+
+  // 영역 재기(레이아웃 그림용) — 화면 좌표의 [왼, 위, 오, 아래]
+  const boxOf = (pts) => [Math.min(...pts.map((q) => q[0])), Math.min(...pts.map((q) => q[1])), Math.max(...pts.map((q) => q[0])), Math.max(...pts.map((q) => q[1]))];
+  const msgBox = (p, dots) => boxOf(dots.map((d) => [p.X + p.S * d.x, p.Y + p.S * d.y]));
+  const BOXES = {
+    spread: PLAN.map((p) => msgBox(p, p.sh0.dots.filter((d) => d.t === undefined))), done: PLAN.map((p) => msgBox(p, p.big.dots)),
+    megafont: boxOf([...SIL, [MF_SHADE[0] - MF_SHADE[2], MF_SHADE[1] + 0.18 * MF_SHADE[2]], [MF_SHADE[0] + MF_SHADE[2], MF_SHADE[1]]]),
+    people: boxOf(PEOPLE.flatMap((q) => [[q.x - 166 * q.k + (1523.21 - FEET[0] - 266.63 + 166) * q.k, q.y + 32 * q.k], [q.x + 205 * q.k, q.y - P_H * q.k]])),
+    ring: BG.map((b) => { const c = Math.cos(b.rot), n = Math.sin(b.rot); return boxOf(b.sh.dots.map((d) => [b.x + RING.k * (d.x * c - d.y * n), b.y + RING.k * (d.x * n + d.y * c)])); })
+  };
+  window.__kv = { render, LOOP, BOXES, PLAN: PLAN.map((p) => ({ att: p.att, T: p.T, s0: p.letterStart[0], mid: p.modDone[Math.floor(p.modDone.length / 2)], held: p.merge - 0.2, tail: p.sprout + SPROUT + 0.8, pop: p.popAt + 0.25, next: p.next })) };
+  const t0 = performance.now() / 1000;
+  (function loop() { if (!window.__stop) render(performance.now() / 1000 - t0); requestAnimationFrame(loop); })();
+  document.body.dataset.ready = '1';
+})();
+</script></body></html>

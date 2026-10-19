@@ -160,7 +160,10 @@ export default function HomeCrowd() {
       /* 위는 원근이 정하고 아래는 버튼이 정한다(groundLimit이 잰다).
          밤 동안에는 지평선(55%) 아래에 서라고 0.57부터였다. 지평선이
          없어졌으므로 다시 0.53이다. */
-      p.y = random(h * 0.53, floor);
+      /* 그러다 발끝을 메가폰트 그림자 줄 가까이로 좁혔다(2026-10-20, 결정 17 — 디자이너 '그림자 투시가 안 맞는다'). 띠 어디든 서니
+         뒤(위)에 선 사람도 앞 사람과 키가 같아 깊이가 어긋났다 — 키 · 그림자는 줄이지 않고(벽 · 키비주얼과 같은 평평한 무대) 그림자 줄
+         −10 ~ +40px 안에만 선다. floor 아래로는 안 내려가고, 메가폰트가 아직 자리 잡기 전이면 위의 띠 */
+      p.y = charPos.ready ? Math.min(floor, random(charPos.ground - 10, charPos.ground + 40)) : random(h * 0.53, floor);
       p.speed = random(SPEED.min, SPEED.max);
       p.phase = 'walk';
       p.beat = 0;

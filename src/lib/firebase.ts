@@ -704,6 +704,21 @@ export async function submitFeedback(text: string): Promise<void> {
   if (!res.ok) throw say(E.feedback);
 }
 
+/**
+ * 관리자가 벽에서 글을 내린다(2026-10-20). 금지어 목록(lib/banned.ts)이 놓친
+ * 비방 · 새 말을 사람이 거두는 길이다. 규칙(firestore.rules · messages)이 관리자
+ * 계정만 통과시킨다. 벽은 최신 15개를 1분마다, 사흘 치를 1시간마다 다시 읽으니
+ * 그 안에 사라진다(WallSimulation · RECENT_N · POOL_REFRESH_MS).
+ */
+export async function deleteMessage(id: string, idToken: string): Promise<void> {
+  if (!hasFirebaseEnv()) { writeMockStore(readMockStore().filter((m) => m.id !== id)); return; }
+  const res = await withTimeout(fetch(`${FS_BASE}/messages/${encodeURIComponent(id)}?key=${FS_KEY}`, {
+    method: 'DELETE', headers: { Authorization: `Bearer ${idToken}` }
+  }), 15000);
+  if (res.status === 401 || res.status === 403) throw new Error('내릴 권한이 없어요. 관리자 계정으로 다시 로그인해주세요.');
+  if (!res.ok) throw new Error(`내리지 못했어요 (${res.status})`);
+}
+
 /** 관리자 로그인 — Firebase Auth REST. 돌려받은 idToken은 한 시간 간다 */
 export async function adminSignIn(email: string, password: string): Promise<string> {
   if (!hasFirebaseEnv()) return 'mock';

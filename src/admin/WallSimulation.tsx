@@ -83,6 +83,8 @@ export default function WallSimulation() {
   const [dock, setDock] = useState<{ msg: StoredMessage; key: number; release: boolean } | null>(null);
   /** 도킹의 박자 — WallSky가 적고 작은 사람이 읽는다(올려다보기 · 글자마다 폴짝) */
   const beat = useRef<DockBeat | null>(null);
+  /** 소리의 결을 그릴 곳 — 땅 뒤(WallSky가 그린다) */
+  const waves = useRef<HTMLCanvasElement>(null);
   /** 막 하늘에 오른 글(LINGER_MS) */
   const [linger, setLinger] = useState<StoredMessage | null>(null);
 
@@ -303,10 +305,12 @@ export default function WallSimulation() {
         </div>
       )}
 
+      {/* 소리의 결(결정 9) — 도킹 때만 기기에서 퍼진다. 말과 땅 뒤라 땅보다 먼저 놓는다(WallSky가 그린다) */}
+      <canvas ref={waves} className="wall-waves" aria-hidden="true" />
       {/* 바닥 — 땅 띠와 그 속의 로고타입(결정 6). 말들 뒤. 왼쪽 위의 원 배지는 뺐다 */}
       <WallGround />
       {/* 하늘 · 도킹 — 처음 받은 목록으로 쌓는다(받기 전에 쌓으면 받은 글이 모두 아래에서 올라오는 것으로 읽힌다) */}
-      {messages !== null && <WallSky list={visible} dock={dock} beat={beat} />}
+      {messages !== null && <WallSky list={visible} dock={dock} beat={beat} waves={waves} />}
       {/* 벽의 작은 사람 둘 — 땅 위를 걷는다 */}
       <WallWalkers beat={beat} />
 

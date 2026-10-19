@@ -1,8 +1,8 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import VoiceBubble from './VoiceBubble';
-import { ENTRANCE, G, RD, RF, arrange, arrangeOf, bigScale, gapsOf, kindOf, modulesAt, planEntrance, tailOf, type Dot, type Item, type Kind, type Plan, type Tail } from '../lib/aggregate';
+import { ENTRANCE, G, RD, RF, arrange, arrangeOf, bigScale, follow, gapsOf, kindOf, modulesAt, mouthOf, planEntrance, tailOf, type Dot, type Item, type Kind, type Plan, type Tail } from '../lib/aggregate';
 import { paintBody, paintEntrance, placeGlyphs, type Glyph, type Pop } from '../lib/dotPaint';
-import { SKY, WIDE, bodyOf, fanOf, profileOf, ringOf, turn, type Box, type Seat, type Seated } from '../lib/sky';
+import { FAN, SKY, WIDE, bodyOf, fanOf, profileOf, ringOf, turn, type Box, type Seat, type Seated } from '../lib/sky';
 import { foldLines } from '../lib/fit';
 import { cssRgb, hash } from '../lib/hatch';
 import { fontMap } from '../lib/palettes';
@@ -20,12 +20,17 @@ import type { DockBeat } from './WallWalkers';
  *
  * 도킹 —
  *   1. 하늘 말들이 0.6초에 광각처럼 퍼진다(큰 말을 둘러싼 고리, 1.45배 · 고리 따라 기울기)며 회색(--grey-800, 글자도)으로 가라앉는다.
- *   2. 새 말이 화면 정중앙에 크게 — 성격별 등장(쿵 · 몽글 · 착 · 뿅) → 다 서면 줄이 화면 가로 94%까지 휭.
- *   3. 크게 머문다(도킹 중, 꼬리 없음). 새 말의 하늘 자리는 이때 미리 정한다(열이 찼거나 호에 안 들어가면 가장 오래 떠 있던 말이 꼬리
+ *   2. 새 말이 화면 정중앙에 크게 — 꼬리가 먼저(결정 9): 첫 글자의 퍼진 자리에서 기기 쪽 끝부터 밑동으로 0.45초에 솟고, 그 밑동(입)에서
+ *      글자 점들이 성격별 등장(쿵 · 몽글 · 착 · 뿅)으로 나간다 → 다 서면 줄이 화면 가로 94%까지 휭(꼬리는 첫 글자를 따라간다).
+ *   3. 크게 머문다(도킹 중, 꼬리 단 채). 새 말의 하늘 자리는 이때 미리 정한다(열이 찼거나 호에 안 들어가면 가장 오래 떠 있던 말이 꼬리
  *      끝부터 터지고 새 말이 그 자리 번호를 물려받는다 — 없으면 맨 뒤 번호).
- *   4. 해제 → 그 퍼진 자리에서 모임 0.7초 → 꼬리 솟음 0.6초 → 0.4초 뒤 1.4초(easeInOut)에 작아지며 하늘의 제자리로. 이때 하늘 말들이
+ *   4. 해제 → 그 퍼진 자리에서 꼬리 단 채 모임 0.7초 → 0.4초 뒤 1.4초(easeInOut)에 작아지며 하늘의 제자리로. 이때 하늘 말들이
  *      제 색 · 제자리로 돌아온다.
  * 사흘이 지난 말도 꼬리 끝부터 연쇄로 터진다.
+ *
+ * 소리의 결(결정 9) — 평소엔 없다. 도킹 때만 메가폰처럼 격렬하게: 도킹 순간 가장 굵은 결 한 방(광각 퍼짐과 함께), 글자가 설 때마다 한 방,
+ * 크게 머무는 동안 0.4초마다 쏟아지고 모이며 잦아든다. 말과 땅 뒤(WallSimulation의 .wall-waves)에 --grey-600으로. 결이 지나가면 하늘
+ * 말이 덜컥 흔들린다 — 큰 말은 흔들지 않는다(소리의 주인).
  *
  * 돌려 보이기(결정 8) — 하늘엔 많아야 열 개(lib/sky.ts). 못 뜬 말 · 넘쳐 터진 말은 기다림 줄에 선다(지운 게 아니다 — 사흘 약속을 이것으로
  * 지킨다). 1분마다 가장 오래 떠 있던 말이 꼬리 끝부터 터져 줄 맨 뒤로 가고, 줄 맨 앞 말이 그 자리 번호를 물려받아 0.9초 뒤 기기에서
@@ -38,7 +43,7 @@ import type { DockBeat } from './WallWalkers';
  * 천천히 바래다 가라앉는다. 기기에서 쏘아 올라 → 하늘에 쌓이고 → 터져 → 땅에 내려앉는 한 바퀴. 더미는 배경 — 작은 사람 뒤에 그린다.
  * 처음 켤 땐 빈 땅에서 시작한다.
  */
-const GATHER = 0.7, GROW = 0.6, WAIT = 0.4, RISE = 1.4, WHOOSH = 0.7;
+const GATHER = 0.7, WAIT = 0.4, RISE = 1.4, WHOOSH = 0.7;
 /** 터짐이 꼬리 끝에서 번지는 빠르기 — 벽 폭의 몫/초(견본 520px@1280) · 시작까지 · 다 터지고 걷는 때 */
 const POP_V = 520 / 1280, POP_DELAY = 0.25, POP_DONE = 3;
 /** 하늘 말을 다시 그리는 간격(초 — 나부낌 · 둥실은 30fps). 도킹 중의 큰 말은 매 프레임 */
@@ -51,6 +56,14 @@ const SKY_DT = 0.033;
 const CRUMB = { every: 5, gravity: 2.2, vx: 0.03, vy: 0.06, maxH: 0.03, logo: 0.04, fade: 86400, sink: 86400, repaint: 10 };
 /** 돌려 보이기(결정 8) — 간격(초) · 터진 뒤 쏘기까지 · 쏘아 올라 붙는 시간 · 기기에서 나올 때의 배율 */
 const ROT = { every: 60, wait: 0.9, shot: 1.4, from: 0.4 };
+/**
+ * 소리의 결(결정 9) — 평소 · 돌림 땐 없고 도킹 때만 메가폰처럼 격렬하게. 결의 꼴 = 기기 중심 타원의 위쪽 반, 부채꼴 바깥 호를 k배 한 것.
+ * 쏟아짐: 결 사이 k 0.2 · 빠르기 k 0.5/초(0.4초마다 하나) · 세기 1.4 · 도킹 0.3초 뒤부터 1초에 차오르고 모임(0.7초)에 잦아든다. 한 방: 도킹
+ * 순간 세기 4 · 1초, 글자가 설 때마다 세기 2.2 · 1.5초(easeOut). k 0.12까지 생겨나고 1.45 앞 0.45에서 잦아든다. 선 = 높이/540 × 세기 ·
+ * --grey-600. 덜컥: 결이 지나가면 하늘 말이 기기 반대쪽으로 0.3u × Σ(정도 × min(세기, 3) × exp(−((결의 k − 말의 k) / 0.04)²))
+ */
+const WAVE = { gap: 0.2, v: 0.5, end: 1.45, born: 0.12, fade: 0.45, stream: 1.4, pour: 0.3, fill: 1, first: { s: 4, dur: 1 }, letter: { s: 2.2, dur: 1.5 }, line: 1 / 540, bob: 0.3, sig: 0.04 };
+type Wave = { k: number; s: number; a: number };
 type Crumb = { col: string; t: number };
 type Fall = { x: number; y: number; vx: number; vy: number; col: string };
 const easeOut = (k: number) => 1 - (1 - k) ** 3;
@@ -68,12 +81,21 @@ interface Sky extends Base, Place { from?: P; fromRot?: number; mv?: number; up?
   /** 터질 때 땅에 떨어질 점(다섯 알에 한 알) · 이미 떨어뜨린 점 */
   seeds?: Dot[]; sent?: Set<number> }
 /** 도킹하는 말 — 시작(초) · 크게 선 1u(px) · 등장 계획 · 휭 퍼진 낱개 자리 · 낱개 자리의 모듈 · 기기(u) · 큰 꼬리 · 하늘 자리 · 해제(초) · 광각 고리 */
-interface Dock extends Base { key: number; T: number; S: number; plan: Plan; spread: Item[]; rest: ReturnType<typeof modulesAt>; dev: P; tail: Tail; at: Place; release: number; ring: Map<Sky, { to: P; rot: number }> }
+interface Dock extends Base { key: number; T: number; S: number; plan: Plan; spread: Item[]; rest: ReturnType<typeof modulesAt>; mouth: readonly [number, number]; tail: Tail; at: Place; release: number; ring: Map<Sky, { to: P; rot: number }> }
 /** 돌림으로 기기에서 쏘아 오르는 말 — 하늘 자리 · 쏘는 때(초) */
 interface Launch { b: Base; at: Place; T: number }
+/** 지금 화면을 지나는 결 — 도킹한 말의 박자로 셈한다(기억해 둘 것이 없다) */
+const wavesOf = (D: Dock, merge: number, t: number): Wave[] => {
+  const out: Wave[] = [], pour = clamp((t - D.T - WAVE.pour) / WAVE.fill) * (1 - clamp((t - merge) / GATHER));
+  if (pour > 0) for (let k = (t * WAVE.v) % WAVE.gap; k < WAVE.end; k += WAVE.gap) out.push({ k, s: WAVE.stream, a: pour });
+  const hits: [number, { s: number; dur: number }][] = [[D.T, WAVE.first], ...D.plan.modDone.map((x): [number, { s: number; dur: number }] => [D.T + x, WAVE.letter])];
+  for (const [T0, p] of hits) if (t >= T0 && t < T0 + p.dur) out.push({ k: WAVE.end * easeOut((t - T0) / p.dur), s: p.s, a: 1 });
+  return out;
+};
 const times = (D: Dock) => {
-  const merge = Math.max(D.plan.whoosh + WHOOSH, D.release), sprout = merge + GATHER, rise = sprout + GROW + WAIT;
-  return { merge, sprout, rise, end: rise + RISE };
+  // 꼬리는 처음부터 있다(결정 9) — 모이고(0.7초) 0.4초 있다 하늘로
+  const merge = Math.max(D.plan.whoosh + WHOOSH, D.release), rise = merge + GATHER + WAIT;
+  return { merge, rise, end: rise + RISE };
 };
 
 function baseOf(msg: StoredMessage): Base {
@@ -117,11 +139,14 @@ interface Props {
   dock: { msg: StoredMessage; key: number; release: boolean } | null;
   /** 도킹의 박자를 적어 둘 곳 — 작은 사람이 읽는다(큰 말이 선 때 · 글자마다 다 쌓인 때 · 하늘로 오르는 때) */
   beat?: { current: DockBeat | null };
+  /** 소리의 결을 그릴 캔버스 — 땅 뒤에 놓인 것(WallSimulation) */
+  waves?: { current: HTMLCanvasElement | null };
 }
 
-export default function WallSky({ list, dock, beat }: Props) {
-  const beatRef = useRef(beat);
+export default function WallSky({ list, dock, beat, waves }: Props) {
+  const beatRef = useRef(beat), wavesRef = useRef(waves);
   beatRef.current = beat;
+  wavesRef.current = waves;
   const host = useRef<HTMLDivElement>(null), dockCv = useRef<HTMLCanvasElement>(null), dockText = useRef<HTMLDivElement>(null), crumbCv = useRef<HTMLCanvasElement>(null);
   const els = useRef(new Map<string, Els>());
   /** queue = 기다림 줄(글 id, 앞이 먼저) · shot = 쏘아 오르는 말 · nextRot = 다음 돌림(초) */
@@ -265,15 +290,19 @@ export default function WallSky({ list, dock, beat }: Props) {
     if (M.sky.some((s) => s.id === dock.msg.id)) { M.sky = M.sky.filter((s) => s.id !== dock.msg.id); settle(t, true); }
     M.queue = M.queue.filter((id) => id !== dock.msg.id);
     const b = baseOf(dock.msg), at = roomFor(b, t, true)!;
-    const S = bigScale(b.items, b.kd, W, H), dev: P = [0, (H / 2 + H * SKY.devDrop) / S], plan = planEntrance(b.items, b.kd, dev, S, W);
-    M.dock = { ...b, key: dock.key, T: t, S, plan, spread: b.items.map((it) => ({ ...it, ax: it.ax * plan.F })), rest: modulesAt(b.items, b.kd, 0), dev,
-      tail: tailOf(b.items, b.kd, dev), at, release: dock.release ? t : Infinity, ring: ringOf([...M.sky, ...M.leaving], W, H) };
+    // 꼬리가 먼저(결정 9) — 모였을 때의 꼬리를 첫 글자의 퍼진 자리에 붙이고, 글자 점들은 그 밑동(입)에서 나간다
+    const S = bigScale(b.items, b.kd, W, H), dev: P = [0, (H / 2 + H * SKY.devDrop) / S], tail = tailOf(b.items, b.kd, dev), rest = modulesAt(b.items, b.kd, 0);
+    const mouth = mouthOf(follow(tail, b.items, rest.pos[tail.from])), plan = planEntrance(b.items, b.kd, mouth, S, W);
+    M.dock = { ...b, key: dock.key, T: t, S, plan, spread: b.items.map((it) => ({ ...it, ax: it.ax * plan.F })), rest, mouth,
+      tail, at, release: dock.release ? t : Infinity, ring: ringOf([...M.sky, ...M.leaving], W, H) };
     rerender();
   }, [dock?.key, dock?.release, ready, landed]);
 
   // 그리기 — 한 시계
   useEffect(() => {
-    const grey = cssRgb(getComputedStyle(document.documentElement).getPropertyValue('--grey-800'));
+    const css = getComputedStyle(document.documentElement), grey = cssRgb(css.getPropertyValue('--grey-800')), waveCol = css.getPropertyValue('--grey-600').trim();
+    /** 결 캔버스에 지난 그림이 남아 있나 — 도킹이 끝나면 한 번 지운다 */
+    let waved = false;
     const mix = (c: string, k: number) => { if (k <= 0) return c; const a = cssRgb(c); return `rgb(${a.map((v, i) => Math.round(v + (grey[i] - v) * k)).join(' ')})`; };
     let raf = 0, last = -Infinity;
     const glyphEls = (e: HTMLElement | null) => [...(e?.querySelectorAll<HTMLElement>('.arc-glyph') ?? [])];
@@ -344,6 +373,34 @@ export default function WallSky({ list, dock, beat }: Props) {
       const T = M.dock ? times(M.dock) : null;
       if (beatRef.current) beatRef.current.current = M.dock && T ? { start: M.dock.T, letters: M.dock.plan.modDone.map((x) => M.dock!.T + x), rise: T.rise } : null;
       const P = !M.dock || !T ? 0 : t < T.rise ? easeOut(clamp((t - M.dock.T) / WIDE.t)) : 1 - easeIO(clamp((t - T.rise) / RISE));
+      // 소리의 결 — 도킹 때만(움직임을 줄인 화면엔 없다). 말과 땅 뒤의 캔버스에 그린다
+      const ws = M.dock && T && !quiet ? wavesOf(M.dock, T.merge, t) : [], wc = wavesRef.current?.current, dv: P = [W / 2, H * (1 + SKY.devDrop)];
+      const RX = FAN.rings[0].a * W, RY = FAN.rings[0].b * H;
+      if (wc && (ws.length || waved)) {
+        if (wc.width !== Math.round(W * dpr)) { wc.width = Math.round(W * dpr); wc.height = Math.round(H * dpr); }
+        const g = wc.getContext('2d');
+        if (g) {
+          g.setTransform(1, 0, 0, 1, 0, 0);
+          g.clearRect(0, 0, wc.width, wc.height);
+          g.setTransform(dpr, 0, 0, dpr, 0, 0);
+          g.strokeStyle = waveCol;
+          for (const w of ws) {
+            const a = clamp(w.k / WAVE.born) * clamp((WAVE.end - w.k) / WAVE.fade) * w.a;
+            if (a <= 0) continue;
+            g.globalAlpha = a; g.lineWidth = WAVE.line * H * w.s;
+            g.beginPath(); g.ellipse(dv[0], dv[1], w.k * RX, w.k * RY, 0, Math.PI, 2 * Math.PI); g.stroke();
+          }
+          g.globalAlpha = 1;
+        }
+        waved = ws.length > 0;
+      }
+      // 덜컥 — 결이 지나가는 자리의 하늘 말이 기기 반대쪽으로 밀렸다 돌아온다(말의 k = 기기에서 그 자리까지를 바깥 호 타원으로 잰 배수)
+      const jolt = (X: number, Y: number): P => {
+        if (!ws.length) return [0, 0];
+        const x = X - dv[0], y = Y - dv[1], k = Math.hypot(x / RX, y / RY), n = Math.hypot(x, y) || 1;
+        const a = ws.reduce((s, w) => s + w.a * Math.min(w.s, 3) * Math.exp(-(((w.k - k) / WAVE.sig) ** 2)), 0);
+        return [(WAVE.bob * u * a * x) / n, (WAVE.bob * u * a * y) / n];
+      };
       for (const s of [...M.leaving, ...M.sky]) {
         const e = els.current.get(s.id + (s.popAt ? ':pop' : ''));
         if (!e) continue;
@@ -352,7 +409,8 @@ export default function WallSky({ list, dock, beat }: Props) {
         if (s.up !== undefined && t < s.up + RISE) { const k = easeIO((t - s.up) / RISE); x = lerp(W / 2, x, k); y = lerp(H * (1 + SKY.devDrop), y, k); r0 *= k; }
         const [dx, dy] = quiet ? [0, 0] : drift(s, t, W, H), w = M.dock?.ring.get(s);
         // 광각 — 제 기울기에서 고리의 기울기로(퍼지는 정도만큼)
-        const X = w ? lerp(x + dx, w.to[0], P) : x + dx, Y = w ? lerp(y + dy, w.to[1], P) : y + dy, rot = w ? lerp(r0, w.rot, P) : r0, k = w ? lerp(1, WIDE.grow, P) : 1;
+        const X0 = w ? lerp(x + dx, w.to[0], P) : x + dx, Y0 = w ? lerp(y + dy, w.to[1], P) : y + dy, rot = w ? lerp(r0, w.rot, P) : r0, k = w ? lerp(1, WIDE.grow, P) : 1;
+        const [qx, qy] = jolt(X0, Y0), X = X0 + qx, Y = Y0 + qy;
         e.wrap.style.transform = `translate(${X.toFixed(1)}px, ${Y.toFixed(1)}px) rotate(${rot.toFixed(4)}rad) scale(${k.toFixed(4)})`;
         const ctx = e.canvas.getContext('2d');
         if (!ctx) continue;
@@ -412,9 +470,10 @@ export default function WallSky({ list, dock, beat }: Props) {
       let gs: Glyph[], Su = Dk.S, X = W / 2, Y = H / 2, rot = 0;
       if (!quiet && t < T.merge) {
         put(ctx, Su, X, Y, 0, dpr);
-        gs = paintEntrance(ctx, Dk.rest, Dk.plan, Dk.dev, age, ENTRANCE[Dk.kd.mod].land, WHOOSH);
+        gs = paintEntrance(ctx, Dk.rest, Dk.plan, Dk.mouth, age, ENTRANCE[Dk.kd.mod].land, WHOOSH, { tail: Dk.tail, items: Dk.items, sec: t, ph: Dk.ph, still: quiet });
       } else {
-        const m = quiet ? 1 : easeOut(clamp((t - T.merge) / GATHER)), g = quiet ? 1 : easeOut(clamp((t - T.sprout) / GROW)), r = easeIO(clamp((t - T.rise) / RISE));
+        // 꼬리 단 채 모인다 — 꼬리는 첫 글자를 따라간다(paintBody)
+        const m = quiet ? 1 : easeOut(clamp((t - T.merge) / GATHER)), g = 1, r = easeIO(clamp((t - T.rise) / RISE));
         const [dx, dy] = quiet ? [0, 0] : drift(Dk, t, W, H);
         X = lerp(W / 2, Dk.at.pos[0] + dx, r); Y = lerp(H / 2, Dk.at.pos[1] + dy, r); Su = lerp(Dk.S, u, r); rot = Dk.at.rot * r;
         // 오르는 동안 기울기는 0에서 제 기울기로, 꼬리는 그 순간의 자리에서 기기를 가리킨다

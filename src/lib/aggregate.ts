@@ -204,7 +204,7 @@ export function gapsOf(items: readonly Item[], kd: Kind): Dot[] {
   return out;
 }
 /**
- * 꼬리(모인 뒤에만) — 맨 아래 줄에서 기기(dev, 덩어리 좌표 u)에 가장 가까운 글자의 가장자리(0.45s)에서 나와 기기를 가리킨다.
+ * 꼬리 — 맨 아래 줄에서 기기(dev, 덩어리 좌표 u)에 가장 가까운 글자의 가장자리(0.45s)에서 나와 기기를 가리킨다(모인 자리에서 셈한다).
  * 길이 max(0.2 × 덩어리 폭, 2.25u), 밑동 반폭 max(0.055 × 폭, 0.77u). 끝 절반에서만 점이 작아진다(1 − 1.3(t − 0.5), 끝 0.35배)
  */
 export function tailOf(items: readonly Item[], kd: Kind, dev: P): Tail {
@@ -224,6 +224,18 @@ export function tailOf(items: readonly Item[], kd: Kind, dev: P): Tail {
   }
   return { dots, perp: [-uy, ux], from: fi, tip: [it.x + ax + ux * L, it.y + ay + uy * L] };
 }
+/** 꼬리를 붙은 글자의 지금 자리로(꼬리는 모인 자리에서 셈한다 — 퍼져 있는 동안 · 모이는 동안엔 첫 글자에 붙어 다닌다, 결정 9) */
+export function follow(tail: Tail, items: readonly Item[], at: readonly number[]): Tail {
+  const dx = at[0] - items[tail.from].x, dy = at[1] - items[tail.from].y;
+  return dx || dy ? { ...tail, dots: tail.dots.map((d) => ({ ...d, x: d.x + dx, y: d.y + dy })), tip: [tail.tip[0] + dx, tail.tip[1] + dy] } : tail;
+}
+/** 입 = 꼬리 밑동 — t가 가장 작은 꼬리 점 셋의 가운데. 큰 말의 점들이 기기가 아니라 여기서 나간다(결정 9) */
+export function mouthOf(tail: Tail): P {
+  const ds = [...tail.dots].sort((a, b) => (a.t ?? 0) - (b.t ?? 0)).slice(0, 3);
+  return [ds.reduce((s, d) => s + d.x, 0) / ds.length, ds.reduce((s, d) => s + d.y, 0) / ds.length];
+}
+/** 꼬리가 먼저(결정 9) — 도킹하면 꼬리가 기기 쪽 끝부터 밑동으로 이 초에 솟고(easeOut), 그 뒤에 첫 글자가 나간다 */
+export const TAIL_FIRST = 0.45;
 /** 나부낌 — 진폭 1.2G · t^1.6, 꼬리에 수직, sin + 0.35 sin(2.3ω), 주기 3.8초(말마다 박자 ph가 다르다) */
 export const flutter = (t: number, sec: number, ph: number) => {
   const om = (2 * Math.PI) / 3.8;

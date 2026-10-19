@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import StepHeader from '../components/StepHeader';
+import { hasBannedWord } from '../lib/banned';
 import { foldLines } from '../lib/fit';
 import { count, pick, useLang, type Pair } from '../lib/lang';
 
@@ -15,7 +16,8 @@ const T = {
     hintRule: { ko: '무슨 말이든 좋지만, 누군가를 해치는 말은 안 돼요.', en: 'Anything is welcome, but words that hurt others are not.' },
     hintRuleDetail: { ko: '욕설, 혐오·차별 표현, 특정인을 향한 비방이나 위협적인 내용은 삼가 주세요.', en: 'Please avoid profanity, hate or discriminatory language, personal attacks and threats.' },
     close: { ko: '닫기', en: 'Close' },
-    done: { ko: '다 썼어요', en: 'Done writing' }
+    done: { ko: '다 썼어요', en: 'Done writing' },
+    banned: { ko: '쓸 수 없는 표현이 있어요.', en: "There's an expression that can't be used." }
 };
 /** 잘린 글자 수 · 남은 글자 수 — 영어는 수에 따라 낱말 꼴이 바뀐다 */
 const cutSay = (n: number): Pair => ({ ko: `${n}자는 들어가지 않았어요`, en: `${count(n, 'character', 'characters')} didn't fit` });
@@ -128,6 +130,8 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
     const [cut, setCut] = useState(0);
     /** 줄이 넘쳤다고 말해 주는 한 줄. 다음 자판에서 지워진다 */
     const [over, setOver] = useState('');
+    /** 쓸 수 없는 표현이 있어 멈췄는가. 힌트 자리를 잠시 빌리고, 글이 바뀌면 돌려준다 */
+    const [banned, setBanned] = useState(false);
     /**
      * 지금 쓰고 있는가 — 곧 **자판이 올라와 있는가.**
      *
@@ -247,7 +251,7 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
         const over = e.clipboardData.getData('text').length - room;
         if (over > 0) setCut(over);
       }}
-      onKeyDown={() => { if (cut) setCut(0); if (over) setOver(''); }}
+      onKeyDown={() => { if (cut) setCut(0); if (over) setOver(''); if (banned) setBanned(false); }}
       onFocus={() => {
         setTyping(true);
         /* 두 번 돌려놓는다. 첫 번째는 제목이 접히면서 높이가 바뀐 **뒤**,
@@ -269,6 +273,8 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
         else { lastGood.current = done; setText(done); }
       }}
       onChange={e => {
+        /* 자판 없이 바뀌는 글(붙여넣기 · 조합)도 고친 것이다 */
+        setBanned(false);
         const next = e.target.value.slice(0, 60);
         /* 조합 중에는 받아만 둔다. 검사는 조합이 끝나는 자리에서 한다 */
         if (composing.current) { setOver(''); setText(next); return; }
@@ -290,8 +296,12 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
 
       다만 힌트는 **누를 수 있고** 글자 수는 아니다. 그 차이만 밑줄이 든다. */}
   <div className="write-foot">
-    {/* 힌트는 **부르면 온다.** 저절로 뜨거나 돌아가지 않는다 — 보고 있지
-        않은 자리에서 글이 바뀌면, 쓰던 사람은 제 글이 바뀐 줄 안다. */}
+    {/* 쓸 수 없는 표현이 있으면 **힌트 자리를 잠시 빌린다**(디자이너 10-19).
+        따로 한 줄을 내면 '다 썼어요'와 입력칸 사이에서 눈이 한 번 더 내려가야
+        했다. 글을 고치는 순간 힌트가 돌아온다. 어느 말인지는 짚지 않는다(lib/banned.ts). */}
+    {banned ? <span className="compose-cut">{pick(T.banned, lang)}</span> :
+    /* 힌트는 **부르면 온다.** 저절로 뜨거나 돌아가지 않는다 — 보고 있지
+        않은 자리에서 글이 바뀌면, 쓰던 사람은 제 글이 바뀐 줄 안다. */
     <button type="button" className={'hint-open' + (hint ? ' on' : '')}
       aria-expanded={hint} aria-controls="write-hint"
       onClick={() => {
@@ -301,7 +311,7 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
            내려앉았다. 닫으면 다시 초점을 돌려주므로 자판도 같이 돌아온다. */
         input.current?.blur();
         setHint(true);
-      }}>{pick(T.hint, lang)}</button>
+      }}>{pick(T.hint, lang)}</button>}
     {/* 다 찼다는 말을 **숫자와 글자 둘로** 한다. 색만 바꾸면 색을 못 보는
         사람에게는 아무 일도 안 일어난 화면이다. */}
     <span className={'compose-count' + (full ? ' is-full' : '')}>
@@ -314,7 +324,7 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
   {/* 낭독기에는 **마지막 열 자**만 알린다. 한 자마다 읽어 주면 쓰는 것을
       방해하고, 안 알리면 한도가 있다는 것조차 모른다. */}
   <span className="sr-only" aria-live="polite">
-    {full ? pick(T.full, lang) : left <= 10 ? pick(leftSay(left), lang) : ''}
+    {banned ? pick(T.banned, lang) : full ? pick(T.full, lang) : left <= 10 ? pick(leftSay(left), lang) : ''}
   </span>
 
   {hint && (
@@ -340,6 +350,11 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
     </div>
   )}
 
-  <button className="primary-action" disabled={empty} onClick={() => onSubmit(text.trim())}>{pick(T.done, lang)}</button>
+  {/* 쓸 수 없는 표현은 **여기서** 멈춘다 — 네 단계를 다 고른 뒤 보내는 순간에
+      거절당하지 않게. 말하는 자리는 위 힌트 자리다. */}
+  <button className="primary-action" disabled={empty} onClick={() => {
+    if (hasBannedWord(text)) { setBanned(true); return; }
+    onSubmit(text.trim());
+  }}>{pick(T.done, lang)}</button>
  </div>;
 }

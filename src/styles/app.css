@@ -1845,6 +1845,10 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    다시 재게 된다. */
 .tone-figure{ min-height: 0; align-self: stretch; }   /* 폭도 제 글이 아니라 판이 정한다 */
 .tone-figure-text{ display: inline-block; white-space: pre; line-height: 1.4; text-align: center; }
+/* 글자 뒤 모듈(2026-10-20, 결정 18 — GlyphModules) — 글을 든 칸(첫 장 .tone-figure · 조절판 .z-glyph-fit)을 한 겹으로 묶고 그 맨 뒤에
+   캔버스 한 장. 다 그린 뒤 한 장째 옅게 — 이웃 모듈이 겹친 곳도 한 번 칠한 것처럼 */
+.tone-figure, .z-glyph-fit{ position: relative; isolation: isolate; }
+.glyph-modules{ position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; z-index: -1; opacity: var(--module-faint); }
 /* 다음 걸음으로 가는 유일한 손짓이라 위계를 본문 자리에 둔다 —
    라벨(14px·76%)로 두었더니 잔글씨로 읽혀 눌러야 하는 줄 몰랐다. */
 /* span이었다가 버튼이 됐다(2026-09-21) — 이 장에서 앞으로 가는 길이

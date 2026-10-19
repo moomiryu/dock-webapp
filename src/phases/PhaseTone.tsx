@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
+import GlyphModules from '../components/GlyphModules';
 import SnapSwitch, { tick } from '../components/SnapSwitch';
 import { MANNER, SIZE_WORDS, fontMap, formFor, hasSizeBar, hasWeightAxis, legacyFields, mannerDefault, mannerOrder, opticalFix, sizeAt, sizePos, speedBarFor, weightWordsFor } from '../lib/palettes';
 import { DEFAULT_TONE, type PartialTone } from '../lib/tone';
@@ -466,6 +467,8 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
         '--sxm': mid.scaleX, '--sym': mid.scaleY, '--fvm': fvs(mid), '--lsm': mid.letterSpacing,
         '--sx1': fast.scaleX, '--sy1': fast.scaleY, '--fv1': fvs(fast), '--ls1': fast.letterSpacing, '--sk1': `${-fast.slant}deg`,
         ...(fig ? { '--fig': `${fig.toFixed(1)}px` } : null) } as CSSProperties}>
+     {/* 글자마다 뒤에 그 성격의 모듈을 옅게(2026-10-20, 결정 18) */}
+     <GlyphModules of={figText} font={tone.font} />
      <span ref={figText} className="tone-figure-text">{lines.join('\n')}</span>
     </div>
     {/* 글자였다. 그러면 이 장에서 **앞으로 가는 길이 손가락뿐**이라
@@ -494,6 +497,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
       onPointerDown={faceDown} onPointerUp={faceUp}
       onPointerCancel={() => { tap.current = null; }} onKeyDown={faceKey}>
      <div className="z-glyph-fit">
+      <GlyphModules of={glyph} font={tone.font} />
       <div ref={glyph} className={'z-glyph is-line' + (form.slant ? ' is-gust' : '')} style={face}>
        <span>{lines.map((l, i) => <b key={i} className="z-glyph-char">{l}</b>)}</span>
       </div>

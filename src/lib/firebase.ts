@@ -1,4 +1,5 @@
 import type { Draft, ToneState } from '../types';
+import { hasBannedWord } from './banned';
 import { getLang, pick, type Pair } from './lang';
 
 /**
@@ -14,7 +15,8 @@ const say = (pair: Pair) => new UserError(pick(pair, getLang()));
 const E = {
   wall: { ko: '벽에 닿지 못했어요. 잠시 뒤 다시 보내주세요.', en: "Couldn't reach the wall. Please try again in a moment." },
   length: { ko: '1~200자로 적어주세요.', en: 'Please write between 1 and 200 characters.' },
-  feedback: { ko: '보내지 못했어요. 잠시 뒤 다시 보내주세요.', en: "Couldn't send it. Please try again in a moment." }
+  feedback: { ko: '보내지 못했어요. 잠시 뒤 다시 보내주세요.', en: "Couldn't send it. Please try again in a moment." },
+  banned: { ko: '쓸 수 없는 표현이 있어요.', en: "There's an expression that can't be used." }
 };
 
 export interface StoredMessage {
@@ -322,9 +324,18 @@ function client(): Promise<FirestoreLike> {
   return cached;
 }
 
+/**
+ * 보내기 직전에 한 번 더 본다. 1/5에서 막지만, 저장해 둔 초안을 이어 쓴 글은
+ * 그 화면을 거치지 않을 수 있다. 규칙(firestore.rules)이 같은 목록으로 또 본다.
+ *
+ * 글자는 **NFC로 모아서** 보낸다. 규칙은 '시'+'발'을 낱자모(ᄉ ᅵ …)로 풀어 쓴
+ * 글을 모아 읽지 못하므로 그런 글을 통째로 거절한다 — 화면에서는 똑같이
+ * 보이는 학생 글이 그 거절에 걸리지 않게.
+ */
 export async function submitMessage(d: Draft): Promise<string> {
+  if (hasBannedWord(d.text)) throw say(E.banned);
   const c = await client();
-  return c.addMessage(d);
+  return c.addMessage({ ...d, text: d.text.normalize('NFC') });
 }
 
 export async function listMessages(limit = 30): Promise<StoredMessage[]> {

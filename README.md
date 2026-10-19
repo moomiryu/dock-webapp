@@ -161,6 +161,7 @@
 | [src/lib/fit.ts](src/lib/fit.ts) | 액자에 글을 맞추는 계산. 03·04·`/wall`이 공유 |
 | [src/lib/palettes-v2.ts](src/lib/palettes-v2.ts) | 색 10조합 (배경+글자) |
 | [src/lib/palettes.ts](src/lib/palettes.ts) | 자형 4종 → 실제 서체 매핑 |
+| [src/lib/banned.ts](src/lib/banned.ts) | 쓸 수 없는 표현(욕설 · 혐오 · 차별어). 고치면 `node scripts/banned-rules.mjs`로 규칙까지 — 운영엔 콘솔에서 게시해야 걸린다 |
 
 체류 기간이나 강조 시간을 바꾸면 화면 카피와 벽 필터가 함께 따라간다.
 

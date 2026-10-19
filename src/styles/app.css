@@ -2848,6 +2848,10 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   place-items: center;
 }
 .onwall-floor > *{ grid-area: 1 / 1; }
+/* 소리의 결(2026-10-20, 결정 11 — PhaseOnWall Waves) — 화면 가득 한 장, 빨강 바탕 바로 위 · 두 눈 · 남은 초 · 개발용 버튼 뒤.
+   화면을 한 겹으로 묶고(isolation) 캔버스만 그 안의 맨 뒤로 — 눈 묶음에 자리 기준을 주면 개발용 버튼의 누름을 가로챘다 */
+.onwall-screen{ isolation: isolate; }
+.onwall-waves{ position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; z-index: -1; }
 .onwall-floor .onwall-count{
   font-family: var(--mark-font);
   font-weight: 400;

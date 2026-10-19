@@ -7,7 +7,7 @@
 // 그전(~10-19)의 나무 · 돌 · 구름 · 비눗방울 풍경(물리 · 큰 나무 · 큰 돌 · 비 · 새 떼 · 마네킹 나무)은 걷었다 — git 기록에 있다.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { EMPHASIS_MS, STAY_MS } from '../lib/wall';
+import { DOCK_TERM_MS, EMPHASIS_MS, STAY_MS } from '../lib/wall';
 import WallGround from '../components/WallGround';
 import WallWalkers, { type DockBeat } from '../components/WallWalkers';
 import WallSky from '../components/WallSky';
@@ -43,8 +43,6 @@ const LOAD_TIMEOUT_MS = 20000;
  */
 const DOCK_POLL_IDLE_MS = 2500;
 const DOCK_POLL_WAIT_MS = 500;
-/** 도킹 텀 — 꽂은 뒤 이만큼은 하늘이 그대로, 그다음 큰 말이 선다. 뗀 뒤에도 이만큼은 크게 머문다(결정 3 D: '3초 텀은 지금 그대로') */
-const DOCK_TERM_MS = 3000;
 /** 막 하늘에 오른 글을 목록에 붙잡아 두는 시간 — 목록 폴링(60초)이 아직 그 글을 못 받았으면 오르자마자 사흘이 지난 것으로 읽혀 터진다 */
 const LINGER_MS = 5 * 60_000;
 
@@ -194,7 +192,8 @@ export default function WallSimulation() {
       const R = { msg, key: ++keyRef.current, shown: false, released: false };
       runRef.current = R;
       const open = () => { R.shown = true; setDock({ msg, key: R.key, release: false }); };
-      if (prefersReducedMotion()) open(); else termTimerRef.current = window.setTimeout(open, DOCK_TERM_MS);
+      // 텀은 꽂힌 순간부터 센다(끝나는 시각과 같은 기준) — 벽이 신호를 늦게 알아채도 폰 07의 소리의 결과 같은 순간에 연다(결정 11)
+      if (prefersReducedMotion()) open(); else termTimerRef.current = window.setTimeout(open, Math.max(0, DOCK_TERM_MS - (Date.now() - startedAt)));
       // EMPHASIS_MS는 상한이고, 세는 곳은 **꽂힌 순간**이다. 벽이 신호를 몇 초 늦게 알아채도 폰과 같은 시각에 끝난다
       closeTimerRef.current = window.setTimeout(land, Math.max(0, EMPHASIS_MS - (Date.now() - startedAt)));
     };

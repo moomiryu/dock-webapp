@@ -268,6 +268,16 @@ export const ENTRANCE: Record<Module, Entrance> = {
 };
 /** 긴 글 — 첫 점이 기기에서 나간 때부터 마지막 글자가 다 서기까지 이 초를 넘지 않는다(결정 8). 넘을 글이면 글자마다의 박자만 같은 비율로 줄인다 */
 export const RISE_MAX = 8;
+/**
+ * 도킹한 큰 말의 차례(결정 3 · 9) — W × H 화면에서 크게 선 1u(px) · 기기(u, 말 원점 기준, drop = 화면 아래 바깥 높이의 몫) · 꼬리 ·
+ * 낱개 자리 · 입(꼬리 밑동 — 점이 여기서 나간다) · 등장 계획. 벽(WallSky)이 그리고, 폰 07이 글자마다 서는 시각(소리의 결 박자)을 같은
+ * 셈으로 읽는다 — 따로 근사하면 둘이 어긋난다(결정 11). 화면비가 같으면 시각은 크기와 상관없다(점 속도가 폭에 비례)
+ */
+export function dockPlanOf(items: readonly Item[], kd: Kind, W: number, H: number, drop: number) {
+  const S = bigScale(items, kd, W, H), dev: P = [0, (H / 2 + H * drop) / S], tail = tailOf(items, kd, dev), rest = modulesAt(items, kd, 0);
+  const mouth = mouthOf(follow(tail, items, rest.pos[tail.from])), plan = planEntrance(items, kd, mouth, S, W);
+  return { S, dev, tail, rest, mouth, plan };
+}
 /** 휭 — 살짝 넘쳤다 돌아온다(결정 4: 1 + 2.2(t − 1)³ + 1.2(t − 1)²) */
 export const backOut = (t: number) => 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2;
 /** 날아오는 점 하나 — 붙을 자리(낱개 자리, u) · 모듈 · 떠나는 때 · 닿는 때(초) · 휘는 길의 조절점 */

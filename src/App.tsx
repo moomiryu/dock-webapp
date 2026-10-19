@@ -252,6 +252,8 @@ export default function App() {
         <PhaseOnWall
           startedAt={broadcast.startedAt}
           session={broadcast.session}
+          text={draft?.text}
+          tone={draft?.tone}
           onDone={(didPull) => {
             setPulled(didPull);
             setScreen('done');

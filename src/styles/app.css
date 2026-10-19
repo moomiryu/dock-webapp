@@ -187,7 +187,7 @@
    떼도 절반(110)까지는 눌린 채 있다 — 짧은 탭도 한 번은 줄어든 모습이 보인다.
    끄는 것(게이지 · 스위치 · 색 룰렛 창 · 2/5 네 칸)은 틀째 줄이지 않고 판만 준다 — 아래
    '누름 — 슬라이더'.
-   홈의 원형 물음표(.home-help)는 제 값(0.94)을 따로 든다. 움직임 줄이기에서는 크기를
+   움직임 줄이기에서는 크기를
    두고 색만 바뀐다. 제 transition을 가진 버튼은 거기에 scale을 함께 적는다
    (4/5 '이렇게 담을게요' — .color-panel > .primary-action). */
 .primary-action, .home-cta, .home-info-btn, .z-back, .tone-more, .hint-open, .hint-close, .home-poster-about,
@@ -2085,19 +2085,10 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    '보조 라벨'에 쓰는 굵기고(typography-revision-2026-09-07), 크기를 건드리지
    않으므로 본문 칸에 그대로 머문다. */
 .home-subtitle{ margin-top: var(--s4); font-size: var(--fs-body); font-weight: 500; line-height: 1.5; color: var(--body-text); }
-/* About으로 가는 물음표 (2026-09-27, 사용자). 하루 동안 부제 자리의 'Info' 글자였다가
-   부제를 되살리고 이리로 옮겼다. 첫 화면에만 떠 있는 원 — 마플 폰 화면의 떠 있는
-   버튼(하단 메뉴 바로 위 오른쪽, 검은 원에 흰 아이콘)의 형식만 가져왔다.
-   원형 아이콘 버튼이라 3px 규칙이 아니라 원이다(CLAUDE.md). 지름은 손 닿는 44
-   그대로, 자리는 '처음이에요' 위 오른쪽 --s5. 버튼 영역(.home-gate) 기준으로 떠
-   있어 홈의 배치와 흩어지는 말의 띠를 밀지 않는다. 물음표는 뒤로가기·X와 같은 결의
-   선(획 2)이다. 윗층(.home-layer)은 손을 통과시키므로 이것만 받게 한다. */
-.home-help{ position: absolute; right: 0; bottom: calc(100% + var(--s5));
-  width: var(--btn-m); height: var(--btn-m); padding: 0; border: 0; border-radius: var(--r-full);
-  background: var(--ink); color: var(--paper); display: grid; place-items: center;
-  pointer-events: auto; cursor: pointer; }
-.home-help:active{ scale: 0.94; }
-.home-help:focus-visible{ outline: 2px solid var(--ink); outline-offset: 2px; }
+/* About으로 가는 글자 — 부제 바로 밑(2026-10-20 사용자: 물음표를 걷고 글자로 — 같은 날 '더 알고 싶어요'에서 '자세히 보기'로. 9/26 하루 이 자리에
+   'Info'가 있었다). 생김새와 누름은 1단계 힌트(.hint-open) 그대로. 손 닿는 44를 위아래 음수 여백으로 도로 빼므로
+   보이는 틈 = --space-in-group(부제와 한 묶음 — 16은 너무 넓다, 같은 날 사용자). 윗층(.home-layer)은 손을 통과시키므로 이것만 받게 한다. */
+.home-about{ margin-top: calc(var(--space-in-group) - var(--s4)); pointer-events: auto; }
 .sr-only{ position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 /* Bilingual specimen and a consistent black screen for message previews. */
 .z-glyph > span{ display: block; }

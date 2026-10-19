@@ -1,4 +1,6 @@
 import { moods } from './palettes-v2';
+import { palettes as legacyPalettes } from './palettes';
+import type { StoredMessage } from './firebase';
 import type { ToneState } from '../types';
 /**
  * 아직 색을 고르기 전, 쓰는 동안의 바탕.
@@ -19,4 +21,20 @@ export function messageColors(tone: ToneState) {
     const bg = requestedBg === '#000000' ? '#FFFFFF' : requestedBg;
     const text = (tone.textColor ?? legacy.text).toUpperCase();
     return { bg: bg.toUpperCase() === '#000000' ? '#FFFFFF' : bg, text: text.toUpperCase() === bg.toUpperCase() ? (bg === '#FFFFFF' ? '#000000' : '#FFFFFF') : text };
+}
+
+/** 벽에 뜬 글 하나의 칠 · 글자색 — 벽 · 5/5가 그리는 색 그대로(2026-10-20까지 WallShowMessage에 있었다). 고른 짝이 없는 옛 글은 그때의 표로 */
+export function colorsOf(msg: StoredMessage): { bg: string; text: string } {
+    const tone = msg.tone;
+    let pal;
+    if (!tone) pal = moods[3];
+    else {
+        const mood = moods[tone.paletteIdx];
+        if (mood) pal = mood;
+        else {
+            const legacy = legacyPalettes[tone.paletteIdx];
+            pal = legacy ? { bg: legacy.bg, text: legacy.text } : moods[3];
+        }
+    }
+    return { bg: tone?.backgroundColor ?? pal.bg, text: tone?.textColor ?? pal.text };
 }

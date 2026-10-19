@@ -66,7 +66,10 @@ service cloud.firestore {
              // 2026-10-04: 유머있는(비)의 모양 — 둥글 · 네모 · 뾰족(palettes.ts RAIN_FACE)
              'round', 'square', 'pointy',
              // 2026-10-06: 유머있는(비눗방울)의 떠다니기 — 둥실 · 흔들(기본은 center, lib/rain.ts bubbleMove)
-             'float', 'wobble'])
+             'float', 'wobble',
+             // 2026-10-20: 도트 집합체의 4/5 열두 칸(lib/aggregate.ts arrangementsFor) — 당당 계단 · 단상, 차분 탑 · 내리막,
+             // 유머 징검다리 · 하이킥(다정 아치 · 미소와 넷의 기본 center는 위에 있다). 옛 값은 사흘 안의 글 때문에 남긴다
+             'stairs', 'podium', 'stack', 'descend', 'stepping', 'highkick'])
         && (!('manner' in t) || (t.manner is number && t.manner >= 0 && t.manner <= 1))
         && (!('speed' in t) || (t.speed is number && t.speed >= 0 && t.speed <= 1))
         && (!('weight' in t) || (t.weight is number && t.weight >= 0 && t.weight <= 1))

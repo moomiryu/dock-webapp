@@ -1,8 +1,10 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { fitFontSize } from '../lib/fit';
 import { formFor, opticalFix } from '../lib/palettes';
-import type { Glyph } from '../lib/cloud';
 import type { Align } from '../types';
+
+/** 한 자씩 놓은 글자 — 글 상자 왼쪽 위에서 가운데까지(em), 기울기(rad). 도트 집합체(DotBubble · WallSky)가 넘긴다 */
+export interface Glyph { c: string; x: number; y: number; a: number }
 interface Props {
     children?: ReactNode;
     text: string;

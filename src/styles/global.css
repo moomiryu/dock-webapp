@@ -528,55 +528,7 @@ body.wall-mode {
   text-align: center;
 }
 
-/* === 잔상 — 떠다니다 서로·벽면에 닿으면 튕긴다 ===
-   자리는 CSS가 모른다. WallSimulation의 프레임 루프가 transform으로 적는다 —
-   가로 세 줄을 흘러가던 CSS 애니메이션(wallSlideLeft/Right)은 걷어냈다.
-   왼쪽 위 모서리를 기준으로 놓으므로 left·top은 0이다. */
-.wall-block {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: var(--z-content);
-  will-change: transform;
-}
-
-/* 발화 — 검정이 깔리고 그 위에 그 사람 색의 상자 하나가 선다.
-   검정은 ::before에 따로 둔다. 내려앉을 때 검정만 걷히고 상자는 남아
-   제자리로 날아가야 하기 때문이다. */
-.wall-show {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  z-index: var(--z-elevated);
-  pointer-events: none;
-}
-.wall-show::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--ink);
-  transition: opacity var(--land-ms) var(--ease-standard);
-}
-.wall-show.is-landing::before { opacity: 0; }
-
-/* 상자의 한 변은 WallSimulation이 --big-side로 준다 — 내려앉을 때 JS가
-   같은 숫자로 도착 배율을 계산해야 해서 한곳에 있다.
-   등장은 04가 물러설 때와 같은 결(--t-slow · emphasized). 내려앉음은 transform
-   하나로 간다 — 상자 안의 숨(scale)은 .wave-box에 있어 서로 안 겹친다. */
-.wall-show-box {
-  position: relative;
-  /* 크기는 CloudBubble이 제 비례로 적는다 — 정사각이던 시절의 한 변 하나는
-     더 이상 안 맞는다. --big-side는 그 계산의 기준으로만 남는다. */
-  display: inline-block;
-  animation: wallBoxIn var(--t-slow) var(--ease-emphasized) both;
-  transition: transform var(--land-ms) var(--ease-emphasized);
-  will-change: transform;
-}
-@keyframes wallBoxIn {
-  from { opacity: 0; scale: 0.92; }
-  to   { opacity: 1; scale: 1; }
-}
+/* 잔상(.wall-block) · 발화(.wall-show)의 규칙은 2026-10-20에 걷었다 — 벽은 하늘의 도트 집합체(app.css .wall-sky · WallSky)다 */
 
 .wall-overlay {
   position: absolute;
@@ -645,12 +597,6 @@ body.wall-mode {
   line-height: 1.25;
   transform-origin: center;
 }
-/* 잔상 — 풍경의 한 칸. 크기는 CloudBubble이 --echo-side에 제 비례를 곱해
-   적는다. 물리 계산이 왼쪽 위 모서리를 주므로 여기서 자리를 더 옮기지 않는다. */
-/* 발화 중인 글의 풍경 쪽 쌍둥이. 큰 상자가 내려앉아 겹치는 순간까지
-   자리는 지키되 보이지 않는다 — 자리를 지켜야 도착점을 잴 수 있다.
-   그동안 그 몸은 붙잡혀 있다(Body.held) 도착과 함께 다시 떠다닌다. */
-.wall-block.is-ghost{ visibility: hidden; }
 
 /* ─── /admin 받은 제안 (2026-09-25) ─────────────────────────────────
    상자 없이 줄 사이 1px 선. 시각은 작은 회색, 본문은 보통 글. */

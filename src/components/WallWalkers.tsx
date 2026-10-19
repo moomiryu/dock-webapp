@@ -1,60 +1,64 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
-import { BODY, CLIP_H, EYE_LOOK, EYE_SAD, EYE_SHUT, EYE_SMILE, EYE_WHITE, EYE_WIDE, FOOT_Y, HEAD, SIT, VIEW, WALK } from '../character/walker';
+import { BODY, CLIP_H, EYE_LOOK, EYE_SAD, EYE_SHUT, EYE_SMILE, EYE_UP, EYE_WHITE, EYE_WIDE, FOOT_Y, HEAD, SIT, VIEW, WALK } from '../character/walker';
 import { groundPx } from '../lib/ground';
 import { easeOf, tokenS } from '../lib/motion';
 
 /**
- * 벽의 작은 사람 둘(2026-10-04, 디자이너가 움직이는 견본 design/landscape-character-wall.html에서 골랐다).
+ * 벽의 작은 사람 둘(2026-10-04, 디자이너가 움직이는 견본 design/landscape-character-wall.html에서 골랐다) — 빨강(이미 말을 한 사람)과
+ * 파랑(아직 메가폰트를 만나기 전). 생김새 · 색 · 크기(벽 높이의 6.5%) · 앉은 자세(walker.ts SIT) · 웃기 · 깜빡이기는 그대로.
  *
- * 홈에서 걸어 다니던 작은 사람이 벽의 땅 위에 산다 — 빨강(이미 말을 한 사람)과 파랑(아직 메가폰트를 만나기 전).
- * - 땅 위만 걷는다. 돌에 오르지 않고 돌 **앞**을 지나간다. 겹은 돌 → 작은 사람 → 풀(땅 · 풀 = WallGround가 이 위에 그린다)
- * - 빈 땅에 앉는다(앉은 자세 = walker.ts SIT). **글 앞에는 앉지 않는다** — 지나가며 잠깐 가리는 건 괜찮다(디자이너).
- *   앉은 뒤 돌이 떨어져 글이 뒤에 오면 일어나 옮긴다
- * - 아주 자주 웃는다(작가의 아치 눈). 빠르게 떨어지는 돌이 몸에 닿으면 놀라며 넘어지고, 일어나면 3초 동안 슬픈 눈
- * - 가끔 한 명이 뛰어와(걸음 2배) 앉아 있는 다른 한 명 곁에 앉고, 마주 보고 몸짓으로 이야기한다(글자 · 말풍선 없음)
- *
- * 돌 · 글의 자리는 화면에서 읽는다(WallGround와 같다) — 벽 속 계산과 엮이지 않아 큰 돌 · 발화에서도 그대로 맞는다.
- * 땅처럼 화면에 고정이다. 물리 엔진은 쓰지 않는다 — 땅에만 닿고 돌과 부딪히지 않으니 넘어짐만 몸짓으로 짓는다.
- * 움직임 줄이기를 켠 화면에서는 빈 땅에 앉아 가만히 있다.
+ * 2026-10-20(결정 6, 디자이너 — 견본 kv/wall-life.html): 벽의 구도는 역삼각이라 둘은 **로고 바로 양옆**에서만 산다 — 빨강은 가운데에서
+ * 왼쪽으로 폭의 8~25%, 파랑은 오른쪽 8~25%. 로고 앞(가운데 폭 16%)에는 서지 않는다(지나가기만). 땅 띠 위를 평평하게 걷는다(부스러기
+ * 더미는 그 뒤 배경). "아무 생각 없는 바보들 — 둘이 만나 수다, 앉아서 하늘 풍경 바라보기":
+ * - 혼자 — 다음 일을 고를 때 걷기 45% · 땅에 앉아 하늘 올려다보기 35%(7~13초, 검은자가 위에서 좌우로 천천히 오간다) · 서 있기 20%(1.5~4초)
+ * - 만남(20~30초에 한 번) — 한 명이 앉고 다른 한 명이 두 배 걸음으로 와 몸 1.9개 거리에 마주 앉아 수다 9초: 1.6초마다 말하는 쪽이 바뀌고,
+ *   말하는 쪽은 키의 3% 들썩 + 머리 위(말하는 방향)에 점 세 알이 차례로(그 사람 색, 지름 키의 9%), 듣는 쪽은 2% 끄덕. 그다음 나란히
+ *   앉은 채 함께 하늘 8초, 그리고 각자 자리로
+ * - 도킹 — 수다든 앉기든 멈추고 일어나 큰 말 쪽(가운데)으로 돌아서 올려다본다(EYE_UP). 글자가 한 박씩 설 때마다 키의 0.22만큼 0.32초
+ *   폴짝. 새 말이 하늘로 오르기 시작하면 다시 제 일로(beat — WallSky가 적는다)
+ * 그전(10-04 ~ 10-19)의 돌에 맞아 넘어지기 · 큰 돌 피해 달아나기 · 큰 나무 올려다보기는 돌 · 나무와 함께 걷었다.
+ * 움직임 줄이기를 켠 화면에서는 제 구역에 앉아 가만히 있다.
  */
 
-/** 키 = 벽 높이의 6.5%(실물 약 9cm) — 4.5 · 6.5 · 9% 중(벽 돌이 높이 8~10%라 그 3분의 2쯤) */
+/** 키 = 벽 높이의 6.5%(실물 약 9cm) — 4.5 · 6.5 · 9% 중 */
 const SIZE = 0.065;
 /** 둘의 색 — 빨강(이미 말을 한 사람) · 파랑(홈에서 메가폰트를 만나기 전의 색) */
 const COLORS = ['--brand-main', '--char-cyan'];
-const TOP = 4, STAND_H = FOOT_Y - TOP, SIT_H = STAND_H - SIT.drop, CX = HEAD.cx, BODY_W = 2 * HEAD.r;
-/** 그림 둘레의 여유(화판 좌표) — 앉으면 발이 앞으로 나오고, 넘어지면 몸이 눕는다 */
+const TOP = 4, STAND_H = FOOT_Y - TOP, CX = HEAD.cx, BODY_W = 2 * HEAD.r;
+/** 그림 둘레의 여유(화판 좌표) — 앉으면 발이 앞으로 나온다 */
 const VB = { x: -240, y: -170, w: VIEW.w + 480, h: VIEW.h + 230 };
-/** 시간은 --t-hold의 배수(H). 슬픈 눈만 디자이너가 준 초 */
-const T = {
-  popAt: [7, 12], sit: [10, 16], tired: 20, smileGap: [2.5, 4], smileDur: 3, blink: [3, 7], flip: [4, 9],
-  meetFirst: 12, meetAfter: [14, 22], meetTry: 1, talk: [12, 18], turn: [2, 4], kick: 4
-};
-const SAD_S = 3;
-/** 만남 — 한 명이 앉아 있고 다른 한 명이 걸으면(벽 폭 80% 안) 70%로, 곁 몸 1.9개 떨어진 자리로 뛰어온다(마주 내민 발이 안 닿게) */
-const MEET = { chance: 0.7, reach: 0.8, gap: 1.9 };
-/** 맞았다고 보는 돌의 아래로 빠르기(벽 높이/초 — 1080 벽에서 초당 120px). 천천히 내려앉는 돌은 안 맞힌다 */
-const HIT_VY = 120 / 1080;
+/** 구역 — 화면 폭의 몫(빨강 왼쪽 · 파랑 오른쪽) */
+const ZONES: readonly (readonly [number, number])[] = [[0.25, 0.42], [0.58, 0.75]];
+/** 하는 일의 몫 · 길이(초) — 견본 값 */
+const DAY = { walk: 0.45, sky: 0.35, sit: [7, 13], stand: [1.5, 4], rest: [0.5, 2] };
+/** 만남 — 첫 만남 · 간격(초) · 거리(몸 폭의 배수) · 수다 · 말하는 쪽이 바뀌는 간격 · 함께 하늘 보기(초) */
+const MEET = { first: [8, 14], every: [20, 30], gap: 1.9, talk: 9, turn: 1.6, sky: 8 };
+/** 도킹의 폴짝 — 키의 몫 · 초 */
+const HOP = { h: 0.22, t: 0.32 };
+/** 시간은 --t-hold의 배수(H) — 웃기 · 깜빡이기 · 발 까딱(옛 값 그대로) · 나오는 때(초) */
+const T = { popAt: [1, 3], smileGap: [2.5, 4], smileDur: 3, blink: [3, 7], kick: 4 };
 
-/** 큰 돌(차분한의 발화) 앞에서 — 놀람(제자리 폴짝) → 달아남(오른쪽으로 뜀) → 돌 가장자리에 모여 섬 · 돌이 밀려 나갈 땐 화면 밖으로(away) */
-const GIANT = { startle: 0.5, flee: 4, run: 2.5, gap: 1.1, spread: 1.3, reach: 6, huddleWide: 2 };
-type State = 'off' | 'pop' | 'walk' | 'sit' | 'knock' | 'down' | 'getup' | 'startle' | 'flee' | 'huddle' | 'away';
-type Eye = 'look' | 'wide' | 'shut' | 'smile' | 'sad';
+/** 도킹의 박자 — 큰 말이 선 때 · 글자마다 다 쌓인 때 · 하늘로 오르기 시작하는 때(초, performance.now 기준. 아직 모르면 Infinity) */
+export type DockBeat = { start: number; letters: readonly number[]; rise: number };
+type Mode = 'off' | 'pop' | 'walk' | 'sit' | 'idle';
+type Look = 'ahead' | 'sky' | 'friend';
+type Eye = 'look' | 'wide' | 'shut' | 'smile' | 'sad' | 'up';
 type Parts = {
   svg: SVGSVGElement; flip: SVGGElement; walkLegs: SVGGElement; sitLegs: SVGGElement; far: SVGGElement; near: SVGGElement;
-  drop: SVGGElement; stand: SVGPathElement; seat: SVGPathElement; eyes: Record<Eye, SVGElement>; anims: SVGAnimationElement[];
+  drop: SVGGElement; stand: SVGPathElement; seat: SVGPathElement; eyes: Record<Eye, SVGElement>; anims: SVGAnimationElement[]; dots: HTMLElement[];
 };
 type Walker = {
-  el: HTMLDivElement; p: Parts; state: State; t0: number; x: number; dir: 1 | -1; face: 1 | -1; tx: number;
-  until: number; sitT: number; sitGoal: number; pop: number; walkSince: number; walking: boolean; anim: boolean; pace: number;
-  nextBlink: number; blinkUntil: number; nextFlip: number; nextSmile: number; smileUntil: number; sadUntil: number; coverAt: number;
-  meeting: boolean; talking: boolean; speaking: boolean; side: number; vx: number; ang: number; ang0: number; eye: Eye;
+  el: HTMLDivElement; p: Parts; mode: Mode; zone: readonly [number, number]; t0: number; x: number; face: 1 | -1; tx: number; fast: number;
+  until: number; look: Look; sitT: number; pop: number; walking: boolean; anim: boolean; pace: number; ph: number;
+  nextBlink: number; blinkUntil: number; nextSmile: number; smileUntil: number; eye: Eye;
 };
 
 const rnd = (r: readonly number[]) => r[0] + Math.random() * (r[1] - r[0]);
 
-export default function WallWalkers() {
+export default function WallWalkers({ beat }: { beat?: { current: DockBeat | null } }) {
   const root = useRef<HTMLDivElement>(null);
+  const beatRef = useRef(beat);
+  beatRef.current = beat;
 
   useEffect(() => {
     const host = root.current;
@@ -62,21 +66,22 @@ export default function WallWalkers() {
     const HOLD = tokenS('--t-hold', 0.7), SLOW = tokenS('--t-slow', 0.4), RET = tokenS('--t-return', 0.22);
     const easeStd = easeOf('--ease-standard'), easeEmph = easeOf('--ease-emphasized');
     const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+    const start = performance.now() / 1000;
 
     const els = [...host.querySelectorAll<HTMLDivElement>('.wall-walker')];
-    const ws: Walker[] = els.map((el) => {
-      const q = <E extends Element>(s: string) => el.querySelector(s) as E;
+    const ws: Walker[] = els.map((el, i) => {
+      const q = <E extends Element>(sel: string) => el.querySelector(sel) as E;
       const p: Parts = {
         svg: q('svg'), flip: q('[data-p="flip"]'), walkLegs: q('[data-p="walk"]'), sitLegs: q('[data-p="sit"]'),
         far: q('[data-p="far"]'), near: q('[data-p="near"]'), drop: q('[data-p="drop"]'), stand: q('[data-p="stand"]'), seat: q('[data-p="seat"]'),
-        eyes: { look: q('[data-eye="look"]'), wide: q('[data-eye="wide"]'), shut: q('[data-eye="shut"]'), smile: q('[data-eye="smile"]'), sad: q('[data-eye="sad"]') },
-        anims: [...el.querySelectorAll<SVGAnimationElement>('animate, animateTransform')]
+        eyes: { look: q('[data-eye="look"]'), wide: q('[data-eye="wide"]'), shut: q('[data-eye="shut"]'), smile: q('[data-eye="smile"]'), sad: q('[data-eye="sad"]'), up: q('[data-eye="up"]') },
+        anims: [...el.querySelectorAll<SVGAnimationElement>('animate, animateTransform')],
+        dots: [...host.querySelectorAll<HTMLElement>(`.wall-walker-dot[data-w="${i}"]`)]
       };
       p.svg.pauseAnimations();
       return {
-        el, p, state: 'off', t0: 0, x: 0, dir: 1, face: 1, tx: 0, until: 0, sitT: 0, sitGoal: 0, pop: 0, walkSince: 0, walking: false, anim: false, pace: 0,
-        nextBlink: 0, blinkUntil: 0, nextFlip: 0, nextSmile: 0, smileUntil: 0, sadUntil: 0, coverAt: 0,
-        meeting: false, talking: false, speaking: false, side: 1, vx: 0, ang: 0, ang0: 0, eye: 'look'
+        el, p, mode: 'off', zone: ZONES[i] ?? ZONES[0], t0: start + HOLD * rnd(T.popAt), x: 0, face: i ? 1 : -1, tx: 0, fast: 1, until: 0, look: 'ahead',
+        sitT: 0, pop: 0, walking: false, anim: false, pace: 0, ph: i * 1.3, nextBlink: 0, blinkUntil: 0, nextSmile: 0, smileUntil: 0, eye: 'look'
       };
     });
 
@@ -95,246 +100,64 @@ export default function WallWalkers() {
         w.el.style.transformOrigin = `${(CX - VB.x) * s}px ${(FOOT_Y - VB.y) * s}px`;
         if (prevW) { w.x *= W / prevW; w.tx *= W / prevW; }
         w.pace = 0;   // 다리 박자를 다시 적게
+        for (const d of w.p.dots) { d.style.width = d.style.height = `${(0.09 * hc).toFixed(1)}px`; }
       }
     };
+    const inZone = (w: Walker) => W * (w.zone[0] + Math.random() * (w.zone[1] - w.zone[0]));
+    const go = (w: Walker, tx: number, fast = 1) => { w.mode = 'walk'; w.tx = tx; w.fast = fast; };
+    const sitFor = (w: Walker, now: number, sec: number, look: Look) => { w.mode = 'sit'; w.until = now + sec; w.look = look; w.nextBlink = now + HOLD * rnd([2, 5]); };
 
-    // ── 화면에서 읽는 것 — 글자 자리 · 돌 자리(떨어지는 빠르기를 재려고 지난 자리를 기억한다)
-    let texts: [number, number, number, number][] = [], textsAt = -1;
-    const readTexts = (t: number) => {
-      if (t - textsAt < 0.15) return;
-      textsAt = t; texts = [];
-      document.querySelectorAll('.wall .message-line-fill').forEach((el) => {
-        const r = el.getBoundingClientRect();
-        if (r.width >= 1) texts.push([r.left - 4, r.top - 4, r.right + 4, r.bottom + 4]);
-      });
-    };
-    const lastStone = new WeakMap<Element, { y: number; t: number }>();
-    const hits = new WeakMap<Element, Set<Walker>>();
-    const fallingOn = (w: Walker, t: number): DOMRect | null => {
-      const x0 = w.x - cw / 2, x1 = w.x + cw / 2, y0 = floor - (w.state === 'sit' ? SIT_H : STAND_H) * s;
-      for (const el of document.querySelectorAll('.wall-block.is-stone')) {
-        const r = el.getBoundingClientRect(), prev = lastStone.get(el);
-        const vy = prev && t > prev.t ? (r.top - prev.y) / (t - prev.t) : 0;
-        if (vy > HIT_VY * Hh && r.left < x1 && r.right > x0 && r.top < floor && r.bottom > y0) {
-          const done = hits.get(el) ?? new Set<Walker>();
-          if (!done.has(w)) { done.add(w); hits.set(el, done); return r; }
-        }
+    // ── 만남 — 한 명(v)이 앉은 다른 이(h)에게 가서 마주 앉아 수다, 그다음 나란히 하늘, 그리고 각자 자리로
+    let meet: { v: Walker; h: Walker; phase: 'go' | 'chat' | 'sky'; t: number } | null = null, nextMeet = start + rnd(MEET.first);
+    const docking = (now: number) => { const b = beatRef.current?.current; return !!b && now >= b.start && now < b.rise; };
+    const brain = (now: number) => {
+      if (docking(now)) { meet = null; return; }
+      if (!meet && now > nextMeet && ws.length > 1 && ws.every((w) => w.mode !== 'off' && w.mode !== 'pop')) {
+        const v = ws[Math.random() < 0.5 ? 0 : 1], h = ws[v === ws[0] ? 1 : 0], side = v.x < h.x ? -1 : 1;
+        meet = { v, h, phase: 'go', t: now };
+        sitFor(h, now, Infinity, 'friend'); h.face = v.x < h.x ? 1 : -1;
+        go(v, h.x + side * MEET.gap * cw, 2);
       }
-      return null;
-    };
-    const markStones = (t: number) => {
-      document.querySelectorAll('.wall-block.is-stone').forEach((el) => lastStone.set(el, { y: el.getBoundingClientRect().top, t }));
-    };
-
-    // ── 앉을 자리
-    const sitBox = (x: number): [number, number, number, number] => {
-      const half = cw / 2 + 90 * s;   // 앞으로 나온 두 발까지
-      return [x - half, floor - SIT_H * s, x + half, floor];
-    };
-    const coversText = (x: number) => {
-      const [a, b, c, d] = sitBox(x);
-      return texts.some((q) => a < q[2] && c > q[0] && b < q[3] && d > q[1]);
-    };
-    const spotTaken = (w: Walker, x: number) => ws.some((o) => o !== w && o.state !== 'off' && o.state !== 'away'
-      && Math.abs((o.state === 'sit' ? o.x : o.tx) - x) < cw * MEET.gap * 0.95);
-    const clampX = (x: number) => Math.min(W - cw, Math.max(cw, x));
-    const pickTarget = (w: Walker) => {
-      for (let i = 0; i < 40; i++) {
-        const tx = clampX(w.x + (Math.random() < 0.5 ? -1 : 1) * W * (0.08 + Math.random() * 0.3));
-        if (!coversText(tx) && !spotTaken(w, tx)) { w.tx = tx; return; }
+      if (meet) {
+        const { v, h } = meet;
+        if (meet.phase === 'go' && v.mode !== 'walk') { meet.phase = 'chat'; meet.t = now; sitFor(v, now, Infinity, 'friend'); v.face = h.x < v.x ? 1 : -1; h.face = v.x < h.x ? 1 : -1; }
+        if (meet.phase === 'chat' && now > meet.t + MEET.talk) { meet.phase = 'sky'; meet.t = now; v.look = h.look = 'sky'; }   // 수다 뒤엔 나란히 하늘을 본다
+        if (meet.phase === 'sky' && now > meet.t + MEET.sky) { go(v, inZone(v)); h.mode = 'idle'; h.until = now + 1; meet = null; nextMeet = now + rnd(MEET.every); }
+        return;   // 만나는 동안엔 따로 놀지 않는다
       }
-      for (let tx = cw; tx < W - cw; tx += cw) if (!coversText(tx) && !spotTaken(w, tx)) { w.tx = tx; return; }
-      w.tx = w.x;
-    };
-    const freeX = (w: Walker) => {
-      for (let i = 0; i < 40; i++) { const x = cw + Math.random() * (W - 2 * cw); if (!coversText(x) && !spotTaken(w, x)) return x; }
-      return W / 2;
-    };
-
-    // ── 상태 바꾸기
-    const toWalk = (w: Walker, t: number) => { w.state = 'walk'; w.walkSince = t; w.sitGoal = 0; if (!w.meeting) pickTarget(w); };
-    const toSit = (w: Walker, t: number) => {
-      w.state = 'sit'; w.sitGoal = 1; w.until = t + HOLD * rnd(T.sit);
-      w.nextBlink = t + HOLD * rnd([2, 5]); w.nextFlip = t + HOLD * rnd(T.flip);
-    };
-    const popIn = (w: Walker, t: number) => {
-      w.x = freeX(w); w.tx = w.x; w.state = 'pop'; w.t0 = t; w.pop = 0; w.el.style.display = '';
-    };
-    const knock = (w: Walker, t: number, r: DOMRect) => {
-      if (meet && (ws[meet.a] === w || ws[meet.b] === w)) endMeet(t);
-      w.sitGoal = 0; w.sitT = 0; w.state = 'knock'; w.t0 = t;
-      w.side = Math.sign(w.x - (r.left + r.right) / 2) || (Math.random() < 0.5 ? -1 : 1);
-      w.vx = w.side * hc * 1.6;
-    };
-
-    // ── 만남
-    type Meet = { a: number; b: number; phase: 'approach' | 'talk'; sx: number; limit: number; until: number; speaker: number; nextTurn: number };
-    let meet: Meet | null = null, meetCool = 0, meetTry = 0;
-    const endMeet = (t: number) => {
-      for (const w of ws) { w.meeting = w.talking = w.speaking = false; }
-      meet = null; meetCool = t + HOLD * rnd(T.meetAfter);
-    };
-    const meetStep = (t: number) => {
-      const [p, q] = ws;
-      if (!p || !q) return;
-      if (!meet) {
-        if (t < meetCool || t - meetTry < HOLD * T.meetTry) return;
-        meetTry = t;
-        if (Math.random() > MEET.chance) return;
-        const pair = p.state === 'sit' && q.state === 'walk' ? [0, 1] : q.state === 'sit' && p.state === 'walk' ? [1, 0] : null;
-        if (!pair) return;
-        const A = ws[pair[0]], B = ws[pair[1]];
-        if (t < A.sadUntil || t < B.sadUntil || Math.abs(B.x - A.x) > W * MEET.reach) return;
-        const first = Math.sign(B.x - A.x) || 1;
-        for (const side of [first, -first]) {
-          const sx = A.x + side * cw * MEET.gap;
-          if (sx > cw && sx < W - cw && !coversText(sx)) {
-            const limit = t + Math.abs(B.x - sx) / (speed * 2) + HOLD * 6;   // 뛰어올 만큼 + 여유 — 앉은 쪽은 기다린다
-            meet = { a: pair[0], b: pair[1], phase: 'approach', sx, limit, until: 0, speaker: 0, nextTurn: 0 };
-            B.tx = sx; B.meeting = true; A.until = Math.max(A.until, limit + HOLD);
-            return;
-          }
-        }
-        return;
-      }
-      const m = meet, A = ws[m.a], B = ws[m.b];
-      if (A.state !== 'sit' || (m.phase === 'approach' && ((B.state !== 'walk' && B.state !== 'sit') || t > m.limit))
-        || (m.phase === 'talk' && B.state !== 'sit')) return endMeet(t);
-      if (m.phase === 'approach' && B.state === 'sit') {   // 닿았다 — 마주 보고 이야기
-        m.phase = 'talk'; m.until = t + HOLD * rnd(T.talk); m.speaker = Math.random() < 0.5 ? m.a : m.b; m.nextTurn = t + HOLD * rnd(T.turn);
-        A.until = B.until = m.until; A.talking = B.talking = true;
-        A.face = B.x > A.x ? -1 : 1; B.face = A.x > B.x ? -1 : 1;   // 그림은 왼쪽을 본다 — 오른쪽을 보려면 뒤집는다
-      }
-      if (m.phase === 'talk') {
-        if (t > m.nextTurn) { m.speaker = m.speaker === m.a ? m.b : m.a; m.nextTurn = t + HOLD * rnd(T.turn); }
-        A.speaking = m.speaker === m.a; B.speaking = m.speaker === m.b;
-        if (t > m.until) endMeet(t);
+      for (const w of ws) {   // 혼자 — 걷다 · 서다 · 앉아 하늘 바라보기
+        if (w.mode === 'off' || w.mode === 'pop' || w.mode === 'walk' || now < w.until) continue;
+        const r = Math.random();
+        if (r < DAY.walk) go(w, inZone(w));
+        else if (r < DAY.walk + DAY.sky) sitFor(w, now, rnd(DAY.sit), 'sky');
+        else { w.mode = 'idle'; w.until = now + rnd(DAY.stand); w.look = 'ahead'; }
       }
     };
-
-    // ── 큰 돌 — 화면에서 읽는다(오른쪽 끝 · 오른쪽 끝의 빠르기 px/초). 밀려오는 동안 → 가만히 섬(held) → 밀려 나감을 가른다
-    let giant: { l: number; r: number; v: number } | null = null, gPrevR = NaN, gMoved = false, gHeld = false;
-    const GV = 0.02;   // 이보다 느리면 선 것(벽 높이/초)
-    const readGiant = (dt: number) => {
-      const el = document.querySelector('.wall-calm');
-      const r = el?.getBoundingClientRect();
-      if (!r || r.right <= 0 || r.left >= W) {
-        giant = document.querySelector('.calm-gone') ? { l: W + 50, r: W + 150, v: 0 } : null;   // 돌이 나갔어도 풍경이 돌아오기 전엔 나오지 않는다
-        gPrevR = NaN; gMoved = gHeld = false; return;
-      }
-      const v = Number.isNaN(gPrevR) || dt <= 0 ? 0 : (r.right - gPrevR) / dt;
-      gPrevR = r.right;
-      if (v > GV * Hh) gMoved = true; else if (gMoved && v > -GV * Hh) gHeld = true;
-      giant = { l: r.left, r: r.right, v };
-    };
+    /** 수다에서 지금 말하는 쪽 */
+    const speakerOf = (now: number) => (meet && meet.phase === 'chat' && !docking(now) ? (Math.floor((now - meet.t) / MEET.turn) % 2 ? meet.h : meet.v) : null);
 
     // ── 한 걸음
-    const step = (w: Walker, i: number, t: number, dt: number) => {
-      const still = reduce.matches;
-      if (w.state === 'off') {
-        if (giant) return;   // 큰 돌이 있는 동안은 나오지 않는다
-        if (still || t > HOLD * T.popAt[i]) { popIn(w, t); if (still) { w.pop = 1; toSit(w, t); w.sitT = 1; w.until = Infinity; } }
+    const step = (w: Walker, now: number, dt: number) => {
+      if (w.mode === 'off') {
+        if (reduce.matches || now > w.t0) { w.x = inZone(w); w.tx = w.x; w.mode = 'pop'; w.t0 = now; w.pop = 0; w.el.style.display = ''; }
         return;
       }
-      // 움직임 줄이기를 도중에 켜도 앉은 자세로 멈춘다. 글이 뒤에 생기면 빈자리로만 옮긴다.
-      if (still) {
-        if (meet) endMeet(t);
-        w.state = 'sit'; w.sitGoal = w.sitT = w.pop = 1; w.ang = 0; w.walking = false; w.el.style.display = '';
-        w.smileUntil = w.blinkUntil = w.sadUntil = 0;
-        w.until = t + HOLD * T.sit[0];
-        if (coversText(w.x)) w.x = freeX(w);
-        return;
+      if (reduce.matches) { w.mode = 'sit'; w.pop = w.sitT = 1; w.walking = false; w.until = Infinity; w.look = 'ahead'; return; }
+      if (w.mode === 'pop') { w.pop = Math.min(1, (now - w.t0) / SLOW); if (w.pop >= 1) { w.mode = 'idle'; w.until = now + rnd(DAY.rest); } return; }
+      if ((w.mode === 'walk' || w.mode === 'sit') && now >= w.nextSmile) {
+        if (w.nextSmile) w.smileUntil = now + HOLD * T.smileDur;
+        w.nextSmile = Math.max(now, w.smileUntil) + HOLD * rnd(T.smileGap);
       }
-      if ((w.state === 'walk' || w.state === 'sit' || w.state === 'getup') && !still) {
-        const r = fallingOn(w, t);
-        if (r) return knock(w, t, r);
+      if (docking(now)) return;   // 도킹 — 제자리에 서서 올려다본다(그리기)
+      if (w.mode === 'walk') {
+        const dx = w.tx - w.x;
+        w.face = dx < 0 ? 1 : -1; w.look = 'ahead';
+        if (Math.abs(dx) < 2) { w.mode = 'idle'; w.until = now + rnd(DAY.rest); return; }
+        if (w.pace !== w.fast) { w.pace = w.fast; for (const a of w.p.anims) a.setAttribute('dur', `${Math.round(walkMs / w.fast)}ms`); }
+        w.x += Math.sign(dx) * Math.min(Math.abs(dx), speed * w.fast * dt);
+        w.walking = true;
       }
-      if (giant && (w.state === 'walk' || w.state === 'sit')) {   // 큰 돌이 나타났다 — 놀란다
-        if (meet) endMeet(t);
-        w.state = 'startle'; w.t0 = t; w.sitGoal = 0; w.walking = false;
-        w.face = (giant.l + giant.r) / 2 < w.x ? 1 : -1;
-      }
-      if ((w.state === 'walk' || w.state === 'sit') && t >= w.sadUntil && !still) {
-        if (!w.nextSmile) w.nextSmile = t + HOLD * rnd(T.smileGap);
-        if (t > w.nextSmile) { w.smileUntil = t + HOLD * T.smileDur; w.nextSmile = w.smileUntil + HOLD * rnd(T.smileGap); }
-      }
-      switch (w.state) {
-        case 'pop':
-          w.pop = Math.min(1, (t - w.t0) / SLOW);
-          if (w.pop >= 1) toWalk(w, t);
-          break;
-        case 'walk': {
-          const near = Math.abs(w.x - w.tx) < (w.meeting ? 3 : hc * 0.3);   // 만나러 갈 땐 그 자리에 정확히
-          if (near) {
-            if (w.meeting) { w.x = w.tx; toSit(w, t); w.until = t + HOLD * 30; break; }   // 곁에 앉는다 — 이야기 길이는 만남이 정한다
-            if (coversText(w.x) || spotTaken(w, w.x)) pickTarget(w); else toSit(w, t);
-            break;
-          }
-          if (!w.meeting && t - w.walkSince > HOLD * T.tired && !coversText(w.x) && !spotTaken(w, w.x)) { toSit(w, t); break; }
-          w.dir = w.tx > w.x ? 1 : -1; w.face = w.dir > 0 ? -1 : 1;
-          const pace = w.meeting ? 2 : 1;   // 만나러 갈 땐 뛰어간다(걸음 · 다리 2배)
-          if (w.pace !== pace) { w.pace = pace; for (const a of w.p.anims) a.setAttribute('dur', `${Math.round(walkMs / pace)}ms`); }
-          w.x += w.dir * Math.min(speed * pace * dt, Math.abs(w.tx - w.x));
-          w.walking = true;
-          break;
-        }
-        case 'sit':
-          // 다 쉬었거나, 돌이 떨어져 글이 뒤에 왔으면(글을 가리고 앉아 있게 되면) 일어나 옮긴다
-          if (t - w.coverAt > 0.2) {
-            w.coverAt = t;
-            if (coversText(w.x)) {
-              if (meet && (ws[meet.a] === w || ws[meet.b] === w)) endMeet(t);
-              if (still) { w.x = freeX(w); break; }
-              toWalk(w, t); break;
-            }
-          }
-          if (t > w.until) { toWalk(w, t); break; }
-          if (t > w.nextBlink && t >= w.smileUntil) { w.blinkUntil = t + RET; w.nextBlink = t + HOLD * rnd(T.blink); }
-          if (t > w.nextFlip && !w.talking && !still) { w.face = w.face === 1 ? -1 : 1; w.nextFlip = t + HOLD * rnd(T.flip); }
-          break;
-        case 'startle':
-          if (t - w.t0 > HOLD * GIANT.startle) { w.state = 'flee'; w.t0 = t; }
-          break;
-        case 'flee':
-        case 'huddle': {
-          if (!giant) { toWalk(w, t); break; }   // 돌이 가고 나면 다시 제 걸음
-          const exiting = gHeld && giant.v > GV * Hh;
-          // 모일 자리 = 큰 돌 오른쪽 가장자리 바로 옆(둘이 나란히). 밀려오는 동안엔 돌 앞에 든 사람이 앞서 뛴다
-          const lim = W - cw - (ws.length - 1 - i) * cw * GIANT.spread;
-          const raw = Math.min(giant.r + cw * GIANT.gap + i * cw * GIANT.spread, lim);
-          const tx = exiting ? W + 2 * cw : !gHeld && w.x - giant.r < hc * GIANT.reach ? Math.min(lim, Math.max(raw, w.x + cw)) : raw;
-          const d = tx - w.x;
-          if (d > 3 && (w.state === 'flee' || exiting || d > cw * 0.5)) {
-            w.state = 'flee'; w.dir = 1; w.face = -1;
-            if (w.pace !== GIANT.flee) { w.pace = GIANT.flee; for (const a of w.p.anims) a.setAttribute('dur', `${Math.round(walkMs / GIANT.flee)}ms`); }
-            w.x += Math.min(Math.max(speed * GIANT.flee, hc * GIANT.run) * dt, d); w.walking = true;
-            if (exiting && w.x >= W + cw) { w.state = 'away'; w.walking = false; w.el.style.display = 'none'; }
-          } else {
-            if (w.state === 'flee') { w.state = 'huddle'; w.t0 = t; w.face = (giant.l + giant.r) / 2 < w.x ? 1 : -1; w.nextBlink = t + HOLD * rnd([2, 5]); }
-            if (t > w.nextBlink) { w.blinkUntil = t + RET; w.nextBlink = t + HOLD * rnd(T.blink); }
-          }
-          break;
-        }
-        case 'away':   // 큰 돌이 다 지나갔다 — 오른쪽 끝에서 걸어 들어온다
-          if (!giant) { w.x = W + cw * (1 + i * 3); w.pop = 1; w.el.style.display = ''; toWalk(w, t); }
-          break;
-        case 'knock': {   // 놀라며 넘어진다 — 옆으로 밀리며 SLOW에 눕는다
-          const p = Math.min(1, (t - w.t0) / SLOW);
-          w.ang = w.side * 80 * easeEmph(p);
-          w.x = clampX(w.x + w.vx * dt); w.vx *= Math.exp(-6 * dt);
-          if (p >= 1) { w.state = 'down'; w.t0 = t; }
-          break;
-        }
-        case 'down':
-          if (t - w.t0 > HOLD) { w.state = 'getup'; w.t0 = t; w.ang0 = w.ang; }
-          break;
-        case 'getup': {   // 일어난다 — HOLD에 바로 서고, 3초 동안 슬픈 눈
-          const p = Math.min(1, (t - w.t0) / HOLD);
-          w.ang = w.ang0 * (1 - easeStd(p));
-          if (p >= 1) { w.ang = 0; w.sadUntil = t + SAD_S; toWalk(w, t); }
-          break;
-        }
-      }
+      if (w.mode === 'sit' && now > w.nextBlink && now >= w.smileUntil) { w.blinkUntil = now + RET; w.nextBlink = now + HOLD * rnd(T.blink); }
     };
 
     // ── 그리기
@@ -342,37 +165,47 @@ export default function WallWalkers() {
       if (w.eye === e) return;
       w.p.eyes[w.eye].style.display = 'none'; w.p.eyes[e].style.display = ''; w.eye = e;
     };
-    const draw = (w: Walker, t: number, dt: number) => {
-      if (w.state === 'off' || w.state === 'away') return;
-      const motionT = reduce.matches ? 0 : t;
-      w.sitT += Math.sign(w.sitGoal - w.sitT) * Math.min(Math.abs(w.sitGoal - w.sitT), dt / RET);
+    const draw = (w: Walker, now: number, dt: number, speaker: Walker | null) => {
+      if (w.mode === 'off') return;
+      const still = reduce.matches, dk = !still && docking(now), b = beatRef.current?.current;
+      // 도킹이면 일어나 가운데로 돌아선다
+      if (dk) { w.face = W / 2 < w.x ? 1 : -1; }
+      const goal = !dk && w.mode === 'sit' ? 1 : 0;
+      w.sitT += Math.sign(goal - w.sitT) * Math.min(Math.abs(goal - w.sitT), dt / RET);
       const seated = w.sitT > 0.5;
       w.p.walkLegs.style.display = seated ? 'none' : ''; w.p.sitLegs.style.display = seated ? '' : 'none';
       w.p.stand.style.display = seated ? 'none' : ''; w.p.seat.style.display = seated ? '' : 'none';
       w.p.drop.setAttribute('transform', `translate(0 ${(SIT.drop * easeStd(w.sitT)).toFixed(1)})`);
       if (seated) {
-        const k = Math.sin((motionT / (HOLD * T.kick)) * 2 * Math.PI);
+        const k = Math.sin(((still ? 0 : now) / (HOLD * T.kick)) * 2 * Math.PI);
         w.p.far.setAttribute('transform', `rotate(${(SIT.farDeg + SIT.farSwing * k).toFixed(1)} ${SIT.pivot[0]} ${SIT.pivot[1]})`);
-        w.p.near.setAttribute('transform', `rotate(${(SIT.nearDeg + SIT.nearSwing * Math.sin((motionT / (HOLD * T.kick)) * 2 * Math.PI + 1.7)).toFixed(1)} ${SIT.pivot[0]} ${SIT.pivot[1]})`);
+        w.p.near.setAttribute('transform', `rotate(${(SIT.nearDeg + SIT.nearSwing * Math.sin(((still ? 0 : now) / (HOLD * T.kick)) * 2 * Math.PI + 1.7)).toFixed(1)} ${SIT.pivot[0]} ${SIT.pivot[1]})`);
       }
       w.p.flip.setAttribute('transform', w.face === -1 ? `matrix(-1 0 0 1 ${2 * CX} 0)` : '');
-      // 눈 — 넘어지는 동안 놀람 → 일어나며 질끈 → 3초 슬픔 · 이야기 중엔 말하는 쪽 쳐다봄↔웃음, 듣는 쪽 대개 웃음 · 평소 자주 웃음
-      const e: Eye = w.state === 'knock' || w.state === 'down' || w.state === 'startle' || w.state === 'flee' ? 'wide'
-        : w.state === 'huddle' && t - w.t0 < HOLD * GIANT.huddleWide ? 'wide'
-        : w.state === 'getup' ? (t - w.t0 < HOLD * 0.35 ? 'shut' : 'sad')
-        : t < w.sadUntil ? 'sad'
-        : w.talking ? (w.speaking ? (Math.floor(t / (HOLD * 0.6)) % 3 === 2 ? 'smile' : 'look') : (Math.floor(t / (HOLD * 2.2)) % 4 === 3 ? 'look' : 'smile'))
-        : t < w.smileUntil && (w.state === 'walk' || w.state === 'sit') ? 'smile'
-        : t < w.blinkUntil ? 'shut' : 'look';
+      // 눈 — 도킹이면 올려다봄 · 하늘을 볼 땐 검은자가 위에서 좌우로 천천히 · 수다 중엔 말하는 쪽 쳐다봄↔웃음 · 평소 자주 웃음
+      const up = dk || w.look === 'sky';
+      const talking = !!meet && meet.phase === 'chat' && !dk && (w === meet.v || w === meet.h);
+      const e: Eye = up ? (!dk && now < w.blinkUntil ? 'shut' : 'up')
+        : talking ? (w === speaker ? (Math.floor(now / (HOLD * 0.6)) % 3 === 2 ? 'smile' : 'look') : (Math.floor(now / (HOLD * 2.2)) % 4 === 3 ? 'look' : 'smile'))
+        : now < w.smileUntil && (w.mode === 'walk' || w.mode === 'sit') ? 'smile'
+        : now < w.blinkUntil ? 'shut' : 'look';
       setEye(w, e);
-      // 몸짓 — 말하는 쪽은 작게 들썩(키의 3%), 듣는 쪽은 끄덕(키의 2% 내려앉음)
-      const talkDy = !w.talking ? 0 : w.speaking ? -Math.abs(Math.sin((t / (HOLD * 0.5)) * Math.PI)) * hc * 0.03
-        : (Math.max(0, Math.sin((t / (HOLD * 1.5)) * 2 * Math.PI) - 0.6) / 0.4) * hc * 0.02;
-      const hop = w.state === 'startle' ? Math.sin(Math.min(1, (t - w.t0) / (HOLD * GIANT.startle)) * Math.PI) * hc * 0.18 : 0;   // 놀라 폴짝
-      const rad = (w.ang * Math.PI) / 180, lift = (cw / 2) * Math.abs(Math.sin(rad)) + hop;   // 누워도 아래 모서리가 땅 위에
+      if (e === 'up') w.p.eyes.up.setAttribute('cx', (EYE_UP.cx + (still ? 0 : 10 * Math.sin(now * 0.35 + w.ph))).toFixed(1));
+      // 몸짓 — 말하는 쪽은 들썩(키의 3%), 듣는 쪽은 끄덕(2%) · 도킹의 폴짝(글자마다)
+      const talkDy = !talking ? 0 : w === speaker ? Math.abs(Math.sin(now * 9)) * hc * 0.03 : Math.abs(Math.sin(now * 3.5)) * hc * 0.02;
+      let hop = 0;
+      if (dk && b) for (const t of b.letters) { const k = (now - t) / HOP.t; if (k >= 0 && k < 1) hop = Math.max(hop, Math.sin(Math.PI * k)); }
+      const lift = hop * HOP.h * hc + talkDy;
       const ox = (CX - VB.x) * s, oy = (FOOT_Y - VB.y) * s, pop = Math.max(0.001, easeEmph(w.pop));
-      w.el.style.transform = `translate3d(${(w.x - ox).toFixed(1)}px, ${(floor - oy - lift + talkDy).toFixed(1)}px, 0) rotate(${w.ang.toFixed(1)}deg) scale(${pop.toFixed(3)})`;
-      const anim = w.walking && !reduce.matches;
+      w.el.style.transform = `translate3d(${(w.x - ox).toFixed(1)}px, ${(floor - oy - lift).toFixed(1)}px, 0) scale(${pop.toFixed(3)})`;
+      // 수다의 점 세 알 — 말하는 쪽 머리 위, 말하는 방향으로 차례로
+      const n = w === speaker ? Math.floor((now * 3.5) % 4) : 0, dir = w.face > 0 ? -1 : 1;
+      const hy = floor - lift - (FOOT_Y - SIT.drop * easeStd(w.sitT)) * s - 0.1 * hc, hx = w.x + dir * 0.42 * hc;
+      w.p.dots.forEach((d, k) => {
+        d.style.display = k < n ? '' : 'none';
+        if (k < n) d.style.transform = `translate(${(hx + dir * k * 0.13 * hc - 0.045 * hc).toFixed(1)}px, ${(hy - 0.045 * hc).toFixed(1)}px)`;
+      });
+      const anim = w.walking && !still;
       if (anim !== w.anim) {
         w.anim = anim;
         if (anim) w.p.svg.unpauseAnimations(); else { w.p.svg.setCurrentTime(0); w.p.svg.pauseAnimations(); }   // 0프레임이 곧 서 있는 자세
@@ -381,19 +214,15 @@ export default function WallWalkers() {
     };
 
     let raf = 0, last = performance.now();
-    const t0 = last;
-    const frame = (now: number) => {
+    const frame = (ms: number) => {
       raf = requestAnimationFrame(frame);
-      const dt = Math.min(0.1, (now - last) / 1000), t = (now - t0) / 1000;
-      last = now;
-      readTexts(t);
-      readGiant(dt);
-      if (!reduce.matches) meetStep(t);
-      ws.forEach((w, i) => step(w, i, t, dt));
-      markStones(t);
-      ws.forEach((w) => draw(w, t, dt));
+      const dt = Math.min(0.1, (ms - last) / 1000), now = ms / 1000;
+      last = ms;
+      if (!reduce.matches) brain(now);
+      ws.forEach((w) => step(w, now, dt));
+      const speaker = speakerOf(now);
+      ws.forEach((w) => draw(w, now, dt, speaker));
     };
-    meetCool = HOLD * T.meetFirst;
     layout();
     raf = requestAnimationFrame(frame);
     window.addEventListener('resize', layout);
@@ -437,6 +266,7 @@ export default function WallWalkers() {
                       <circle fill="var(--paper)" cx={EYE_WHITE.cx} cy={EYE_WHITE.cy} r={EYE_WHITE.r} />
                       <circle data-eye="look" fill="currentColor" cx={EYE_LOOK.cx} cy={EYE_LOOK.cy} r={EYE_LOOK.r} />
                       <circle data-eye="wide" fill="currentColor" cx={EYE_WIDE.cx} cy={EYE_WIDE.cy} r={EYE_WIDE.r} style={{ display: 'none' }} />
+                      <circle data-eye="up" fill="currentColor" cx={EYE_UP.cx} cy={EYE_UP.cy} r={EYE_UP.r} style={{ display: 'none' }} />
                       <path data-eye="shut" d={EYE_SHUT} fill="none" stroke="currentColor" strokeWidth="20" strokeLinecap="round" style={{ display: 'none' }} />
                       <path data-eye="smile" d={EYE_SMILE.d} transform={EYE_SMILE.transform} fill="currentColor" style={{ display: 'none' }} />
                       <g data-eye="sad" style={{ display: 'none' }}>
@@ -451,6 +281,11 @@ export default function WallWalkers() {
           </svg>
         </div>
       ))}
+      {/* 수다의 점 세 알 — 말하는 쪽 머리 위(그 사람 색, 지름 키의 9%). 자리는 그리는 시계가 */}
+      {COLORS.map((color, i) => [0, 1, 2].map((k) => (
+        <i key={`${i}-${k}`} className="wall-walker-dot" data-w={i}
+          style={{ position: 'absolute', left: 0, top: 0, display: 'none', borderRadius: 'var(--r-full)', background: `var(${color})` }} />
+      )))}
     </div>
   );
 }

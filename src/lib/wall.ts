@@ -32,3 +32,8 @@ export const STAY_MS = STAY_DAYS * 24 * 60 * 60 * 1000;
  */
 export const EMPHASIS_MS = 30_000;
 export const EMPHASIS_SEC = EMPHASIS_MS / 1000;
+/**
+ * 도킹 텀 — 꽂은 순간부터 이만큼은 하늘이 그대로, 그다음 큰 말이 선다. 뗀 뒤에도 이만큼은 크게 머문다(결정 3 D: '3초 텀은 지금 그대로').
+ * 벽과 폰 07이 같은 꽂힌 순간(startedAt)에서 센다 — 폰은 이 시각을 0으로 소리의 결을 벽과 같은 박자로 띄운다(결정 11)
+ */
+export const DOCK_TERM_MS = 3000;

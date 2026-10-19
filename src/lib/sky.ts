@@ -99,6 +99,29 @@ export function fanOf<T extends Seated>(list: readonly T[], W: number, H: number
 }
 
 /**
+ * 소리의 결(결정 9 · 11) — 평소 · 돌림 땐 없고 도킹 때만 메가폰처럼 격렬하게. 벽(WallSky)과 폰 07이 같은 박자로 그린다.
+ * 쏟아짐: 결 사이 k 0.2 · 빠르기 k 0.5/초(0.4초마다 하나) · 세기 1.4 · 도킹 0.3초 뒤부터 1초에 차오르고, 잦아들 때는 0.7초(벽은 모임).
+ * 한 방: 도킹 순간 세기 4 · 1초, 글자가 설 때마다 세기 2.2 · 1.5초(easeOut). k 0.12까지 생겨나고 1.45 앞 0.45에서 잦아든다.
+ * 벽: 기기 중심 타원(부채꼴 바깥 호 × k) · 선 높이/540 × 세기 · --grey-600, 지나가면 하늘 말이 덜컥(0.3u × Σ(정도 × min(세기, 3) ×
+ * exp(−((결의 k − 말의 k) / 0.04)²))). 폰: 화면 아래 바깥이 중심인 원(높이 0.9 × k) · 2px × 세기 · --paper · 0.45배 옅게
+ */
+export const WAVE = { gap: 0.2, v: 0.5, end: 1.45, born: 0.12, fade: 0.45, stream: 1.4, pour: 0.3, fill: 1, calm: 0.7,
+  first: { s: 4, dur: 1 }, letter: { s: 2.2, dur: 1.5 }, line: 1 / 540, bob: 0.3, sig: 0.04 } as const;
+export type Wave = { k: number; s: number; a: number };
+const clamp = (k: number) => Math.min(1, Math.max(0, k));
+/** 지금 지나는 결 — t = 도킹 장면이 열린 뒤 초, letters = 글자마다 다 쌓인 때(초, dockPlanOf의 modDone), calm = 쏟아짐이 잦아들기 시작하는 때(초) */
+export function wavesAt(t: number, letters: readonly number[], calm = Infinity): Wave[] {
+  const out: Wave[] = [], pour = clamp((t - WAVE.pour) / WAVE.fill) * (1 - clamp((t - calm) / WAVE.calm));
+  if (pour > 0) for (let k = (t * WAVE.v) % WAVE.gap; k < WAVE.end; k += WAVE.gap) out.push({ k, s: WAVE.stream, a: pour });
+  const hit = (T0: number, p: { s: number; dur: number }) => { if (t >= T0 && t < T0 + p.dur) out.push({ k: WAVE.end * (1 - (1 - (t - T0) / p.dur) ** 3), s: p.s, a: 1 }); };
+  hit(0, WAVE.first);
+  for (const x of letters) hit(x, WAVE.letter);
+  return out;
+}
+/** 결이 보이는 정도 — 생겨나고 잦아드는 것 × 그 결의 정도 */
+export const waveAlpha = (w: Wave) => clamp(w.k / WAVE.born) * clamp((WAVE.end - w.k) / WAVE.fade) * w.a;
+
+/**
  * 광각 퍼짐(결정 4) — 도킹하면 하늘 말들이 큰 말을 빙 둘러싼 고리(화면 가장자리 너머까지 — 잘려도 된다)로 퍼진다. 고리 = 화면 가운데
  * 중심, 가로 반지름 0.56 × 폭 · 세로 0.58 × 높이, 150°(왼쪽 아래)에서 위를 지나 30°(오른쪽 아래)까지 240°. x 차례(같으면 y)로 줄 세워
  * 고르게, 하나 건너 하나는 안쪽 고리(0.84배). 고리를 따라 기운다(회전 = (각 − 270°) × 0.12). 퍼지며 1.45배

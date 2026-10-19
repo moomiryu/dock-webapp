@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { endBroadcast, fakeSwitch, isFirebaseConfigured, subscribeDock } from '../lib/firebase';
-import { EMPHASIS_MS, EMPHASIS_SEC } from '../lib/wall';
+import { DOCK_TERM_MS, EMPHASIS_MS, EMPHASIS_SEC } from '../lib/wall';
 import { isDevMode } from '../lib/stage';
 import { pick, useLang } from '../lib/lang';
+import { arrange, arrangeOf, dockPlanOf, kindOf } from '../lib/aggregate';
+import { SKY, waveAlpha, wavesAt } from '../lib/sky';
+import { foldLines } from '../lib/fit';
+import type { ToneState } from '../types';
 
 /* 이 화면의 말. 영어는 초안이다(2026-09-26, 영문판) */
 const T = {
@@ -22,6 +26,9 @@ interface Props {
     startedAt: number;
     /** 이 참여의 이름표. 벽에 떠 있는 것이 아직 내 글인지 가른다 */
     session: string;
+    /** 벽에 뜬 내 글 · 그 얼굴 — 소리의 결이 벽의 큰 말과 같은 박자로 치게(글자마다 서는 시각). 없으면 결 없이 */
+    text?: string;
+    tone?: ToneState | null;
     onDone: (pulled: boolean) => void;
 }
 /**
@@ -48,7 +55,7 @@ function remain(startedAt: number): number {
     return Math.max(0, Math.min(EMPHASIS_SEC, EMPHASIS_SEC - (Date.now() - startedAt) / 1000));
 }
 
-export default function PhaseOnWall({ startedAt, session, onDone }: Props) {
+export default function PhaseOnWall({ startedAt, session, text, tone, onDone }: Props) {
     const doneRef = useRef(false);
     const lang = useLang();
 
@@ -107,7 +114,8 @@ export default function PhaseOnWall({ startedAt, session, onDone }: Props) {
     }, [startedAt]);
 
     return <div className="onwall-screen">
- {isDevMode() && <div className="onwall"><button className="onwall-release" onClick={handleTestRelease}>{pick(T.test, lang)}</button></div>}
+ {text && tone && <Waves text={text} tone={tone} startedAt={startedAt}/>}
+ {isDevMode() &&<div className="onwall"><button className="onwall-release" onClick={handleTestRelease}>{pick(T.test, lang)}</button></div>}
  {/* 화면 한가운데 한 묶음 — 위에 두 눈, 아래에 남은 초(2026-10-06, 그전엔 바닥 한 줄에
      왼쪽 눈 한 짝 · 오른쪽 숫자). '최대 30초'는 걷어냈다. 숫자가 이만큼 커지면
      그게 무엇인지는 줄어드는 것만 봐도 알고, 상한은 이미 첫 숫자가 말하고 있다. */}
@@ -116,6 +124,46 @@ export default function PhaseOnWall({ startedAt, session, onDone }: Props) {
   <div className="onwall-count" aria-label={pick(T.count, lang)}>{Math.ceil(left)}</div>
  </div>
 </div>;
+}
+
+/**
+ * 소리의 결(2026-10-20, 결정 11) — 벽의 도킹과 같은 순간 · 같은 박자로, 화면 아래(꽂힌 기기 쪽)에서 위로 퍼진다. 두 눈과 남은 초 뒤에
+ * 한 장. 0초 = 꽂힌 순간 + 도킹 텀(벽이 큰 말을 여는 때). 글자마다 서는 시각은 벽의 셈 그대로(dockPlanOf — 16:9 벽이면 크기와
+ * 상관없다). 원의 중심은 화면 아래 가운데에서 20px 더 내려간 바깥, 반지름 = k × 화면 높이 0.9. --paper · 벽보다 옅게 0.45배 ·
+ * 2px × 세기. 화면 가운데에서 사방으로 퍼지는 안은 과녁처럼 읽혀 버렸다. 움직임 줄이기면 그리지 않는다(눈 · 숫자만)
+ */
+const PHONE_WAVE = { drop: 20, r: 0.9, alpha: 0.45, line: 2 };
+function Waves({ text, tone, startedAt }: { text: string; tone: ToneState; startedAt: number }) {
+    const ref = useRef<HTMLCanvasElement>(null);
+    useEffect(() => {
+        const cv = ref.current, ctx = cv?.getContext('2d');
+        if (!cv || !ctx || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        const kd = kindOf(tone.font), items = arrange(foldLines(text), arrangeOf(tone.font, tone.align), kd);
+        const letters = dockPlanOf(items, kd, 1920, 1080, SKY.devDrop).plan.modDone, T0 = startedAt + DOCK_TERM_MS;
+        const col = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
+        let raf = 0;
+        const frame = () => {
+            raf = requestAnimationFrame(frame);
+            const W = cv.clientWidth, H = cv.clientHeight, dpr = Math.min(2, window.devicePixelRatio || 1);
+            if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, cv.width, cv.height);
+            const t = (Date.now() - T0) / 1000;
+            if (t < 0) return;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.strokeStyle = col;
+            for (const w of wavesAt(t, letters)) {
+                const a = PHONE_WAVE.alpha * waveAlpha(w);
+                if (a <= 0) continue;
+                ctx.globalAlpha = a; ctx.lineWidth = PHONE_WAVE.line * w.s;
+                ctx.beginPath(); ctx.arc(W / 2, H + PHONE_WAVE.drop, w.k * PHONE_WAVE.r * H, Math.PI, 2 * Math.PI); ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+        };
+        raf = requestAnimationFrame(frame);
+        return () => cancelAnimationFrame(raf);
+    }, [text, tone, startedAt]);
+    return <canvas ref={ref} className="onwall-waves" aria-hidden="true"/>;
 }
 
 /**

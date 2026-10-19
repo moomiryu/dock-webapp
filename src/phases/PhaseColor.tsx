@@ -1,18 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
 import SnapSwitch from '../components/SnapSwitch';
-import VoiceBubble from '../components/VoiceBubble';
-import CloudBubble from '../components/CloudBubble';
-import RainPreview from '../components/RainPreview';
-import { arrangementsFor, cloudForTone, cloudShape, defaultAlign, linesFor, stoneWhole } from '../lib/cloud';
-import { bubbleAt, fillFromLegacySize } from '../lib/fit';
-import { fontMap, rainShapeOf } from '../lib/palettes';
+import DotBubble from '../components/DotBubble';
+import { foldLines } from '../lib/fit';
+import { arrangementsFor, defaultAlign } from '../lib/aggregate';
 import { colorsFor, type ColorPair } from '../lib/palettes-v2';
 import { messageColors } from '../lib/messageStyle';
 import { pick, useLang } from '../lib/lang';
 import { tokenMs } from '../lib/motion';
 import type { Align, ToneState } from '../types';
-import { phoneSide } from '../lib/fit';   // 폰 미리보기 한 변(2026-09-29) — 아래 area
 import { tick } from '../components/SnapSwitch';   // 룰렛이 한 칸 멈출 때의 진동(2026-09-29)
 
 /* 이 화면의 말. 영어는 초안이다(2026-09-26, 영문판) */
@@ -34,48 +30,25 @@ const T = {
     colour: { ko: '색', en: 'Colour' },
     /* 2026-10-01까지 '정렬'(디자이너 — 고르면 실루엣이 바뀌니 '모양'). 값(tone.align)과 코드의 이름은 그대로 */
     align: { ko: '모양', en: 'Shape' },
-    /* 모양 스위치 칸의 말 — 3/5 말투 스위치처럼 칸 안에 짧은 말로 */
-    left: { ko: '왼쪽', en: 'Left' },
-    center: { ko: '가운데', en: 'Centre' },
-    right: { ko: '오른쪽', en: 'Right' },
-    /* 유머있는(비눗방울)의 떠다니기(2026-10-06) — 기본 칸은 BUBBLE_WORD가 '기본'으로 부른다 */
-    float: { ko: '둥실', en: 'Float' },
-    wobble: { ko: '흔들', en: 'Wobble' },
-    round: { ko: '둥글', en: 'Round' },
-    square: { ko: '네모', en: 'Square' },
-    pointy: { ko: '뾰족', en: 'Pointy' },
-    /* 성격마다 제 정렬(2026-09-28, design/landscape.md) — 나무(당당한) · 구름(다정한).
-       나무는 기본 배열 · 사선 배열 · 세로쓰기 배열(2026-09-29, 디자이너) — 칸이 좁아 '배열'은 뺀다. 나무의 가운데가 '기본'이다.
-       2026-10-04부터 나무의 칸은 기본 · 휘기 · 기울이기(TREE_WORD) — 사선 · 세로쓰기는 칸에서 빠졌다 */
-    basic: { ko: '기본', en: 'Basic' },
-    slant: { ko: '사선', en: 'Diagonal' },
-    vertical: { ko: '세로쓰기', en: 'Vertical' },
-    /* 나무의 휘기 · 기울이기(2026-10-04, 디자이너) — 값은 구름의 arch · 돌의 hang-up 그대로, 나무에서만 이 말로 부른다(TREE_WORD) */
-    bend: { ko: '휘기', en: 'Curve' },
-    tilt: { ko: '기울이기', en: 'Tilt' },
+    /* 모양 스위치 칸의 말 — 3/5 말투 스위치처럼 칸 안에 짧은 말로. 열두 칸(2026-10-20, 디자이너 — 결정 3 F): 이름은 형상의 비유,
+       첫 칸은 넷 모두 '기본'(값은 center). 그전의 휘기 · 기울이기 · 올리기 · 내리기 · 둥실 · 흔들은 칸에서 빠졌다 — 그 옛 글은 기본으로 선다 */
+    center: { ko: '기본', en: 'Basic' },
+    stairs: { ko: '계단', en: 'Stairs' },
+    podium: { ko: '단상', en: 'Podium' },
     arch: { ko: '아치', en: 'Arch' },
-    /* 부채꼴 — 칸에서 뺐다(2026-09-30, 디자이너). 옛 글은 그대로 부채꼴로 선다 — 되살리면 이 말을 쓴다 */
-    fan: { ko: '부채꼴', en: 'Fan' },
     smile: { ko: '미소', en: 'Smile' },
-    /* 차분한(돌) — 2026-09-28엔 포스터 넷(R17~R20)의 원론적인 이름(올려 · 중간 · 내려 걸기). 사진 돌에서는 글만 기울고 돌을
-       자르지 않아 '걸기'가 안 맞았다 → 올리기 · 기본 · 내리기(2026-10-01, 디자이너 — 선례는 스프레드시트 '텍스트 회전'의
-       위로 · 아래로 기울이기. 가운데는 나무의 가운데와 같은 '기본'). 값(hang-up …)은 그대로 */
-    'hang-up': { ko: '올리기', en: 'Tilt up' },
-    'hang-mid': { ko: '기본', en: 'Basic' },
-    'hang-down': { ko: '내리기', en: 'Tilt down' },
-    /* 칸에서 뺐다(2026-09-28) — 되살리면 이 말을 쓴다 */
-    contour: { ko: '윤곽 따라', en: 'Contour' }
+    stack: { ko: '탑', en: 'Tower' },
+    descend: { ko: '내리막', en: 'Downhill' },
+    stepping: { ko: '징검다리', en: 'Stepping stones' },
+    highkick: { ko: '하이킥', en: 'High kick' }
 };
-/** 나무(당당한)에서만 다르게 부르는 칸 — 가운데는 '기본', 구름 · 돌에게서 빌린 아치 · 올리기는 '휘기' · '기울이기' */
-const TREE_WORD: Partial<Record<Align, 'basic' | 'bend' | 'tilt'>> = { center: 'basic', arch: 'bend', 'hang-up': 'tilt' };
-/** 유머있는(비눗방울)의 가운데 칸은 '기본'(살랑만, 2026-10-06) */
-const BUBBLE_WORD: Partial<Record<Align, 'basic'>> = { center: 'basic' };
+/** 모양 칸의 이름 — 그 칸이 없으면 값 그대로(생길 일은 없다) */
+const alignWord = (a: Align) => (T as unknown as Record<string, { ko: string; en: string } | undefined>)[a] ?? { ko: a, en: a };
 
 /*
- * 정렬 잣대의 선택지는 성격이 정한다(cloud.ts · arrangementsFor, 2026-09-28). 차분한 · 유머있는은
- * 고전적인 셋(왼쪽 · 가운데 · 오른쪽), 당당한(나무)은 기본 · 휘기 · 기울이기(2026-10-04, 그전엔 사선 · 세로쓰기), 다정한(구름)은
- * 가운데 · 아치 · 미소(부채꼴은 2026-09-30에 뺐다). 고르면 미리보기의 형상이 그 자리에서 바뀐다 — 정렬이 곧 실루엣이다.
- * 값은 tone.align으로 저장되고 벽까지 간다.
+ * 모양 잣대의 선택지는 성격이 정한다(lib/aggregate.ts · arrangementsFor, 2026-10-20 결정 3 F) — 당당 기본 · 계단 · 단상,
+ * 다정 기본 · 아치 · 미소, 차분 기본 · 탑 · 내리막(결정 7 — 고드름 대신), 유머 기본 · 징검다리 · 하이킥. 고르면 미리보기의 말이 낱개부터 다시 모여
+ * 그 배치로 선다. 값은 tone.align으로 저장되고 벽까지 간다 — 참여자가 고른 모양이 벽에 그대로 나온다(절대원칙).
  */
 interface Props {
     text: string;
@@ -107,23 +80,9 @@ interface Props {
  * 올라오니 무엇을 조절하는 중인지가 흐려졌다. 여기는 **면이 주인공**인
  * 화면이라 도형이 제 일을 한다 — 고른 색이 그 윤곽을 입는다.
  *
- * 크기는 fit.ts가 준다. 정사각 상자가 아니라 글이 정한 비례를 그대로
- * 입으므로, 여기서 보는 모양이 벽에 뜰 모양과 같다.
+ * 크기는 DotBubble이 무대(.color-stage)를 재서 정한다 — 낱개 · 모임 · 꼬리가 다 들게. 말의 모양은 벽과 같은
+ * lib/aggregate.ts가 짓는다(2026-10-20, 결정 3).
  */
-/**
- * 말풍선이 쓸 수 있는 가장 큰 자리 — **제 자리를 재서 정한다.**
- *
- * 'min(80vw, 316px)'이었다. 옛 정사각 상자의 치수를 그대로 물려받은
- * 것인데, 그건 **화면 가로 폭만 보고** 정한 값이라 이 자리가 실제로 얼마나
- * 되는지와 상관이 없었다. 재 보니 자리는 358×716인데 말풍선은 200×90이라
- * 세로의 87%가 빈 채였고, 60자짜리 긴 글이 11.1px까지 내려앉아 읽히지
- * 않았다(2026-09-20).
- *
- * 이제 .color-stage에게 직접 묻는다. 세로가 가로의 두 배라 여전히 가로가
- * 먼저 걸리지만 — 한 줄 열두 자가 폭을 다 먹는다 — 적어도 자리의 몫을
- * 다 쓴다.
- */
-const AREA = 'min(96cqw, 96cqh)';
 
 /**
  * 룰렛이 도는 짝 — **성격마다 제 여덟 짝**(2026-09-29, 디자이너 확정 · palettes-v2 ATTITUDE_COLORS).
@@ -157,10 +116,7 @@ const PALE = new Set(['white', 'stone', 'ice', 'mist', 'cyan']);
  * 성격의 여덟 짝(pairs)을 같은 시간씩 차례로 도므로 어느 색도 권하지 않는다(절대원칙). 시작은 지금 색이다.
  * 움직임 줄이기를 켠 사람에게는 떨어지지도 돌지도 않는다.
  */
-function ColorDemo({ text, lines, tone, cloud, box, from, pairs }: {
-    text: string; lines: string[]; tone: ToneState; cloud: ReturnType<typeof cloudForTone>; box: ReturnType<typeof bubbleAt>; from: number;
-    pairs: readonly ColorPair[];
-}) {
+function ColorDemo({ lines, tone, from, pairs }: { lines: string[]; tone: ToneState; from: number; pairs: readonly ColorPair[] }) {
     const [i, setI] = useState(from);
     useEffect(() => {
         if (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -174,13 +130,8 @@ function ColorDemo({ text, lines, tone, cloud, box, from, pairs }: {
         return () => { window.clearTimeout(t); window.clearInterval(iv); };
     }, []);
     const m = pairs[i % pairs.length];
-    if (tone.font === 'deulseok') return <RainPreview text={text} color={m.bg} shape={rainShapeOf(tone.align)} motion={tone.align} speed={tone.speed} weight={tone.weight} />;
-    return <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={m.bg} still centerText floor>
-     <VoiceBubble text={lines.join('\n')} bg={m.bg} color={m.text} fontFamily={fontMap[tone.font]} font={tone.font}
-       weight={tone.wght} width={tone.tone} slant={tone.slnt} align={tone.align} size={tone.size} manner={tone.manner}
-       speed={tone.speed} weightPos={tone.weight}
-       fontSize={`calc(var(--color-area) * ${box.unit.toFixed(4)})`} />
-    </CloudBubble>;
+    /* 말은 처음부터 모여 서 있고(꼬리까지) 글만 위에서 떨어져 든다(app.css · colorDemoFall) */
+    return <DotBubble lines={lines} tone={tone} bg={m.bg} fg={m.text} still />;
 }
 
 /**
@@ -305,20 +256,12 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext, returni
     const [at, setAt] = useState(() => { const i = pairAt(PAIRS, initial.bg, initial.text); return i >= 0 ? i : firstOf(PAIRS); });
     const bg = PAIRS[at].bg;
     const fg = PAIRS[at].text;
-    /* 정렬 — 조정판의 둘째 잣대(2026-09-28). 전에 고른 값이 이 성격의 것이면 그것, 아니면 그 성격의 기본
-       (가운데, 차분한은 중간 걸기 — 다른 성격에서 고른 '아치'를 들고 돌에 오면 중간 걸기로 선다) */
+    /* 모양 — 조정판의 둘째 잣대(2026-09-28). 전에 고른 값이 이 성격의 것이면 그것, 아니면 기본 */
     const ALIGNS = arrangementsFor(tone.font);
     const [align, setAlign] = useState<Align>(tone.align && ALIGNS.includes(tone.align) ? tone.align : defaultAlign(tone.font));
     const current = { ...tone, align, backgroundColor: bg, textColor: fg };
-    // 줄은 한 줄 12자 — 모든 성격이 같다(cloud.ts · linesFor)
-    const lines = linesFor(text, current);
-    // 벽과 같은 구름이어야 미리보기가 거짓말이 아니다 — 씨앗은 글 자체(cloud.ts). 정렬이 형상을 바꾸므로 고른 정렬로 짓는다
-    // 돌은 배까지 한 덩이로(cloud.ts stoneWhole, 2026-10-04 디자이너) — 무대에 바닥이 없어 밑이 곧게 잘려 보였다
-    const cloud = stoneWhole(cloudForTone(lines, current));
-    const box = bubbleAt(lines, cloudShape(cloud), fillFromLegacySize(tone.size));
-    /* 무대 한 변 — 벽 비율 그대로면 폰에서 너무 작아, 말풍선이 무대 폭 · 높이에 3/5와 같은
-       크기감으로 들어차게 늘린다(fit.ts · phoneSide, 2026-09-29). 첫 장 시연과 고르는 장이 같이 쓴다 */
-    const area = phoneSide(AREA, box.w, box.h, fillFromLegacySize(tone.size), !!cloud.tree);   // 나무는 무대 안에(수관이 잘리지 않게)
+    // 줄은 한 줄 12자 — 모든 성격이 같다(fit.ts · foldLines)
+    const lines = foldLines(text);
     /* 두 장(2026-09-28, 3/5와 같은 흐름): 'intro' = 설명과 시연 · 'work' = 고르는 장.
        moved는 한 번이라도 넘긴 뒤인지 — 처음 들어올 때는 둘째 장이 움직이지 않고 숨어 있다.
        첫 장은 앞으로 들어올 때만 선다(2026-09-29, 사용자) — 뒤로가기에서는 과정 미리보기가
@@ -342,9 +285,9 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext, returni
    <h1>{pick(T.title, lang)}</h1>
    <p>{pick(T.lead, lang)}</p>
   </div>
-  <div className="color-stage color-demo" style={{ '--color-area': area } as CSSProperties}>
+  <div className="color-stage color-demo">
    {/* 늘 달아 둔다 — 넘길 때 위로 빠지는 장에 시연이 그대로 실려 간다 */}
-   <ColorDemo text={text} lines={lines} tone={tone} cloud={cloud} box={box} from={at} pairs={PAIRS} />
+   <ColorDemo lines={lines} tone={current} from={at} pairs={PAIRS} />
   </div>
   <button type="button" className="tone-more" onClick={start}>{pick(T.start, lang)}</button>
  </section>}
@@ -353,15 +296,9 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext, returni
    <StepHeader className="compose-chrome" at={4} back={{ label: pick(T.back, lang), onClick: () => onBack(current) }} onHome={onHome} />
    {/* 제목과 안내는 첫 장으로 옮겼다(2026-09-28) — 3/5처럼 고르는 장은 위가
        미리보기, 아래가 조정판이다. 무엇을 하는 자리인지는 첫 장이 말한다 */}
-   <div className="color-stage" style={{ '--color-area': area } as CSSProperties}>
-    {tone.font === 'deulseok'
-     ? <RainPreview text={text} color={bg} shape={rainShapeOf(align)} motion={align} speed={tone.speed} weight={tone.weight} />
-     : <CloudBubble cloud={cloud} box={box} side="var(--color-area)" color={bg} centerText floor>
-     <VoiceBubble text={lines.join('\n')} bg={bg} color={fg} fontFamily={fontMap[tone.font]} font={tone.font}
-       weight={tone.wght} width={tone.tone} slant={tone.slnt} align={align} size={tone.size} manner={tone.manner}
-       speed={tone.speed} weightPos={tone.weight}
-       fontSize={`calc(var(--color-area) * ${box.unit.toFixed(4)})`} />
-    </CloudBubble>}
+   <div className="color-stage">
+    {/* 벽과 같은 말 — 모양을 고를 때마다 낱개부터 다시 모인다 */}
+    <DotBubble lines={lines} tone={current} align={align} bg={bg} fg={fg} play={align} />
    </div>
   </div>
  </div></div>
@@ -371,13 +308,13 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext, returni
       보여 준다(바탕은 배경색, 가운데 '가'는 글자색). 한 번에 한 짝(위 ColorRoll). */}
   <div className="tslider">
    <span className="tslider-name" id="color-name">{pick(T.colour, lang)}</span>
-   <ColorRoll at={at} onPick={setAt} labelledBy="color-name" lang={lang} pairs={PAIRS} stroke={tone.font === 'deulseok'} />
+   <ColorRoll at={at} onPick={setAt} labelledBy="color-name" lang={lang} pairs={PAIRS} />
   </div>
   <div className="tslider">
    <span className="tslider-name" id="align-name">{pick(T.align, lang)}</span>
    {/* 3/5 말투 스위치와 같은 부품이다(2026-09-28, 사용자 — "3단계 UI를 적극 활용",
        같은 앱이니 같은 분위기) — 칸 수는 성격의 정렬 수(셋 또는 넷) */}
-   <SnapSwitch labels={ALIGNS.map((a) => pick(tone.font === 'ttoryeot' && TREE_WORD[a] ? T[TREE_WORD[a]] : tone.font === 'deulseok' && BUBBLE_WORD[a] ? T[BUBBLE_WORD[a]] : T[a as Exclude<Align, 'distribute' | 'trapezoid'>], lang))} at={ALIGNS.indexOf(align)}
+   <SnapSwitch labels={ALIGNS.map((a) => pick(alignWord(a), lang))} at={ALIGNS.indexOf(align)}
      onPick={(i) => setAlign(ALIGNS[i])} labelledBy="align-name" />
   </div>
   <button className="primary-action" onClick={() => onNext(current)}>{pick(T.next, lang)}</button>

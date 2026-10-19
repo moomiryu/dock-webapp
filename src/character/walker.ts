@@ -13,6 +13,7 @@
 import walkSrc from '../../by_moomiryu/Renewal_v1/Character/people/Character_walk_v3.svg?raw';
 import happySrc from '../../by_moomiryu/Renewal_v1/Character/eye/eye_happy.svg?raw';
 import sadSrc from '../../by_moomiryu/Renewal_v1/Character/eye/eye_sad.svg?raw';
+import seeSrc from '../../by_moomiryu/Renewal_v1/Character/eye/eye_see left.svg?raw';
 
 const pick = (re: RegExp, what: string) => {
   const m = walkSrc.match(re);
@@ -141,6 +142,20 @@ export const EYE_SAD = (() => {
     lid, pupil: { cx: EYE_WHITE.cx, cy: EYE_WHITE.cy, r: pr * k },
     transform: `translate(${EYE_WHITE.cx} ${EYE_WHITE.cy}) scale(${k.toFixed(4)}) translate(${-cx} ${-cy})`
   };
+})();
+
+/**
+ * 올려다본다 — 벽의 작은 사람이 큰 나무(당당한의 발화)가 솟은 뒤 고개를 들고 본다(WallWalkers, 2026-10-07 디자이너 "놀라 폴짝 →
+ * 올려다본다"). 작가의 큰 메가폰트 '보는 눈'(Character/eye/eye_see left.svg) 왼눈에서 **검은자가 흰자 가운데에서 얼마나 비켜
+ * 섰는지**(위로 · 옆으로)를 옮겨 온다. 그 그림은 정면 얼굴이라 옆은 보는 이의 오른쪽인데, 옆모습인 작은 사람은 앞(눈이 있는 쪽, −x)을
+ * 보게 뒤집는다 — 큰 나무 쪽으로 몸을 돌리고(face) 앞 위를 본다. 검은자 크기도 그 그림의 비율 그대로
+ */
+export const EYE_UP = (() => {
+  const circles = [...seeSrc.matchAll(/<circle[^>]*cx="([\d.]+)"[^>]*cy="([\d.]+)"[^>]*r="([\d.]+)"/g)].map((m) => m.slice(1).map(Number));
+  if (circles.length < 2) throw new Error('eye_see left.svg에서 보는 눈을 못 찾았다');
+  const [[wx, wy, wr], [px, py, pr]] = circles;   // 첫 원 = 왼눈 흰자, 둘째 = 그 검은자
+  const k = EYE_WHITE.r / wr;
+  return { cx: EYE_WHITE.cx - Math.abs(px - wx) * k, cy: EYE_WHITE.cy + (py - wy) * k, r: pr * k };
 })();
 
 /** 발바닥 — 서 있는 다리 그림의 아래 끝(작가의 걷기 그림, 0프레임) */

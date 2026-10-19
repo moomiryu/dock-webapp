@@ -13,13 +13,18 @@ export type FontFamily = 'doran' | 'chabun' | 'botong' | 'ttoryeot' | 'deulseok'
  * 정렬 — 4/5에서 고른다. 셋은 모든 성격의 고전 정렬이고, 나머지는 성격마다 제 것이 있다
  * (2026-09-28, design/landscape.md): 당당한(나무) = 기본 · 사선 · 세로쓰기,
  * 다정한(구름) = 가운데 · 아치 · 미소(부채꼴은 2026-09-30에 칸에서 뺐다 — 옛 글은 그대로 선다), 차분한(돌) = 올려 걸기 · 중간 걸기 · 내려 걸기(R17).
- * 목록은 cloud.ts의 arrangementsFor. 'contour'(윤곽 따라, R20)는 칸에서 뺐지만 되살릴 수 있게 둔다
+ * 지금 칸은 lib/aggregate.ts의 arrangementsFor(2026-10-20 열두 칸). 위의 옛 값들은 사흘 안의 옛 글 때문에 남긴다(그리면 기본)
  */
 export type Align = 'left' | 'center' | 'right' | 'distribute' | 'trapezoid' | 'arch' | 'fan' | 'smile' | 'hang-up' | 'hang-mid' | 'hang-down' | 'contour' | 'slant' | 'vertical'
   /* 유머있는(비)의 모양 — 핸드젯의 낱알 모양(2026-10-04, 디자이너 — palettes.ts RAIN_FACE) */
   | 'round' | 'square' | 'pointy'
   /* 유머있는(비눗방울)의 떠다니기 — 둥실 · 흔들(2026-10-06, 디자이너 — 기본은 center. lib/rain.ts bubbleMove) */
-  | 'float' | 'wobble';
+  | 'float' | 'wobble'
+  /* 도트 집합체의 열두 칸(2026-10-20, 결정 3 F — lib/aggregate.ts arrangementsFor): 당당 계단 · 단상, 차분 탑 · 고드름, 유머 징검다리 · 하이킥.
+     다정의 아치 · 미소와 넷의 기본(center)은 위의 값 그대로. 이 목록 밖의 옛 값은 기본으로 그린다(arrangeOf) */
+  | 'stairs' | 'podium' | 'stack' | 'icicle' | 'stepping' | 'highkick'
+  /* 차분 내리막(2026-10-20, 결정 7 — 고드름 icicle 대신. icicle은 그 사이 저장된 글 때문에 남긴다, 그리면 기본) */
+  | 'descend';
 
 export interface ToneState {
   align?: Align;

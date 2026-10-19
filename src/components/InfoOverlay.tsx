@@ -20,7 +20,7 @@ import { pick, useLang, type Pair } from '../lib/lang';
 // 같은 폴더의 `Artboard size_*.pdf`는 번들에 넣지 않는다. 화면이 아니라
 // **기준**이다 — 그 페이지 크기(390×603)가 곧 삽화의 화판이고, 화면에서
 // 어디까지 보이고 어디가 잘려야 하는지를 그것이 정한다(app.css · --focus).
-import artStep3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3.svg?raw';
+import artStep3Raw from '../../by_moomiryu/Renewal_v1/Tutorial/example_step3.svg?raw';
 import artRule1 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_1_1.svg?raw';
 import artRule2 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step_1_2.svg?raw';
 import artRule3 from '../../by_moomiryu/Renewal_v1/Tutorial/example_step1_3_1.svg?raw';
@@ -35,6 +35,10 @@ import artDock2 from '../../by_moomiryu/Renewal_v1/Tutorial/ step2_1007_2.svg?ra
 import artDock3 from '../../by_moomiryu/Renewal_v1/Tutorial/step2_1007_3.svg?raw';
 import artHover from '../../by_moomiryu/Renewal_v1/Tutorial/dock_1.svg?raw';
 import artSlot from '../../by_moomiryu/Renewal_v1/Tutorial/dock2_v3.svg?raw';
+/* Step 3의 빛무리(벽에 비친 노랑 → 투명 방사 그라데이션 타원)는 들여올 때 걷는다(2026-10-20, 결정 10 — 그라데이션은 점 · 평면 색 ·
+   1px 선의 키비주얼과 결이 반대다. 작가 원본은 그대로). 그 그림에서 cls-1을 쓰는 것은 이 타원 하나뿐이다 — 이름이 다른 그림과 겹칠 수
+   있어 CSS로 숨기지 않고 이 그림의 글에서만 지운다 */
+const artStep3 = artStep3Raw.replace(/<ellipse class="cls-1"[^>]*\/>/, '');
 
 /* 두 가지로 연다(2026-09-27). 홈의 물음표는 About 한 장만(about), '처음이에요'는
    Step 1·2·3 세 장을 넘기는 사용 안내다. About이 안내의 첫 장이던 때는 '처음이에요'를

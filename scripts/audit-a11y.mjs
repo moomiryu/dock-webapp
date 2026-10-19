@@ -92,7 +92,7 @@ if (EN && (await page.evaluate(() => document.documentElement.lang)) !== 'en') {
 }
 
 // 2026-09-27: About은 홈의 물음표가 따로 연다. 뒤로가기 없이 X 하나로 닫는다
-await page.locator('.home-poster-about').click();   // 물음표가 세로쓰기 링크가 됐다(2026-10-06)
+await page.locator('.home-about').click();   // 물음표가 세로쓰기 링크가 됐다가(2026-10-06) 부제 밑 '자세히 보기' 글자가 됐다(2026-10-20)
 await page.waitForTimeout(500);
 await audit('01 About');
 await page.locator('.info-head .z-home').click();

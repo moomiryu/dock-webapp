@@ -262,6 +262,6 @@ export default function App() {
       );
 
     case 'done':
-      return <PhaseDone stillDocked={!pulled} onRestart={handleRestart} />;
+      return <PhaseDone stillDocked={!pulled} onRestart={handleRestart} text={draft?.text} tone={draft?.tone} />;
   }
 }

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import HomeCharacter from '../character/HomeCharacter';
 import HomeCrowd from '../character/HomeCrowd';
+import DoneSky from '../components/DoneSky';
+import type { ToneState } from '../types';
 import { FEEDBACK_MAX, submitFeedback } from '../lib/firebase';
 import { pick, useLang } from '../lib/lang';
 
@@ -34,6 +36,9 @@ const T = {
 interface Props {
     stillDocked: boolean;
     onRestart: () => void;
+    /** 방금 벽에 띄운 내 글 · 그 얼굴 — 하늘(DoneSky)에서 메가폰트 위로 올라가 앉는다. 없으면 회색 지난 말만 */
+    text?: string;
+    tone?: ToneState | null;
 }
 /**
  * 발화 종료. 튜토리얼 마지막 장('그러면 끝입니다')이 여기로 왔다(2026-09-24).
@@ -55,10 +60,12 @@ interface Props {
  * 않는다. 의견 칸과 만든 사람 줄은 그 한 장 **밖** 아래에 붙어 읽는 사람만 본다 —
  * 틀 안에 두면 캐릭터 · 구경꾼이 늘어난 틀 높이로 자리를 잡아 첫 화면 밖으로 내려간다.
  */
-export default function PhaseDone({ onRestart }: Props) {
+export default function PhaseDone({ onRestart, text, tone }: Props) {
     const lang = useLang();
     return <div className="done-home">
      <div className="home-frame">
+      {/* 하늘(2026-10-20, 결정 13) — 바탕 위, 메가폰트 · 글 뒤. '메아리처럼 화면을 맴돕니다'를 그림으로 */}
+      <DoneSky text={text} tone={tone} />
       <HomeCrowd />
       <HomeCharacter greet={false} />
       <div className="home-layer">

@@ -1316,14 +1316,34 @@
   transform: translate(calc(var(--x, 0) * 100%), calc(var(--y, 0) * 100%));
   transition: transform var(--t-return) var(--ease-standard), scale var(--t-return) var(--ease-standard);
   animation: styleThumbIn var(--t-return) var(--ease-standard); }
-/* 네 칸을 가르는 십자선(2026-10-06, 사용자) — 1px, 판 뒤에 깔린다 */
+/* 네 칸을 가르는 십자선(2026-10-06, 사용자) — 2026-10-20부터 우리 원형 점의 점선(결정 12, 디자이너 — "사분면을 가르는 선분을 우리가
+   쓰는 원형 도트로"). 점 지름 --dot-d · 점 사이(가운데에서 가운데) --s2 · --grey-400(--grey-300은 점이 되면 바탕에 묻힌다). 판 뒤에 깔린다.
+   양 끝은 바깥 테두리에서 --s5 떨어진다 — 붙어 있으니 불안정해 보였다. radial-gradient는 점을 찍는 수단이다(CLAUDE.md 스타일의 예외).
+   가로 · 세로가 만나는 가운데에 점 하나, 양 끝은 온전한 점: 점을 가운데에서부터 --s2마다 찍고 선 길이를 그 간격에 맞춰 자른다(round —
+   끝 틈은 --s5에서 --s2 미만만큼 넓어진다). 양 끝을 맞춰 고르게 늘어놓으면(space) 점 수가 짝수인 폭(390 · 320)에서 가운데가 비었다.
+   round를 모르는 브라우저는 space로 그린다 */
 .tone-choice .style-cards::before, .tone-choice .style-cards::after{ content: ''; position: absolute; pointer-events: none;
-  background: var(--grey-300); }
-.tone-choice .style-cards::before{ left: var(--s1); right: var(--s1); top: 50%; height: 1px; }
-.tone-choice .style-cards::after{ top: var(--s1); bottom: var(--s1); left: 50%; width: 1px; }
+  --dot: radial-gradient(circle closest-side, var(--grey-400) 80%, transparent 100%);
+  --half: calc(50% - var(--s5) - var(--dot-d) / 2); }
+.tone-choice .style-cards::before{ left: var(--s5); right: var(--s5); top: calc(50% - var(--dot-d) / 2); height: var(--dot-d);
+  background: var(--dot) center / var(--s2) var(--dot-d) space no-repeat; }
+.tone-choice .style-cards::after{ top: var(--s5); bottom: var(--s5); left: calc(50% - var(--dot-d) / 2); width: var(--dot-d);
+  background: var(--dot) center / var(--dot-d) var(--s2) no-repeat space; }
+@supports (left: round(down, 50%, 1px)){
+  .tone-choice .style-cards::before{ background-repeat: repeat-x;
+    left: calc(50% - round(down, var(--half), var(--s2)) - var(--dot-d) / 2); right: calc(50% - round(down, var(--half), var(--s2)) - var(--dot-d) / 2); }
+  .tone-choice .style-cards::after{ background-repeat: repeat-y;
+    top: calc(50% - round(down, var(--half), var(--s2)) - var(--dot-d) / 2); bottom: calc(50% - round(down, var(--half), var(--s2)) - var(--dot-d) / 2); }
+}
+/* 판 틈(결정 12) — 고른 칸의 판이 점선에서 --s2 떨어져 선다(사방으로 --s2씩 작게). 판 상자 · 미끄러짐은 그대로 두고 투명 테두리만큼
+   칠을 안으로 — 칠한 판의 둥글기는 그대로(바깥 둥글기를 그만큼 키운다) */
+.tone-choice .style-thumb{ border: var(--s2) solid transparent; background-clip: padding-box; border-radius: calc(var(--r-button) - var(--s1) + var(--s2)); }
 /* 마우스를 올리면 그 칸이 살짝 밝아진다. 손가락에는 걸리지 않는다 */
 @media (hover: hover){
-  .tone-choice .style-card:not(.on):hover{ background: var(--grey-300); border-radius: calc(var(--r-button) - var(--s1)); }
+  /* 판과 같이 점선에서 --s2 안쪽까지만 칠한다(결정 12 — 안 그러면 이것만 점선에 붙는다). 테두리로 줄이면 칸 폭을 재는 이름 크기(cqw)가
+     바뀌어 칠만 오려 낸다. 이름은 칸 안쪽 여백 안에 있어 잘리지 않는다 */
+  .tone-choice .style-card:not(.on):hover{ background: var(--grey-300); border-radius: calc(var(--r-button) - var(--s1));
+    clip-path: inset(var(--s2) round calc(var(--r-button) - var(--s1))); }
 }
 @keyframes styleThumbIn{ from { opacity: 0; } }
 /* 01 한 줄 — 상자가 없다. 자판을 내리면 글이 정사각 상자에 담기던 연출을

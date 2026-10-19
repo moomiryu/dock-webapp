@@ -2628,6 +2628,8 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .sky-dock > canvas{ position: absolute; inset: 0; width: 100%; height: 100%; }
 .arc-glyph{ position: absolute; line-height: 1; white-space: pre; }
 
+/* 소리의 결(2026-10-20, 결정 9 — WallSky가 그린다) — 도킹 때만. 배경 바로 위, 땅 · 말들 뒤 */
+.wall-waves{ position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
 /* 땅(2026-10-04, WallGround · lib/ground.ts) — 맨 아래 띠. 2026-10-20부터 풀은 걷고 성긴 점의 띠만, 말들 뒤에 선다 */
 .wall-soil{ position: absolute; left: 0; bottom: 0; width: 100%; display: block; pointer-events: none; }
 /* 로고타입(2026-10-20, 결정 6) — 땅 띠 속, 가로 가운데. 서체 · 굵기 · 자간은 원 안 워드마크(.ring-badge-mark) 그대로, 색은 검정.

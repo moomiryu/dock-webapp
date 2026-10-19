@@ -3,7 +3,7 @@
  * 미리보기와 벽이 어긋나지 않게. 좌표는 말 좌표(u)다: 부르는 쪽이 ctx의 변환으로 1 = 1u가 되게 두고, 칠할 색도 정해 둔다.
  * 글자는 칠하지 않는다(DOM 글자 — VoiceBubble). 대신 글자마다 자리 · 보이는 정도 · 몸짓을 돌려준다.
  */
-import { RD, RF, backOut, flutter, modulesAt, type Dot, type Item, type Kind, type Plan, type Tail } from './aggregate';
+import { RD, RF, TAIL_FIRST, backOut, flutter, follow, modulesAt, type Dot, type Item, type Kind, type Plan, type Tail } from './aggregate';
 
 type P = readonly [number, number];
 /** 글자 하나 — 자리(u) · 보이는 정도 · 내려앉는 몸짓([가로 배율, 세로 배율, 회전]) */
@@ -17,9 +17,21 @@ const polygon = (ctx: CanvasRenderingContext2D, Q: readonly P[]) => { ctx.beginP
 export interface Pop { now: number; at: (x: number, y: number) => number }
 const POP_T = 0.18;
 
+/** 꼬리의 점 — g = 솟은 정도(0.15에 걸쳐 커진다). tipFirst면 기기 쪽 끝부터 밑동으로(결정 9 도킹), 아니면 밑동부터. 나부낌 */
+function tailDots(tail: Tail, g: number, sec: number, ph: number, still: boolean, tipFirst = false): Dot[] {
+  const out: Dot[] = [];
+  if (g > 0) for (const d of tail.dots) {
+    const t = d.t ?? 0, front = clamp((g * 1.15 - (tipFirst ? 1 - t : t)) / 0.15);
+    if (!front) continue;
+    const sw = still ? 0 : flutter(t, sec, ph);
+    out.push({ ...d, x: d.x + tail.perp[0] * sw, y: d.y + tail.perp[1] * sw, r: d.r * front });
+  }
+  return out;
+}
+
 /**
  * 모인(모이는 중의) 말 — m = 모이는 정도(모듈 1 → 1.12배, 틈 메움은 m³), g = 꼬리 솟음(밑동부터), sec · ph = 나부낌 시각 · 박자.
- * 돌려주는 값 = 글자 자리(모듈 가운데)
+ * 꼬리는 붙은 글자의 지금 자리를 따라간다(모인 자리에선 그대로). 돌려주는 값 = 글자 자리(모듈 가운데)
  */
 export function paintBody(ctx: CanvasRenderingContext2D, items: readonly Item[], kd: Kind, gaps: readonly Dot[], m: number,
   tail: Tail | null, g: number, sec: number, ph: number, still = false, pop?: Pop): Glyph[] {
@@ -28,12 +40,7 @@ export function paintBody(ctx: CanvasRenderingContext2D, items: readonly Item[],
   polys.forEach((Q, i) => { if (!gone || gone[i] < 0) polygon(ctx, Q); });
   const all: Dot[] = [...dots];
   if (m > 0) { const kk = m ** 3; for (const d of gaps) all.push({ ...d, r: d.r * kk }); }
-  if (g > 0 && tail) for (const d of tail.dots) {
-    const t = d.t ?? 0, front = clamp((g * 1.15 - t) / 0.15);
-    if (!front) continue;
-    const sw = still ? 0 : flutter(t, sec, ph);
-    all.push({ ...d, x: d.x + tail.perp[0] * sw, y: d.y + tail.perp[1] * sw, r: d.r * front });
-  }
+  if (tail) all.push(...tailDots(follow(tail, items, pos[tail.from]), g, sec, ph, still));
   ctx.beginPath();
   const popping: [number, number, number, number][] = [];
   for (const d of all) {
@@ -49,12 +56,17 @@ export function paintBody(ctx: CanvasRenderingContext2D, items: readonly Item[],
   return pos.map(([x, y], i) => ({ x, y, op: gone ? clamp(1 - gone[i] / POP_T) : 1, q: null }));
 }
 
+/** 꼬리가 먼저 솟을 때 — 모인 자리의 꼬리 · 글자들 · 나부낌 시각 · 박자 · 움직임 줄임 */
+export interface TailFirst { tail: Tail; items: readonly Item[]; sec: number; ph: number; still: boolean }
+
 /**
- * 큰 말의 등장(결정 3 E · 결정 4 휭) — age = 큰 말이 서기 시작한 뒤 초. rest = 낱개 자리의 모듈(modulesAt(items, kd, 0)), dev = 기기(u).
- * 날아오는 점은 메움 없이 작은 점(곧게, 다정은 휘어서), 다 쌓인 글자는 제 가운데를 축으로 내려앉는 몸짓. 다 서면 휭 — 가로로만 F배
+ * 큰 말의 등장(결정 3 E · 결정 4 휭 · 결정 9) — age = 큰 말이 서기 시작한 뒤 초. rest = 낱개 자리의 모듈(modulesAt(items, kd, 0)),
+ * dev = 점이 나가는 곳(u — 꼬리가 먼저면 입, 아니면 기기). 꼬리가 먼저면 첫 글자의 퍼진 자리에 붙어 기기 쪽 끝부터 TAIL_FIRST초에 솟고,
+ * 휭 퍼짐 동안에도 첫 글자를 따라간다. 날아오는 점은 메움 없이 작은 점(곧게, 다정은 휘어서), 다 쌓인 글자는 제 가운데를 축으로 내려앉는
+ * 몸짓. 다 서면 휭 — 가로로만 F배
  */
 export function paintEntrance(ctx: CanvasRenderingContext2D, rest: ReturnType<typeof modulesAt>, plan: Plan, dev: P, age: number,
-  land: (t: number) => [number, number, number], whoosh: number): Glyph[] {
+  land: (t: number) => [number, number, number], whoosh: number, first?: TailFirst): Glyph[] {
   const f = 1 + (plan.F - 1) * backOut(clamp((age - plan.whoosh) / whoosh)), cx = (i: number) => rest.pos[i][0] * f;
   const q = plan.modDone.map((t) => (age >= t ? land(age - t) : null));
   const tf = (i: number, x: number, y: number): [number, number] => {
@@ -65,6 +77,10 @@ export function paintEntrance(ctx: CanvasRenderingContext2D, rest: ReturnType<ty
   };
   rest.polys.forEach((Q, i) => { if (q[i]) polygon(ctx, Q.map(([x, y]) => tf(i, x, y))); });
   ctx.beginPath();
+  if (first) {
+    const i = first.tail.from, T = follow(first.tail, first.items, [cx(i), rest.pos[i][1]]);
+    for (const d of tailDots(T, easeOut(clamp(age / TAIL_FIRST)), first.sec, first.ph, first.still, true)) circle(ctx, d.x, d.y, RF * d.r);
+  }
   const [ex, ey] = dev;
   for (const d of plan.shots) {
     if (age < d.e) continue;

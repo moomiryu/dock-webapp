@@ -26,6 +26,12 @@ import type { DockBeat } from './WallWalkers';
  *      제 색 · 제자리로 돌아온다.
  * 사흘이 지난 말도 꼬리 끝부터 연쇄로 터진다.
  *
+ * 돌려 보이기(결정 8) — 하늘엔 많아야 열 개(lib/sky.ts). 못 뜬 말 · 넘쳐 터진 말은 기다림 줄에 선다(지운 게 아니다 — 사흘 약속을 이것으로
+ * 지킨다). 1분마다 가장 오래 떠 있던 말이 꼬리 끝부터 터져 줄 맨 뒤로 가고, 남은 말이 다시 올라붙고, 0.9초 뒤 줄 맨 앞 말이 기기에서
+ * 0.4배로 쏘아 올라 1.4초(easeOut)에 제자리로 커지며 붙는다(꼬리는 늘 기기를 가리킨다). 도킹 중엔 돌지 않고 끝나면 1분을 다시 센다.
+ * 쏘아 오르는 중엔 도킹을 열지 않는다(다 붙은 뒤에 연다). '떠 있던 때'는 하늘에 붙은 때다 — 처음 쌓은 말만 쓰인 시각으로 잰다.
+ * 사흘이 지나 터진 자리는 다음 돌림이 터뜨리지 않고 올리기만 해서 열 개로 다시 채운다.
+ *
  * 말의 부스러기(결정 6) — 터지는 말의 점 다섯 알에 한 알꼴이 제 색으로(회색으로 가라앉아 있었어도) 땅에 떨어져 모래처럼 쌓이고, 땅 색으로
  * 천천히 바래다 가라앉는다. 기기에서 쏘아 올라 → 하늘에 쌓이고 → 터져 → 땅에 내려앉는 한 바퀴. 더미는 배경 — 작은 사람 뒤에 그린다.
  * 처음 켤 땐 빈 땅에서 시작한다.
@@ -41,6 +47,8 @@ const SKY_DT = 0.033;
  * 그만큼 더 지나면 땅 띠 속으로 가라앉아 없어진다(더미가 끝없이 차지 않게) · 바래는 동안 다시 칠하는 간격(초)
  */
 const CRUMB = { every: 5, gravity: 2.2, vx: 0.03, vy: 0.06, maxH: 0.03, logo: 0.04, fade: 86400, sink: 86400, repaint: 10 };
+/** 돌려 보이기(결정 8) — 간격(초) · 터진 뒤 쏘기까지 · 쏘아 올라 붙는 시간 · 기기에서 나올 때의 배율 */
+const ROT = { every: 60, wait: 0.9, shot: 1.4, from: 0.4 };
 type Crumb = { col: string; t: number };
 type Fall = { x: number; y: number; vx: number; vy: number; col: string };
 const easeOut = (k: number) => 1 - (1 - k) ** 3;
@@ -57,6 +65,8 @@ interface Sky extends Base { pos: P; from?: P; mv?: number; up?: number; tail: T
   seeds?: Dot[]; sent?: Set<number> }
 /** 도킹하는 말 — 시작(초) · 크게 선 1u(px) · 등장 계획 · 휭 퍼진 낱개 자리 · 낱개 자리의 모듈 · 기기(u) · 큰 꼬리 · 하늘 자리 · 해제(초) · 광각 고리 */
 interface Dock extends Base { key: number; T: number; S: number; plan: Plan; spread: Item[]; rest: ReturnType<typeof modulesAt>; dev: P; tail: Tail; to: P; release: number; ring: Map<Sky, { to: P; rot: number }> }
+/** 돌림으로 기기에서 쏘아 오르는 말 — 하늘 자리 · 쏘는 때(초) */
+interface Launch { b: Base; to: P; T: number }
 const times = (D: Dock) => {
   const merge = Math.max(D.plan.whoosh + WHOOSH, D.release), sprout = merge + GATHER, rise = sprout + GROW + WAIT;
   return { merge, sprout, rise, end: rise + RISE };
@@ -100,18 +110,22 @@ export default function WallSky({ list, dock, beat }: Props) {
   beatRef.current = beat;
   const host = useRef<HTMLDivElement>(null), dockCv = useRef<HTMLCanvasElement>(null), dockText = useRef<HTMLDivElement>(null), crumbCv = useRef<HTMLCanvasElement>(null);
   const els = useRef(new Map<string, Els>());
-  const model = useRef({ sky: [] as Sky[], leaving: [] as Sky[], dock: null as Dock | null, retired: new Set<string>(), W: 0, H: 0, u: 0, ready: false,
+  /** queue = 기다림 줄(글 id, 앞이 먼저) · shot = 쏘아 오르는 말 · nextRot = 다음 돌림(초) */
+  const model = useRef({ sky: [] as Sky[], leaving: [] as Sky[], dock: null as Dock | null, queue: [] as string[], shot: null as Launch | null, nextRot: Infinity, W: 0, H: 0, u: 0, ready: false,
     /** 부스러기 — 점 간격 칸마다 쌓인 더미(아래부터) · 떨어지는 점 · 다시 칠할까 · 마지막으로 칠한 때 · 마지막 걸음 */
     crumbs: { cols: [] as Crumb[][], falls: [] as Fall[], dirty: true, painted: -Infinity, last: NaN } });
   const [, bump] = useState(0);
   /** 하늘을 처음 쌓았나 — 그 전에 온 도킹은 쌓은 뒤에 연다 */
   const [ready, setReady] = useState(false);
+  /** 쏘아 오른 말이 붙을 때마다 — 그동안 미뤄 둔 도킹을 연다 */
+  const [landed, setLanded] = useState(0);
   const rerender = () => bump((v) => v + 1);
   const quiet = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const now = () => performance.now() / 1000;
 
-  /** 새 말의 자리 — 꽉 차면(아랫변이 화면 절반을 넘거나 열둘이 다 찼으면) 가장 오래된 말이 터지고 남은 말들이 다시 올라붙는다. 될 때까지.
-      newer = 하늘의 어느 말보다 새 말인가 — 아니면(늦게 받은 옛 글) 자리가 날 때만 붙고 남을 밀어내지 않는다(null) */
+  /** 새 말의 자리 — 꽉 차면(아랫변이 화면 절반을 넘거나 열이 다 찼으면) 가장 오래 떠 있던 말이 터져 기다림 줄 맨 뒤로 가고 남은 말들이
+      다시 올라붙는다. 될 때까지. newer = 하늘의 어느 말보다 새 말인가 — 아니면(늦게 받은 옛 글) 자리가 날 때만 붙고 남을 밀어내지
+      않는다(null — 기다림 줄로) */
   const admit = (prof: Profile, t: number, animate: boolean, newer = true): P | null => {
     const M = model.current, { W, H, u } = M;
     let to = placeFor(prof, M.sky, W, H, u);
@@ -120,7 +134,7 @@ export default function WallSky({ list, dock, beat }: Props) {
     while (M.sky.length && full()) {
       const old = M.sky.reduce((a, b) => (a.born < b.born ? a : b));
       M.sky = M.sky.filter((s) => s !== old);
-      M.retired.add(old.id);
+      M.queue.push(old.id);
       if (animate) M.leaving.push(leave(old, t));
       settle(t, animate);
       to = placeFor(prof, M.sky, W, H, u);
@@ -135,6 +149,23 @@ export default function WallSky({ list, dock, beat }: Props) {
       return { ...skyAt(s, to[i], W, H, u), up: s.up, ...(animate ? { from: posAt(s, t), mv: t } : {}) };
     });
   };
+  /** 돌려 보이기 한 번 — 가장 오래 떠 있던 말이 터져 줄 맨 뒤로 · 남은 말이 올라붙음 · 줄 맨 앞 말(목록에서 빠진 글은 건너뜀)이 ROT.wait 뒤 쏘아 오른다.
+      하늘이 열 개가 안 되면(사흘이 지나 터진 자리) 터뜨리지 않고 올리기만 해 열 개로 다시 채운다(디자이너 10-20) — 화면 절반에 걸리면 admit이 터뜨린다 */
+  const rotate = (t: number) => {
+    const M = model.current, { W, H, u } = M;
+    M.nextRot = t + ROT.every;
+    if (M.sky.length >= SKY.max) {
+      const old = M.sky.reduce((a, b) => (a.born < b.born ? a : b));
+      M.sky = M.sky.filter((s) => s !== old);
+      M.leaving.push(leave(old, t));
+      M.queue.push(old.id);
+      settle(t, true);
+    }
+    let msg: StoredMessage | undefined;
+    while (!msg && M.queue.length) { const id = M.queue.shift(); msg = listRef.current.find((m) => m.id === id); }
+    if (msg) { const b = baseOf(msg); M.shot = { b, to: admit(probeOf(b, W, H, u), t, true)!, T: t + (quiet ? 0 : ROT.wait) }; }
+    rerender();
+  };
 
   // 크기 — 창이 바뀌면 하늘을 처음부터 다시 쌓는다(움직임 없이)
   useEffect(() => {
@@ -145,7 +176,7 @@ export default function WallSky({ list, dock, beat }: Props) {
       if (!W || !H || (W === M.W && H === M.H)) return;
       Object.assign(M, { W, H, u: SKY.u * H });
       M.crumbs = { cols: Array.from({ length: Math.ceil(W / (G * M.u)) + 2 }, () => []), falls: [], dirty: true, painted: -Infinity, last: NaN };
-      if (M.ready) { M.ready = false; M.sky = []; M.leaving = []; M.retired.clear(); M.dock = null; }
+      if (M.ready) { M.ready = false; M.sky = []; M.leaving = []; M.queue = []; M.shot = null; M.dock = null; }
       sync();
     };
     const ro = new ResizeObserver(measure);
@@ -166,10 +197,12 @@ export default function WallSky({ list, dock, beat }: Props) {
     if (!M.ready) {
       for (const m of order) {
         if (m.id === dockId) continue;
-        const b = baseOf(m);
-        M.sky.push(skyAt(b, admit(probeOf(b, M.W, M.H, M.u), t, false)!, M.W, M.H, M.u));
+        // 자리부터 — admit이 M.sky를 새 배열로 바꾸므로 push를 한 식에 쓰면 옛 배열에 들어가 그 말이 사라진다
+        const b = baseOf(m), to = admit(probeOf(b, M.W, M.H, M.u), t, false)!;
+        M.sky.push(skyAt(b, to, M.W, M.H, M.u));
       }
       M.ready = true;
+      M.nextRot = t + ROT.every;
       setReady(true);
       rerender();
       return;
@@ -181,12 +214,13 @@ export default function WallSky({ list, dock, beat }: Props) {
       settle(t, true);
       changed = true;
     }
-    for (const id of [...M.retired]) if (!ids.has(id)) M.retired.delete(id);
+    // 사흘이 지난 글 — 기다림 줄에 있으면 조용히 빠진다
+    M.queue = M.queue.filter((id) => ids.has(id));
     for (const m of order) {
-      if (m.id === dockId || M.retired.has(m.id) || M.sky.some((s) => s.id === m.id) || M.leaving.some((s) => s.id === m.id)) continue;
+      if (m.id === dockId || m.id === M.shot?.b.id || M.queue.includes(m.id) || M.sky.some((s) => s.id === m.id) || M.leaving.some((s) => s.id === m.id)) continue;
       const b = baseOf(m), oldest = Math.min(Infinity, ...M.sky.map((s) => s.born)), to = admit(probeOf(b, M.W, M.H, M.u), t, true, b.born > oldest);
-      if (!to) { M.retired.add(m.id); continue; }
-      M.sky.push({ ...skyAt(b, to, M.W, M.H, M.u), up: t });
+      if (!to) { M.queue.push(m.id); continue; }
+      M.sky.push({ ...skyAt(b, to, M.W, M.H, M.u), up: t, born: Date.now() });
       changed = true;
     }
     if (changed) rerender();
@@ -199,15 +233,17 @@ export default function WallSky({ list, dock, beat }: Props) {
     if (!dock || !M.ready) return;
     const t = now(), { W, H, u } = M;
     if (M.dock && M.dock.key === dock.key) { if (dock.release && M.dock.release === Infinity) M.dock.release = t; return; }
-    if (M.dock) { const D = M.dock; M.sky.push(skyAt(D, D.to, W, H, u)); M.dock = null; }
+    // 쏘아 오르는 말이 다 붙은 뒤에 연다(landed가 다시 부른다)
+    if (M.shot) return;
+    if (M.dock) { const D = M.dock; M.sky.push({ ...skyAt(D, D.to, W, H, u), born: Date.now() }); M.dock = null; }
     if (M.sky.some((s) => s.id === dock.msg.id)) { M.sky = M.sky.filter((s) => s.id !== dock.msg.id); settle(t, true); }
-    M.retired.delete(dock.msg.id);
+    M.queue = M.queue.filter((id) => id !== dock.msg.id);
     const b = baseOf(dock.msg), to = admit(probeOf(b, W, H, u), t, true)!;
     const S = bigScale(b.items, b.kd, W, H), dev: P = [0, (H / 2 + H * SKY.devDrop) / S], plan = planEntrance(b.items, b.kd, dev, S, W);
     M.dock = { ...b, key: dock.key, T: t, S, plan, spread: b.items.map((it) => ({ ...it, ax: it.ax * plan.F })), rest: modulesAt(b.items, b.kd, 0), dev,
       tail: tailOf(b.items, b.kd, dev), to, release: dock.release ? t : Infinity, ring: ringOf([...M.sky, ...M.leaving], W, H) };
     rerender();
-  }, [dock?.key, dock?.release, ready]);
+  }, [dock?.key, dock?.release, ready, landed]);
 
   // 그리기 — 한 시계
   useEffect(() => {
@@ -270,11 +306,13 @@ export default function WallSky({ list, dock, beat }: Props) {
       if (!M.ready || !M.W) return;
       const { W, H, u } = M, dpr = Math.min(2, window.devicePixelRatio || 1);
       // 도킹이 끝났다 — 하늘의 제자리로 들어간다
-      if (D && t >= times(D).end) { M.sky.push(skyAt(D, D.to, W, H, u)); M.dock = null; rerender(); }
+      // — 도킹한 말은 하늘에 붙는 이 순간이 '떠오른 때'(가장 늦게 터진다). 돌림의 1분은 여기서 다시 센다
+      if (D && t >= times(D).end) { M.sky.push({ ...skyAt(D, D.to, W, H, u), born: Date.now() }); M.dock = null; M.nextRot = t + ROT.every; rerender(); }
+      if (!M.dock && !M.shot && M.queue.length && t >= M.nextRot) rotate(t);
       const before = M.leaving.length;
       M.leaving = M.leaving.filter((s) => t < (s.popAt ?? 0) + POP_DONE);
       if (M.leaving.length !== before) rerender();
-      if (!M.dock && t - last < SKY_DT) return;
+      if (!M.dock && !M.shot && t - last < SKY_DT) return;
       last = t;
       // 광각 · 회색 정도 — 도킹하면 0.6초에 퍼지고, 새 말이 하늘로 오르는 1.4초에 돌아온다
       const T = M.dock ? times(M.dock) : null;
@@ -320,6 +358,21 @@ export default function WallSky({ list, dock, beat }: Props) {
       if (c.width !== Math.round(W * dpr)) { c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); }
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, c.width, c.height);
+      // 돌림으로 쏘아 오르는 말 — 기기에서 0.4배로 나와 제자리로 커지며 붙는다. 꼬리는 그 순간의 자리에서 기기를 가리킨다. 쏘기 전엔 글자를 숨긴다
+      const Sh = M.shot;
+      if (dockText.current) dockText.current.style.visibility = !Dk && Sh && t < Sh.T ? 'hidden' : '';
+      if (!Dk && Sh) {
+        if (t < Sh.T) return;
+        const e = easeOut(clamp((t - Sh.T) / ROT.shot)), [dx, dy] = quiet ? [0, 0] : drift(Sh.b, t, W, H), Su = lerp(ROT.from * u, u, e);
+        const X = lerp(W / 2, Sh.to[0] + dx, e), Y = lerp(H * (1 + SKY.devDrop), Sh.to[1] + dy, e);
+        ctx.setTransform(Su * dpr, 0, 0, Su * dpr, X * dpr, Y * dpr);
+        ctx.fillStyle = Sh.b.bg;
+        const gs = paintBody(ctx, Sh.b.items, Sh.b.kd, Sh.b.gaps, 1, tailOf(Sh.b.items, Sh.b.kd, devFrom([X, Y], W, H, Su)), 1, t, Sh.b.ph, quiet);
+        if (dockText.current) dockText.current.style.fontSize = `${Su.toFixed(2)}px`;
+        placeGlyphs(glyphEls(dockText.current), gs, Su, X, Y);
+        if (e >= 1) { M.sky.push({ ...skyAt(Sh.b, Sh.to, W, H, u), born: Date.now() }); M.shot = null; setLanded((v) => v + 1); rerender(); }
+        return;
+      }
       if (!Dk || !T) return;
       const age = quiet ? Infinity : t - Dk.T;
       ctx.fillStyle = Dk.bg;
@@ -359,7 +412,7 @@ export default function WallSky({ list, dock, beat }: Props) {
       <canvas ref={crumbCv} className="sky-crumbs" />
       <div className="sky-dock">
         <canvas ref={dockCv} />
-        <div ref={dockText} className="dot-text">{D && <Letters key={D.key} b={D} />}</div>
+        <div ref={dockText} className="dot-text">{D ? <Letters key={D.key} b={D} /> : M.shot && <Letters key={`shot:${M.shot.b.id}`} b={M.shot.b} />}</div>
       </div>
     </div>
   );

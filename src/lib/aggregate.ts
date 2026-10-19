@@ -254,6 +254,8 @@ export const ENTRANCE: Record<Module, Entrance> = {
   star: { beat: [0.22, 0.48, 0.18, 0.4, 0.3], speed: 1300, burst: 0.3, order: 'random', curve: false,
     land: (t) => { const b = 1 + 0.2 * Math.exp(-7 * t) * Math.sin(16 * t); return [b, b, 0.15 * Math.exp(-6 * t) * Math.sin(14 * t)]; } }
 };
+/** 긴 글 — 첫 점이 기기에서 나간 때부터 마지막 글자가 다 서기까지 이 초를 넘지 않는다(결정 8). 넘을 글이면 글자마다의 박자만 같은 비율로 줄인다 */
+export const RISE_MAX = 8;
 /** 휭 — 살짝 넘쳤다 돌아온다(결정 4: 1 + 2.2(t − 1)³ + 1.2(t − 1)²) */
 export const backOut = (t: number) => 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2;
 /** 날아오는 점 하나 — 붙을 자리(낱개 자리, u) · 모듈 · 떠나는 때 · 닿는 때(초) · 휘는 길의 조절점 */
@@ -281,9 +283,11 @@ export function planEntrance(items: readonly Item[], kd: Kind, dev: P, pxPerU: n
   let seed = items.reduce((a, it) => (a * 31 + it.ch.charCodeAt(0)) >>> 0, 7);
   const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
   const far = (d: { x: number; y: number }) => Math.hypot(d.x - dev[0], d.y - dev[1]);
-  let t = 0.5;
-  const shots: Shot[] = [];
+  const t0 = 0.5;
+  let t = t0;
+  const shots: Shot[] = [], at: number[] = [];
   const modDone = items.map((_, i) => {
+    at.push(t - t0);
     const [cx, cy] = pos[i], mine = dots.filter((d) => d.mod === i).map((d) => ({ x: d.x, y: d.y }));
     if (E.order === 'far') mine.sort((p, q) => far(q) - far(p));
     if (E.order === 'edge') mine.sort((p, q) => Math.hypot(q.x - cx, q.y - cy) - Math.hypot(p.x - cx, p.y - cy));
@@ -298,6 +302,13 @@ export function planEntrance(items: readonly Item[], kd: Kind, dev: P, pxPerU: n
     t += E.beat[i % E.beat.length];
     return done;
   });
+  // 긴 글(결정 8) — 글자 i가 다 서는 때 = 첫 점 + 박자의 합 at[i] × f + 그 글자 몫(burst · 날기). 가장 늦은 글자가 RISE_MAX에 들도록 f를
+  // 고르고 박자의 합만 줄인다 — 박자 꼴(쿵 고르게 · 뿅 들쭉날쭉) · burst · 점 속도는 그대로
+  if (Math.max(...modDone) - t0 > RISE_MAX) {
+    const f = Math.max(0, Math.min(...modDone.map((d, i) => (at[i] > 0 ? (RISE_MAX - (d - t0 - at[i])) / at[i] : Infinity))));
+    for (const s of shots) { s.e -= (1 - f) * at[s.mod]; s.arrive -= (1 - f) * at[s.mod]; }
+    modDone.forEach((d, i) => (modDone[i] = d - (1 - f) * at[i]));
+  }
   const ax = items.map((i) => i.ax), arrW = Math.max(...ax) - Math.min(...ax) + 1.2 * M * kd.k;
   return { shots, modDone, whoosh: Math.max(...modDone) + 0.15, F: Math.max(1, (0.94 * W) / (pxPerU * arrW)), landed: Math.max(...shots.map((d) => d.arrive)) };
 }

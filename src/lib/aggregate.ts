@@ -28,13 +28,13 @@ const LEGACY: Record<string, string> = { gothic: 'ttoryeot', myeongjo: 'chabun',
 const keyOf = (font?: string) => LEGACY[font ?? ''] ?? font ?? '';
 export const kindOf = (font?: string): Kind => KIND[keyOf(font)] ?? KIND.chabun;
 
-/* ─── 4/5 모양 — 열두 칸(결정 3 F · 결정 7). 배치의 선 = 모듈의 선(사각형 직각 · 원 곡선 · 육각형 반 칸 맞물림 · 별 튐), 첫 칸은 넷 모두 '기본' ─── */
-const ARRANGEMENTS: Record<string, readonly Align[]> = {
-  ttoryeot: ['center', 'stairs', 'podium'],
-  doran: ['center', 'arch', 'smile'],
-  chabun: ['center', 'stack', 'descend'],
-  deulseok: ['center', 'stepping', 'highkick']
-};
+/* ─── 4/5 모양 — 네 성격 모두 셋: 기본 · 미소 · 단호(결정 31, 2026-10-20 디자이너 — "징검다리 · 하이킥은 읽기 힘들고 도킹 때 그 효과가
+   정상적으로 나오지도 않는다 → 최대한 단순하게"). 그전의 열두 칸(결정 3 F · 결정 7 — 계단 · 단상 · 아치 · 탑 · 내리막 · 징검다리 · 하이킥)은
+   지웠다 — 옛 글의 그 값은 arrangeOf가 기본으로 그린다 ─── */
+const SHAPES: readonly Align[] = ['center', 'smile', 'slant'];
+const ARRANGEMENTS: Record<string, readonly Align[]> = { ttoryeot: SHAPES, doran: SHAPES, chabun: SHAPES, deulseok: SHAPES };
+/** 단호 — 덩어리째 오른쪽 위로 기우는 각(글자 · 모듈도 함께 돈다, 견본 B) */
+const SLANT = 12;
 export const arrangementsFor = (font: string | undefined): readonly Align[] => ARRANGEMENTS[keyOf(font)] ?? ['center'];
 /** 4/5에 처음 들어왔을 때 골라져 있는 칸 — 넷 모두 '기본' */
 export const defaultAlign = (_font?: string): Align => 'center';
@@ -113,70 +113,41 @@ export interface Item { ch: string; li: number; x: number; y: number; a: number;
 const deg = (d: number) => (d * Math.PI) / 180;
 
 /**
- * 글 → 글자들의 자리. 두 줄 이상은 줄마다 같은 규칙(징검다리는 줄마다 엇갈리고, 탑은 줄바꿈과 상관없이 낱말마다 한 줄).
- * 낱개 자리 — 곧은 줄 계열은 가로 벌림 + 세로 1.3배, 아치 · 미소는 가로세로 같이 벌림
+ * 글 → 글자들의 자리. 두 줄 이상은 줄마다 같은 규칙. 미소 — 줄이 아래로 볼록한 호를 따라(반지름 = 가장 긴 줄 × 1.3, 4u 이상, 아래 줄은
+ * 바깥으로), 글자 · 모듈이 호를 따라 돈다. 단호 — 기본의 덩어리를 통째로 SLANT°만큼 오른쪽 위로 돌린다(글자 · 모듈도 함께).
+ * 낱개 자리 — 기본은 가로 벌림 + 세로 1.3배, 미소 · 단호는 가로세로 같이 벌림(벽 큰 말은 도킹 내내 낱개로 퍼져 있다 — 세로만 덜 벌리면
+ * 단호의 기울기가 눕는다, 결정 31)
  */
 export function arrange(lines: readonly string[], align: Align, kd: Kind): Item[] {
-  const adv = kd.adv * G, ms = M * kd.k, spread = (adv + kd.arrive * G) / adv;
-  let src = lines, lh = kd.rows * ROW;
-  if (align === 'stack') { src = lines.join(' ').split(/\s+/).filter(Boolean); lh = 0.66 * ms; }   // 탑 — 낱말마다 한 줄, 가운데 맞춰 차곡차곡
-  const L = src.map((ln) => { const cs = [...ln], av = cs.map((ch) => (ch === ' ' ? G : adv)); return { cs, av, len: av.reduce((a, b) => a + b, 0) }; });
-  const Lmax = Math.max(0, ...L.map((l) => l.len)), pts: { ch: string; li: number; x: number; y: number; a: number; w?: number; up?: number }[] = [];
-  if (align === 'arch' || align === 'smile') {
-    // 아치(위로 볼록) · 미소(아래로 볼록) — 반지름 = 가장 긴 줄 × 1.3(4u 이상), 아래 줄은 아치에선 안으로 · 미소에선 바깥으로. 글자 · 모듈이 호를 따라 돈다
-    const R0 = Math.max(Lmax * 1.3, 4), up = align === 'arch';
+  const adv = kd.adv * G, spread = (adv + kd.arrive * G) / adv, lh = kd.rows * ROW;
+  const L = lines.map((ln) => { const cs = [...ln], av = cs.map((ch) => (ch === ' ' ? G : adv)); return { cs, av, len: av.reduce((a, b) => a + b, 0) }; });
+  const Lmax = Math.max(0, ...L.map((l) => l.len)), pts: { ch: string; li: number; x: number; y: number; a: number }[] = [];
+  if (align === 'smile') {
+    const R0 = Math.max(Lmax * 1.3, 4);
     L.forEach((l, li) => {
-      const R = up ? R0 - li * lh : R0 + li * lh, a0 = -l.len / R / 2;
+      const R = R0 + li * lh, a0 = -l.len / R / 2;
       let s = 0;
       l.cs.forEach((ch, k) => {
         const ph = a0 + (s + l.av[k] / 2) / R;
         s += l.av[k];
-        if (ch !== ' ') pts.push({ ch, li, x: R * Math.sin(ph), y: up ? -R * Math.cos(ph) : R * Math.cos(ph), a: up ? ph : -ph });
+        if (ch !== ' ') pts.push({ ch, li, x: R * Math.sin(ph), y: R * Math.cos(ph), a: -ph });
       });
     });
   } else {
+    const th = align === 'slant' ? deg(SLANT) : 0, c = Math.cos(th), sn = Math.sin(th);
     L.forEach((l, li) => {
-      let s = -l.len / 2, n = 0, word = 0;
-      const nl = l.cs.filter((c) => c !== ' ').length, nWords = l.cs.filter((c) => c === ' ').length + 1;
-      const firstOfLast = l.cs.slice(0, l.cs.lastIndexOf(' ') + 1).filter((c) => c !== ' ').length;
+      let s = -l.len / 2;
       l.cs.forEach((ch, k) => {
-        const x0 = s + l.av[k] / 2;
+        const x = s + l.av[k] / 2, y = (li - (L.length - 1) / 2) * lh;
         s += l.av[k];
-        if (ch === ' ') { word++; return; }
-        let y = (li - (L.length - 1) / 2) * lh, a = 0;
-        // 계단 — 낱말마다 0.6s씩 직각으로 오른다
-        if (align === 'stairs') y -= word * 0.6 * ms;
-        // 단상 — 가운데 낱말이 통째로 0.6s 솟는다. 낱말 셋 이상: 높이 = min(낱말 차례, 끝에서 차례) 최대 2칸 · 둘 이하: 글자를 셋으로 나눠 가운데 몫
-        const up = align === 'podium' ? (nWords >= 3 ? Math.min(2, word, nWords - 1 - word) : +(n >= Math.floor(nl / 3) && n < nl - Math.floor(nl / 3))) * 0.6 * ms : 0;
-        y -= up;
-        // 내리막(결정 7) — 낱말마다 육각형 반높이(0.36s)씩 가라앉는다. 벌집처럼 맞물리는 완만한 비탈(당당 계단과 반대 결).
-        // 낱말 하나뿐이면 글자를 셋으로 나눠 뒤 몫일수록 반 칸씩(단상과 같은 꼴). 그전의 고드름(∨)은 '혼자 너무 튀어' 뺐다
-        if (align === 'descend') y += (nWords > 1 ? word : Math.min(2, Math.floor((n * 3) / Math.max(1, nl)))) * 0.36 * ms;
-        // 징검다리 — 글자마다 ±0.4s 위아래로 엇갈림
-        if (align === 'stepping') y += (n % 2 ? 1 : -1) * 0.4 * ms;
-        // 하이킥 — 마지막 낱말이 통째로 0.85s(+ 그 낱말 안 차례마다 0.12s) 솟으며 12° 젖혀짐. 낱말 하나뿐이면 글자를 반으로 나눠 뒷부분 절반이
-        if (align === 'highkick') {
-          const from = nWords > 1 ? firstOfLast : Math.floor(nl / 2);
-          if (n >= from) { y -= 0.85 * ms + 0.12 * ms * (n - from); a = deg(12); }
-        }
-        n++;
-        pts.push({ ch, li, x: x0, y, a, w: word, up });
+        if (ch !== ' ') pts.push({ ch, li, x: x * c + y * sn, y: -x * sn + y * c, a: -th });
       });
     });
-    // 여러 줄 단상(10-20 점검 둘째 — 60자 5줄에서 솟은 낱말이 윗줄 글자를 파고들어 글자끼리 겹쳤다) — 둘째 줄부터는 낱말 아래로 겹치는
-    // 윗줄 글자들이 비워 둔 높이(그 글자들이 솟은 만큼)까지만 솟는다. 맨 윗줄의 단상 꼴과 덩어리 높이는 그대로
-    if (align === 'podium') for (let li = 1; li < L.length; li++) {
-      const above = pts.filter((q) => q.li === li - 1), mine = pts.filter((q) => q.li === li);
-      for (const w of new Set(mine.map((q) => q.w))) {
-        const ws = mine.filter((q) => q.w === w), room = Math.min(...ws.flatMap((q) => above.filter((b) => Math.abs(b.x - q.x) < adv).map((b) => b.up ?? 0)));
-        for (const q of ws) { const up = Math.min(q.up ?? 0, room); q.y += (q.up ?? 0) - up; q.up = up; }
-      }
-    }
   }
   if (!pts.length) return [];
   const cx = (Math.min(...pts.map((q) => q.x)) + Math.max(...pts.map((q) => q.x))) / 2, cy = (Math.min(...pts.map((q) => q.y)) + Math.max(...pts.map((q) => q.y))) / 2;
-  const both = align === 'arch' || align === 'smile', kx = spread, ky = both ? spread : 1.3;
-  return pts.map(({ w: _w, up: _u, ...q }) => { const [x, y, p] = snap(q.x - cx, q.y - cy); return { ...q, x, y, p, ax: (q.x - cx) * kx, ay: (q.y - cy) * ky }; });
+  const kx = spread, ky = align === 'smile' || align === 'slant' ? spread : 1.3;
+  return pts.map((q) => { const [x, y, p] = snap(q.x - cx, q.y - cy); return { ...q, x, y, p, ax: (q.x - cx) * kx, ay: (q.y - cy) * ky }; });
 }
 
 /* ─── 한 말의 점들 ────────────────────────────────────────────────────────────────────────────────────────── */

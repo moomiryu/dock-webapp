@@ -22,6 +22,16 @@ export default function GlyphModules({ of, font }: { of: RefObject<HTMLElement |
       raf = requestAnimationFrame(frame);
       const el = of.current;
       if (!el) return;
+      /* 그림판은 바탕이라 좌우 여백을 무시하고 견본 칸(.z-glyph-stage — 화면 끝에서 끝까지인 빨간 면) 양끝까지 넓힌다(2026-10-20, 결정 33 —
+         글 칸에 붙어 있어 큰 모듈이 여백선에서 곧게 잘렸다. 디자이너 "이런 창은 여백 무시하면 안 됨?"). 넘친 것은 그 칸이 화면 끝에서 자른다.
+         자리는 아래에서 그림판 자신을 기준으로 재므로 넓혀도 그대로 맞는다 */
+      const wide = cv.closest('.z-glyph-stage'), host = cv.parentElement;
+      if (wide && host) {
+        const w = wide.getBoundingClientRect(), hr = host.getBoundingClientRect();
+        const left = `${(w.left - hr.left).toFixed(1)}px`, width = `${w.width.toFixed(1)}px`;
+        if (cv.style.left !== left) cv.style.left = left;
+        if (cv.style.width !== width) cv.style.width = width;
+      }
       const box = cv.getBoundingClientRect(), marks: [number, number, number][] = [];
       const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
       for (let n = walk.nextNode() as Text | null; n; n = walk.nextNode() as Text | null) {

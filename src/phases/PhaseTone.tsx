@@ -475,7 +475,9 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
         ...(fig ? { '--fig': `${fig.toFixed(1)}px` } : null) } as CSSProperties}>
      {/* 글자마다 뒤에 그 성격의 모듈을 옅게(2026-10-20, 결정 18) */}
      <GlyphModules of={figText} font={tone.font} />
-     <span ref={figText} className="tone-figure-text">{lines.join('\n')}</span>
+     {/* 움직임(크기 · 장평 · 기울기)은 글만 감싼 이 칸에 — 바깥 칸에 걸면 맨 뒤의 모듈 그림판까지 기울고 늘어나 모듈이 글자에서 벗어났다
+         (2026-10-20 점검 — '빠르게'에서 평행사변형, 최대 47px). 모듈은 이 바깥에서 글자 자리만 따라간다(결정 18 — 기울이지 않는다) */}
+     <span className="tone-figure-move"><span ref={figText} className="tone-figure-text">{lines.join('\n')}</span></span>
     </div>
     {/* 글자였다. 그러면 이 장에서 **앞으로 가는 길이 손가락뿐**이라
         자판·스위치·낭독기를 쓰는 사람은 03에 들어와 빠져나갈 수가 없었다

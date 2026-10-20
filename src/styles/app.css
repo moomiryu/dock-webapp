@@ -1826,7 +1826,10 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   /* 흰 글자는 토큰 그대로(--paper, 2026-10-10 — 92%였다). 당당한이 29CM이 되며 시연이 가장 작을 때 21.7px로
      '큰 글자'(24px) 밑에 내려가, 92%로는 --brand-strong 위 대비가 4.15라 AA(4.5)에 모자랐다. 100%면 4.64 */
   font-size: var(--fig); color: var(--paper);
-  /* 움직임이 꺼져 있어도 보통 자리의 모양으로 선다 */
+}
+/* 움직이는 것은 글만 감싼 안쪽 칸이다 — 바깥 칸(.tone-figure)에 걸면 그 맨 뒤의 글자 모듈 그림판(.glyph-modules)까지 기울고 늘어났다
+   (2026-10-20 점검). 움직임이 꺼져 있어도 보통 자리의 모양으로 선다 */
+.tone-figure-move{ font-size: var(--fig);
   scale: var(--sxm, 1) var(--sym, 1); font-variation-settings: var(--fvm, normal);
   animation: toneDemo calc(var(--t-hold) * 6.67) var(--ease-standard) infinite;
 }
@@ -1845,7 +1848,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   89%       { font-size: var(--fig);             scale: var(--sx1) var(--sy1); font-variation-settings: var(--fv1); letter-spacing: var(--ls1, 0); transform: skewX(var(--sk1)); }
   100%      { font-size: var(--fig);             scale: var(--sxm) var(--sym); font-variation-settings: var(--fvm); letter-spacing: var(--lsm, 0); transform: skewX(0deg); }
 }
-@media (prefers-reduced-motion: reduce){ .tone-figure{ animation: none; } }
+@media (prefers-reduced-motion: reduce){ .tone-figure-move{ animation: none; } }
 /* 첫 장면의 견본은 이제 내 글이다(2026-09-25, PhaseTone). 줄은 벽의 줄 접기
    그대로(pre)이고 행간은 조작 장의 견본과 같은 1.4(STAGE_LH)다 — 두 글자
    '발화'를 위한 행간 1이면 여러 줄이 서로 닿는다. 칸은 제 글로 자라지 않는다

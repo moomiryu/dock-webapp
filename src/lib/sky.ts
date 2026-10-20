@@ -1,6 +1,6 @@
 /**
  * 벽의 하늘 — 말이 놓이는 기반 규칙(2026-10-20, 결정 9 — 견본 kv/megaphone.html의 fanOf · ringOf). 메가폰은 소리를 부채꼴로 퍼뜨린다:
- * 하늘의 말(모인 채)은 기기를 중심으로 한 두 겹 호에 앉아 호의 결을 따라 3분의 1만큼 기운다. 결정 4의 '위에서부터 쌓기'(디자이너 —
+ * 하늘의 말(모인 채)은 기기를 중심으로 한 세 겹 호(결정 35 — 두 겹이었다)에 앉아 호의 결을 따라 3분의 1만큼 기운다. 결정 4의 '위에서부터 쌓기'(디자이너 —
  * 위에 몰아넣으면 안 읽힌다)와 '화면 절반' 꽉 참을 대신한다. 자리를 고르는 일은 이 파일 하나에 모았다.
  * 길이는 px(화면) — 말 좌표(u)의 점은 × u로 옮긴다. 견본의 px 값은 1280 × 720 기준이라 화면 크기에 비례.
  */
@@ -10,11 +10,12 @@ type P = [number, number];
 /** [왼, 위, 오른, 아래](px) */
 export type Box = [number, number, number, number];
 export const SKY = {
-  /** 하늘 말의 u — 벽 높이의 몫(결정 5: 글자 높이 ≈ 벽 높이의 2.2%, 1080 벽에서 27px) */
-  u: 0.0253,
-  /** 하늘에 뜨는 수 — 한눈에 낱낱으로 읽히는 수(결정 8, 12였다 — 옛 '자연' 벽의 칸 수). 두 겹 호에 안 들어가면 그 전에도 가장 오래
-      떠 있던 말부터 터진다. 못 뜬 말은 기다림 줄에서 차례를 기다린다(WallSky 돌려 보이기) */
-  max: 10,
+  /** 하늘 말의 u — 벽 높이의 몫(결정 5: 글자 높이 ≈ 벽 높이의 2.2%, 1080 벽에서 27px → 결정 35에서 0.8배, 약 1.8%). 땅 · 스카이라인의
+      점 간격도 이 값이라 함께 촘촘해진다(견본 그대로) */
+  u: 0.0253 * 0.8,
+  /** 하늘에 뜨는 수 — 한눈에 낱낱으로 읽히는 수(결정 8에서 10 → 결정 35에서 12, 디자이너 "더 많이 있어도 괜찮아 보여"). 세 겹 호에
+      안 들어가면 그 전에도 가장 오래 떠 있던 말부터 터진다. 못 뜬 말은 기다림 줄에서 차례를 기다린다(WallSky 돌려 보이기) */
+  max: 12,
   /** 천장 여백(높이의 몫, 견본 12px@720) · 좌우 끝 여백(폭의 몫, 16px@1280) */
   ceil: 12 / 720, side: 16 / 1280,
   /** 이웃이 호를 따라 미끄러지는 시간(초, easeInOut — 결정 4에서 다시 올라붙던 시간) */
@@ -47,12 +48,13 @@ export function bodyOf(prof: Profile, u: number): Box {
 export const turn = ([x, y]: readonly number[], r: number): P => [x * Math.cos(r) - y * Math.sin(r), x * Math.sin(r) + y * Math.cos(r)];
 
 /**
- * 부채꼴(결정 9) — 기기 중심 타원 두 겹(가로 · 세로 반지름은 화면 배수, 각은 도 — 270° = 바로 위). 읽는 차례(자리 번호)대로 바깥 호
- * 왼→오, 나머지는 안쪽 호 왼→오. 나눔은 열의 6할에서 시작해 안 들어가면 가까운 나눔부터(같은 거리면 바깥이 많은 쪽 먼저). 말마다 기기에서
+ * 부채꼴(결정 9 · 35) — 기기 중심 타원 세 겹(가로 · 세로 반지름은 화면 배수, 각은 도 — 270° = 바로 위). 읽는 차례(자리 번호)대로 바깥 호
+ * 왼→오, 다음은 가운데 호, 나머지는 안 호. 나눔은 바깥 · 가운데 · 안 = 4 · 3.5 · 2.5할에서 시작해 안 들어가면 가까운 나눔부터(견본 순서 —
+ * 같은 거리면 바깥 · 가운데가 적은 쪽 먼저). 두 겹(바깥 6할)으로는 최대를 올려도 8개 남짓만 떴다(결정 35 견본). 말마다 기기에서
  * 본 폭만큼 각을 차지하고 남는 각을 사이사이 고르게(폭이 자리마다 달라 네 번 맞춘다). 말 사이(다른 호와도) 적어도 1.2u, 아래는 벽 높이
  * 0.86(작은 사람 머리 위)까지 — 못 지키면 그 호의 양 끝을 3°씩 좁혀 다시(20°까지). 기울기 = (호 위 각 − 270°) × 1/3
  */
-export const FAN = { rings: [{ a: 0.49, b: 0.8, from: 194, to: 346 }, { a: 0.31, b: 0.52, from: 206, to: 334 }], outer: 0.6, gap: 1.2, low: 0.86, tilt: 1 / 3, shrink: 3, min: 20, fit: 4 } as const;
+export const FAN = { rings: [{ a: 0.5, b: 0.97, from: 200, to: 340 }, { a: 0.4, b: 0.75, from: 196, to: 344 }, { a: 0.3, b: 0.52, from: 206, to: 334 }], share: [0.4, 0.35], gap: 1.2, low: 0.86, tilt: 1 / 3, shrink: 3, min: 20, fit: 4 } as const;
 /** 부채꼴에 앉을 말 — 몸통 상자(px, 기울기 전) · 자리 번호 */
 export interface Seated { body: Box; slot: number }
 export interface Seat { pos: P; rot: number }
@@ -83,11 +85,13 @@ export function fanOf<T extends Seated>(list: readonly T[], W: number, H: number
     }
     return null;
   };
-  const sorted = [...list].sort((a, b) => a.slot - b.slot), n0 = Math.ceil(sorted.length * FAN.outer);
-  const splits = [...Array(sorted.length + 1).keys()].sort((p, q) => Math.abs(p - n0) - Math.abs(q - n0) || q - p);
-  for (const no of splits) {
+  const sorted = [...list].sort((a, b) => a.slot - b.slot), N = sorted.length;
+  // 나눔 [바깥 끝, 가운데 끝] — 바깥 · 가운데 몫에서 먼 만큼 뒤로
+  const off = ([a, b]: number[]) => Math.abs(a - N * FAN.share[0]) + Math.abs(b - a - N * FAN.share[1]);
+  const cuts = [...Array(N + 1).keys()].flatMap((a) => [...Array(N - a + 1).keys()].map((k) => [a, a + k])).sort((p, q) => off(p) - off(q));
+  for (const [a, b] of cuts) {
     const out = new Map<T, Seat>(), taken: Box[] = [];
-    const ok = [sorted.slice(0, no), sorted.slice(no)].every((items, ri) => {
+    const ok = [sorted.slice(0, a), sorted.slice(a, b), sorted.slice(b)].every((items, ri) => {
       if (!items.length) return true;
       const seats = row(items, FAN.rings[ri], taken);
       seats?.forEach((s, i) => { out.set(items[i], { pos: s.pos, rot: s.rot }); taken.push(s.box); });

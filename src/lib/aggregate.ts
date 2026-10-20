@@ -205,14 +205,16 @@ export function gapsOf(items: readonly Item[], kd: Kind): Dot[] {
 }
 /**
  * 꼬리 — 맨 아래 줄에서 기기(dev, 덩어리 좌표 u)에 가장 가까운 글자의 가장자리(0.45s)에서 나와 기기를 가리킨다(모인 자리에서 셈한다).
- * 길이 max(0.2 × 덩어리 폭, 2.25u), 밑동 반폭 max(0.055 × 폭, 0.77u). 끝 절반에서만 점이 작아진다(1 − 1.3(t − 0.5), 끝 0.35배)
+ * 꼬리 '더 날렵'(결정 24, 2026-10-20 디자이너 — "너무 둔해 보인다"): 밑동 반폭 0.38u, 길이 max(0.28 × 덩어리 폭, 3.3u), 점 크기는 밑동부터
+ * 끝까지 가늘어져 아주 작은 점으로 맺힌다(max(0.12, 1 − 0.88 t^0.85)). 예전 값은 반폭 max(0.055 × 폭, 0.77) · 길이 max(0.2 × 폭, 2.25) ·
+ * 끝 절반만 1 − 1.3(t − 0.5). 폰 · 벽 · 홈 · 튜토 모든 말풍선이 함께 바뀐다
  */
 export function tailOf(items: readonly Item[], kd: Kind, dev: P): Tail {
   const s = sizeAt(kd, 1), last = Math.max(...items.map((i) => i.li));
   let fi = 0, best = Infinity;
   items.forEach((it, i) => { const d = Math.hypot(it.x - dev[0], it.y - dev[1]); if (it.li === last && d < best) { best = d; fi = i; } });
   const it = items[fi], du = Math.hypot(dev[0] - it.x, dev[1] - it.y) || 1, ux = (dev[0] - it.x) / du, uy = (dev[1] - it.y) / du, xs = items.map((i) => i.x);
-  const span = Math.max(...xs) - Math.min(...xs) + s, w = Math.max(0.055 * span, 0.77), L = Math.max(0.2 * span, 2.25);
+  const span = Math.max(...xs) - Math.min(...xs) + s, w = 0.38, L = Math.max(0.28 * span, 3.3);
   const ax = ux * s * 0.45, ay = uy * s * 0.45, b: P = [ax - ux * w, ay - uy * w];
   const T: P[] = [[b[0] - uy * w, b[1] + ux * w], [ax + ux * L, ay + uy * L], [b[0] + uy * w, b[1] - ux * w]];
   const tx = T.map((q) => q[0]), ty = T.map((q) => q[1]), dots: Dot[] = [];
@@ -220,7 +222,7 @@ export function tailOf(items: readonly Item[], kd: Kind, dev: P): Tail {
     const x = i * G + ((it.p + j) & 1 ? G / 2 : 0) - (it.p ? G / 2 : 0), y = j * ROW, [u, v] = rot(x, y, -it.a);
     if (!inPoly(T, x, y) || INSIDE[kd.mod](u, v, s)) continue;
     const t = Math.max(0, Math.min(1, ((x - b[0]) * ux + (y - b[1]) * uy) / (L + w)));
-    dots.push({ x: it.x + x, y: it.y + y, r: t < 0.5 ? 1 : 1 - 1.3 * (t - 0.5), mod: -1, t });
+    dots.push({ x: it.x + x, y: it.y + y, r: Math.max(0.12, 1 - 0.88 * t ** 0.85), mod: -1, t });
   }
   return { dots, perp: [-uy, ux], from: fi, tip: [it.x + ax + ux * L, it.y + ay + uy * L] };
 }

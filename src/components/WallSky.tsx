@@ -65,7 +65,7 @@ const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 
 type P = [number, number];
 /** 한 말 — 글 · 줄 · 성격 · 글자 자리 · 틈 메움 · 색 · 나부낌 박자 · 둥실의 위상 · 나이(쓰인 시각 — 가장 오래된 말부터 터지고, 나중 말이 앞에 선다) */
-interface Base { id: string; msg: StoredMessage; lines: string[]; kd: Kind; items: Item[]; gaps: Dot[]; bg: string; fg: string; ph: number; dr: P; born: number }
+interface Base { id: string; msg: StoredMessage; lines: string[]; kd: Kind; items: Item[]; gaps: Dot[]; bg: string; fg: string; ph: number; dr: [number, number, number]; born: number }
 /** 하늘의 자리 — 부채꼴 위 자리(px, 말 원점) · 기울기(라디안) · 자리 번호 · 몸통 상자(px, 기울기 전) */
 type Place = Seat & Seated;
 /** 하늘에 붙은 말 — 자리 · 미끄러지는 중(from → pos, fromRot → rot, mv초부터) · 아래에서 올라오는 중 · 꼬리 · 캔버스 범위(u) · 터지는 때 */
@@ -89,7 +89,7 @@ const times = (D: Dock) => {
 function baseOf(msg: StoredMessage): Base {
   const tone = msg.tone, lines = foldLines(msg.text), kd = kindOf(tone?.font), items = arrange(lines, arrangeOf(tone?.font, tone?.align), kd);
   const { bg, text } = colorsOf(msg), h = hash(msg.id);
-  return { id: msg.id, msg, lines, kd, items, gaps: gapsOf(items, kd), bg, fg: text, ph: (h % 628) / 100, dr: [((h >>> 8) % 628) / 100, ((h >>> 16) % 628) / 100], born: msg.createdAt };
+  return { id: msg.id, msg, lines, kd, items, gaps: gapsOf(items, kd), bg, fg: text, ph: (h % 628) / 100, dr: [((h >>> 8) % 628) / 100, ((h >>> 16) % 628) / 100, ((h >>> 24) * 6.28) / 256], born: msg.createdAt };
 }
 /** 기기(벽 아래 가운데 바깥)를 그 자리의 말 좌표(u)로 */
 const devFrom = (pos: readonly number[], W: number, H: number, u: number): P => [(W / 2 - pos[0]) / u, (H * (1 + SKY.devDrop) - pos[1]) / u];
@@ -115,8 +115,15 @@ const put = (ctx: CanvasRenderingContext2D, S: number, X: number, Y: number, rot
 /** 터지기 시작한다 — 꼬리 끝부터 연쇄로, 다섯 알에 한 알은 땅에 떨어진다 */
 const leave = (s: Sky, t: number): Sky => ({ ...s, popAt: t + POP_DELAY, sent: new Set(),
   seeds: [...modulesAt(s.items, s.kd, 1).dots, ...s.gaps, ...s.tail.dots].filter((_, i) => i % CRUMB.every === 0) });
-/** 하늘에 둥실 — 붙은 맛이 깨지지 않게 아주 작게(±2 · ±1.5px@1280 × 720) */
-const drift = (b: Base, now: number, W: number, H: number): P => [((2 * W) / 1280) * Math.sin(now * 0.35 + b.dr[0]), ((1.5 * H) / 720) * Math.sin(now * 0.5 + b.dr[1])];
+/**
+ * 하늘에 떠다님 '자유'(결정 24, 2026-10-20 디자이너 — "좀 더 자유롭게 둥실둥실"). 그 말의 u(px) 기준, φ는 말마다 다르다:
+ * 가로 u(0.85 sin(0.11t + φ1) + 0.30 sin(0.37t + φ3)) · 세로 u(0.95 sin(0.09t + φ2) + 0.30 sin(0.41t + 1.7φ3)) · 갸웃 0.045rad(±2.6°)
+ * × sin(0.10t + 2.3φ1) — 결 따라 기울기(1/3) 위에 더한다. 이웃과 가끔 겹친다(나중 말이 앞). 광각으로 퍼지는 동안은 (1 − P)만큼 줄어든다
+ */
+const drift = (b: Base, now: number, u: number): [number, number, number] => [
+  u * (0.85 * Math.sin(0.11 * now + b.dr[0]) + 0.3 * Math.sin(0.37 * now + b.dr[2])),
+  u * (0.95 * Math.sin(0.09 * now + b.dr[1]) + 0.3 * Math.sin(0.41 * now + 1.7 * b.dr[2])),
+  0.045 * Math.sin(0.1 * now + 2.3 * b.dr[0])];
 
 type Els = { wrap: HTMLDivElement; canvas: HTMLCanvasElement; text: HTMLDivElement };
 
@@ -403,9 +410,9 @@ export default function WallSky({ list, dock, beat, waves }: Props) {
         let [x, y] = posAt(s, t), r0 = rotAt(s, t);
         // 아래(기기)에서 곧게 올라와 붙는다 — 도킹 없이 들어온 말. 기울기는 0에서 제 기울기로
         if (s.up !== undefined && t < s.up + RISE) { const k = easeIO((t - s.up) / RISE); x = lerp(W / 2, x, k); y = lerp(H * (1 + SKY.devDrop), y, k); r0 *= k; }
-        const [dx, dy] = quiet ? [0, 0] : drift(s, t, W, H), w = M.dock?.ring.get(s);
+        const [dx, dy, dq] = quiet ? [0, 0, 0] : drift(s, t, u), w = M.dock?.ring.get(s);
         // 광각 — 제 기울기에서 고리의 기울기로(퍼지는 정도만큼)
-        const X0 = w ? lerp(x + dx, w.to[0], P) : x + dx, Y0 = w ? lerp(y + dy, w.to[1], P) : y + dy, rot = w ? lerp(r0, w.rot, P) : r0, k = w ? lerp(1, WIDE.grow, P) : 1;
+        const X0 = w ? lerp(x + dx, w.to[0], P) : x + dx, Y0 = w ? lerp(y + dy, w.to[1], P) : y + dy, rot = w ? lerp(r0 + dq, w.rot, P) : r0 + dq, k = w ? lerp(1, WIDE.grow, P) : 1;
         const [qx, qy] = jolt(X0, Y0), X = X0 + qx, Y = Y0 + qy;
         e.wrap.style.transform = `translate(${X.toFixed(1)}px, ${Y.toFixed(1)}px) rotate(${rot.toFixed(4)}rad) scale(${k.toFixed(4)})`;
         const ctx = e.canvas.getContext('2d');
@@ -452,7 +459,7 @@ export default function WallSky({ list, dock, beat, waves }: Props) {
       if (dockText.current) dockText.current.style.visibility = !Dk && Sh && t < Sh.T ? 'hidden' : '';
       if (!Dk && Sh) {
         if (t < Sh.T) return;
-        const e = easeOut(clamp((t - Sh.T) / ROT.shot)), [dx, dy] = quiet ? [0, 0] : drift(Sh.b, t, W, H), Su = lerp(ROT.from * u, u, e), rot = Sh.at.rot * e;
+        const e = easeOut(clamp((t - Sh.T) / ROT.shot)), [dx, dy, dq] = quiet ? [0, 0, 0] : drift(Sh.b, t, u), Su = lerp(ROT.from * u, u, e), rot = (Sh.at.rot + dq) * e;
         const X = lerp(W / 2, Sh.at.pos[0] + dx, e), Y = lerp(H * (1 + SKY.devDrop), Sh.at.pos[1] + dy, e);
         put(ctx, Su, X, Y, rot, dpr);
         ctx.fillStyle = Sh.b.bg;
@@ -470,8 +477,8 @@ export default function WallSky({ list, dock, beat, waves }: Props) {
       } else {
         // 꼬리 단 채 모인다 — 꼬리는 첫 글자를 따라간다(paintBody)
         const m = quiet ? 1 : easeOut(clamp((t - T.merge) / GATHER)), g = 1, r = easeIO(clamp((t - T.rise) / RISE));
-        const [dx, dy] = quiet ? [0, 0] : drift(Dk, t, W, H);
-        X = lerp(W / 2, Dk.at.pos[0] + dx, r); Y = lerp(H / 2, Dk.at.pos[1] + dy, r); Su = lerp(Dk.S, u, r); rot = Dk.at.rot * r;
+        const [dx, dy, dq] = quiet ? [0, 0, 0] : drift(Dk, t, u);
+        X = lerp(W / 2, Dk.at.pos[0] + dx, r); Y = lerp(H / 2, Dk.at.pos[1] + dy, r); Su = lerp(Dk.S, u, r); rot = (Dk.at.rot + dq) * r;
         // 오르는 동안 기울기는 0에서 제 기울기로, 꼬리는 그 순간의 자리에서 기기를 가리킨다
         const tail = r > 0 ? tailAt(Dk, [X, Y], rot, W, H, Su) : Dk.tail;
         put(ctx, Su, X, Y, rot, dpr);

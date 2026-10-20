@@ -76,6 +76,8 @@ export async function settle(page) {
     .catch(() => {});
   // 홈 스플래시(2026-10-06 HomePoster)는 눌러서 끝 장면으로 — 돌고 있는 동안은 화면 전체가 '건너뛰기'다
   await page.locator('.home-poster-skip').click({ timeout: 1500 }).catch(() => {});
+  // 처음 열 때의 눈 창(2026-10-20 결정 26 — PhaseHome Boot)은 1.6초쯤 홈을 덮는다. 꺼질 때까지 기다린다
+  await page.waitForFunction(() => !document.querySelector('.home-boot'), { timeout: 6000 }).catch(() => {});
   await page.waitForTimeout(300);
 }
 

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import StepHeader from '../components/StepHeader';
 import GlyphModules from '../components/GlyphModules';
 import SnapSwitch, { tick } from '../components/SnapSwitch';
-import { MANNER, SIZE_WORDS, fontMap, formFor, hasSizeBar, hasWeightAxis, legacyFields, mannerDefault, mannerOrder, opticalFix, sizeAt, sizePos, speedBarFor, weightWordsFor } from '../lib/palettes';
+import { MANNER, SIZE_WORDS, fontMap, formFor, hasManner, hasSizeBar, hasWeightAxis, legacyFields, mannerDefault, mannerOrder, opticalFix, sizeAt, sizePos, speedBarFor, weightWordsFor } from '../lib/palettes';
 import { DEFAULT_TONE, type PartialTone } from '../lib/tone';
 import { foldLines } from '../lib/fit';
 import { pick, useLang } from '../lib/lang';
@@ -14,8 +14,8 @@ const T = {
     /* 셋째 축은 서체가 정한다 — 무게가 없는 서체는 말투를 묻는다(palettes.ts · MANNER) */
     leadWeight: { ko: '발화의 크기, 속도, 무게를 정해봐요.', en: 'Set the size, pace and weight of your line.' },
     leadManner: { ko: '발화의 크기, 속도, 말투를 정해봐요.', en: 'Set the size, pace and tone of your line.' },
-    /* 유머있는(비)은 크기를 묻지 않는다 — 벽 글자가 28px 하나(palettes.ts · hasSizeBar) */
-    leadPaceWeight: { ko: '발화의 속도, 무게를 정해봐요.', en: 'Set the pace and weight of your line.' },
+    /* 유머있는(비)은 크기를 묻지 않는다 — 벽 글자가 28px 하나(palettes.ts · hasSizeBar). 대신 무게 아래 말투를 묻는다(2026-10-11) */
+    leadPaceWeightManner: { ko: '발화의 속도, 무게, 말투를 정해봐요.', en: 'Set the pace, weight and tone of your line.' },
     start: { ko: '화면을 누르면 시작해요', en: 'Tap the screen to start' },
     comparing: { ko: '기본 상태를 보는 중. 눌러서 편집한 상태로 돌아가기', en: 'Showing the default. Tap to go back to your edit' },
     compare: { ko: '눌러서 기본과 비교', en: 'Tap to compare with the default' },
@@ -250,7 +250,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
     /* 막대 자리가 없는 초안(슬라이더 전에 만든 것)은 가운데('보통')에서 시작한다 */
     const [tone, setTone] = useState<PartialTone>(() => {
         /* 말투가 비어 오면(옛 초안) 앞 칸으로 채운다 — 칸은 예리한을 가리키는데 글은 온화한(빈 값)으로 서는 일이 없게 */
-        const t = { ...initialTone, speed: initialTone.speed ?? 0.5, weight: initialTone.weight ?? 0.5, manner: hasWeightAxis(initialTone.font) ? undefined : initialTone.manner ?? mannerDefault(initialTone.font) };
+        const t = { ...initialTone, speed: initialTone.speed ?? 0.5, weight: initialTone.weight ?? 0.5, manner: hasManner(initialTone.font) ? initialTone.manner ?? mannerDefault(initialTone.font) : undefined };
         /* 빠르기 막대가 '보통'에서 시작하는 성격(유머있는)은 그보다 느린 값을 보통으로 올린다 — 막대에 없는 칸에 서지 않게 */
         const bar = speedBarFor(t.font);
         t.speed = bar.toSpeed(bar.fromSpeed(t.speed));
@@ -341,7 +341,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
      * 가져간다.
      */
     /** 지금 견본에 보이는 것. 비교 중일 때만 다듬기 전이 선다 */
-    const shown = compare ? { ...DEFAULT_TONE, font: tone.font, manner: hasWeightAxis(tone.font) ? undefined : mannerDefault(tone.font) } : tone;
+    const shown = compare ? { ...DEFAULT_TONE, font: tone.font, manner: hasManner(tone.font) ? mannerDefault(tone.font) : undefined } : tone;
     const fill = shown.size / 60;
     /**
      * 제일 긴 줄이 **글자 크기 1px당 몇 px인가.** 재서 안다.
@@ -461,7 +461,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
         설명이 사라지는 계기가 **누르는 손**이어야 한다. '가'와 같이 간다. */}
     <div className="z-ask">
      <h1>{pick(T.title, lang)}</h1>
-     <p>{pick(!hasSizeBar(tone.font) ? T.leadPaceWeight : hasWeightAxis(tone.font) ? T.leadWeight : T.leadManner, lang)}</p>
+     <p>{pick(!hasSizeBar(tone.font) ? T.leadPaceWeightManner : hasWeightAxis(tone.font) ? T.leadWeight : T.leadManner, lang)}</p>
     </div>
     {/* 삽화 자리. 아직 그려지지 않았다 — 지금은 내 글이 대신 서서 크기와
         속도 축을 차례로 훑는다(app.css · toneDemo). 속도의 세 자리(위 slow · mid ·
@@ -537,7 +537,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
        높이가 같아서 도구를 옮겨도 화면이 흔들리지 않는다. */}
    {/* ── 편집 패널 ─────────────────────────────────────────────────
        막대 셋을 한꺼번에 세운다(2026-09-25, 배치 A). 크기 · 속도, 그리고 무게
-       (2026-10-10부터 넷 다 — 말투 스위치는 MANNER에 든 서체가 생기면 다시 선다). 도구를 골라 하나씩
+       (2026-10-10부터 넷 다). 유머있는은 크기 대신 무게 아래 말투 스위치(2026-10-11 — 귀여운 | 얄미운). 도구를 골라 하나씩
        만지던 탭은 걷었다. 작은 화면(320)에서는 이 판이 줄지 않고 위의 견본
        칸이 줄어든다(견본 칸은 남는 자리를 받는다). */}
    <div className="tone-panel">
@@ -546,9 +546,8 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
       onChange={v => set({ size: +sizeAt(v).toFixed(2) })} />}
     <Slider name={pick(T.speed, lang)} words={pick(speedBar.words, lang)} value={speedBar.fromSpeed(speed)}
       onChange={v => set({ speed: speedBar.toSpeed(v) })} />
-    {hasWeightAxis(tone.font)
-      ? <Slider name={pick(T.weight, lang)} words={pick(weightWordsFor(tone.font), lang)} value={weight} onChange={v => set({ weight: v })} />
-      : <MannerSwitch font={tone.font} at={tone.manner ?? mannerDefault(tone.font)} onPick={i => set({ manner: i })} />}
+    {hasWeightAxis(tone.font) && <Slider name={pick(T.weight, lang)} words={pick(weightWordsFor(tone.font), lang)} value={weight} onChange={v => set({ weight: v })} />}
+    {hasManner(tone.font) && <MannerSwitch font={tone.font} at={tone.manner ?? mannerDefault(tone.font)} onPick={i => set({ manner: i })} />}
 
     {/* '다음'이 패널 안에 있다. 밖에 두면 패널과 버튼 사이에 흰 띠가 한 겹
         더 생겨, 이 화면에 색이 바뀌는 경계가 둘이 된다. 하나면 된다 —

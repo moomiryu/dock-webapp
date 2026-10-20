@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import StepHeader from '../components/StepHeader';
 import { tick } from '../components/SnapSwitch';
-import { fontMap, formFor, hasWeightAxis, mannerDefault, opticalFix } from '../lib/palettes';
+import { fontMap, formFor, hasManner, mannerDefault, opticalFix } from '../lib/palettes';
 import { DEFAULT_TONE, STYLE_OPTIONS, type PartialTone } from '../lib/tone';
 import { pick, useLang, type Pair } from '../lib/lang';
 import type { ToneState } from '../types';
@@ -54,7 +54,7 @@ interface Props {
  */
 /** 3/5 기본형(막대 가운데 · 말투 첫째 칸)의 글자 모양 — palettes.ts · formFor */
 function faceOf(font: string): CSSProperties {
-  const f = formFor({ font, speed: 0.5, weight: 0.5, manner: hasWeightAxis(font) ? undefined : mannerDefault(font) });
+  const f = formFor({ font, speed: 0.5, weight: 0.5, manner: hasManner(font) ? mannerDefault(font) : undefined });
   return {
     fontFamily: fontMap[font],
     fontWeight: f.weight,
@@ -173,12 +173,12 @@ export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Prop
         <button className="primary-action" disabled={!font}
           onClick={() => {
             if (!font) return;
-            /* 성격이 바뀌면 말투는 그 성격의 앞 칸에서 시작한다(palettes.ts · mannerDefault). 말투가 없는 성격(무게를
-               묻는 성격)은 말투를 비워 둔다. 당당한은 10-06 ~ 10-10에만 말투를 물었고 29CM으로 갈리며 다시 무게를 묻는다.
+            /* 성격이 바뀌면 말투는 그 성격의 앞 칸에서 시작한다(palettes.ts · mannerDefault). 말투를 묻지 않는
+               성격은 말투를 비워 둔다(유머있는은 2026-10-11부터 무게와 말투를 함께 묻는다). 당당한은 10-06 ~ 10-10에만 말투를 물었고 29CM으로 갈리며 다시 무게를 묻는다.
                같은 성격으로 돌아온 길이면 고른 말투를 그대로 둔다 */
             const base = initialTone ?? DEFAULT_TONE;
             const keep = initialTone?.font === font && base.manner !== undefined;
-            onNext({ ...base, font, manner: hasWeightAxis(font) ? undefined : keep ? base.manner : mannerDefault(font) });
+            onNext({ ...base, font, manner: hasManner(font) ? (keep ? base.manner : mannerDefault(font)) : undefined });
           }}>{pick(T.next, lang)}</button>
       </div>
     </div>

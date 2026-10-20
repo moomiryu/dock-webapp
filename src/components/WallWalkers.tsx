@@ -15,8 +15,9 @@ import type { Perch, SkyPerch } from './WallSky';
  * - 만남(20~30초에 한 번) — 한 명이 앉고 다른 한 명이 두 배 걸음으로 와 몸 1.9개 거리에 마주 앉아 수다 9초: 1.6초마다 말하는 쪽이 바뀌고,
  *   말하는 쪽은 키의 3% 들썩 + 머리 위(말하는 방향)에 점 세 알이 차례로(그 사람 색, 지름 키의 9%), 듣는 쪽은 2% 끄덕. 그다음 나란히
  *   앉은 채 함께 하늘 8초, 그리고 각자 자리로
- * - 도킹 — 수다든 앉기든 멈추고 일어나 큰 말 쪽(가운데)으로 돌아서 올려다본다(EYE_UP). 글자가 한 박씩 설 때마다 키의 0.22만큼 0.32초
- *   폴짝. 새 말이 하늘로 오르기 시작하면 다시 제 일로(beat — WallSky가 적는다)
+ * - 도킹 — 수다든 앉기든 멈추고 일어나 큰 말 쪽(가운데)으로 돌아서 올려다본다(EYE_UP). 글자가 한 박씩 설 때마다 0.32초 폴짝. 새 말이
+ *   하늘로 오르기 시작하면 다시 제 일로(beat — WallSky가 적는다). 2026-10-21부터 호들갑스럽게(아래 FUSS — 화들짝 뛰고, 도킹마다 둘이
+ *   깜짝 폴짝 · 동동 · 우왕좌왕 중 서로 다른 하나씩. 그전엔 글자마다 키의 0.22만큼 폴짝뿐이었다)
  * - 하늘 나들이(2026-10-20, 디자이너가 견본 셋 — 나들이 · 징검다리 · 통통 — 중 나들이 + 징검다리를 이어 붙여, 둘 다) — 30~50초에 한 번
  *   서 있거나 앉아 있던 이가 가까운(낮은) 말풍선 끝 옆까지 종종걸음으로 가서 옆으로 솟아 윗선에 오른다 → 이웃 말풍선으로 2~4번 건너다니고
  *   (건너기 전 1~2.5초 서 있거나 윗선을 몇 걸음) → 마지막 말풍선에서 12~18초 앉아 함께 떠다니며 하늘을 본다 → 가까운 끝까지 걸어가 바깥으로
@@ -43,7 +44,15 @@ const DAY = { walk: 0.45, sky: 0.35, sit: [7, 13], stand: [1.5, 4], rest: [0.5, 
 /** 만남 — 첫 만남 · 간격(초) · 거리(몸 폭의 배수) · 수다 · 말하는 쪽이 바뀌는 간격 · 함께 하늘 보기(초) */
 const MEET = { first: [8, 14], every: [20, 30], gap: 1.9, talk: 9, turn: 1.6, sky: 8 };
 /** 도킹의 폴짝 — 키의 몫 · 초 */
-const HOP = { h: 0.22, t: 0.32 };
+const HOP = { t: 0.32 };
+/**
+ * 도킹 호들갑(2026-10-21 디자이너 "도킹 때의 리액션이 더 호들갑" → 견본 셋 '다 좋다' → 도킹마다 두 사람이 셋 중 하나씩, 서로 다르게):
+ * a 깜짝 폴짝 · b 동동(내내 제자리에서 뛰며 몸을 흔들고 눈은 올려다봄 ↔ 웃음) · c 우왕좌왕(좌우로 종종 뛰어다니다 선다). 셋 다 도킹 순간
+ * 눈이 동그래지며 화들짝 뛴다(--t-hold). 화들짝 높이 · 글자마다 폴짝 높이(키의 몫) · 동동 높이(키의 몫) · 몸 흔들기(라디안) · 뛰어다니는
+ * 시간(초) · 한 번 오가는 시간(초) · 오가는 폭(몸 폭의 배수)
+ */
+type Fuss = 'a' | 'b' | 'c';
+const FUSS = { jump: { a: 0.85, b: 0.5, c: 0.85 }, hop: { a: 0.45, b: 0.5, c: 0.45 }, bob: 0.2, sway: 0.14, dash: 3.5, lap: 1.4, reach: 1.6 } as const;
 /** 시간은 --t-hold의 배수(H) — 웃기 · 깜빡이기 · 발 까딱(옛 값 그대로) · 나오는 때(초) */
 const T = { popAt: [1, 3], smileGap: [2.5, 4], smileDur: 3, blink: [3, 7], kick: 4 };
 /**
@@ -79,6 +88,8 @@ type Walker = {
   nextBlink: number; blinkUntil: number; nextSmile: number; smileUntil: number; eye: Eye;
   /** 하늘 놀이 — 딛고 선 하늘 자리 · 공중 · 나들이 · 내려선 때 · 그 순간 발 자리(px) · 기울기 */
   on: Spot | null; air: Air | null; trip: Trip | null; land: number; fx: number; fy: number; rot: number;
+  /** 이번 도킹의 호들갑 · 그걸 고른 도킹(큰 말이 선 때) */
+  fuss: Fuss; fussAt: number;
 };
 
 const rnd = (r: readonly number[]) => r[0] + Math.random() * (r[1] - r[0]);
@@ -114,7 +125,7 @@ export default function WallWalkers({ beat, sky }: { beat?: { current: DockBeat 
       return {
         el, p, mode: 'off', zone: ZONES[i] ?? ZONES[0], t0: start + HOLD * rnd(T.popAt), x: 0, face: i ? 1 : -1, tx: 0, fast: 1, until: 0, look: 'ahead',
         sitT: 0, pop: 0, walking: false, anim: false, pace: 0, ph: i * 1.3, nextBlink: 0, blinkUntil: 0, nextSmile: 0, smileUntil: 0, eye: 'look',
-        on: null, air: null, trip: null, land: -Infinity, fx: 0, fy: 0, rot: 0
+        on: null, air: null, trip: null, land: -Infinity, fx: 0, fy: 0, rot: 0, fuss: 'a', fussAt: NaN
       };
     });
 
@@ -394,29 +405,47 @@ export default function WallWalkers({ beat, sky }: { beat?: { current: DockBeat 
         w.p.near.setAttribute('transform', `rotate(${(SIT.nearDeg + SIT.nearSwing * Math.sin(((still ? 0 : now) / (HOLD * T.kick)) * 2 * Math.PI + 1.7)).toFixed(1)} ${SIT.pivot[0]} ${SIT.pivot[1]})`);
       }
       w.p.flip.setAttribute('transform', w.face === -1 ? `matrix(-1 0 0 1 ${2 * CX} 0)` : '');
+      // 도킹 호들갑 — 이번 도킹에 처음이면 셋 중 하나를 고른다(다른 이가 이미 골랐으면 그것 말고). 도킹 순간 화들짝 뛰고(눈 동그래짐, 웅크렸다
+      // 늘어났다 착지에 눌림), a는 글자마다 큰 폴짝 · b는 내내 동동 뛰며 몸을 흔들고 · c는 좌우로 종종 뛰어다닌다
+      let fx = 0, fr = 0, fsq = 0, fl = 0, feye: Eye | null = null;
+      if (dk && b) {
+        if (w.fussAt !== b.start) {
+          const taken = ws.filter((o) => o !== w && o.fussAt === b.start).map((o) => o.fuss), pool = (['a', 'b', 'c'] as const).filter((f) => !taken.includes(f));
+          w.fuss = pool[Math.floor(Math.random() * pool.length)]; w.fussAt = b.start;
+        }
+        const f = w.fuss, e2 = now - b.start, J = HOLD, jk = e2 / J;
+        if (jk < 1) { fl = Math.sin(Math.PI * jk) * FUSS.jump[f] * hc; fsq = jk < 0.18 ? JUMP.crouch * Math.sin((Math.PI * jk) / 0.18) : -JUMP.stretch * 1.2 * Math.sin(Math.PI * jk); feye = 'wide'; }
+        else if (e2 < J + RET) { fsq = 1.3 * JUMP.land * Math.sin((Math.PI * (e2 - J)) / RET); feye = 'wide'; }
+        else if (f === 'b') { fl = Math.abs(Math.sin((Math.PI * (e2 - J)) / (J / 2))) * FUSS.bob * hc; fr = FUSS.sway * Math.sin((2 * Math.PI * (e2 - J)) / J); feye = Math.floor((e2 - J) / J) % 2 ? 'smile' : 'up'; }
+        else if (f === 'c' && e2 < J + RET + FUSS.dash) {
+          const k = (e2 - J - RET) / FUSS.lap;
+          fx = Math.sin(2 * Math.PI * k) * FUSS.reach * cw; w.face = Math.cos(2 * Math.PI * k) > 0 ? -1 : 1; w.walking = true; feye = 'wide';
+        }
+      }
       // 눈 — 도킹이면 올려다봄 · 하늘을 볼 땐 검은자가 위에서 좌우로 천천히 · 수다 중엔 말하는 쪽 쳐다봄↔웃음 · 평소 자주 웃음
       const up = dk || w.look === 'sky';
       const talking = !!meet && meet.phase === 'chat' && !dk && (w === meet.v || w === meet.h);
-      const e: Eye = w.air ? (w.air.scared ? 'wide' : 'smile')   // 뛸 땐 웃고, 놀라 떨어질 땐 동그래진다
+      const e: Eye = feye ?? (w.air ? (w.air.scared ? 'wide' : 'smile')   // 뛸 땐 웃고, 놀라 떨어질 땐 동그래진다
         : up ? (!dk && now < w.blinkUntil ? 'shut' : 'up')
         : talking ? (w === speaker ? (Math.floor(now / (HOLD * 0.6)) % 3 === 2 ? 'smile' : 'look') : (Math.floor(now / (HOLD * 2.2)) % 4 === 3 ? 'look' : 'smile'))
         : now < w.smileUntil && (w.mode === 'walk' || w.mode === 'sit') ? 'smile'
-        : now < w.blinkUntil ? 'shut' : 'look';
+        : now < w.blinkUntil ? 'shut' : 'look');
       setEye(w, e);
       if (e === 'up') w.p.eyes.up.setAttribute('cx', (EYE_UP.cx + (still ? 0 : 10 * Math.sin(now * 0.35 + w.ph))).toFixed(1));
       // 몸짓 — 말하는 쪽은 들썩(키의 3%), 듣는 쪽은 끄덕(2%) · 도킹의 폴짝(글자마다)
       const talkDy = !talking ? 0 : w === speaker ? Math.abs(Math.sin(now * 9)) * hc * 0.03 : Math.abs(Math.sin(now * 3.5)) * hc * 0.02;
       let hop = 0;
       if (dk && b) for (const t of b.letters) { const k = (now - t) / HOP.t; if (k >= 0 && k < 1) hop = Math.max(hop, Math.sin(Math.PI * k)); }
-      const lift = hop * HOP.h * hc + talkDy;
+      const lift = hop * FUSS.hop[w.fuss] * hc + talkDy + fl;
       // 뛰기의 몸 — 뛰기 전 웅크렸다 · 막 뜨면 늘어났다 · 내려서면 눌린다(발이 축)
       let sq = 0;
       if (w.air && !still) {
         const a = w.air, kc = a.crouch ? (now - a.t0) / a.crouch : 1;
         sq = kc < 1 ? JUMP.crouch * easeStd(kc) : -JUMP.stretch * clamp(1 - (3 * (now - a.t0 - a.crouch)) / a.dur);
       } else if (!still && now - w.land < RET) sq = JUMP.land * Math.sin((Math.PI * (now - w.land)) / RET);
+      sq += fsq;
       const ox = (CX - VB.x) * s, oy = (FOOT_Y - VB.y) * s, pop = Math.max(0.001, easeEmph(w.pop));
-      w.el.style.transform = `translate3d(${(w.fx - ox).toFixed(1)}px, ${(w.fy - oy - lift).toFixed(1)}px, 0) rotate(${w.rot.toFixed(4)}rad) scale(${(pop * (1 + 0.7 * sq)).toFixed(3)}, ${(pop * (1 - sq)).toFixed(3)})`;
+      w.el.style.transform = `translate3d(${(w.fx + fx - ox).toFixed(1)}px, ${(w.fy - oy - lift).toFixed(1)}px, 0) rotate(${(w.rot + fr).toFixed(4)}rad) scale(${(pop * (1 + 0.7 * sq)).toFixed(3)}, ${(pop * (1 - sq)).toFixed(3)})`;
       // 수다의 점 세 알 — 말하는 쪽 머리 위, 말하는 방향으로 차례로
       const n = w === speaker ? Math.floor((now * 3.5) % 4) : 0, dir = w.face > 0 ? -1 : 1;
       const hy = w.fy - lift - (FOOT_Y - SIT.drop * easeStd(w.sitT)) * s - 0.1 * hc, hx = w.fx + dir * 0.42 * hc;

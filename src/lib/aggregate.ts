@@ -121,7 +121,7 @@ export function arrange(lines: readonly string[], align: Align, kd: Kind): Item[
   let src = lines, lh = kd.rows * ROW;
   if (align === 'stack') { src = lines.join(' ').split(/\s+/).filter(Boolean); lh = 0.66 * ms; }   // 탑 — 낱말마다 한 줄, 가운데 맞춰 차곡차곡
   const L = src.map((ln) => { const cs = [...ln], av = cs.map((ch) => (ch === ' ' ? G : adv)); return { cs, av, len: av.reduce((a, b) => a + b, 0) }; });
-  const Lmax = Math.max(0, ...L.map((l) => l.len)), pts: { ch: string; li: number; x: number; y: number; a: number }[] = [];
+  const Lmax = Math.max(0, ...L.map((l) => l.len)), pts: { ch: string; li: number; x: number; y: number; a: number; w?: number; up?: number }[] = [];
   if (align === 'arch' || align === 'smile') {
     // 아치(위로 볼록) · 미소(아래로 볼록) — 반지름 = 가장 긴 줄 × 1.3(4u 이상), 아래 줄은 아치에선 안으로 · 미소에선 바깥으로. 글자 · 모듈이 호를 따라 돈다
     const R0 = Math.max(Lmax * 1.3, 4), up = align === 'arch';
@@ -147,7 +147,8 @@ export function arrange(lines: readonly string[], align: Align, kd: Kind): Item[
         // 계단 — 낱말마다 0.6s씩 직각으로 오른다
         if (align === 'stairs') y -= word * 0.6 * ms;
         // 단상 — 가운데 낱말이 통째로 0.6s 솟는다. 낱말 셋 이상: 높이 = min(낱말 차례, 끝에서 차례) 최대 2칸 · 둘 이하: 글자를 셋으로 나눠 가운데 몫
-        if (align === 'podium') y -= (nWords >= 3 ? Math.min(2, word, nWords - 1 - word) : +(n >= Math.floor(nl / 3) && n < nl - Math.floor(nl / 3))) * 0.6 * ms;
+        const up = align === 'podium' ? (nWords >= 3 ? Math.min(2, word, nWords - 1 - word) : +(n >= Math.floor(nl / 3) && n < nl - Math.floor(nl / 3))) * 0.6 * ms : 0;
+        y -= up;
         // 내리막(결정 7) — 낱말마다 육각형 반높이(0.36s)씩 가라앉는다. 벌집처럼 맞물리는 완만한 비탈(당당 계단과 반대 결).
         // 낱말 하나뿐이면 글자를 셋으로 나눠 뒤 몫일수록 반 칸씩(단상과 같은 꼴). 그전의 고드름(∨)은 '혼자 너무 튀어' 뺐다
         if (align === 'descend') y += (nWords > 1 ? word : Math.min(2, Math.floor((n * 3) / Math.max(1, nl)))) * 0.36 * ms;
@@ -159,14 +160,23 @@ export function arrange(lines: readonly string[], align: Align, kd: Kind): Item[
           if (n >= from) { y -= 0.85 * ms + 0.12 * ms * (n - from); a = deg(12); }
         }
         n++;
-        pts.push({ ch, li, x: x0, y, a });
+        pts.push({ ch, li, x: x0, y, a, w: word, up });
       });
     });
+    // 여러 줄 단상(10-20 점검 둘째 — 60자 5줄에서 솟은 낱말이 윗줄 글자를 파고들어 글자끼리 겹쳤다) — 둘째 줄부터는 낱말 아래로 겹치는
+    // 윗줄 글자들이 비워 둔 높이(그 글자들이 솟은 만큼)까지만 솟는다. 맨 윗줄의 단상 꼴과 덩어리 높이는 그대로
+    if (align === 'podium') for (let li = 1; li < L.length; li++) {
+      const above = pts.filter((q) => q.li === li - 1), mine = pts.filter((q) => q.li === li);
+      for (const w of new Set(mine.map((q) => q.w))) {
+        const ws = mine.filter((q) => q.w === w), room = Math.min(...ws.flatMap((q) => above.filter((b) => Math.abs(b.x - q.x) < adv).map((b) => b.up ?? 0)));
+        for (const q of ws) { const up = Math.min(q.up ?? 0, room); q.y += (q.up ?? 0) - up; q.up = up; }
+      }
+    }
   }
   if (!pts.length) return [];
   const cx = (Math.min(...pts.map((q) => q.x)) + Math.max(...pts.map((q) => q.x))) / 2, cy = (Math.min(...pts.map((q) => q.y)) + Math.max(...pts.map((q) => q.y))) / 2;
   const both = align === 'arch' || align === 'smile', kx = spread, ky = both ? spread : 1.3;
-  return pts.map((q) => { const [x, y, p] = snap(q.x - cx, q.y - cy); return { ...q, x, y, p, ax: (q.x - cx) * kx, ay: (q.y - cy) * ky }; });
+  return pts.map(({ w: _w, up: _u, ...q }) => { const [x, y, p] = snap(q.x - cx, q.y - cy); return { ...q, x, y, p, ax: (q.x - cx) * kx, ay: (q.y - cy) * ky }; });
 }
 
 /* ─── 한 말의 점들 ────────────────────────────────────────────────────────────────────────────────────────── */
@@ -189,7 +199,10 @@ export function modulesAt(items: readonly Item[], kd: Kind, m: number): { pos: P
   });
   return { pos, dots, polys };
 }
-/** 모인 덩어리의 모듈 사이 좁은 틈 — '한 칸 부풀렸다 한 칸 깎기'로 메울 점(모인 자리에서 한 번 셈한다. 모이는 정도의 세제곱으로 나타난다) */
+/**
+ * 모인 덩어리의 모듈 사이 좁은 틈 — '한 칸 부풀렸다 한 칸 깎기'로 메울 점(모인 자리에서 한 번 셈한다. 모이는 정도의 세제곱으로 나타난다).
+ * 덩어리 안에 갇힌 빈칸도 크기와 상관없이 메운다(10-20 점검 둘째 — 여러 줄 단상에서 줄 사이에 갇힌 칸이 검은 얼룩으로 남았다)
+ */
 export function gapsOf(items: readonly Item[], kd: Kind): Dot[] {
   const s = sizeAt(kd, 1), key = (i: number, j: number) => `${i},${j}`, has = new Set<string>();
   items.forEach((it) => { for (const [x, y] of lattice(kd.mod, s, it.a, it.p)) has.add(key(...cell(it.x + x, it.y + y))); });
@@ -200,6 +213,18 @@ export function gapsOf(items: readonly Item[], kd: Kind): Dot[] {
     if (has.has(q)) continue;
     const [i, j] = q.split(',').map(Number);
     if (nb(i, j).every(([a, c]) => grown.has(key(a, c)))) out.push({ x: i * G + (j & 1 ? G / 2 : 0), y: j * ROW, r: 1, mod: -1 });
+  }
+  if (!has.size) return out;
+  // 갇힌 빈칸 — 덩어리를 한 칸 넓게 두른 테두리에서 빈칸을 따라 번져, 닿지 않은 빈칸이 갇힌 칸이다
+  const IJ = [...has].map((q) => q.split(',').map(Number)), I = IJ.map((q) => q[0]), J = IJ.map((q) => q[1]);
+  const i0 = Math.min(...I) - 1, i1 = Math.max(...I) + 1, j0 = Math.min(...J) - 1, j1 = Math.max(...J) + 1, seen = new Set([key(i0, j0)]), todo = [[i0, j0]];
+  while (todo.length) {
+    const [i, j] = todo.pop()!;
+    for (const [a, c] of nb(i, j)) { const q = key(a, c); if (a >= i0 && a <= i1 && c >= j0 && c <= j1 && !seen.has(q) && !has.has(q)) { seen.add(q); todo.push([a, c]); } }
+  }
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+    const q = key(i, j);
+    if (!has.has(q) && !seen.has(q) && !(grown.has(q) && nb(i, j).every(([a, c]) => grown.has(key(a, c))))) out.push({ x: i * G + (j & 1 ? G / 2 : 0), y: j * ROW, r: 1, mod: -1 });
   }
   return out;
 }

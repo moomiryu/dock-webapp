@@ -179,8 +179,10 @@ function Waves({ text, tone, startedAt }: { text: string; tone: ToneState; start
  *
  * 흰자는 흰색 붙박이, 눈동자는 화면 색이다 — 눈동자가 뚫린 자리처럼 보여야
  * 이 화면(빨강) 위에 얹힌 눈으로 읽힌다.
+ *
+ * 홈이 처음 열릴 때의 창(PhaseHome Boot, 결정 26)도 이 눈을 쓴다.
  */
-function Eyes() {
+export function Eyes() {
     return <svg className="onwall-eye" viewBox="0 0 412.12 172.43" aria-hidden focusable="false">
   <circle className="onwall-eye-white" cx="86.21" cy="86.21" r="86.21"/>
   <circle className="onwall-eye-white" cx="325.9" cy="86.21" r="86.21"/>

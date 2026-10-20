@@ -2941,6 +2941,21 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   .onwall-eye-shut{ opacity: 0; }
 }
 
+/* 처음 열 때의 창(결정 26, 2026-10-20 디자이너 — PhaseHome Boot) — 위의 07 화면 그대로 홈을 덮는다(숫자 없이 두 눈만).
+   깜빡임도 07의 것인데 첫 깜빡임만 앞으로: 5.4초 주기에서 감기는 자리(97.41% = 5.26초)를 --t-hold로 당긴다 — 준비가 빨라도
+   한 번은 깜빡이고 꺼지게. 꺼질 때는 눈을 감고(07의 감은 눈) 옛 TV처럼 위아래로 접혀 가로 한 줄이 됐다가 그 줄이 가운데로
+   사라진다(--t-slow 한 번에 접힘 55% · 줄 45%) */
+.home-boot{ position: fixed; inset: 0; margin-inline: auto; z-index: 2000; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.home-boot .onwall-eye-open, .home-boot .onwall-eye-shut{ animation-delay: calc(var(--t-hold) - 5.26s); }
+.home-boot:is(.is-shut, .is-off) .onwall-eye-open{ animation: none; opacity: 0; }
+.home-boot:is(.is-shut, .is-off) .onwall-eye-shut{ animation: none; opacity: 1; }
+.home-boot.is-off{ animation: homeBootOff var(--t-slow) var(--ease-standard) forwards; }
+@keyframes homeBootOff{
+  0%   { transform: scale(1, 1); }
+  55%  { transform: scale(1, 0.004); }
+  100% { transform: scale(0, 0.004); }
+}
+
 /* ─── 성격: 손가락이 닿는 순간 ─────────────────────────────────
    닿는 순간 빨강으로 미리 보여 주던 규칙은 2026-09-29에 걷었다 — 이제 닿는
    순간 판이 그 칸으로 간다(PhaseGlyph). */

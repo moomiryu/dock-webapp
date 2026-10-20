@@ -40,6 +40,8 @@ export const arrangementsFor = (font: string | undefined): readonly Align[] => A
 export const defaultAlign = (_font?: string): Align => 'center';
 /** 그 성격의 칸이 아닌 값(옛 글의 휘기 · 올리기 · 둥실 …, 다른 성격에서 고른 값)은 기본으로 그린다(결정 3 F) */
 export const arrangeOf = (font: string | undefined, align?: Align): Align => (align && arrangementsFor(font).includes(align) ? align : 'center');
+/** 낱개 자리 · 휭을 가로세로 같은 배율로 벌리는 모양 — 미소 · 단호(가로만 벌리면 단호의 기울기가 눕는다, 결정 31). 기본은 가로만 */
+export const evenSpread = (align: Align) => align === 'smile' || align === 'slant';
 
 /* ─── 모듈 ─────────────────────────────────────────────────────────────────────────────────────────────── */
 const ngon = (n: number, R: number, r: number, a0 = -Math.PI / 2): P[] => Array.from({ length: n * 2 }, (_, i): P => {
@@ -146,7 +148,7 @@ export function arrange(lines: readonly string[], align: Align, kd: Kind): Item[
   }
   if (!pts.length) return [];
   const cx = (Math.min(...pts.map((q) => q.x)) + Math.max(...pts.map((q) => q.x))) / 2, cy = (Math.min(...pts.map((q) => q.y)) + Math.max(...pts.map((q) => q.y))) / 2;
-  const kx = spread, ky = align === 'smile' || align === 'slant' ? spread : 1.3;
+  const kx = spread, ky = evenSpread(align) ? spread : 1.3;
   return pts.map((q) => { const [x, y, p] = snap(q.x - cx, q.y - cy); return { ...q, x, y, p, ax: (q.x - cx) * kx, ay: (q.y - cy) * ky }; });
 }
 
@@ -301,9 +303,9 @@ export const RISE_MAX = 8;
  * 낱개 자리 · 입(꼬리 밑동 — 점이 여기서 나간다) · 등장 계획. 벽(WallSky)이 그리고, 폰 07이 글자마다 서는 시각(소리의 결 박자)을 같은
  * 셈으로 읽는다 — 따로 근사하면 둘이 어긋난다(결정 11). 화면비가 같으면 시각은 크기와 상관없다(점 속도가 폭에 비례)
  */
-export function dockPlanOf(items: readonly Item[], kd: Kind, W: number, H: number, drop: number) {
+export function dockPlanOf(items: readonly Item[], kd: Kind, W: number, H: number, drop: number, even = false) {
   const S = bigScale(items, kd, W, H), dev: P = [0, (H / 2 + H * drop) / S], tail = tailOf(items, kd, dev), rest = modulesAt(items, kd, 0);
-  const mouth = mouthOf(follow(tail, items, rest.pos[tail.from])), plan = planEntrance(items, kd, mouth, S, W);
+  const mouth = mouthOf(follow(tail, items, rest.pos[tail.from])), plan = planEntrance(items, kd, mouth, S, W, H, even, tail);
   return { S, dev, tail, rest, mouth, plan };
 }
 /**
@@ -323,14 +325,14 @@ export function hurry(plan: Plan, at: number, gap = HURRY): Plan {
   });
   const shots = plan.shots.map((d) => { const k = shift.get(d.mod) ?? 0; return k ? { ...d, e: d.e + k, arrive: d.arrive + k } : d; });
   const modDone = plan.modDone.map((d, i) => d + (shift.get(i) ?? 0));
-  return { shots, modDone, whoosh: Math.max(...modDone) + 0.15, F: 1, landed: Math.max(...shots.map((d) => d.arrive)) };
+  return { shots, modDone, whoosh: Math.max(...modDone) + 0.15, F: 1, Fy: 1, landed: Math.max(...shots.map((d) => d.arrive)) };
 }
 /** 휭 — 살짝 넘쳤다 돌아온다(결정 4: 1 + 2.2(t − 1)³ + 1.2(t − 1)²) */
 export const backOut = (t: number) => 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2;
 /** 날아오는 점 하나 — 붙을 자리(낱개 자리, u) · 모듈 · 떠나는 때 · 닿는 때(초) · 휘는 길의 조절점 */
 export interface Shot { x: number; y: number; mod: number; e: number; arrive: number; cp?: P }
-/** 등장 계획 — 점들 · 글자마다 다 쌓이는 때 · 휭이 시작하는 때 · 휭의 배율(가로) · 모든 점이 닿는 때 */
-export interface Plan { shots: Shot[]; modDone: number[]; whoosh: number; F: number; landed: number }
+/** 등장 계획 — 점들 · 글자마다 다 쌓이는 때 · 휭이 시작하는 때 · 휭의 배율(가로 F · 세로 Fy — 세로는 미소 · 단호만, 기본은 1) · 모든 점이 닿는 때 */
+export interface Plan { shots: Shot[]; modDone: number[]; whoosh: number; F: number; Fy: number; landed: number }
 
 /**
  * 큰 말의 한 변 — 화면 정중앙에, 낱개 상태가 폭의 80%까지(벽의 '돌' 등장만큼), 단 꼬리 끝이 화면 아래 안에 드는 만큼
@@ -345,9 +347,9 @@ export function bigScale(items: readonly Item[], kd: Kind, W: number, H: number)
 /**
  * 등장 — 낱개 자리(m = 0)의 모듈 점들이 기기(dev, 말 좌표 u)에서 쏘아 올라 붙는다(easeOut). 글자마다 한 박, 한 글자의 점은 burst초에
  * 걸쳐 차례로. 점 속도는 화면 폭에 비례(px = u × pxPerU). 시각 0 = 큰 말이 서기 시작한 때(첫 점은 0.5초에 떠난다).
- * 휭 — 글자가 다 서면(마지막 글자 + 0.15초) 줄이 화면 가로 94%까지(F배, 1 아래로는 안 줄인다) 퍼진다. 모듈 크기는 그대로
+ * 휭 — 글자가 다 서면(마지막 글자 + 0.15초) 줄이 화면 가로 94%까지(F배, 1 아래로는 안 줄인다) 퍼진다(미소 · 단호는 세로도 같은 배율로, 화면 안에 드는 만큼 — Fy). 모듈 크기는 그대로
  */
-export function planEntrance(items: readonly Item[], kd: Kind, dev: P, pxPerU: number, W: number): Plan {
+export function planEntrance(items: readonly Item[], kd: Kind, dev: P, pxPerU: number, W: number, H: number, even = false, tail?: Tail): Plan {
   const E = ENTRANCE[kd.mod], { pos, dots } = modulesAt(items, kd, 0), speed = (E.speed * W) / 1280;
   let seed = items.reduce((a, it) => (a * 31 + it.ch.charCodeAt(0)) >>> 0, 7);
   const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
@@ -378,6 +380,18 @@ export function planEntrance(items: readonly Item[], kd: Kind, dev: P, pxPerU: n
     for (const s of shots) { s.e -= (1 - f) * at[s.mod]; s.arrive -= (1 - f) * at[s.mod]; }
     modDone.forEach((d, i) => (modDone[i] = d - (1 - f) * at[i]));
   }
-  const ax = items.map((i) => i.ax), arrW = Math.max(...ax) - Math.min(...ax) + 1.2 * M * kd.k;
-  return { shots, modDone, whoosh: Math.max(...modDone) + 0.15, F: Math.max(1, (0.94 * W) / (pxPerU * arrW)), landed: Math.max(...shots.map((d) => d.arrive)) };
+  const done = { shots, modDone, whoosh: Math.max(...modDone) + 0.15, landed: Math.max(...shots.map((d) => d.arrive)) };
+  const ax = items.map((i) => i.ax), arrW = Math.max(...ax) - Math.min(...ax) + 1.2 * M * kd.k, F = Math.max(1, (0.94 * W) / (pxPerU * arrW));
+  if (!even) return { ...done, F, Fy: 1 };
+  // 미소 · 단호 — 세로도 같은 배율로 벌려 기울기 · 호를 지킨다. 대신 몸통 점과 꼬리 점(나부낌 최대 1.62G · t^1.6까지)이 화면 위아래(bigScale의
+  // 여백) 안에 드는 만큼까지만 — 점마다 제 글자 자리를 따라 움직이니(배율 k에서 y + (k − 1) · 글자 y) 한 점씩 상한을 잰다
+  const lim = (H / 2 - (12 * H) / 720) / pxPerU, room = (y: number, p: number) => (p > 0 ? 1 + (lim - y) / p : p < 0 ? 1 + (lim + y) / -p : Infinity);
+  let k = F;
+  for (const d of dots) k = Math.min(k, room(d.y + RF * Math.sign(pos[d.mod][1]), pos[d.mod][1]));
+  if (tail) {
+    const py = pos[tail.from][1], dy = py - items[tail.from].y;
+    for (const d of tail.dots) k = Math.min(k, room(d.y + dy + (RF * d.r + 1.62 * G * (d.t ?? 0) ** 1.6) * Math.sign(py), py));
+  }
+  k = Math.max(1, k);
+  return { ...done, F: k, Fy: k };
 }

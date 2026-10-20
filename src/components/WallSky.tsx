@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import VoiceBubble from './VoiceBubble';
-import { ENTRANCE, G, RD, RF, arrange, arrangeOf, dockPlanOf, gapsOf, hurry, kindOf, modulesAt, tailOf, type Dot, type Item, type Kind, type Plan, type Tail } from '../lib/aggregate';
+import { ENTRANCE, G, RD, RF, arrange, arrangeOf, dockPlanOf, evenSpread, gapsOf, hurry, kindOf, modulesAt, tailOf, type Dot, type Item, type Kind, type Plan, type Tail } from '../lib/aggregate';
 import { paintBody, paintEntrance, placeGlyphs, type Glyph, type Pop } from '../lib/dotPaint';
 import { FAN, SKY, WAVE, WIDE, bodyOf, fanOf, profileOf, ringOf, turn, waveAlpha, wavesAt, type Box, type Seat, type Seated } from '../lib/sky';
 import { foldLines } from '../lib/fit';
@@ -296,9 +296,9 @@ export default function WallSky({ list, dock, beat, waves }: Props) {
     M.queue = M.queue.filter((id) => id !== dock.msg.id);
     const b = baseOf(dock.msg), at = roomFor(b, t, true)!;
     // 꼬리가 먼저(결정 9) — 모였을 때의 꼬리를 첫 글자의 퍼진 자리에 붙이고, 글자 점들은 그 밑동(입)에서 나간다. 폰 07도 같은 셈으로
-    // 결의 박자를 읽는다(dockPlanOf)
-    const { S, tail, rest, mouth, plan } = dockPlanOf(b.items, b.kd, W, H, SKY.devDrop);
-    M.dock = { ...b, key: dock.key, T: t, S, plan, spread: b.items.map((it) => ({ ...it, ax: it.ax * plan.F })), rest, mouth,
+    // 결의 박자를 읽는다(dockPlanOf). 미소 · 단호는 휭도 가로세로 같이 — 가로만 벌리면 단호 12°가 8~10°로 눕는다(셋째 점검)
+    const { S, tail, rest, mouth, plan } = dockPlanOf(b.items, b.kd, W, H, SKY.devDrop, evenSpread(arrangeOf(dock.msg.tone?.font, dock.msg.tone?.align)));
+    M.dock = { ...b, key: dock.key, T: t, S, plan, spread: b.items.map((it) => ({ ...it, ax: it.ax * plan.F, ay: it.ay * plan.Fy })), rest, mouth,
       tail, at, release: dock.release ? t : Infinity, ring: ringOf([...M.sky, ...M.leaving], W, H) };
     rerender();
   }, [dock?.key, dock?.release, ready, landed]);

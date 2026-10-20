@@ -63,22 +63,23 @@ export interface TailFirst { tail: Tail; items: readonly Item[]; sec: number; ph
  * 큰 말의 등장(결정 3 E · 결정 4 휭 · 결정 9) — age = 큰 말이 서기 시작한 뒤 초. rest = 낱개 자리의 모듈(modulesAt(items, kd, 0)),
  * dev = 점이 나가는 곳(u — 꼬리가 먼저면 입, 아니면 기기). 꼬리가 먼저면 첫 글자의 퍼진 자리에 붙어 기기 쪽 끝부터 TAIL_FIRST초에 솟고,
  * 휭 퍼짐 동안에도 첫 글자를 따라간다. 날아오는 점은 메움 없이 작은 점(곧게, 다정은 휘어서), 다 쌓인 글자는 제 가운데를 축으로 내려앉는
- * 몸짓. 다 서면 휭 — 가로로만 F배
+ * 몸짓. 다 서면 휭 — 가로 F배, 세로 Fy배(미소 · 단호만 — 기본은 1)
  */
 export function paintEntrance(ctx: CanvasRenderingContext2D, rest: ReturnType<typeof modulesAt>, plan: Plan, dev: P, age: number,
   land: (t: number) => [number, number, number], whoosh: number, first?: TailFirst): Glyph[] {
-  const f = 1 + (plan.F - 1) * backOut(clamp((age - plan.whoosh) / whoosh)), cx = (i: number) => rest.pos[i][0] * f;
+  const k = backOut(clamp((age - plan.whoosh) / whoosh)), f = 1 + (plan.F - 1) * k, fy = 1 + (plan.Fy - 1) * k;
+  const cx = (i: number) => rest.pos[i][0] * f, cy = (i: number) => rest.pos[i][1] * fy;
   const q = plan.modDone.map((t) => (age >= t ? land(age - t) : null));
   const tf = (i: number, x: number, y: number): [number, number] => {
     const Q = q[i], [mx, my] = rest.pos[i];
-    if (!Q) return [x + cx(i) - mx, y];
+    if (!Q) return [x + cx(i) - mx, y + cy(i) - my];
     const a = (x - mx) * Q[0], b = (y - my) * Q[1];
-    return [cx(i) + a * Math.cos(Q[2]) - b * Math.sin(Q[2]), my + a * Math.sin(Q[2]) + b * Math.cos(Q[2])];
+    return [cx(i) + a * Math.cos(Q[2]) - b * Math.sin(Q[2]), cy(i) + a * Math.sin(Q[2]) + b * Math.cos(Q[2])];
   };
   rest.polys.forEach((Q, i) => { if (q[i]) polygon(ctx, Q.map(([x, y]) => tf(i, x, y))); });
   ctx.beginPath();
   if (first) {
-    const i = first.tail.from, T = follow(first.tail, first.items, [cx(i), rest.pos[i][1]]);
+    const i = first.tail.from, T = follow(first.tail, first.items, [cx(i), cy(i)]);
     for (const d of tailDots(T, easeOut(clamp(age / TAIL_FIRST)), first.sec, first.ph, first.still, true)) circle(ctx, d.x, d.y, RF * d.r);
   }
   const [ex, ey] = dev;
@@ -93,7 +94,7 @@ export function paintEntrance(ctx: CanvasRenderingContext2D, rest: ReturnType<ty
     }
   }
   ctx.fill();
-  return rest.pos.map(([, y], i) => ({ x: cx(i), y, op: age >= plan.modDone[i] ? clamp((age - plan.modDone[i]) / 0.08) : 0, q: q[i] }));
+  return rest.pos.map((_, i) => ({ x: cx(i), y: cy(i), op: age >= plan.modDone[i] ? clamp((age - plan.modDone[i]) / 0.08) : 0, q: q[i] }));
 }
 
 /** 글자들을 제자리로 — glyphs는 VoiceBubble의 .arc-glyph들(차례가 같다). (x, y) u → px = o + x · u */

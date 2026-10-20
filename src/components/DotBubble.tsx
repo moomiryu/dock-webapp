@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import VoiceBubble from './VoiceBubble';
-import { ENTRANCE, TAIL_FIRST, arrange, arrangeOf, bigScale, boundsOf, fitTail, follow, gapsOf, kindOf, modulesAt, mouthOf, planEntrance, tailOf, tipAt, type Item, type Plan, type Tail } from '../lib/aggregate';
+import { ENTRANCE, TAIL_FIRST, arrange, arrangeOf, bigScale, evenSpread, boundsOf, fitTail, follow, gapsOf, kindOf, modulesAt, mouthOf, planEntrance, tailOf, tipAt, type Item, type Plan, type Tail } from '../lib/aggregate';
 import { paintBody, paintEntrance, placeGlyphs } from '../lib/dotPaint';
 import { fontMap, opticalFix } from '../lib/palettes';
 import type { Align, ToneState } from '../types';
@@ -28,7 +28,7 @@ const FILL = 0.86;
 const DEV_DROP = 30 / 720;
 const easeOut = (k: number) => 1 - (1 - k) ** 3;
 /** pick의 꼬리 먼저 — 쏘는 점도 다 선 글자도 없는 등장. paintEntrance에 주면 꼬리만 입 쪽 끝부터 솟는다(5/5와 같은 꼬리 셈) */
-const NOTHING_YET = (n: number): Plan => ({ shots: [], modDone: Array(n).fill(Infinity), whoosh: Infinity, F: 1, landed: Infinity });
+const NOTHING_YET = (n: number): Plan => ({ shots: [], modDone: Array(n).fill(Infinity), whoosh: Infinity, F: 1, Fy: 1, landed: Infinity });
 const clamp = (k: number) => Math.min(1, Math.max(0, k));
 
 interface Props {
@@ -94,10 +94,10 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
           room = tailOf(items, kd, dev1, Infinity, true);
         }
         // 꼬리가 먼저(결정 9 — 벽과 같은 차례) — 모였을 때의 꼬리를 첫 글자의 퍼진 자리에 붙여 먼저 세우고, 글자 점들은 그 밑동(입)에서 나간다
-        const i = room.from, mouth = mouthOf(follow(tailOf(items, kd, dev1), items, rest.pos[i])), plan = planEntrance(items, kd, mouth, S, W);
-        const tail = fitTail(items, kd, dev1, [[S1, W / 2, H / 2, items[i].x, items[i].y], [S, W / 2, H / 2, rest.pos[i][0] * plan.F, rest.pos[i][1]]], W, H);
+        const i = room.from, t1 = tailOf(items, kd, dev1), mouth = mouthOf(follow(t1, items, rest.pos[i])), plan = planEntrance(items, kd, mouth, S, W, H, evenSpread(arr), t1);
+        const tail = fitTail(items, kd, dev1, [[S1, W / 2, H / 2, items[i].x, items[i].y], [S, W / 2, H / 2, rest.pos[i][0] * plan.F, rest.pos[i][1] * plan.Fy]], W, H);
         fit.current = { W, H, u0: S, ox0: W / 2, oy0: H / 2, u1: S1, ox1: W / 2, oy1: H / 2, tail, plan,
-          spread: items.map((it) => ({ ...it, ax: it.ax * plan.F })), dev: [mouth[0], mouth[1]], merge: plan.whoosh + WHOOSH + hold };
+          spread: items.map((it) => ({ ...it, ax: it.ax * plan.F, ay: it.ay * plan.Fy })), dev: [mouth[0], mouth[1]], merge: plan.whoosh + WHOOSH + hold };
       } else {
         const cap = Math.max(28, Math.min(72, H * 0.06));
         const sizeFor = (b: readonly number[]) => Math.min((W * FILL) / (b[2] - b[0]), (H * FILL) / (b[3] - b[1]));

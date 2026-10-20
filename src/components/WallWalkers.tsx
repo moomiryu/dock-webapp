@@ -116,6 +116,8 @@ export default function WallWalkers({ beat }: { beat?: { current: DockBeat | nul
     // ── 만남 — 한 명(v)이 앉은 다른 이(h)에게 가서 마주 앉아 수다, 그다음 나란히 하늘, 그리고 각자 자리로
     let meet: { v: Walker; h: Walker; phase: 'go' | 'chat' | 'sky'; t: number } | null = null, nextMeet = start + rnd(MEET.first);
     const docking = (now: number) => { const b = beatRef.current?.current; return !!b && now >= b.start && now < b.rise; };
+    /** 이번 도킹에 로고 앞에서 비켜서는 중인 사람 — 띠를 벗어나도 고른 자리에 닿을 때까지 걷는다(결정 20) */
+    const aside = new Set<Walker>();
     const brain = (now: number) => {
       if (docking(now)) { meet = null; return; }
       if (!meet && now > nextMeet && ws.length > 1 && ws.every((w) => w.mode !== 'off' && w.mode !== 'pop')) {
@@ -159,9 +161,11 @@ export default function WallWalkers({ beat }: { beat?: { current: DockBeat | nul
         if (w.nextSmile) w.smileUntil = now + HOLD * T.smileDur;
         w.nextSmile = Math.max(now, w.smileUntil) + HOLD * rnd(T.smileGap);
       }
-      // 도킹 — 제자리에 서서 올려다본다(그리기). 로고 앞을 지나던 중이면 가까운 쪽 칸 바깥 띠까지 걸어 나가서 선다(결정 20) — 자리는 한 번만 고른다
-      if (docking(now) && !(w.mode === 'walk' && logo(w.x))) return;
-      if (docking(now) && (logo(w.tx) || w.tx < W / 2 !== w.x < W / 2)) w.tx = offLogo(w.x);
+      // 도킹 — 제자리에 서서 올려다본다(그리기). 로고 앞을 지나던 중이면 가까운 쪽 칸 바깥 띠까지 걸어 나가서 선다(결정 20) — 자리는 한 번만
+      // 고르고, 띠를 벗어난 뒤에도 그 자리까지 걷는다(벗어나는 순간 서면 띠 가장자리 0~2.5px 밖에 섰다 — 셋째 점검)
+      if (!docking(now)) aside.delete(w);
+      else if (!(w.mode === 'walk' && (logo(w.x) || aside.has(w)))) return;
+      else if (!aside.has(w)) { w.tx = offLogo(w.x); aside.add(w); }
       if (w.mode === 'walk') {
         const dx = w.tx - w.x;
         w.face = dx < 0 ? 1 : -1; w.look = 'ahead';

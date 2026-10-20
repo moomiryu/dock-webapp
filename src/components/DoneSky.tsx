@@ -67,19 +67,23 @@ export default function DoneSky({ text, tone }: { text?: string; tone?: ToneStat
       // 내 말은 '부제 아래(한 칸 띄워) ~ 메가폰트 위' 칸과 폭 0.8W 안에 — 긴 글은 줄이고, 꼭대기 자리가 그 칸보다 높으면(키 큰 글 · 낮은
       // 화면) 호의 세로 반지름을 줄여 꼭대기를 내린다. 짧은 글 · 보통 화면은 견본 그대로(× 1.05)
       const top = sub ? sub.bottom - fr.top + gap : 0, room = r.top - fr.top - top;
-      const uOf = (m: Msg) => (m.me ? Math.min(ARC.me * U, (MOVE.maxW * W) / (m.box[2] - m.box[0]), room / (m.box[3] - m.box[1])) : U);
+      // 단 회색 말보다는 작아지지 않는다 — 낮은 화면(320 × 568)에서 그 칸이 음수(−19.7px)가 되어 u가 음수 → 180° 뒤집힌 작은 덩어리로
+      // 그려졌다(움직임 줄이기에선 글자가 6px까지). 칸이 모자라 메가폰트 윗부분에 걸리면 걸린 채 둔다 — 층이 메가폰트 뒤다(2026-10-20 점검)
+      const uOf = (m: Msg) => (m.me ? Math.max(U, Math.min(ARC.me * U, (MOVE.maxW * W) / (m.box[2] - m.box[0]), room / (m.box[3] - m.box[1]))) : U);
       ry = ARC.ry * box;
       if (mine) ry = Math.min(ry, C[1] - top - ((mine.box[3] - mine.box[1]) * uOf(mine)) / 2);
       const ext = (m: Msg, u: number, th: number) => { const a = (th * Math.PI) / 180; return Math.abs((m.box[2] - m.box[0]) * u * Math.sin(a)) + Math.abs((m.box[3] - m.box[1]) * u * Math.cos(a)); };
       const R = (ARC.rx * box + ry) / 2, deg = (px: number) => (px / R) * (180 / Math.PI);
       seats = [];
-      let L = 270, Rr = 270, lastL: { m: Msg; u: number } | null = null, lastR: { m: Msg; u: number } | null = null;
+      let L = 270, Rr = 270, lastL: { m: Msg; u: number } | null = null, lastR: { m: Msg; u: number } | null = null, k = 0;
       for (const m of all) {
         const u = uOf(m);
         if (!lastL || !lastR) { seats.push({ m, th: 270, u }); lastL = lastR = { m, u }; continue; }
-        const right = seats.length % 2 === 0, prev = right ? lastR : lastL, from = right ? Rr : L, sign = right ? 1 : -1;
+        const right = k++ % 2 === 1, prev = right ? lastR : lastL, from = right ? Rr : L, sign = right ? 1 : -1;
         let th = from + sign * deg(ext(prev.m, prev.u, from) / 2 + gap + ext(m, u, from) / 2);
         th = from + sign * deg(ext(prev.m, prev.u, from) / 2 + gap + ext(m, u, th) / 2);
+        // 호 끝(a0 ~ a1) 밖이면 앉히지 않는다 — 회색 말이 하나 준다. 끝 밖(200° · 341°)에 앉아 흐린 채 시작했다(2026-10-20 점검)
+        if (th < ARC.a0 || th > ARC.a1) continue;
         seats.push({ m, th, u });
         if (right) { Rr = th; lastR = { m, u }; } else { L = th; lastL = { m, u }; }
       }

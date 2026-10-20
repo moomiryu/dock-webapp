@@ -173,7 +173,7 @@ export function arrange(lines: readonly string[], align: Align, kd: Kind): Item[
 /** 점 하나 — 자리(u) · 배율 · 모듈 차례(-1 = 틈 메움 · 꼬리) · 꼬리 진행(꼬리 점만) */
 export interface Dot { x: number; y: number; r: number; mod: number; t?: number }
 /** 꼬리 — 점들 · 나부끼는 방향(꼬리에 수직) · 붙은 글자 · 끝(터질 때 여기서부터) */
-export interface Tail { dots: Dot[]; perp: P; from: number; tip: P }
+export interface Tail { dots: Dot[]; perp: P; from: number; tip: P; L: number }
 /** 모듈 크기(u) — 모일수록 1.12배로 */
 export const sizeAt = (kd: Kind, m: number) => M * kd.k * (1 + 0.12 * m);
 
@@ -207,14 +207,16 @@ export function gapsOf(items: readonly Item[], kd: Kind): Dot[] {
  * 꼬리 — 맨 아래 줄에서 기기(dev, 덩어리 좌표 u)에 가장 가까운 글자의 가장자리(0.45s)에서 나와 기기를 가리킨다(모인 자리에서 셈한다).
  * 꼬리 '더 날렵'(결정 24, 2026-10-20 디자이너 — "너무 둔해 보인다"): 밑동 반폭 0.38u, 길이 max(0.28 × 덩어리 폭, 3.3u), 점 크기는 밑동부터
  * 끝까지 가늘어져 아주 작은 점으로 맺힌다(max(0.12, 1 − 0.88 t^0.85)). 예전 값은 반폭 max(0.055 × 폭, 0.77) · 길이 max(0.2 × 폭, 2.25) ·
- * 끝 절반만 1 − 1.3(t − 0.5). 폰 · 벽 · 홈 · 튜토 모든 말풍선이 함께 바뀐다
+ * 끝 절반만 1 − 1.3(t − 0.5). 폰 · 벽 · 홈 · 튜토 모든 말풍선이 함께 바뀐다.
+ * max — 길이의 상한(옛 길이 2.25 아래로는 안 줄인다, fitTail). room — 옛 꼴(예전 반폭 · 길이) 그대로: 글자 크기를 잡는 자리로만 쓴다
  */
-export function tailOf(items: readonly Item[], kd: Kind, dev: P): Tail {
+export function tailOf(items: readonly Item[], kd: Kind, dev: P, max = Infinity, room = false): Tail {
   const s = sizeAt(kd, 1), last = Math.max(...items.map((i) => i.li));
   let fi = 0, best = Infinity;
   items.forEach((it, i) => { const d = Math.hypot(it.x - dev[0], it.y - dev[1]); if (it.li === last && d < best) { best = d; fi = i; } });
   const it = items[fi], du = Math.hypot(dev[0] - it.x, dev[1] - it.y) || 1, ux = (dev[0] - it.x) / du, uy = (dev[1] - it.y) / du, xs = items.map((i) => i.x);
-  const span = Math.max(...xs) - Math.min(...xs) + s, w = 0.38, L = Math.max(0.28 * span, 3.3);
+  const span = Math.max(...xs) - Math.min(...xs) + s, w = room ? Math.max(0.055 * span, 0.77) : 0.38;
+  const L = room ? Math.max(0.2 * span, 2.25) : Math.max(2.25, Math.min(Math.max(0.28 * span, 3.3), max));
   const ax = ux * s * 0.45, ay = uy * s * 0.45, b: P = [ax - ux * w, ay - uy * w];
   const T: P[] = [[b[0] - uy * w, b[1] + ux * w], [ax + ux * L, ay + uy * L], [b[0] + uy * w, b[1] - ux * w]];
   const tx = T.map((q) => q[0]), ty = T.map((q) => q[1]), dots: Dot[] = [];
@@ -224,7 +226,30 @@ export function tailOf(items: readonly Item[], kd: Kind, dev: P): Tail {
     const t = Math.max(0, Math.min(1, ((x - b[0]) * ux + (y - b[1]) * uy) / (L + w)));
     dots.push({ x: it.x + x, y: it.y + y, r: Math.max(0.12, 1 - 0.88 * t ** 0.85), mod: -1, t });
   }
-  return { dots, perp: [-uy, ux], from: fi, tip: [it.x + ax + ux * L, it.y + ay + uy * L] };
+  return { dots, perp: [-uy, ux], from: fi, tip: [it.x + ax + ux * L, it.y + ay + uy * L], L };
+}
+/**
+ * 무대 안에 드는 꼬리(2026-10-20 점검 둘째) — 결정 24로 꼬리가 길어지자 폰 무대가 그 꼬리까지 담느라 글자가 3.5 ~ 14% 작아졌고(5/5),
+ * 낱개 단계는 꼬리를 아예 셈하지 않아 끝이 무대 밖으로 나갔다(4/5). 글자 크기는 옛 꼬리 자리(tailOf … room)로 그대로 잡고, 꼬리가
+ * 양보한다 — 꼬리가 그려질 자리들(at = [1u의 px, 원점 x, y, 붙은 글자 x, y(u)]) 모두에서 끝(+ 점 반지름 · 나부낌 폭)이 W × H 안에
+ * 드는 만큼만 길다. 옛 길이 2.25까지만 줄인다
+ */
+export function fitTail(items: readonly Item[], kd: Kind, dev: P, at: readonly (readonly number[])[], W: number, H: number): Tail {
+  const tail = tailOf(items, kd, dev), [nx, ny] = tail.perp, ux = ny, uy = -nx;
+  let cut = 0;
+  for (const place of at) {
+    const [tx, ty, px, py] = tipAt(tail, items, place), u = place[0];
+    if (ux > 0) cut = Math.max(cut, (tx + px - W) / (u * ux));
+    if (ux < 0) cut = Math.max(cut, (px - tx) / (u * -ux));
+    if (uy > 0) cut = Math.max(cut, (ty + py - H) / (u * uy));
+    if (uy < 0) cut = Math.max(cut, (py - ty) / (u * -uy));
+  }
+  return cut > 0 ? tailOf(items, kd, dev, tail.L - cut) : tail;
+}
+/** 꼬리 끝의 화면 자리(px)와 덧(점 반지름 + 나부낌 최대 1.2G × 1.35의 가로 · 세로 몫) — place = [1u의 px, 원점 x, y, 붙은 글자 x, y(u)] */
+export function tipAt(tail: Tail, items: readonly Item[], [u, ox, oy, x, y]: readonly number[]): [number, number, number, number] {
+  const it = items[tail.from], sway = 1.62 * G * u;
+  return [ox + (tail.tip[0] - it.x + x) * u, oy + (tail.tip[1] - it.y + y) * u, RF * u + sway * Math.abs(tail.perp[0]), RF * u + sway * Math.abs(tail.perp[1])];
 }
 /** 꼬리를 붙은 글자의 지금 자리로(꼬리는 모인 자리에서 셈한다 — 퍼져 있는 동안 · 모이는 동안엔 첫 글자에 붙어 다닌다, 결정 9) */
 export function follow(tail: Tail, items: readonly Item[], at: readonly number[]): Tail {

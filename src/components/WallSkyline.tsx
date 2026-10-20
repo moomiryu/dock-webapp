@@ -10,10 +10,14 @@ import { groundPx } from '../lib/ground';
  *
  * 실루엣(가로 = 벽 폭의 몫, 높이 = 땅 띠 윗선에서 위로 벽 높이의 몫): 강의동(박공) · 시계탑(첨탑) · 도서관(박공) · 낮은 동 · (가운데
  * 0.385 ~ 0.63은 비움 — 로고 · 기기, 하늘 말 꼬리들의 꼭짓점) · 기숙사 · 학생회관(돔) · 강의동(작은 탑). 그 합집합 안의 벌집 격자 점(벽
- * 격자 — 화면 왼쪽 위가 원점, 간격 = 하늘 말 점 간격 G)마다 반지름 RF × 1.08의 원. 땅 띠 윗선 아래로는 반 줄까지만.
+ * 격자 — 화면 왼쪽 위가 원점, 간격 = 하늘 말 점 간격 G)마다 반지름 RF × 1.08의 원.
  *
- * 층은 벽 바탕 바로 위 — 소리의 결 · 땅 · 하늘 말 · 부스러기 · 작은 사람보다 뒤(WallSimulation에서 맨 앞에 놓는다). 움직이지 않고 도킹
- * 때도 그대로다 — 창 크기가 바뀔 때만 다시 그린다.
+ * 해와 구름(결정 29 — "우리 결로"): 같은 짓는 법, 색만 한 단계 밝은 --grey-800(먼 것이 옅게). 해는 왼쪽 위 원 하나(학생회관 돔과 떨어지게),
+ * 움직이지 않는다. 구름 넷은 부채꼴 하늘이 비워 두는 네 귀 · 양옆에 — 말풍선이 가장자리에 없어서(디자이너). 화면 끝에서 조금 잘려도 되고,
+ * 가운데로 흘러 들어오지 않는다 — 제자리에서 화면 폭의 ±1.5%만 40초에 한 번 오간다, 구름마다 박자를 엇갈려. 움직임 줄이기면 멈춘다.
+ *
+ * 층은 벽 바탕 바로 위 — 해 → 구름 → 건물 다음에야 소리의 결 · 땅 · 하늘 말 · 부스러기 · 작은 사람(WallSimulation에서 맨 앞에 놓는다).
+ * 도킹 때도 그대로다 — 창 크기가 바뀔 때만 다시 그린다.
  */
 type Shape = (x: number, y: number) => boolean;
 /** 건물 — [모양, 가로 시작, 끝, 높이(또는 돔 가운데 높이), 박공 · 첨탑의 높이 또는 돔 반지름(벽 높이의 몫)] */
@@ -26,21 +30,57 @@ const BUILDINGS: readonly (readonly ['rect' | 'roof' | 'dome', number, number, n
   ['rect', 0.72, 0.86, 0.1], ['dome', 0.79, 0.79, 0.1, 0.055],        // 학생회관 — 돔
   ['rect', 0.88, 1, 0.13], ['rect', 0.925, 0.95, 0.18]                // 강의동 — 작은 탑
 ];
+/** 해 — 가운데(벽 폭 · 높이의 몫), 반지름(벽 높이의 몫) */
+const SUN = [0.12, 0.17, 0.065] as const;
+/** 구름 — 가운데 가로 · 세로(벽의 몫), 폭(벽 폭의 몫), 오가는 박자의 출발점(한 번 오가는 것의 몫). 왼쪽 위 · 오른쪽 위 · 왼쪽 옆 · 오른쪽 옆 */
+const CLOUDS = [[0.06, 0.07, 0.13, 0], [0.93, 0.09, 0.12, 0.4], [0.03, 0.37, 0.1, 0.7], [0.96, 0.33, 0.11, 0.15]] as const;
+/** 구름 꼴 — 폭 w · 높이 0.5w 상자 안 둥근 혹 다섯의 합집합 [가로, 세로, 반지름](w의 몫), 아래는 0.82h에서 평평하게(견본 식 그대로) */
+const BUMPS = [[0.18, 0.62, 0.17], [0.38, 0.42, 0.24], [0.6, 0.48, 0.21], [0.8, 0.64, 0.15], [0.48, 0.7, 0.2]] as const;
+/** 구름이 오가는 폭(벽 폭의 몫) · 한 번 오가는 시간(초) */
+const SWAY = 0.015, SWAY_S = 40;
 /** 점 반지름의 덧 — 이웃 점이 겹쳐 속이 한 면이 되게(견본 값) */
 const FILL = 1.08;
 
 export default function WallSkyline() {
-  const ref = useRef<HTMLCanvasElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const cv = ref.current, ctx = cv?.getContext('2d');
-    if (!cv || !ctx) return;
-    const color = getComputedStyle(document.documentElement).getPropertyValue('--grey-900').trim();
+    const box = ref.current;
+    if (!box) return;
+    const css = getComputedStyle(document.documentElement), far = css.getPropertyValue('--grey-800').trim(), near = css.getPropertyValue('--grey-900').trim();
     const draw = () => {
       const W = window.innerWidth, H = window.innerHeight, dpr = Math.min(2, window.devicePixelRatio || 1);
-      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, W, H);
-      const gTop = H - groundPx(H), X = (f: number) => f * W, Y = (h: number) => gTop - h * H;
+      const u = SKY.u * H, g = G * u, row = (g * Math.sqrt(3)) / 2, r = RF * u * FILL;
+      /** w × h 안 벌집 점(왼쪽 위가 원점) 중 inside인 것을 color로 — 점이 잘리지 않게 사방 r만큼 넓힌 캔버스를 (x, y)에 놓는다 */
+      const dots = (x: number, y: number, w: number, h: number, color: string, inside: Shape) => {
+        const cv = document.createElement('canvas'), ctx = cv.getContext('2d')!;
+        cv.width = Math.ceil((w + 2 * r) * dpr); cv.height = Math.ceil((h + 2 * r) * dpr);
+        cv.style.cssText = `position:absolute;left:${x - r}px;top:${y - r}px;width:${cv.width / dpr}px;height:${cv.height / dpr}px`;
+        ctx.setTransform(dpr, 0, 0, dpr, r * dpr, r * dpr);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        for (let j = 0; j * row <= h + row; j++) {
+          const py = j * row, off = j & 1 ? g / 2 : 0;
+          for (let i = -1; i * g + off <= w + g; i++) {
+            const px = i * g + off;
+            if (inside(px, py)) { ctx.moveTo(px + r, py); ctx.arc(px, py, r, 0, 2 * Math.PI); }
+          }
+        }
+        ctx.fill();
+        return box.appendChild(cv);
+      };
+      box.replaceChildren();
+      const sr = SUN[2] * H;
+      dots(SUN[0] * W - sr, SUN[1] * H - sr, 2 * sr, 2 * sr, far, (x, y) => (x - sr) ** 2 + (y - sr) ** 2 <= sr * sr);
+      const still = matchMedia('(prefers-reduced-motion: reduce)').matches, A = SWAY * W;
+      for (const [cx, cy, fw, phase] of CLOUDS) {
+        const w = fw * W, h = w * 0.5;
+        const cv = dots(cx * W - w / 2, cy * H - h / 2, w, h, far, (x, y) =>
+          y <= h * 0.82 && BUMPS.some(([bx, by, br]) => (x - bx * w) ** 2 + (y - by * h * 1.6 + h * 0.18) ** 2 <= (br * w) ** 2));
+        if (still) continue;
+        const steps = Array.from({ length: 25 }, (_, k) => ({ transform: `translateX(${A * Math.sin((k / 24) * 2 * Math.PI)}px)` }));
+        cv.animate(steps, { duration: SWAY_S * 1000, iterations: Infinity, iterationStart: phase });
+      }
+      const gTop = H - groundPx(H), X = (f: number) => f * W, Y = (f: number) => gTop - f * H;
       const shapes: Shape[] = BUILDINGS.map(([kind, x0, x1, h, k = 0]) => {
         if (kind === 'rect') return (x, y) => x >= X(x0) && x <= X(x1) && y >= Y(h) && y <= gTop;
         if (kind === 'dome') return (x, y) => (x - X(x0)) ** 2 + (y - Y(h)) ** 2 <= (k * H) ** 2;
@@ -49,22 +89,12 @@ export default function WallSkyline() {
           return y >= top && y <= bot && Math.abs(x - (X(x0) + X(x1)) / 2) <= (half * (y - top)) / (bot - top);
         };
       });
-      const u = SKY.u * H, g = G * u, row = (g * Math.sqrt(3)) / 2, r = RF * u * FILL;
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      for (let j = Math.floor(Y(0.36) / row); j * row <= gTop + row * 0.5; j++) {
-        const y = j * row, off = j & 1 ? g / 2 : 0;
-        for (let i = -1; i * g + off <= W + g; i++) {
-          const x = i * g + off;
-          if (shapes.some((f) => f(x, y))) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, 2 * Math.PI); }
-        }
-      }
-      ctx.fill();
+      dots(0, 0, W, H, near, (x, y) => shapes.some((f) => f(x, y)));
     };
     draw();
     window.addEventListener('resize', draw);
     return () => window.removeEventListener('resize', draw);
   }, []);
-  return <canvas ref={ref} className="wall-skyline" aria-hidden="true"
-    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', pointerEvents: 'none' }} />;
+  return <div ref={ref} className="wall-skyline" aria-hidden="true"
+    style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }} />;
 }

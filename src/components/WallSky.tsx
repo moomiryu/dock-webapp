@@ -41,9 +41,12 @@ import type { DockBeat } from './WallWalkers';
  * 사흘이 지나 터진 자리는 다음 돌림이 터뜨리지 않고 올리기만 해서 상한까지 다시 채운다.
  * 한 도킹은 한 번만 연다 — 뗀 뒤에도 dock이 { key, release }로 남아 있으니, 끝난 key가 다시 들어와도 열지 않는다(M.opened).
  *
- * 말의 부스러기(결정 6) — 터지는 말의 점 다섯 알에 한 알꼴이 제 색으로(회색으로 가라앉아 있었어도) 땅에 떨어져 모래처럼 쌓이고, 땅 색으로
- * 천천히 바래다 가라앉는다. 기기에서 쏘아 올라 → 하늘에 쌓이고 → 터져 → 땅에 내려앉는 한 바퀴. 더미는 배경 — 작은 사람 뒤에 그린다.
- * 처음 켤 땐 빈 땅에서 시작한다.
+ * 말의 부스러기(결정 6 · 37) — 터지는 말의 점 다섯 알에 한 알꼴이 제 색으로(회색으로 가라앉아 있었어도) 땅에 떨어진다. 흘러내리지 않고
+ * 그 말 몸통 폭만큼의 자리(터진 자리 바로 아래)에 지붕이 평평한 덩어리로 줄줄이 쌓여 건물이 된다(결정 37 B2 — 디자이너 "바닥에 흩뿌려지는
+ * 게 쌓여서 다채로운 건물이 된다"). 줄이 상한에 닿으면 그 줄의 가장 오래된 맨 아래 칸이 땅 띠 속으로 가라앉고 위가 한 칸씩 내려앉아 —
+ * 높이는 그대로, 꼭대기는 늘 최근 말의 색, 아래로 갈수록 바랜 색. 땅 색으로 천천히 바래다 이틀이 지나면 가라앉는 것은 그대로라 말이
+ * 뜸해지면 동네가 낮아진다. 기기에서 쏘아 올라 → 하늘에 쌓이고 → 터져 → 땅에 내려앉는 한 바퀴. 건물은 배경 — 하늘 말 · 작은 사람 뒤에
+ * 그린다. 처음 켤 땐 빈 땅에서 시작한다.
  */
 const GATHER = 0.7, WAIT = 0.4, RISE = 1.4, WHOOSH = 0.7;
 /** 터짐이 꼬리 끝에서 번지는 빠르기 — 벽 폭의 몫/초(견본 520px@1280) · 시작까지 · 다 터지고 걷는 때 */
@@ -51,16 +54,19 @@ const POP_V = 520 / 1280, POP_DELAY = 0.25, POP_DONE = 3;
 /** 하늘 말을 다시 그리는 간격(초 — 나부낌 · 둥실은 30fps). 도킹 중의 큰 말은 매 프레임 */
 const SKY_DT = 0.033;
 /**
- * 부스러기 — 다섯 알에 한 알 · 중력(화면 높이/초²) · 처음 속도(가로 ± 폭의 몫/초, 위로 높이의 몫/초) · 더미 높이 상한(땅 띠 위, 벽 높이의 몫) ·
- * 로고 앞 비우는 반폭(폭의 몫 — 떨어지면 가까운 가장자리로, 흘러내려도 벽처럼 넘지 않는다) · 바래는 시간(초 — 하루, 2026-10-20 결정 22로
- * 확정. 견본은 45초) · 다 바랜 뒤 그만큼 더 지나면 땅 띠 속으로 가라앉아 없어진다(더미가 끝없이 차지 않게 — 한 알이 --t-crumb-sink초에 한
- * 칸, 위의 알들이 함께 내려앉는다) · 바래는 동안 다시 칠하는 간격(초)
+ * 부스러기 — 다섯 알에 한 알 · 중력(화면 높이/초²) · 처음 속도(가로 ± 폭의 몫/초, 위로 높이의 몫/초) · 건물 높이 상한(땅 띠 위, 벽 높이의 몫 —
+ * 결정 37에서 3% → 25%. 닿으면 아래부터 가라앉는다) · 로고 앞 비우는 반폭(폭의 몫 — 건물 자리가 걸치면 가까운 바깥으로 민다) · 바래는
+ * 시간(초 — 하루, 2026-10-20 결정 22로 확정. 견본은 45초) · 다 바랜 뒤 그만큼 더 지나면 땅 띠 속으로 가라앉아 없어진다(한 알이
+ * --t-crumb-sink초에 한 칸, 위의 알들이 함께 내려앉는다) · 바래는 동안 다시 칠하는 간격(초) · 바랜 정도를 몇 단계로 칠하나(같은 색끼리
+ * 한 번에 칠하려고 — 하루를 64단계면 한 단계가 22분이라 눈에 안 보인다)
  */
-const CRUMB = { every: 5, gravity: 2.2, vx: 0.03, vy: 0.06, maxH: 0.03, logo: 0.04, fade: 86400, sink: 86400, repaint: 10 };
+const CRUMB = { every: 5, gravity: 2.2, vx: 0.03, vy: 0.06, maxH: 0.25, logo: 0.04, fade: 86400, sink: 86400, repaint: 10, tones: 64 };
 /** 돌려 보이기(결정 8) — 간격(초) · 터진 뒤 쏘기까지 · 쏘아 올라 붙는 시간 · 기기에서 나올 때의 배율 */
 const ROT = { every: 60, wait: 0.9, shot: 1.4, from: 0.4 };
-type Crumb = { col: string; t: number };
-type Fall = { x: number; y: number; vx: number; vy: number; col: string };
+/** 쌓인 알 — 색 · 내려앉은 때 · 가라앉기 시작한 때(상한에 닿아 밀려났을 때만 — 없으면 다 바래고 하루 뒤) */
+type Crumb = { col: string; t: number; s?: number };
+/** 떨어지는 알 — 자리 · 속도 · 색 · 건물 자리(그 말 몸통의 가로 범위, px) */
+type Fall = { x: number; y: number; vx: number; vy: number; col: string; fp: P };
 const easeOut = (k: number) => 1 - (1 - k) ** 3;
 const easeIO = (k: number) => (k < 0.5 ? 4 * k ** 3 : 1 - (-2 * k + 2) ** 3 / 2);
 const clamp = (k: number) => Math.min(1, Math.max(0, k));
@@ -73,8 +79,8 @@ interface Base { id: string; msg: StoredMessage; lines: string[]; kd: Kind; item
 type Place = Seat & Seated;
 /** 하늘에 붙은 말 — 자리 · 미끄러지는 중(from → pos, fromRot → rot, mv초부터) · 아래에서 올라오는 중 · 꼬리 · 캔버스 범위(u) · 터지는 때 */
 interface Sky extends Base, Place { from?: P; fromRot?: number; mv?: number; up?: number; tail: Tail; box: Box; popAt?: number;
-  /** 터질 때 땅에 떨어질 점(다섯 알에 한 알) · 이미 떨어뜨린 점 */
-  seeds?: Dot[]; sent?: Set<number> }
+  /** 터질 때 땅에 떨어질 점(다섯 알에 한 알) · 이미 떨어뜨린 점 · 건물 자리(터진 순간 몸통의 가로 범위, px) */
+  seeds?: Dot[]; sent?: Set<number>; fp?: P }
 /** 도킹하는 말 — 시작(초) · 크게 선 1u(px) · 등장 계획 · 휭 퍼진 낱개 자리 · 낱개 자리의 모듈 · 기기(u) · 큰 꼬리 · 하늘 자리 · 해제(초) · 광각 고리 */
 interface Dock extends Base { key: number; T: number; S: number; plan: Plan; spread: Item[]; rest: ReturnType<typeof modulesAt>; mouth: readonly [number, number]; tail: Tail; at: Place; release: number; ring: Map<Sky, { to: P; rot: number }>;
   /** 글자가 다 서기 전에 뗐다(결정 21) — 남은 글자를 당겨 세우고 휭 · 머묾 없이 곧장 모인다 */
@@ -161,7 +167,7 @@ export default function WallSky({ list, dock, beat, waves, perch }: Props) {
   const els = useRef(new Map<string, Els>());
   /** queue = 기다림 줄(글 id, 앞이 먼저) · shot = 쏘아 오르는 말 · nextRot = 다음 돌림(초) */
   const model = useRef({ sky: [] as Sky[], leaving: [] as Sky[], dock: null as Dock | null, queue: [] as string[], shot: null as Launch | null, nextRot: Infinity, W: 0, H: 0, u: 0, ready: false,
-    /** 부스러기 — 점 간격 칸마다 쌓인 더미(아래부터) · 떨어지는 점 · 다시 칠할까 · 마지막으로 칠한 때 · 마지막 걸음 */
+    /** 부스러기 — 점 간격 칸마다 쌓인 건물(아래부터) · 떨어지는 점 · 다시 칠할까 · 마지막으로 칠한 때 · 마지막 걸음 */
     crumbs: { cols: [] as Crumb[][], falls: [] as Fall[], dirty: true, painted: -Infinity, last: NaN, sinking: false },
     /** 하늘 놀이 — 말의 윗선(말 id → 한 번 셈) */
     tops: new Map<string, Top>(),
@@ -378,44 +384,62 @@ export default function WallSky({ list, dock, beat, waves, perch }: Props) {
     const mix = (c: string, k: number) => { if (k <= 0) return c; const a = cssRgb(c); return `rgb(${a.map((v, i) => Math.round(v + (grey[i] - v) * k)).join(' ')})`; };
     let raf = 0, last = -Infinity;
     const glyphEls = (e: HTMLElement | null) => [...(e?.querySelectorAll<HTMLElement>('.arc-glyph') ?? [])];
-    /**
-     * 부스러기의 한 걸음 — 떨어지는 점은 중력으로 내려와 그 칸 더미 위에 닿으면 쌓인다. 쌓일 칸: 로고 앞이면 가까운 가장자리로, 옆 칸보다
-     * 두 알 이상 높아지면 낮은 쪽으로 흘러내린다(여덟 번까지), 상한을 넘으면 버린다. 더미는 벌집(홀수 층 반 칸 엇갈림) · 같은 색 메움
+    /*
+     * 부스러기 → 건물(결정 37 B2) — 떨어지는 점은 중력으로 내려와 그 칸 건물 위에 닿으면, 그 말 몸통 폭의 칸들 중 가장 낮은 칸에 얹힌다(지붕이
+     * 평평하게 오른다). 줄이 상한에 닿으면 그 줄의 가장 오래된 맨 아래 칸이 SINK초에 걸쳐 땅 띠 속으로 가라앉고 새 알은 꼭대기에 — 높이는
+     * 그대로, 꼭대기는 늘 최근 말의 색. 이틀 지난 알도 같은 방식으로 가라앉는다(결정 22). 가라앉는 알은 늘 줄의 아래쪽에 붙어 있다(오래된 순).
+     * 움직임을 줄인 화면에선 가라앉는 움직임 없이 한 번에. 건물은 벌집(층마다 반 칸 엇갈림) · 같은 색 메움
      */
-    const SINK = tokenS('--t-crumb-sink', 40);
-    const crumbs = (t: number, W: number, H: number, u: number, dpr: number) => {
-      const C = model.current.crumbs, cv = crumbCv.current, g = G * u, row = (g * Math.sqrt(3)) / 2, top = H - groundPx(H);
-      const max = Math.floor((H * CRUMB.maxH) / row), n = C.cols.length;
+    const SINK = tokenS('--t-crumb-sink', 40), due = CRUMB.fade + CRUMB.sink;
+    const sinkAt = (q: Crumb) => q.s ?? q.t + due;
+    const down = (q: Crumb, t: number) => (quiet ? (t >= sinkAt(q) ? 1 : 0) : clamp((t - sinkAt(q)) / SINK));
+    /** 한 줄이 가라앉은 몫(줄 아래쪽의 가라앉는 알들) · 가라앉기 시작한 알 수 */
+    const offOf = (stack: Crumb[], t: number) => { let o = 0; for (const q of stack) { const d = down(q, t); if (t < sinkAt(q)) break; o += d; } return o; };
+    const sinkingOf = (stack: Crumb[], t: number) => { let k = 0; while (k < stack.length && t >= sinkAt(stack[k])) k++; return k; };
+    const geo = () => { const { W, H, u } = model.current, g = G * u, row = (g * Math.sqrt(3)) / 2; return { W, H, u, g, row, top: H - groundPx(H), max: Math.floor((H * CRUMB.maxH) / row) }; };
+    /**
+     * 쌓일 칸 — 건물 자리(fp, px)의 칸들 중 지금 보이는 높이가 가장 낮은 칸(같으면 떨어진 칸 c0에 가까운 쪽). 서 있는 알 수로 고르면 상한에 닿은
+     * 뒤엔 모든 칸이 동점이라 알이 떨어진 자리 가까운 한 칸에 몰려(로고 위에서 터진 말이면 로고 옆 한 칸) 바닥이 가라앉는 40초 동안 기둥처럼
+     * 솟았다. 로고 앞(±CRUMB.logo)에 걸치면 자리째 가까운 바깥으로 민다 — 점 반지름 · 층의 반 칸 엇갈림까지 띄워 점 하나도 넘지 않게
+     */
+    const place = (fp: P, c0: number, t: number) => {
+      const { W, u, g } = geo(), C = model.current.crumbs, n = C.cols.length, rf = RF * u;
+      const lo = Math.floor((W * (0.5 - CRUMB.logo) - g / 2 - rf) / g), hi = Math.ceil((W * (0.5 + CRUMB.logo) + rf) / g);
+      let a = Math.round(fp[0] / g), b = Math.round(fp[1] / g);
+      if (b > lo && a < hi) { const w = b - a; if ((a + b) / 2 < (lo + hi) / 2) { b = lo; a = lo - w; } else { a = hi; b = hi + w; } }
+      a = Math.min(Math.max(1, a), n - 2); b = Math.max(Math.min(n - 2, b), a);
+      const height = (c: number) => C.cols[c].length - offOf(C.cols[c], t);
+      let best = a;
+      for (let c = a + 1; c <= b; c++) { const d = height(c) - height(best); if (d < 0 || (d === 0 && Math.abs(c - c0) < Math.abs(best - c0))) best = c; }
+      return best;
+    };
+    /** 내려앉는다 — 상한에 닿은 줄이면 서 있는 알 중 맨 아래(가장 오래된) 것이 가라앉기 시작하고, 새 알은 꼭대기에 */
+    const land = (c: number, col: string, t: number) => {
+      const C = model.current.crumbs, stack = C.cols[c], k = sinkingOf(stack, t);
+      if (stack.length - k >= geo().max) stack[k].s = t;
+      stack.push({ col, t });
+      C.dirty = true;
+    };
+    const crumbs = (t: number, dpr: number) => {
+      const C = model.current.crumbs, cv = crumbCv.current, { W, H, u, g, row, top } = geo(), n = C.cols.length;
       const dt = Number.isNaN(C.last) ? 0 : Math.min(0.05, t - C.last);
       C.last = t;
-      const settle = (c: number) => {
-        const lo = Math.round((W * (0.5 - CRUMB.logo)) / g), hi = Math.round((W * (0.5 + CRUMB.logo)) / g), wall = (k: number) => k > lo && k < hi;
-        if (wall(c)) c = c - lo < hi - c ? lo : hi;
-        // 흘러내릴 때 로고 앞 칸은 벽이다(점검 둘째 — 비워 둔 칸으로 8알이 흘러 들어왔다)
-        for (let k = 0; k < 8; k++) {
-          const h = C.cols[c].length, l = wall(c - 1) ? 99 : C.cols[c - 1]?.length ?? 99, r = wall(c + 1) ? 99 : C.cols[c + 1]?.length ?? 99;
-          if (h > l + 1 && l <= r) c--; else if (h > r + 1) c++; else break;
-        }
-        return C.cols[c] && C.cols[c].length < max ? c : -1;
-      };
       for (let i = C.falls.length - 1; i >= 0; i--) {
         const q = C.falls[i];
         q.vy += CRUMB.gravity * H * dt; q.vx *= 0.99; q.x += q.vx * dt; q.y += q.vy * dt;
-        const c0 = Math.max(1, Math.min(n - 2, Math.round(q.x / g)));
-        if (q.y < top - C.cols[c0].length * row) continue;
-        const c = settle(c0);
-        if (c >= 0) C.cols[c].push({ col: q.col, t });
+        // 얹힐 칸의 지붕 높이에서 멈춘다 — 떨어진 자리 아래(로고 앞이면 땅)까지 내려왔다가 다른 칸 지붕으로 솟지 않게
+        const c0 = Math.max(1, Math.min(n - 2, Math.round(q.x / g))), c = place(q.fp, c0, t), dest = C.cols[c];
+        if (q.y < top - (dest.length - offOf(dest, t)) * row) continue;
+        land(c, q.col, t);
         C.falls.splice(i, 1);
-        C.dirty = true;
       }
-      // 다 바랜 뒤 그만큼 더 지난 알은 땅 띠 속으로 가라앉는다(결정 22 — 48시간째에 한꺼번에 사라지던 것을, 한 알이 SINK초에 한 칸씩 묻히게.
-      // 위의 알들이 함께 내려앉는다). 다 묻힌 알은 지운다. 가라앉는 동안은 0.5초마다 다시 칠한다
-      const due = CRUMB.fade + CRUMB.sink, down = (q: Crumb) => clamp((t - q.t - due) / SINK), every = C.sinking ? 0.5 : CRUMB.repaint;
+      // 다 묻힌 알은 지운다. 가라앉는 동안은 0.5초마다 다시 칠한다
+      const every = C.sinking ? 0.5 : CRUMB.repaint;
       if (t - C.painted >= every) {
         C.sinking = false;
         for (const stack of C.cols) {
-          while (stack.length && down(stack[0]) >= 1) { stack.shift(); C.dirty = true; }
-          if (stack.length && t - stack[0].t > due) C.sinking = C.dirty = true;
+          while (stack.length && down(stack[0], t) >= 1) { stack.shift(); C.dirty = true; }
+          if (stack.length && t >= sinkAt(stack[0])) C.sinking = C.dirty = true;
         }
       }
       if (!cv || (!C.dirty && !C.falls.length && t - C.painted < every)) return;
@@ -426,20 +450,41 @@ export default function WallSky({ list, dock, beat, waves, perch }: Props) {
       ctx.clearRect(0, 0, cv.width, cv.height);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const rf = RF * u, rd = RD * u;
-      // 땅 띠 속은 그리지 않는다 — 맨 아래 알의 밑까지만(가라앉지 않은 더미는 예전 그대로)
+      // 땅 띠 속은 그리지 않는다 — 맨 아래 알의 밑까지만. 같은 색(제 색 × 바랜 단계)끼리 한 길로 모아 한 번에 칠한다 — 건물이 벽 높이의 25%까지
+      // 오르면 알이 수천이라 하나씩 칠하면 터지는 동안(떨어지는 점이 있는 동안 매 장면 다시 칠한다) 파이에서 끊긴다
       ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, top - 0.55 * row + rf); ctx.clip();
+      // 층의 반 칸 엇갈림은 높이로 정한다 — 이웃 칸과 같은 높이면 같은 엇갈림이어야 점이 맞물려 한 면이 된다(알마다 정했더니 이웃과 어긋난 자리에
+      // 세로 틈이 났다). 가라앉는 줄은 다 가라앉은 뒤의 줄로 — 아래 알이 빠지는 순간 옆으로 반 칸 튀지 않게
+      const paths = new Map<string, Path2D>();
       C.cols.forEach((stack, c) => {
-        const off = stack.reduce((a, q) => a + down(q), 0);
+        const off = offOf(stack, t), ks = sinkingOf(stack, t);
         stack.forEach((q, k) => {
-          ctx.fillStyle = mix(q.col, clamp((t - q.t) / CRUMB.fade));
-          ctx.beginPath(); ctx.arc(c * g + (k & 1 ? g / 2 : 0), top - (k + 0.55 - off) * row, rf, 0, 2 * Math.PI); ctx.fill();
+          const key = `${q.col}|${Math.round(clamp((t - q.t) / CRUMB.fade) * CRUMB.tones)}`, x = c * g + ((k - ks) & 1 ? g / 2 : 0), y = top - (k + 0.55 - off) * row;
+          let p = paths.get(key);
+          if (!p) paths.set(key, (p = new Path2D()));
+          p.moveTo(x + rf, y); p.arc(x, y, rf, 0, 2 * Math.PI);
         });
       });
+      for (const [key, p] of paths) { const [col, tone] = key.split('|'); ctx.fillStyle = mix(col, +tone / CRUMB.tones); ctx.fill(p); }
       ctx.restore();
       for (const q of C.falls) { ctx.fillStyle = q.col; ctx.beginPath(); ctx.arc(q.x, q.y, rd, 0, 2 * Math.PI); ctx.fill(); }
       C.dirty = false;
       C.painted = t;
     };
+    // 개발 모드의 손잡이 — 건물 빨리 감기(결정 37 확인용, 진행3 견본의 __crumbSim을 옮김). 돌림 every초에 하나꼴로 하늘 말 pops개가 터진 셈 치고,
+    // 그 말의 다섯 알에 한 알을 그 자리 아래 건물로 곧장 앉힌다(가로로 퍼지는 몫은 처음 가로 속도 × 땅까지 걸리는 시간). 시각은 지난 만큼 거슬러
+    // 적는다 — 바램 · 가라앉음이 그만큼 지난 모습으로
+    if (import.meta.env.DEV) Object.assign(window, { __crumbSim: (pops: number, every = ROT.every) => {
+      const M = model.current, { W, H, u, g, top } = geo(), now = performance.now() / 1000;
+      for (let p = 0; p < pops && M.sky.length; p++) {
+        const s = M.sky[Math.floor(Math.random() * M.sky.length)], t = now - (pops - 1 - p) * every;
+        const [x, y, rot] = whereAt(s, now), cr = Math.cos(rot), sr = Math.sin(rot), at = (d: Dot) => x + u * (d.x * cr - d.y * sr);
+        const xs = [...modulesAt(s.items, s.kd, 1).dots, ...s.gaps].map(at), fp: P = [Math.min(...xs), Math.max(...xs)];
+        const T = Math.sqrt((2 * Math.max(0, top - y)) / (CRUMB.gravity * H));
+        for (const d of leave(s, t).seeds!) land(place(fp, Math.round((at(d) + (Math.random() - 0.5) * 2 * CRUMB.vx * W * T) / g), t), s.bg, t);
+      }
+      return M.crumbs.cols.reduce((a, c) => a + c.length, 0);
+    } });
     const frame = (ms: number) => {
       raf = requestAnimationFrame(frame);
       const M = model.current, t = ms / 1000, D = M.dock;
@@ -503,20 +548,22 @@ export default function WallSky({ list, dock, beat, waves, perch }: Props) {
         ctx.fillStyle = mix(s.bg, P);
         const pop: Pop | undefined = s.popAt === undefined ? undefined : { now: t, at: (px, py) => s.popAt! + (Math.hypot(px - s.tail.tip[0], py - s.tail.tip[1]) * u) / (POP_V * W) };
         const gs = paintBody(ctx, s.items, s.kd, s.gaps, 1, s.tail, 1, t, s.ph, quiet, pop);
-        // 터진 자리의 다섯 알에 한 알 — 그 순간의 화면 자리(광각 고리 · 기울기 · 배율까지)에서 제 색으로 떨어진다
+        // 터진 자리의 다섯 알에 한 알 — 그 순간의 화면 자리(광각 고리 · 기울기 · 배율까지)에서 제 색으로 떨어진다. 건물 자리는 터지기 시작한
+        // 순간 그 말 몸통의 가로 범위(꼬리 뺌)
         if (pop && s.seeds && s.sent) {
-          const cr = Math.cos(rot), sr = Math.sin(rot);
+          const cr = Math.cos(rot), sr = Math.sin(rot), sx = (d: Dot) => X + k * u * (d.x * cr - d.y * sr);
+          if (!s.fp) { const xs = [...modulesAt(s.items, s.kd, 1).dots, ...s.gaps].map(sx); s.fp = [Math.min(...xs), Math.max(...xs)]; }
           s.seeds.forEach((d, i) => {
             if (s.sent!.has(i) || t < pop.at(d.x, d.y)) return;
             s.sent!.add(i);
-            M.crumbs.falls.push({ x: X + k * u * (d.x * cr - d.y * sr), y: Y + k * u * (d.x * sr + d.y * cr), vx: (Math.random() - 0.5) * 2 * CRUMB.vx * W, vy: -Math.random() * CRUMB.vy * H, col: s.bg });
+            M.crumbs.falls.push({ x: sx(d), y: Y + k * u * (d.x * sr + d.y * cr), vx: (Math.random() - 0.5) * 2 * CRUMB.vx * W, vy: -Math.random() * CRUMB.vy * H, col: s.bg, fp: s.fp! });
           });
         }
         placeGlyphs(glyphEls(e.text), gs, u);
         const vb = e.text.firstElementChild as HTMLElement | null;
         if (vb) vb.style.color = mix(s.fg, P);
       }
-      crumbs(t, W, H, u, dpr);
+      crumbs(t, dpr);
       // 도킹하는 큰 말 — 화면 전체 한 겹, 맨 앞
       const c = dockCv.current, Dk = M.dock;
       if (!c) return;
@@ -577,12 +624,12 @@ export default function WallSky({ list, dock, beat, waves, perch }: Props) {
   };
   return (
     <div ref={host} className="wall-sky" aria-hidden="true">
+      {/* 말의 부스러기 · 건물 — 하늘 말 · 작은 사람 뒤(결정 37 층 순서. 3%였을 땐 하늘 말 앞이었다 — 25%까지 오르면 낮게 뜬 말의 글자를 덮는다) */}
+      <canvas ref={crumbCv} className="sky-crumbs" />
       {/* 오래된 말부터 — 나중에 온 말이 앞에서 가린다(터지는 말이 가장 오래됐으니 맨 먼저) */}
       {[...M.leaving, ...[...M.sky].sort((a, b) => a.born - b.born)].map((s) => (
         <SkyMsg key={s.id + (s.popAt ? ':pop' : '')} s={s} u={M.u} onEl={setEls(s.id + (s.popAt ? ':pop' : ''))} />
       ))}
-      {/* 말의 부스러기 — 하늘 말 앞, 작은 사람 뒤(작은 사람은 WallSky 다음에 선다) */}
-      <canvas ref={crumbCv} className="sky-crumbs" />
       <div className="sky-dock">
         <canvas ref={dockCv} />
         <div ref={dockText} className="dot-text">{D ? <Letters key={D.key} b={D} /> : M.shot && <Letters key={`shot:${M.shot.b.id}`} b={M.shot.b} />}</div>

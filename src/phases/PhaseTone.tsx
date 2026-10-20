@@ -360,6 +360,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
     const glyph = useRef<HTMLDivElement>(null);
     const optic = opticalFix[shown.font]?.scale ?? 1;
     const [run, setRun] = useState<{ w: number; h: number } | null>(null);
+    const runTries = useRef({ key: '', n: 0 });
     useLayoutEffect(() => {
         const el = glyph.current;
         if (!el) return;
@@ -380,7 +381,12 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
         });
         const next = { w: w / base, h: el.offsetHeight / base };
         const off = (a: number, b: number) => !b || Math.abs(a - b) / a > 0.01;
-        if (next.w > 0 && (!run || off(next.w, run.w) || off(next.h, run.h))) setRun(next);
+        /* 안전장치(위 fig와 같다) — 같은 조건에서 고쳐 잡는 것은 세 번까지. 글의 폭은 글자 크기에 딱 비례하지 않는다(작은 글자에서
+           글자 사이가 픽셀로 반올림된다) — 잰 값 → 크기 → 잰 값이 두 자리 사이를 끝없이 오가 화면이 멈췄다(2026-10-20, 320×568 ·
+           움직임 줄이기 · 차분한 · '오늘도 수고했어': 폭 178 ↔ 185px, Maximum update depth exceeded) */
+        const key = `${text}|${shown.font}|${shown.size}|${shown.speed}|${shown.weight}|${shown.manner}|${refit}`;
+        if (runTries.current.key !== key) runTries.current = { key, n: 0 };
+        if (next.w > 0 && runTries.current.n < 3 && (!run || off(next.w, run.w) || off(next.h, run.h))) { runTries.current.n += 1; setRun(next); }
     });
     /* 아직 한 번도 못 쟀으면 옛 어림값(한 글자 = 1em)으로 그린다. 그 한
        프레임 뒤에 잰 값으로 다시 선다. */

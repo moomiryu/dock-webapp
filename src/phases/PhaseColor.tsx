@@ -30,25 +30,18 @@ const T = {
     colour: { ko: '색', en: 'Colour' },
     /* 2026-10-01까지 '정렬'(디자이너 — 고르면 실루엣이 바뀌니 '모양'). 값(tone.align)과 코드의 이름은 그대로 */
     align: { ko: '모양', en: 'Shape' },
-    /* 모양 스위치 칸의 말 — 3/5 말투 스위치처럼 칸 안에 짧은 말로. 열두 칸(2026-10-20, 디자이너 — 결정 3 F): 이름은 형상의 비유,
-       첫 칸은 넷 모두 '기본'(값은 center). 그전의 휘기 · 기울이기 · 올리기 · 내리기 · 둥실 · 흔들은 칸에서 빠졌다 — 그 옛 글은 기본으로 선다 */
+    /* 모양 스위치 칸의 말 — 3/5 말투 스위치처럼 칸 안에 짧은 말로. 세 칸, 네 성격 공통(2026-10-20, 디자이너 — 결정 31): 기본 · 미소 ·
+       단호(사선). 그전의 열두 칸(계단 · 단상 · 아치 · 탑 · 내리막 · 징검다리 · 하이킥 …)은 빠졌다 — 그 옛 글은 기본으로 선다 */
     center: { ko: '기본', en: 'Basic' },
-    stairs: { ko: '계단', en: 'Stairs' },
-    podium: { ko: '단상', en: 'Podium' },
-    arch: { ko: '아치', en: 'Arch' },
     smile: { ko: '미소', en: 'Smile' },
-    stack: { ko: '탑', en: 'Tower' },
-    descend: { ko: '내리막', en: 'Downhill' },
-    stepping: { ko: '징검다리', en: 'Stepping stones' },
-    highkick: { ko: '하이킥', en: 'High kick' }
+    slant: { ko: '단호', en: 'Firm' }
 };
 /** 모양 칸의 이름 — 그 칸이 없으면 값 그대로(생길 일은 없다) */
 const alignWord = (a: Align) => (T as unknown as Record<string, { ko: string; en: string } | undefined>)[a] ?? { ko: a, en: a };
 
 /*
- * 모양 잣대의 선택지는 성격이 정한다(lib/aggregate.ts · arrangementsFor, 2026-10-20 결정 3 F) — 당당 기본 · 계단 · 단상,
- * 다정 기본 · 아치 · 미소, 차분 기본 · 탑 · 내리막(결정 7 — 고드름 대신), 유머 기본 · 징검다리 · 하이킥. 고르면 미리보기의 말이 낱개부터 다시 모여
- * 그 배치로 선다. 값은 tone.align으로 저장되고 벽까지 간다 — 참여자가 고른 모양이 벽에 그대로 나온다(절대원칙).
+ * 모양 잣대의 선택지(lib/aggregate.ts · arrangementsFor) — 네 성격 공통 기본 · 미소 · 단호(2026-10-20 결정 31, 그전엔 성격마다 셋씩 열두 칸).
+ * 고르면 미리보기의 말이 낱개부터 다시 모여 그 배치로 선다. 값은 tone.align으로 저장되고 벽까지 간다 — 참여자가 고른 모양이 벽에 그대로 나온다(절대원칙).
  */
 interface Props {
     text: string;

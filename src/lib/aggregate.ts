@@ -208,25 +208,30 @@ export function gapsOf(items: readonly Item[], kd: Kind): Dot[] {
   items.forEach((it) => { for (const [x, y] of lattice(kd.mod, s, it.a, it.p)) has.add(key(...cell(it.x + x, it.y + y))); });
   const grown = new Set(has);
   for (const q of has) { const [i, j] = q.split(',').map(Number); for (const [a, c] of nb(i, j)) grown.add(key(a, c)); }
-  const out: Dot[] = [];
+  const fill = new Set<string>();
   for (const q of grown) {
     if (has.has(q)) continue;
     const [i, j] = q.split(',').map(Number);
-    if (nb(i, j).every(([a, c]) => grown.has(key(a, c)))) out.push({ x: i * G + (j & 1 ? G / 2 : 0), y: j * ROW, r: 1, mod: -1 });
+    if (nb(i, j).every(([a, c]) => grown.has(key(a, c)))) fill.add(q);
   }
-  if (!has.size) return out;
-  // 갇힌 빈칸 — 덩어리를 한 칸 넓게 두른 테두리에서 빈칸을 따라 번져, 닿지 않은 빈칸이 갇힌 칸이다
-  const IJ = [...has].map((q) => q.split(',').map(Number)), I = IJ.map((q) => q[0]), J = IJ.map((q) => q[1]);
-  const i0 = Math.min(...I) - 1, i1 = Math.max(...I) + 1, j0 = Math.min(...J) - 1, j1 = Math.max(...J) + 1, seen = new Set([key(i0, j0)]), todo = [[i0, j0]];
-  while (todo.length) {
-    const [i, j] = todo.pop()!;
-    for (const [a, c] of nb(i, j)) { const q = key(a, c); if (a >= i0 && a <= i1 && c >= j0 && c <= j1 && !seen.has(q) && !has.has(q)) { seen.add(q); todo.push([a, c]); } }
+  if (has.size) {
+    // 갇힌 빈칸 — 덩어리를 한 칸 넓게 두른 테두리에서 빈칸을 따라 번져, 닿지 않은 빈칸이 갇힌 칸이다. 벽은 화면에 칠해지는 것 그대로 — 모듈 칸 +
+    // 윤곽 점 + 위에서 메운 한 칸 틈. 앞의 둘을 빼면 별 · 육각 사이 틈을 타고 번져 하이킥 · 내리막 · 징검다리 안의 구멍을 바깥으로 셌다(점검 둘째 확인)
+    const rim = new Set<string>();
+    items.forEach((it) => { for (const [x, y] of beads(kd.mod, s, it.a)) rim.add(key(...cell(it.x + x, it.y + y))); });
+    const wall = (q: string) => has.has(q) || rim.has(q) || fill.has(q), IJ = [...has, ...rim].map((q) => q.split(',').map(Number)), I = IJ.map((q) => q[0]), J = IJ.map((q) => q[1]);
+    const i0 = Math.min(...I) - 1, i1 = Math.max(...I) + 1, j0 = Math.min(...J) - 1, j1 = Math.max(...J) + 1, seen = new Set([key(i0, j0)]), todo = [[i0, j0]];
+    while (todo.length) {
+      const [i, j] = todo.pop()!;
+      for (const [a, c] of nb(i, j)) { const q = key(a, c); if (a >= i0 && a <= i1 && c >= j0 && c <= j1 && !seen.has(q) && !wall(q)) { seen.add(q); todo.push([a, c]); } }
+    }
+    // 안쪽(바깥 칸과 맞닿지 않은) 윤곽 점 자리도 메운다 — 윤곽 점은 칸에서 반 칸까지 비켜 있어 그 칸을 다 덮지 못한다
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const q = key(i, j);
+      if (!has.has(q) && !fill.has(q) && !seen.has(q) && (!rim.has(q) || nb(i, j).every(([a, c]) => !seen.has(key(a, c))))) fill.add(q);
+    }
   }
-  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-    const q = key(i, j);
-    if (!has.has(q) && !seen.has(q) && !(grown.has(q) && nb(i, j).every(([a, c]) => grown.has(key(a, c))))) out.push({ x: i * G + (j & 1 ? G / 2 : 0), y: j * ROW, r: 1, mod: -1 });
-  }
-  return out;
+  return [...fill].map((q) => { const [i, j] = q.split(',').map(Number); return { x: i * G + (j & 1 ? G / 2 : 0), y: j * ROW, r: 1, mod: -1 }; });
 }
 /**
  * 꼬리 — 맨 아래 줄에서 기기(dev, 덩어리 좌표 u)에 가장 가까운 글자의 가장자리(0.45s)에서 나와 기기를 가리킨다(모인 자리에서 셈한다).

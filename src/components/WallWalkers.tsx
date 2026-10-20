@@ -104,6 +104,9 @@ export default function WallWalkers({ beat }: { beat?: { current: DockBeat | nul
       }
     };
     const inZone = (w: Walker) => W * (w.zone[0] + Math.random() * (w.zone[1] - w.zone[0]));
+    /** 로고 앞(가운데 폭 16% — 두 구역 사이) — 걸어서 지나가기만 하고, 앉기 · 서기 · 만남 자리로 고르지 않는다(결정 6 · 20) */
+    const logo = (x: number) => x > W * ZONES[0][1] && x < W * ZONES[1][0];
+    const offLogo = (x: number) => (x < W / 2 ? W * ZONES[0][1] : W * ZONES[1][0]);
     const go = (w: Walker, tx: number, fast = 1) => { w.mode = 'walk'; w.tx = tx; w.fast = fast; };
     const sitFor = (w: Walker, now: number, sec: number, look: Look) => { w.mode = 'sit'; w.until = now + sec; w.look = look; w.nextBlink = now + HOLD * rnd([2, 5]); };
 
@@ -114,9 +117,14 @@ export default function WallWalkers({ beat }: { beat?: { current: DockBeat | nul
       if (docking(now)) { meet = null; return; }
       if (!meet && now > nextMeet && ws.length > 1 && ws.every((w) => w.mode !== 'off' && w.mode !== 'pop')) {
         const v = ws[Math.random() < 0.5 ? 0 : 1], h = ws[v === ws[0] ? 1 : 0], side = v.x < h.x ? -1 : 1;
+        // 앉을 이가 걷는 중이거나 로고 앞이면 다음에 — 그 자리에 앉혀 버린다(결정 20: 실제 벽에서 빨강이 로고 위에 섰다)
+        if (h.mode === 'walk' || logo(h.x)) { nextMeet = now + 1; return; }
+        // 곁자리가 로고 앞이면 반대쪽 곁으로 — 구역 안쪽 끝에 앉은 이 곁은 로고 칸에 걸린다
+        let to = h.x + side * MEET.gap * cw;
+        if (logo(to)) to = h.x - side * MEET.gap * cw;
         meet = { v, h, phase: 'go', t: now };
         sitFor(h, now, Infinity, 'friend'); h.face = v.x < h.x ? 1 : -1;
-        go(v, h.x + side * MEET.gap * cw, 2);
+        go(v, to, 2);
       }
       if (meet) {
         const { v, h } = meet;
@@ -148,7 +156,9 @@ export default function WallWalkers({ beat }: { beat?: { current: DockBeat | nul
         if (w.nextSmile) w.smileUntil = now + HOLD * T.smileDur;
         w.nextSmile = Math.max(now, w.smileUntil) + HOLD * rnd(T.smileGap);
       }
-      if (docking(now)) return;   // 도킹 — 제자리에 서서 올려다본다(그리기)
+      // 도킹 — 제자리에 서서 올려다본다(그리기). 로고 앞을 지나던 중이면 가까운 칸 끝까지 걸어 나가서 선다(결정 20)
+      if (docking(now) && !(w.mode === 'walk' && logo(w.x))) return;
+      if (docking(now)) w.tx = offLogo(w.x);
       if (w.mode === 'walk') {
         const dx = w.tx - w.x;
         w.face = dx < 0 ? 1 : -1; w.look = 'ahead';
@@ -169,7 +179,7 @@ export default function WallWalkers({ beat }: { beat?: { current: DockBeat | nul
       if (w.mode === 'off') return;
       const still = reduce.matches, dk = !still && docking(now), b = beatRef.current?.current;
       // 도킹이면 일어나 가운데로 돌아선다
-      if (dk) { w.face = W / 2 < w.x ? 1 : -1; }
+      if (dk && !(w.mode === 'walk' && logo(w.x))) { w.face = W / 2 < w.x ? 1 : -1; }   // 로고 앞에서 걸어 나가는 동안엔 가는 쪽을 본다
       const goal = !dk && w.mode === 'sit' ? 1 : 0;
       w.sitT += Math.sign(goal - w.sitT) * Math.min(Math.abs(goal - w.sitT), dt / RET);
       const seated = w.sitT > 0.5;

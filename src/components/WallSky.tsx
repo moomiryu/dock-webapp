@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import VoiceBubble from './VoiceBubble';
-import { ENTRANCE, G, RD, RF, arrange, arrangeOf, dockPlanOf, gapsOf, kindOf, modulesAt, tailOf, type Dot, type Item, type Kind, type Plan, type Tail } from '../lib/aggregate';
+import { ENTRANCE, G, RD, RF, arrange, arrangeOf, dockPlanOf, gapsOf, hurry, kindOf, modulesAt, tailOf, type Dot, type Item, type Kind, type Plan, type Tail } from '../lib/aggregate';
 import { paintBody, paintEntrance, placeGlyphs, type Glyph, type Pop } from '../lib/dotPaint';
 import { FAN, SKY, WAVE, WIDE, bodyOf, fanOf, profileOf, ringOf, turn, waveAlpha, wavesAt, type Box, type Seat, type Seated } from '../lib/sky';
 import { foldLines } from '../lib/fit';
@@ -73,12 +73,16 @@ interface Sky extends Base, Place { from?: P; fromRot?: number; mv?: number; up?
   /** 터질 때 땅에 떨어질 점(다섯 알에 한 알) · 이미 떨어뜨린 점 */
   seeds?: Dot[]; sent?: Set<number> }
 /** 도킹하는 말 — 시작(초) · 크게 선 1u(px) · 등장 계획 · 휭 퍼진 낱개 자리 · 낱개 자리의 모듈 · 기기(u) · 큰 꼬리 · 하늘 자리 · 해제(초) · 광각 고리 */
-interface Dock extends Base { key: number; T: number; S: number; plan: Plan; spread: Item[]; rest: ReturnType<typeof modulesAt>; mouth: readonly [number, number]; tail: Tail; at: Place; release: number; ring: Map<Sky, { to: P; rot: number }> }
+interface Dock extends Base { key: number; T: number; S: number; plan: Plan; spread: Item[]; rest: ReturnType<typeof modulesAt>; mouth: readonly [number, number]; tail: Tail; at: Place; release: number; ring: Map<Sky, { to: P; rot: number }>;
+  /** 글자가 다 서기 전에 뗐다(결정 21) — 남은 글자를 당겨 세우고 휭 · 머묾 없이 곧장 모인다 */
+  early?: boolean }
 /** 돌림으로 기기에서 쏘아 오르는 말 — 하늘 자리 · 쏘는 때(초) */
 interface Launch { b: Base; at: Place; T: number }
 const times = (D: Dock) => {
   // 꼬리는 처음부터 있다(결정 9) — 모이고(0.7초) 0.4초 있다 하늘로
-  const merge = Math.max(D.plan.whoosh + WHOOSH, D.release), rise = merge + GATHER + WAIT;
+  // 시각은 모두 페이지 시계(초) — 계획(plan)의 값은 큰 말이 선 때(D.T)부터 센 것이라 D.T를 더한다(예전엔 휭 끝을 더하지 않아 휭 도중에
+  // 떼면 휭을 기다리지 않고 모였다). 일찍 뗐으면(결정 21) 마지막 글자가 서자마자 모인다 — 휭 · 크게 머묾은 건너뛴다
+  const merge = D.early ? D.T + Math.max(...D.plan.modDone) : Math.max(D.T + D.plan.whoosh + WHOOSH, D.release), rise = merge + GATHER + WAIT;
   return { merge, rise, end: rise + RISE };
 };
 
@@ -267,7 +271,15 @@ export default function WallSky({ list, dock, beat, waves }: Props) {
     const M = model.current;
     if (!dock || !M.ready) return;
     const t = now(), { W, H, u } = M;
-    if (M.dock && M.dock.key === dock.key) { if (dock.release && M.dock.release === Infinity) M.dock.release = t; return; }
+    if (M.dock && M.dock.key === dock.key) {
+      const D = M.dock;
+      if (dock.release && D.release === Infinity) {
+        D.release = t;
+        // 글자가 다 서기 전에 뗐다(결정 21) — 남은 글자를 0.15초 간격으로 당겨 세우고(점은 그대로 쏘아) 휭 없이 곧장 모인다
+        if (!quiet && t - D.T < Math.max(...D.plan.modDone)) { D.plan = hurry(D.plan, t - D.T); D.spread = D.items; D.early = true; }
+      }
+      return;
+    }
     // 쏘아 오르는 말이 다 붙은 뒤에 연다(landed가 다시 부른다)
     if (M.shot) return;
     if (M.dock) { const D = M.dock; M.sky.push({ ...skyAt(D, D.at, W, H, u), born: Date.now() }); M.dock = null; }

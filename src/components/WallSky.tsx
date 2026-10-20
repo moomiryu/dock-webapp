@@ -128,6 +128,16 @@ const drift = (b: Base, now: number, u: number): [number, number, number] => [
   0.045 * Math.sin(0.1 * now + 2.3 * b.dr[0])];
 
 type Els = { wrap: HTMLDivElement; canvas: HTMLCanvasElement; text: HTMLDivElement };
+/** 말의 윗선 — 점 간격 칸마다 가장 높은 윗끝(말 좌표 u, 메움 반지름까지) · 윗선이 있는 가로 범위 · 몸통 상자(꼬리 뺌) */
+type Top = { cols: Map<number, number>; span: [number, number]; body: Box };
+
+/**
+ * 작은 사람이 딛는 하늘 말(하늘 놀이, 2026-10-20 진행4) — 그 순간의 자리(px, 말 원점) · 기울기 · 1u(px) · 윗선(말 좌표 x0 ~ x1에서 가장
+ * 높은 윗끝, 없으면 null) · 윗선이 있는 가로 범위 · 몸통 상자(말 좌표) · 다음에 터질 말(가장 오래 떠 있던 말)인가
+ */
+export type Perch = { id: string; X: number; Y: number; rot: number; u: number; top: (x0: number, x1: number) => number | null; span: [number, number]; body: Box; old: boolean };
+/** 하늘 놀이의 통로 — WallSky가 적고 작은 사람이 읽는다. at = 그 순간 딛을 수 있는 말(도킹 중엔 없다 — 광각으로 퍼지니 땅으로) */
+export type SkyPerch = { at: (t: number) => Perch[] };
 
 interface Props {
   /** 벽에 떠 있을 글 — 사흘 안, 최신이 앞(WallSimulation) */
@@ -138,9 +148,11 @@ interface Props {
   beat?: { current: DockBeat | null };
   /** 소리의 결을 그릴 캔버스 — 땅 뒤에 놓인 것(WallSimulation) */
   waves?: { current: HTMLCanvasElement | null };
+  /** 작은 사람이 딛을 하늘 말을 내줄 곳(하늘 놀이) */
+  perch?: { current: SkyPerch | null };
 }
 
-export default function WallSky({ list, dock, beat, waves }: Props) {
+export default function WallSky({ list, dock, beat, waves, perch }: Props) {
   const beatRef = useRef(beat), wavesRef = useRef(waves);
   beatRef.current = beat;
   wavesRef.current = waves;
@@ -149,7 +161,9 @@ export default function WallSky({ list, dock, beat, waves }: Props) {
   /** queue = 기다림 줄(글 id, 앞이 먼저) · shot = 쏘아 오르는 말 · nextRot = 다음 돌림(초) */
   const model = useRef({ sky: [] as Sky[], leaving: [] as Sky[], dock: null as Dock | null, queue: [] as string[], shot: null as Launch | null, nextRot: Infinity, W: 0, H: 0, u: 0, ready: false,
     /** 부스러기 — 점 간격 칸마다 쌓인 더미(아래부터) · 떨어지는 점 · 다시 칠할까 · 마지막으로 칠한 때 · 마지막 걸음 */
-    crumbs: { cols: [] as Crumb[][], falls: [] as Fall[], dirty: true, painted: -Infinity, last: NaN, sinking: false } });
+    crumbs: { cols: [] as Crumb[][], falls: [] as Fall[], dirty: true, painted: -Infinity, last: NaN, sinking: false },
+    /** 하늘 놀이 — 말의 윗선(말 id → 한 번 셈) */
+    tops: new Map<string, Top>() });
   const [, bump] = useState(0);
   /** 하늘을 처음 쌓았나 — 그 전에 온 도킹은 쌓은 뒤에 연다 */
   const [ready, setReady] = useState(false);
@@ -158,6 +172,52 @@ export default function WallSky({ list, dock, beat, waves }: Props) {
   const rerender = () => bump((v) => v + 1);
   const quiet = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const now = () => performance.now() / 1000;
+
+  /** 하늘 말의 그 순간 자리 · 기울기(광각 · 덜컥 전) — 미끄러짐 · 아래(기기)에서 곧게 올라와 붙음(도킹 없이 들어온 말, 기울기는 0에서 제
+      기울기로) · 떠다님. 그리기와 작은 사람(하늘 놀이)이 같은 셈을 쓴다 */
+  const whereAt = (s: Sky, t: number): [number, number, number] => {
+    const { W, H, u } = model.current;
+    let [x, y] = posAt(s, t), r0 = rotAt(s, t);
+    if (s.up !== undefined && t < s.up + RISE) { const k = easeIO((t - s.up) / RISE); x = lerp(W / 2, x, k); y = lerp(H * (1 + SKY.devDrop), y, k); r0 *= k; }
+    const [dx, dy, dq] = quiet ? [0, 0, 0] : drift(s, t, u);
+    return [x + dx, y + dy, r0 + dq];
+  };
+  const topOf = (b: Base): Top => {
+    const M = model.current;
+    let v = M.tops.get(b.id);
+    if (v) return v;
+    const cols = new Map<number, number>(), body: Box = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const d of [...modulesAt(b.items, b.kd, 1).dots, ...b.gaps]) {
+      const c = Math.round(d.x / G), r = RF * d.r;
+      cols.set(c, Math.min(cols.get(c) ?? Infinity, d.y - r));
+      body[0] = Math.min(body[0], d.x - r); body[1] = Math.min(body[1], d.y - r); body[2] = Math.max(body[2], d.x + r); body[3] = Math.max(body[3], d.y + r);
+    }
+    const cs = [...cols.keys()];
+    v = { cols, span: [Math.min(...cs) * G, Math.max(...cs) * G], body };
+    M.tops.set(b.id, v);
+    return v;
+  };
+  // 하늘 놀이 — 작은 사람이 딛을 말을 내준다. 도킹 중 · 올라오는 중인 말은 없다
+  useEffect(() => {
+    if (!perch) return;
+    perch.current = {
+      at: (t) => {
+        const M = model.current;
+        if (!M.ready || M.dock || !M.sky.length) return [];
+        const oldest = M.sky.reduce((a, b) => (a.born < b.born ? a : b));
+        return M.sky.filter((s) => s.up === undefined || t >= s.up + RISE).map((s) => {
+          const [X, Y, rot] = whereAt(s, t), tp = topOf(s);
+          const top = (x0: number, x1: number) => {
+            let y = Infinity;
+            for (let c = Math.round(x0 / G); c <= Math.round(x1 / G); c++) y = Math.min(y, tp.cols.get(c) ?? Infinity);
+            return y === Infinity ? null : y;
+          };
+          return { id: s.id, X, Y, rot, u: M.u, top, span: tp.span, body: tp.body, old: s === oldest };
+        });
+      }
+    };
+    return () => { perch.current = null; };
+  }, [perch]);
 
   /** 가장 오래 떠 있던 말이 터져 기다림 줄 맨 뒤로 — 그 말(자리 번호를 물려줄) */
   const pop = (t: number, animate: boolean) => {
@@ -422,12 +482,9 @@ export default function WallSky({ list, dock, beat, waves }: Props) {
       for (const s of [...M.leaving, ...M.sky]) {
         const e = els.current.get(s.id + (s.popAt ? ':pop' : ''));
         if (!e) continue;
-        let [x, y] = posAt(s, t), r0 = rotAt(s, t);
-        // 아래(기기)에서 곧게 올라와 붙는다 — 도킹 없이 들어온 말. 기울기는 0에서 제 기울기로
-        if (s.up !== undefined && t < s.up + RISE) { const k = easeIO((t - s.up) / RISE); x = lerp(W / 2, x, k); y = lerp(H * (1 + SKY.devDrop), y, k); r0 *= k; }
-        const [dx, dy, dq] = quiet ? [0, 0, 0] : drift(s, t, u), w = M.dock?.ring.get(s);
+        const [x, y, r0] = whereAt(s, t), w = M.dock?.ring.get(s);
         // 광각 — 제 기울기에서 고리의 기울기로(퍼지는 정도만큼)
-        const X0 = w ? lerp(x + dx, w.to[0], P) : x + dx, Y0 = w ? lerp(y + dy, w.to[1], P) : y + dy, rot = w ? lerp(r0 + dq, w.rot, P) : r0 + dq, k = w ? lerp(1, WIDE.grow, P) : 1;
+        const X0 = w ? lerp(x, w.to[0], P) : x, Y0 = w ? lerp(y, w.to[1], P) : y, rot = w ? lerp(r0, w.rot, P) : r0, k = w ? lerp(1, WIDE.grow, P) : 1;
         const [qx, qy] = jolt(X0, Y0), X = X0 + qx, Y = Y0 + qy;
         e.wrap.style.transform = `translate(${X.toFixed(1)}px, ${Y.toFixed(1)}px) rotate(${rot.toFixed(4)}rad) scale(${k.toFixed(4)})`;
         const ctx = e.canvas.getContext('2d');

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import VoiceBubble from './VoiceBubble';
-import { ENTRANCE, arrange, arrangeOf, bigScale, boundsOf, follow, gapsOf, kindOf, modulesAt, mouthOf, planEntrance, tailOf, type Item, type Plan, type Tail } from '../lib/aggregate';
+import { ENTRANCE, TAIL_FIRST, arrange, arrangeOf, bigScale, boundsOf, follow, gapsOf, kindOf, modulesAt, mouthOf, planEntrance, tailOf, type Item, type Plan, type Tail } from '../lib/aggregate';
 import { paintBody, paintEntrance, placeGlyphs } from '../lib/dotPaint';
 import { fontMap, opticalFix } from '../lib/palettes';
 import type { Align, ToneState } from '../types';
@@ -10,15 +10,16 @@ import type { Align, ToneState } from '../types';
  * VoiceBubble의 한 자씩 놓기(서체 · 무게 · 기울기 · 획 보정이 3/5 그대로)로. 기기는 상자 아래 가운데 바깥 — 꼬리가 그쪽을 가리킨다.
  *
  * 두 가지로 선다.
- * - pick(4/5) — play가 바뀔 때마다 낱개부터: 낱개로 서 있다가(SCATTER) 0.7초에 모이며(easeOut) 모듈이 1.12배로, 틈 메움이 모이는
- *   정도의 세제곱으로 나타나고, 모인 직후 꼬리가 밑동부터 0.6초에 솟는다. 낱개 · 모인 말을 따로 상자에 맞추고 모이는 동안 이어 간다.
+ * - pick(4/5) — play가 바뀔 때마다 처음부터, 5/5 · 벽과 같은 차례(결정 19 — 꼬리가 먼저): 꼬리가 첫 글자의 낱개 자리에 붙어 입 쪽
+ *   끝부터 TAIL_FIRST초에 솟고, 낱개 글자들이 선다. SCATTER초 서 있다가 0.7초에 모이며(easeOut) 모듈이 1.12배로, 틈 메움이 모이는
+ *   정도의 세제곱으로 나타난다. 꼬리는 첫 글자에 붙어 함께 온다. 낱개 · 모인 말을 따로 상자에 맞추고 모이는 동안 이어 간다.
  * - show(5/5 · 벽의 큰 말과 같은 차례) — 화면 정중앙에 크게(lib/aggregate.ts bigScale). 꼬리가 먼저(결정 9): 첫 글자의 퍼진 자리에서
  *   기기 쪽 끝부터 0.45초에 솟고, 그 밑동(입)에서 점이 나가 글자마다 한 박씩 쌓인다(성격별 등장 — 쿵 · 몽글 · 착 · 뿅). 날아오는 점은
  *   메움 없이 작은 점, 다 쌓인 글자는 제 몸짓으로 내려앉으며 글자가 선다. 다 서면 줄이 화면 가로 94%까지 휭 퍼지고(살짝 넘쳤다 돌아옴),
  *   hold초 머문 뒤 그 퍼진 자리에서 꼬리 단 채 모인다(꼬리는 첫 글자를 따라간다).
  * 그 뒤로는 꼬리만 나부낀다. still · 움직임 줄이기 = 모인 그대로 한 장.
  */
-const SCATTER = 0.9, GATHER = 0.7, GROW = 0.6, WHOOSH = 0.7;
+const SCATTER = 0.9, GATHER = 0.7, WHOOSH = 0.7;
 /** 다시 그리는 간격 — 모인 뒤 꼬리 나부낌은 30fps(띠 구름 · 나무와 같았다) */
 const FRAME_MS = 33;
 /** pick — 상자 안 여백(몫)과 글자 크기 상한(px, RainPreview와 같다 — 높이의 6%, 28 ~ 72px) */
@@ -26,6 +27,8 @@ const FILL = 0.86;
 /** 기기 — 화면 아래 가운데 바깥(견본 30px@720) */
 const DEV_DROP = 30 / 720;
 const easeOut = (k: number) => 1 - (1 - k) ** 3;
+/** pick의 꼬리 먼저 — 쏘는 점도 다 선 글자도 없는 등장. paintEntrance에 주면 꼬리만 입 쪽 끝부터 솟는다(5/5와 같은 꼬리 셈) */
+const NOTHING_YET = (n: number): Plan => ({ shots: [], modDone: Array(n).fill(Infinity), whoosh: Infinity, F: 1, landed: Infinity });
 const clamp = (k: number) => Math.min(1, Math.max(0, k));
 
 interface Props {
@@ -106,7 +109,7 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
           u1 = Math.min(cap, sizeFor(b1));
         }
         fit.current = { W, H, u0, ox0: W / 2 - ((b0[0] + b0[2]) / 2) * u0, oy0: H / 2 - ((b0[1] + b0[3]) / 2) * u0,
-          u1, ox1: W / 2 - ((b1[0] + b1[2]) / 2) * u1, oy1: H / 2 - ((b1[1] + b1[3]) / 2) * u1, tail, plan: null, spread: items, dev: [0, 0], merge: SCATTER };
+          u1, ox1: W / 2 - ((b1[0] + b1[2]) / 2) * u1, oy1: H / 2 - ((b1[1] + b1[3]) / 2) * u1, tail, plan: null, spread: items, dev: [0, 0], merge: TAIL_FIRST + SCATTER };
       }
       draw(performance.now() / 1000, true);
     };
@@ -115,23 +118,25 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
       if (!ctx || !F.u1) return;
       if (!force && quiet) return;
       const age = quiet ? Infinity : sec - t0, P = F.plan;
-      // 모이는 정도 m · 꼬리 g — pick은 SCATTER 뒤 모이고 그 뒤 꼬리가 솟는다. show는 휭 퍼져 머문 뒤(merge) 모이고, 꼬리는 처음부터 있다
-      const m = easeOut(clamp((age - F.merge) / GATHER)), g = P ? 1 : easeOut(clamp((age - F.merge - GATHER) / GROW));
+      // 모이는 정도 m — pick은 꼬리가 솟고 낱개로 선 뒤(merge), show는 휭 퍼져 머문 뒤(merge) 모인다. 꼬리는 둘 다 처음부터 있다
+      const m = easeOut(clamp((age - F.merge) / GATHER));
       const u = F.u0 + (F.u1 - F.u0) * m, ox = F.ox0 + (F.ox1 - F.ox0) * m, oy = F.oy0 + (F.oy1 - F.oy0) * m, dpr = c.width / F.W;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, c.width, c.height);
       ctx.setTransform(u * dpr, 0, 0, u * dpr, ox * dpr, oy * dpr);
       ctx.fillStyle = color.current;
-      // 큰 말의 등장(휭까지) · 그 뒤 모임과 꼬리(show는 휭 퍼진 자리에서)
-      const gs = P && age < F.merge ? paintEntrance(ctx, rest, P, F.dev, age, land, WHOOSH, F.tail ? { tail: F.tail, items, sec, ph, still: quiet } : undefined)
-        : paintBody(ctx, F.spread, kd, gaps, m, F.tail, g, sec, ph, quiet);
+      // 큰 말의 등장(휭까지) · pick의 꼬리 먼저(아직 아무 점도 안 날아온 등장 — 꼬리만 솟고 글자는 숨는다) · 그 뒤 모임과 꼬리
+      const first = F.tail ? { tail: F.tail, items, sec, ph, still: quiet } : undefined;
+      const gs = P && age < F.merge ? paintEntrance(ctx, rest, P, F.dev, age, land, WHOOSH, first)
+        : !P && first && age < TAIL_FIRST ? paintEntrance(ctx, rest, NOTHING_YET(items.length), F.dev, age, land, WHOOSH, first)
+        : paintBody(ctx, F.spread, kd, gaps, m, F.tail, 1, sec, ph, quiet);
       if (text.current) text.current.style.fontSize = `${u.toFixed(2)}px`;
       placeGlyphs(glyphs(), gs, u, ox, oy);
     };
     redraw.current = () => draw(performance.now() / 1000, true);
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
-      const sec = now / 1000, settling = sec - t0 < fit.current.merge + GATHER + GROW;
+      const sec = now / 1000, settling = sec - t0 < fit.current.merge + GATHER;
       if (!settling && now - last < FRAME_MS) return;
       last = now;
       draw(sec);

@@ -12,7 +12,7 @@ import { groundPx } from '../lib/ground';
  * 0.385 ~ 0.63은 비움 — 로고 · 기기, 하늘 말 꼬리들의 꼭짓점) · 기숙사 · 학생회관(돔) · 강의동(작은 탑). 그 합집합 안의 벌집 격자 점(벽
  * 격자 — 화면 왼쪽 위가 원점, 간격 = 하늘 말 점 간격 G)마다 반지름 RF × 1.08의 원.
  *
- * 해와 구름(결정 29 — "우리 결로"): 같은 짓는 법, 색만 한 단계 밝은 --grey-800(먼 것이 옅게). 해는 왼쪽 위 원 하나(학생회관 돔과 떨어지게),
+ * 해와 구름(결정 29 — "우리 결로"): 같은 짓는 법, 같은 --grey-900(결정 34 — 한 단계 밝던 --grey-800을 건물과 한 색으로). 해는 왼쪽 위 원 하나(학생회관 돔과 떨어지게),
  * 움직이지 않는다. 구름 넷은 부채꼴 하늘이 비워 두는 네 귀 · 양옆에 — 말풍선이 가장자리에 없어서(디자이너). 화면 끝에서 조금 잘려도 되고,
  * 가운데로 흘러 들어오지 않는다 — 제자리에서 화면 폭의 ±1.5%만 40초에 한 번 오간다, 구름마다 박자를 엇갈려. 움직임 줄이기면 멈춘다.
  *
@@ -46,7 +46,7 @@ export default function WallSkyline() {
   useEffect(() => {
     const box = ref.current;
     if (!box) return;
-    const css = getComputedStyle(document.documentElement), far = css.getPropertyValue('--grey-800').trim(), near = css.getPropertyValue('--grey-900').trim();
+    const ink = getComputedStyle(document.documentElement).getPropertyValue('--grey-900').trim();
     const draw = () => {
       const W = window.innerWidth, H = window.innerHeight, dpr = Math.min(2, window.devicePixelRatio || 1);
       const u = SKY.u * H, g = G * u, row = (g * Math.sqrt(3)) / 2, r = RF * u * FILL;
@@ -70,11 +70,11 @@ export default function WallSkyline() {
       };
       box.replaceChildren();
       const sr = SUN[2] * H;
-      dots(SUN[0] * W - sr, SUN[1] * H - sr, 2 * sr, 2 * sr, far, (x, y) => (x - sr) ** 2 + (y - sr) ** 2 <= sr * sr);
+      dots(SUN[0] * W - sr, SUN[1] * H - sr, 2 * sr, 2 * sr, ink, (x, y) => (x - sr) ** 2 + (y - sr) ** 2 <= sr * sr);
       const still = matchMedia('(prefers-reduced-motion: reduce)').matches, A = SWAY * W;
       for (const [cx, cy, fw, phase] of CLOUDS) {
         const w = fw * W, h = w * 0.5;
-        const cv = dots(cx * W - w / 2, cy * H - h / 2, w, h, far, (x, y) =>
+        const cv = dots(cx * W - w / 2, cy * H - h / 2, w, h, ink, (x, y) =>
           y <= h * 0.82 && BUMPS.some(([bx, by, br]) => (x - bx * w) ** 2 + (y - by * h * 1.6 + h * 0.18) ** 2 <= (br * w) ** 2));
         if (still) continue;
         const steps = Array.from({ length: 25 }, (_, k) => ({ transform: `translateX(${A * Math.sin((k / 24) * 2 * Math.PI)}px)` }));
@@ -89,7 +89,7 @@ export default function WallSkyline() {
           return y >= top && y <= bot && Math.abs(x - (X(x0) + X(x1)) / 2) <= (half * (y - top)) / (bot - top);
         };
       });
-      dots(0, 0, W, H, near, (x, y) => shapes.some((f) => f(x, y)));
+      dots(0, 0, W, H, ink, (x, y) => shapes.some((f) => f(x, y)));
     };
     draw();
     window.addEventListener('resize', draw);

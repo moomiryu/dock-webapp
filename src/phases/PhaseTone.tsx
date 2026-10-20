@@ -16,7 +16,8 @@ const T = {
     leadManner: { ko: '발화의 크기, 속도, 말투를 정해봐요.', en: 'Set the size, pace and tone of your line.' },
     /* 유머있는(비)은 크기를 묻지 않는다 — 벽 글자가 28px 하나(palettes.ts · hasSizeBar). 대신 무게 아래 말투를 묻는다(2026-10-11) */
     leadPaceWeightManner: { ko: '발화의 속도, 무게, 말투를 정해봐요.', en: 'Set the pace, weight and tone of your line.' },
-    start: { ko: '화면을 누르면 시작해요', en: 'Tap the screen to start' },
+    /* 누르기만 묻던 말이 잘 안 읽혔다(2026-10-21, 디자이너 — 특히 4/5) — 장이 위로 빠지는 그 방향으로 밀게 이끈다. 누르기도 그대로 된다 */
+    start: { ko: '위로 밀어서 시작해요', en: 'Swipe up to start' },
     comparing: { ko: '기본 상태를 보는 중. 눌러서 편집한 상태로 돌아가기', en: 'Showing the default. Tap to go back to your edit' },
     compare: { ko: '눌러서 기본과 비교', en: 'Tap to compare with the default' },
     orig: { ko: '기본', en: 'Default' },
@@ -453,8 +454,11 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
       뒤로가기가 이 안에 들어 있어서, 뒤로 가려고 누른 탭이 onBack과
       setStep을 같이 돌렸다. 되돌리려는 손짓이 진행 손짓을 겸하면 안 된다.
       뒤로 돌아온 길에는 이 장을 아예 달지 않는다 — 숨긴 채 시연만 돌 까닭이 없다. */}
+  {/* 위로 쓸어도 넘긴다(2026-10-21) — 누른 높이를 장에 적어 두고(다시 그려도 안 잃게) 손을 뗄 때 그만큼(px) 위면. 4/5 첫 장과 같다 */}
   {!returning && <section className="tone-pane tone-intro"
-    onClick={e => { if (!(e.target as HTMLElement).closest('button')) setStep('work'); }}>
+    onClick={e => { if (!(e.target as HTMLElement).closest('button')) setStep('work'); }}
+    onPointerDown={e => { e.currentTarget.dataset.swipeY = String(e.clientY); }}
+    onPointerUp={e => { if (Number(e.currentTarget.dataset.swipeY) - e.clientY > 32) setStep('work'); }}>
    <div className="z-glyph-stage has-face">
     <StepHeader at={3} back={{ label: pick(T.backIntro, lang), onClick: () => onBack(tone) }} onHome={onHome} />
     {/* is-brief를 뺐다 — 그 규칙은 3초 뒤 제목을 저절로 접는다. 여기서는

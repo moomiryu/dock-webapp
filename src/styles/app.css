@@ -1865,13 +1865,59 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 /* span이었다가 버튼이 됐다(2026-09-21) — 이 장에서 앞으로 가는 길이
    손가락뿐이면 자판을 쓰는 사람이 갇힌다. 보이는 모습은 그대로여야
    하므로 버튼의 기본 생김새를 전부 지운다. */
+/* 위로 밀게 이끈다(2026-10-21, 디자이너 — '화면을 누르면 시작해요'를 사람들이 잘 몰랐다, 특히 4/5). 꺾쇠를 글 위로 올려
+   위로 떠올랐다 사라지기를 되풀이한다 — 장이 빠지는 방향 그대로. 첫 장은 위로 쓸어도 넘어간다(PhaseTone · PhaseColor) */
 .tone-more{ font-family: var(--ui-font); font-size: var(--fs-body); font-weight: 600;
   color: var(--paper); padding: 0 0 var(--s6);
-  border: 0; background: none; cursor: pointer; text-align: left;
-  display: flex; align-items: center; gap: var(--s2); }
-.tone-more::before{ content: ''; width: var(--s3); height: var(--s3); border-left: 2px solid currentColor;
-  border-top: 2px solid currentColor; rotate: 45deg; translate: 0 2px; }
-@media (prefers-reduced-motion: reduce){ .tone-pane{ transition: none; } }
+  border: 0; background: none; cursor: pointer; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: var(--s3); }
+.tone-more::before{ content: ''; width: var(--s4); height: var(--s4); border-left: 2px solid currentColor;
+  border-top: 2px solid currentColor; rotate: 45deg;
+  animation: moreRise calc(var(--t-hold) * 2) var(--ease-standard) infinite; }
+@keyframes moreRise{
+  0%   { translate: 0 var(--s3); opacity: 0; }
+  30%  { opacity: 1; }
+  100% { translate: 0 calc(var(--s3) * -1); opacity: 0; }
+}
+/* 위로 쓰는 손이 브라우저의 끌기로 넘어가지 않게(두 손가락 확대는 둔다) */
+.tone-intro, .color-intro{ touch-action: pinch-zoom; }
+/* 첫 장 넘기기 이끌기(2026-10-21, 디자이너 — 견본 셋 중 "초반에 C로 3초 하다가, 안 넘기면 A").
+   C 통통: 들어오고 --t-slow 뒤 안내(글 + 꺾쇠)가 위로 두 번 튄다 — 두 차례, 3초쯤.
+   A 들썩: 그래도 첫 장 그대로면 --t-hold × 5마다 첫 장이 살짝 들렸다 내려앉고, 그 틈으로 다음 장의 아래(조절판 · 버튼)가
+   제자리에서 비친다 — 밀면 무엇이 올라오는지 미리 보인다. 간격은 재촉으로 느껴지지 않을 만큼, 고민하는 사이 놓치지 않을 만큼.
+   다음 장은 들썩이는 동안만 보이고(평소엔 지금처럼 숨어 손 · 낭독기에서 빠진다), 첫 장일 땐 눌리지 않는다 — 비친 버튼을 눌러
+   고르지도 않고 넘어가는 일이 없게. 넘기면 멎는다(첫 장일 때만 건다) */
+.tone-deck[data-step="intro"] .tone-more,
+.color-choice[data-step="intro"] .tone-more{ animation: moreHop calc(var(--t-hold) * 2) var(--ease-standard) var(--t-slow) 2; }
+@keyframes moreHop{
+  0%, 24%, 48%, 100%{ translate: 0 0; }
+  12%{ translate: 0 calc(var(--s4) * -1); }
+  36%{ translate: 0 calc(var(--s2) * -1); }
+}
+.tone-deck[data-step="intro"] .tone-intro,
+.color-choice[data-step="intro"]:not([data-moved]) > .color-intro{
+  animation: introPeek calc(var(--t-hold) * 5) var(--ease-standard) calc(var(--t-slow) + var(--t-hold) * 4) infinite; }
+@keyframes introPeek{
+  0%, 22%, 34%, 100%{ translate: 0 0; }
+  14%{ translate: 0 -14vh; }
+  28%{ translate: 0 -2vh; }
+}
+/* 03의 둘째 장은 평소 화면 아래에 있다 — 들썩이는 동안만 첫 장 밑 제자리로 와서 보인다(첫 장이 위에 깔린다) */
+.tone-deck[data-step="intro"] .tone-intro{ z-index: 1; }
+.tone-deck[data-step="intro"] .tone-work{ pointer-events: none;
+  animation: peekUnder calc(var(--t-hold) * 5) step-end calc(var(--t-slow) + var(--t-hold) * 4) infinite; }
+@keyframes peekUnder{ 0%{ visibility: visible; transform: none; } 36%{ visibility: hidden; transform: translateY(100%); } }
+/* 4/5의 고르는 장은 처음부터 첫 장 밑 제자리에 숨어 있다 — 들썩이는 동안만 보인다 */
+.color-choice[data-step="intro"] > :not(.color-intro){ pointer-events: none; }
+.color-choice[data-step="intro"]:not([data-moved]) > :not(.color-intro){
+  animation: peekShow calc(var(--t-hold) * 5) step-end calc(var(--t-slow) + var(--t-hold) * 4) infinite; }
+@keyframes peekShow{ 0%{ visibility: visible; } 36%{ visibility: hidden; } }
+@media (prefers-reduced-motion: reduce){
+  .tone-pane{ transition: none; } .tone-more::before{ animation: none; }
+  .tone-deck[data-step="intro"] :is(.tone-more, .tone-intro, .tone-work),
+  .color-choice[data-step="intro"] .tone-more,
+  .color-choice[data-step="intro"]:not([data-moved]) > :is(.color-intro, :not(.color-intro)){ animation: none; }
+}
 /* 견본이 문장이 되면서 낱자가 줄이 됐다. 줄은 세로로 쌓이고, 두둥실 뜨는
    것은 바깥 덩어리 하나가 맡는다 — 줄마다 따로 뜨면 문단이 흔들린다. */
 .z-glyph.is-line{ line-height: 1.4; }
@@ -2696,24 +2742,11 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 /* 시연 자리 — 남는 높이를 다 받는다. 기준 0으로 못 박는다(5/5와 같은 까닭:
    flex: 1(= 1 1 0%)이면 첫 계산에서 cqh가 0으로 풀려 말풍선이 0으로 섰다) */
 .color-intro > .color-demo{ flex: 1 1 0; min-height: 0; width: auto; height: auto; }
-/* 시연: 글이 위에서 굴러 떨어져 서 있는 말풍선 안에 앉는다. 색이 도는 것은
-   PhaseColor의 ColorDemo가 한다(떨어져 앉는 --t-hold × 2.4 뒤부터) */
-.color-demo .dot-text{ animation: colorDemoFall calc(var(--t-hold) * 2) var(--ease-emphasized) both; }
-@keyframes colorDemoFall{
-  0%   { translate: 0 -70cqh; rotate: -32deg; opacity: 0; }
-  12%  { opacity: 1; }
-  62%  { translate: 0 2cqh;   rotate: 7deg; }
-  80%  { translate: 0 -1.5cqh; rotate: -3deg; }
-  100% { translate: 0 0;      rotate: 0deg; opacity: 1; }
-}
-/* 말풍선은 처음부터 서 있다(2026-09-28, 사용자) — 피어나지 않고, 글만 그 안으로
-   날아 들어간다. */
-/* 떨어지는 동안 글은 흰색이다 — 3/5 첫 장에서 흰 글자로 보던 그 글이고, 짝의
-   글자색(검정 등)이면 검은 무대 위를 지나는 동안 묻혔다(재서 확인). 말풍선에
-   닿을 즈음 짝의 글자색으로 옮겨 간다 — 끝 마디를 비워 두어 VoiceBubble이
-   적은 제 색으로 돌아간다(애니메이션은 인라인 색보다 세다) */
-.color-demo .voice-bubble{ animation: colorDemoInk calc(var(--t-hold) * 1.2 + var(--t-slow)) linear both; }
-@keyframes colorDemoInk{ 0%, 68%{ color: var(--paper); } }
+/* 시연: 말풍선은 처음부터 서 있고(2026-09-28, 사용자), 글은 그 안 제자리에서 옅게 나타난다(2026-10-21, 디자이너 —
+   위에서 굴러 떨어져 앉던 것보다 자연스럽게. 떨어지는 동안 검은 무대에 묻히지 않게 흰색으로 지나가던 처리도 함께 걷었다 —
+   이제 처음부터 짝의 글자색이다). 색이 도는 것은 PhaseColor의 ColorDemo가 한다(--t-hold × 2.4 뒤부터) */
+.color-demo .dot-text{ animation: colorDemoIn var(--t-hold) var(--ease-standard) var(--t-slow) both; }
+@keyframes colorDemoIn{ from{ opacity: 0; } }
 /* 고르는 장 — 첫 장이 떠 있는 동안은 숨어 있다. 한 번이라도 넘긴 뒤에는 첫 장과
    함께 움직인다: 첫 장이 위로 빠질 때 화면 높이만큼 아래에서 올라오고, 되돌아갈
    때 그만큼 내려간다. transform이 아니라 animation으로 건다 — 04의 버튼·색판에
@@ -2726,9 +2759,9 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 @media (prefers-reduced-motion: reduce){
   .color-intro{ transition: none; }
   .color-choice[data-moved] > :not(.color-intro){ animation: none; }
-  .color-demo .dot-text, .color-demo .voice-bubble{ animation: none; }
+  .color-demo .dot-text{ animation: none; }
 }
-/* '화면을 누르면 시작해요'는 가운데 — 3/5 첫 장과 같은 자리(재서 확인: 3/5는 x115~275) */
+/* '위로 밀어서 시작해요'는 가운데 — 3/5 첫 장과 같은 자리(재서 확인: 3/5는 x115~275) */
 .color-intro > .tone-more{ align-self: center; }
 
 /* ── 04 조정판 (2026-09-28, 사용자 — 3/5처럼 미리보기와 조정 창을 나눈다) ─────

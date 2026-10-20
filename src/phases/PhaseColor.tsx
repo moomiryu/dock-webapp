@@ -25,7 +25,7 @@ const T = {
     nextColour: { ko: '다음 색', en: 'Next colour' },
     next: { ko: '이렇게 담을게요', en: 'Hold it like this' },
     /* 첫 장 — 3/5와 같은 말(2026-09-28) */
-    start: { ko: '화면을 누르면 시작해요', en: 'Tap the screen to start' },
+    start: { ko: '위로 밀어서 시작해요', en: 'Swipe up to start' },
     /* 조정판의 두 잣대 — 3/5의 [이름 | 잣대] 줄과 같은 꼴(2026-09-28) */
     colour: { ko: '색', en: 'Colour' },
     /* 2026-10-01까지 '정렬'(디자이너 — 고르면 실루엣이 바뀌니 '모양'). 값(tone.align)과 코드의 이름은 그대로 */
@@ -113,7 +113,7 @@ function ColorDemo({ lines, tone, from, pairs }: { lines: string[]; tone: ToneSt
     const [i, setI] = useState(from);
     useEffect(() => {
         if (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-        /* 박자는 토큰에서 읽는다 — 떨어져 자리 잡는 동안(--t-hold × 2.4)은 첫 색 그대로,
+        /* 박자는 토큰에서 읽는다 — 글이 나타나 자리 잡는 동안(--t-hold × 2.4)은 첫 색 그대로,
            그 뒤 --t-hold × 1.5마다 한 짝씩 */
         const hold = tokenMs('--t-hold', 700);
         let iv = 0;
@@ -123,7 +123,7 @@ function ColorDemo({ lines, tone, from, pairs }: { lines: string[]; tone: ToneSt
         return () => { window.clearTimeout(t); window.clearInterval(iv); };
     }, []);
     const m = pairs[i % pairs.length];
-    /* 말은 처음부터 모여 서 있고(꼬리까지) 글만 위에서 떨어져 든다(app.css · colorDemoFall) */
+    /* 말은 처음부터 모여 서 있고(꼬리까지) 글만 제자리에서 옅게 나타난다(app.css · colorDemoIn) */
     return <DotBubble lines={lines} tone={tone} bg={m.bg} fg={m.text} still />;
 }
 
@@ -272,7 +272,10 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext, returni
      장은 그대로 두고 이 장이 위를 덮는다 — 누르면 위로 빠지고 고르는 장이
      아래에서 올라온다(app.css · .color-intro). 뒤로 돌아온 길에는 이 장을 아예 달지
      않는다 — 숨긴 채 시연만 돌 까닭이 없다. */}
- {!returning && <section className="color-intro" onClick={e => { if (!(e.target as HTMLElement).closest('button')) start(); }}>
+ {/* 위로 쓸어도 넘긴다(2026-10-21) — 3/5 첫 장과 같다 */}
+ {!returning && <section className="color-intro" onClick={e => { if (!(e.target as HTMLElement).closest('button')) start(); }}
+  onPointerDown={e => { e.currentTarget.dataset.swipeY = String(e.clientY); }}
+  onPointerUp={e => { if (Number(e.currentTarget.dataset.swipeY) - e.clientY > 32) start(); }}>
   <StepHeader at={4} back={{ label: pick(T.back, lang), onClick: () => onBack(current) }} onHome={onHome} />
   <div className="z-ask">
    <h1>{pick(T.title, lang)}</h1>

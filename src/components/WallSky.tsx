@@ -7,6 +7,7 @@ import { foldLines } from '../lib/fit';
 import { cssRgb, hash } from '../lib/hatch';
 import { fontMap } from '../lib/palettes';
 import { groundPx } from '../lib/ground';
+import { tokenS } from '../lib/motion';
 import { colorsOf } from '../lib/messageStyle';
 import type { StoredMessage } from '../lib/firebase';
 import type { DockBeat } from './WallWalkers';
@@ -50,8 +51,9 @@ const POP_V = 520 / 1280, POP_DELAY = 0.25, POP_DONE = 3;
 const SKY_DT = 0.033;
 /**
  * 부스러기 — 다섯 알에 한 알 · 중력(화면 높이/초²) · 처음 속도(가로 ± 폭의 몫/초, 위로 높이의 몫/초) · 더미 높이 상한(땅 띠 위, 벽 높이의 몫) ·
- * 로고 앞 비우는 반폭(폭의 몫 — 떨어지면 가까운 가장자리로) · 바래는 시간(초 — 하루, 2026-10-20 결정 22로 확정. 견본은 45초) · 다 바랜 뒤
- * 그만큼 더 지나면 땅 띠 속으로 가라앉아 없어진다(더미가 끝없이 차지 않게) · 바래는 동안 다시 칠하는 간격(초)
+ * 로고 앞 비우는 반폭(폭의 몫 — 떨어지면 가까운 가장자리로, 흘러내려도 벽처럼 넘지 않는다) · 바래는 시간(초 — 하루, 2026-10-20 결정 22로
+ * 확정. 견본은 45초) · 다 바랜 뒤 그만큼 더 지나면 땅 띠 속으로 가라앉아 없어진다(더미가 끝없이 차지 않게 — 한 알이 --t-crumb-sink초에 한
+ * 칸, 위의 알들이 함께 내려앉는다) · 바래는 동안 다시 칠하는 간격(초)
  */
 const CRUMB = { every: 5, gravity: 2.2, vx: 0.03, vy: 0.06, maxH: 0.03, logo: 0.04, fade: 86400, sink: 86400, repaint: 10 };
 /** 돌려 보이기(결정 8) — 간격(초) · 터진 뒤 쏘기까지 · 쏘아 올라 붙는 시간 · 기기에서 나올 때의 배율 */
@@ -147,7 +149,7 @@ export default function WallSky({ list, dock, beat, waves }: Props) {
   /** queue = 기다림 줄(글 id, 앞이 먼저) · shot = 쏘아 오르는 말 · nextRot = 다음 돌림(초) */
   const model = useRef({ sky: [] as Sky[], leaving: [] as Sky[], dock: null as Dock | null, queue: [] as string[], shot: null as Launch | null, nextRot: Infinity, W: 0, H: 0, u: 0, ready: false,
     /** 부스러기 — 점 간격 칸마다 쌓인 더미(아래부터) · 떨어지는 점 · 다시 칠할까 · 마지막으로 칠한 때 · 마지막 걸음 */
-    crumbs: { cols: [] as Crumb[][], falls: [] as Fall[], dirty: true, painted: -Infinity, last: NaN } });
+    crumbs: { cols: [] as Crumb[][], falls: [] as Fall[], dirty: true, painted: -Infinity, last: NaN, sinking: false } });
   const [, bump] = useState(0);
   /** 하늘을 처음 쌓았나 — 그 전에 온 도킹은 쌓은 뒤에 연다 */
   const [ready, setReady] = useState(false);
@@ -221,7 +223,7 @@ export default function WallSky({ list, dock, beat, waves }: Props) {
       const M = model.current, W = el.clientWidth, H = el.clientHeight;
       if (!W || !H || (W === M.W && H === M.H)) return;
       Object.assign(M, { W, H, u: SKY.u * H });
-      M.crumbs = { cols: Array.from({ length: Math.ceil(W / (G * M.u)) + 2 }, () => []), falls: [], dirty: true, painted: -Infinity, last: NaN };
+      M.crumbs = { cols: Array.from({ length: Math.ceil(W / (G * M.u)) + 2 }, () => []), falls: [], dirty: true, painted: -Infinity, last: NaN, sinking: false };
       if (M.ready) { M.ready = false; M.sky = []; M.leaving = []; M.queue = []; M.shot = null; M.dock = null; }
       sync();
     };
@@ -313,16 +315,18 @@ export default function WallSky({ list, dock, beat, waves }: Props) {
      * 부스러기의 한 걸음 — 떨어지는 점은 중력으로 내려와 그 칸 더미 위에 닿으면 쌓인다. 쌓일 칸: 로고 앞이면 가까운 가장자리로, 옆 칸보다
      * 두 알 이상 높아지면 낮은 쪽으로 흘러내린다(여덟 번까지), 상한을 넘으면 버린다. 더미는 벌집(홀수 층 반 칸 엇갈림) · 같은 색 메움
      */
+    const SINK = tokenS('--t-crumb-sink', 40);
     const crumbs = (t: number, W: number, H: number, u: number, dpr: number) => {
       const C = model.current.crumbs, cv = crumbCv.current, g = G * u, row = (g * Math.sqrt(3)) / 2, top = H - groundPx(H);
       const max = Math.floor((H * CRUMB.maxH) / row), n = C.cols.length;
       const dt = Number.isNaN(C.last) ? 0 : Math.min(0.05, t - C.last);
       C.last = t;
       const settle = (c: number) => {
-        const lo = Math.round((W * (0.5 - CRUMB.logo)) / g), hi = Math.round((W * (0.5 + CRUMB.logo)) / g);
-        if (c > lo && c < hi) c = c - lo < hi - c ? lo : hi;
+        const lo = Math.round((W * (0.5 - CRUMB.logo)) / g), hi = Math.round((W * (0.5 + CRUMB.logo)) / g), wall = (k: number) => k > lo && k < hi;
+        if (wall(c)) c = c - lo < hi - c ? lo : hi;
+        // 흘러내릴 때 로고 앞 칸은 벽이다(점검 둘째 — 비워 둔 칸으로 8알이 흘러 들어왔다)
         for (let k = 0; k < 8; k++) {
-          const h = C.cols[c].length, l = C.cols[c - 1]?.length ?? 99, r = C.cols[c + 1]?.length ?? 99;
+          const h = C.cols[c].length, l = wall(c - 1) ? 99 : C.cols[c - 1]?.length ?? 99, r = wall(c + 1) ? 99 : C.cols[c + 1]?.length ?? 99;
           if (h > l + 1 && l <= r) c--; else if (h > r + 1) c++; else break;
         }
         return C.cols[c] && C.cols[c].length < max ? c : -1;
@@ -337,12 +341,17 @@ export default function WallSky({ list, dock, beat, waves }: Props) {
         C.falls.splice(i, 1);
         C.dirty = true;
       }
-      // 다 바랜 뒤 그만큼 더 지난 알은 가라앉는다(위의 알이 한 칸씩 내려앉는다)
-      if (t - C.painted >= CRUMB.repaint) for (const stack of C.cols) {
-        const keep = stack.filter((q) => t - q.t < CRUMB.fade + CRUMB.sink);
-        if (keep.length !== stack.length) { stack.splice(0, stack.length, ...keep); C.dirty = true; }
+      // 다 바랜 뒤 그만큼 더 지난 알은 땅 띠 속으로 가라앉는다(결정 22 — 48시간째에 한꺼번에 사라지던 것을, 한 알이 SINK초에 한 칸씩 묻히게.
+      // 위의 알들이 함께 내려앉는다). 다 묻힌 알은 지운다. 가라앉는 동안은 0.5초마다 다시 칠한다
+      const due = CRUMB.fade + CRUMB.sink, down = (q: Crumb) => clamp((t - q.t - due) / SINK), every = C.sinking ? 0.5 : CRUMB.repaint;
+      if (t - C.painted >= every) {
+        C.sinking = false;
+        for (const stack of C.cols) {
+          while (stack.length && down(stack[0]) >= 1) { stack.shift(); C.dirty = true; }
+          if (stack.length && t - stack[0].t > due) C.sinking = C.dirty = true;
+        }
       }
-      if (!cv || (!C.dirty && !C.falls.length && t - C.painted < CRUMB.repaint)) return;
+      if (!cv || (!C.dirty && !C.falls.length && t - C.painted < every)) return;
       const ctx = cv.getContext('2d');
       if (!ctx) return;
       if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
@@ -350,10 +359,16 @@ export default function WallSky({ list, dock, beat, waves }: Props) {
       ctx.clearRect(0, 0, cv.width, cv.height);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const rf = RF * u, rd = RD * u;
-      C.cols.forEach((stack, c) => stack.forEach((q, k) => {
-        ctx.fillStyle = mix(q.col, clamp((t - q.t) / CRUMB.fade));
-        ctx.beginPath(); ctx.arc(c * g + (k & 1 ? g / 2 : 0), top - (k + 0.55) * row, rf, 0, 2 * Math.PI); ctx.fill();
-      }));
+      // 땅 띠 속은 그리지 않는다 — 맨 아래 알의 밑까지만(가라앉지 않은 더미는 예전 그대로)
+      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, top - 0.55 * row + rf); ctx.clip();
+      C.cols.forEach((stack, c) => {
+        const off = stack.reduce((a, q) => a + down(q), 0);
+        stack.forEach((q, k) => {
+          ctx.fillStyle = mix(q.col, clamp((t - q.t) / CRUMB.fade));
+          ctx.beginPath(); ctx.arc(c * g + (k & 1 ? g / 2 : 0), top - (k + 0.55 - off) * row, rf, 0, 2 * Math.PI); ctx.fill();
+        });
+      });
+      ctx.restore();
       for (const q of C.falls) { ctx.fillStyle = q.col; ctx.beginPath(); ctx.arc(q.x, q.y, rd, 0, 2 * Math.PI); ctx.fill(); }
       C.dirty = false;
       C.painted = t;

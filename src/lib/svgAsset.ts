@@ -1513,6 +1513,41 @@ function smile(root: Element) {
   }
 }
 
+/**
+ * 조율 삽화의 '가' 뒤에 당당한 사각 모듈 하나(2026-10-20, 결정 30 — 디자이너 "갈아입히지 말고 당당한 형상만"). 앱의 점 모듈(lib/aggregate)로,
+ * '가' 상자의 가운데에 높이 × 1.7. 칠과 점은 --paper, '가'는 판과 같은 --brand-main. 모양은 갈아입지 않고, '가'가 컷마다 커지고 줄면 상자도
+ * 같은 박자로 커지고 준다(같은 날 디자이너 — "박스가 그대로면 웃기잖아"). 그 판과 함께 들어오고 나간다
+ */
+function glyphModule(glyphs: Item[], t: ReturnType<typeof timeline>, dur: number) {
+  const boxes = glyphs.map((g) => boxOf(g));
+  if (boxes.some((b) => !b || !b.h)) return;
+  const glyph = glyphs[0], doc = glyph.el.ownerDocument, NS = 'http://www.w3.org/2000/svg', f3 = (n: number) => n.toFixed(3);
+  const kd = kindOf('ttoryeot'), one = arrange(['가'], 'center', kd), { dots, polys } = modulesAt(one, kd, 1), [x0, y0, x1, y1] = boundsOf(one, kd, 1, null);
+  const at = boxes.map((b) => `${r2(b!.x + b!.w / 2)} ${r2(b!.y + b!.h / 2)}`), size = boxes.map((b) => f3((1.7 * b!.h) / (y1 - y0)));
+  // 자리와 크기는 겹 둘로 — animateTransform은 한 번에 한 가지만 안다. 컷 사이는 '가'의 모양과 같은 시간표로 옮긴다
+  const move = doc.createElementNS(NS, 'g'), grow = doc.createElementNS(NS, 'g'), g = doc.createElementNS(NS, 'g');
+  move.setAttribute('transform', `translate(${at[0]})`); grow.setAttribute('transform', `scale(${size[0]})`);
+  if (glyphs.length > 1) {
+    put(move, 'animateTransform', { attributeName: 'transform', type: 'translate', values: doubled(at).join(';'), keyTimes: t.keyTimes, keySplines: t.keySplines, calcMode: 'spline', dur: dur + 's' });
+    put(grow, 'animateTransform', { attributeName: 'transform', type: 'scale', values: doubled(size).join(';'), keyTimes: t.keyTimes, keySplines: t.keySplines, calcMode: 'spline', dur: dur + 's' });
+  }
+  move.appendChild(grow); grow.appendChild(g);
+  g.setAttribute('style', 'fill:var(--paper)');
+  g.setAttribute('transform', `translate(${f3(-(x0 + x1) / 2)} ${f3(-(y0 + y1) / 2)})`);
+  for (const Q of polys) {
+    const p = doc.createElementNS(NS, 'polygon');
+    p.setAttribute('points', Q.map(([x, y]) => `${f3(x)},${f3(y)}`).join(' '));
+    g.appendChild(p);
+  }
+  for (const d of dots) {
+    const c = doc.createElementNS(NS, 'circle');
+    c.setAttribute('cx', f3(d.x)); c.setAttribute('cy', f3(d.y)); c.setAttribute('r', f3(RF * d.r));
+    g.appendChild(c);
+  }
+  glyph.el.before(move);
+  glyph.el.setAttribute('style', `${glyph.el.getAttribute('style') ?? ''};fill:var(--brand-main)`);
+}
+
 /** 조율 삽화: 손잡이는 중심선 위를 이동하고, 견본 글자는 경로 자체를 보간한다. */
 function morphSliders(base: Element, rest: Element[], t: ReturnType<typeof timeline>, dur: number) {
   const cuts = [base, ...rest];
@@ -1531,6 +1566,7 @@ function morphSliders(base: Element, rest: Element[], t: ReturnType<typeof timel
     throw new Error('Slider glyph paths must share their contour structure');
   const glyph = glyphs[0]!;
   glyph.el.setAttribute('data-slider-glyph', '');
+  glyphModule(glyphs as Item[], t, dur);
   glyph.el.setAttribute('d', glyph.d!);
   animateSeq(glyph.el, 'd', glyphs.map((it) => it!.d!), t, dur);
 

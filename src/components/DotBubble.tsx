@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import VoiceBubble from './VoiceBubble';
-import { ENTRANCE, TAIL_FIRST, arrange, arrangeOf, bigScale, boundsOf, follow, gapsOf, kindOf, modulesAt, mouthOf, planEntrance, tailOf, type Item, type Plan, type Tail } from '../lib/aggregate';
+import { ENTRANCE, TAIL_FIRST, arrange, arrangeOf, bigScale, boundsOf, fitTail, follow, gapsOf, kindOf, modulesAt, mouthOf, planEntrance, tailOf, tipAt, type Item, type Plan, type Tail } from '../lib/aggregate';
 import { paintBody, paintEntrance, placeGlyphs } from '../lib/dotPaint';
 import { fontMap, opticalFix } from '../lib/palettes';
 import type { Align, ToneState } from '../types';
@@ -85,15 +85,17 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
         const S = bigScale(items, kd, W, H), dev: [number, number] = [0, (H / 2 + H * DEV_DROP) / S];
         // 세로로 긴 화면(폰 5/5) — 낱개가 폭의 80%라 모인 말이 폭의 절반쯤에 그쳤다. 모이면서 모인 말이 폭의 88%까지 커진다(4/5처럼 이어
         // 간다, 2026-10-20 디자이너 — "폰의 여건에 맞게"). 꼬리 끝은 화면 아래 안에. 벽(가로로 넓은 화면)은 그대로 한 크기
-        let S1 = S, tail = tailOf(items, kd, dev), dev1 = dev;
+        // 글자 크기는 옛 꼬리 자리(room)로 잡는다 — 꼬리가 길어졌다고 글자가 작아지지 않게(점검 둘째). 꼬리는 그 크기에서 무대 안에 드는 만큼(fitTail)
+        let S1 = S, room = tailOf(items, kd, dev, Infinity, true), dev1 = dev;
         if (H > W) for (let k = 0; k < 2; k++) {
-          const b = boundsOf(items, kd, 1, tail);
+          const b = boundsOf(items, kd, 1, room);
           S1 = Math.max(S, Math.min((0.88 * W) / (b[2] - b[0]), (H / 2 - (12 * H) / 720) / Math.max(-b[1], b[3])));
           dev1 = [0, (H / 2 + H * DEV_DROP) / S1];
-          tail = tailOf(items, kd, dev1);
+          room = tailOf(items, kd, dev1, Infinity, true);
         }
         // 꼬리가 먼저(결정 9 — 벽과 같은 차례) — 모였을 때의 꼬리를 첫 글자의 퍼진 자리에 붙여 먼저 세우고, 글자 점들은 그 밑동(입)에서 나간다
-        const mouth = mouthOf(follow(tail, items, rest.pos[tail.from])), plan = planEntrance(items, kd, mouth, S, W);
+        const i = room.from, mouth = mouthOf(follow(tailOf(items, kd, dev1), items, rest.pos[i])), plan = planEntrance(items, kd, mouth, S, W);
+        const tail = fitTail(items, kd, dev1, [[S1, W / 2, H / 2, items[i].x, items[i].y], [S, W / 2, H / 2, rest.pos[i][0] * plan.F, rest.pos[i][1]]], W, H);
         fit.current = { W, H, u0: S, ox0: W / 2, oy0: H / 2, u1: S1, ox1: W / 2, oy1: H / 2, tail, plan,
           spread: items.map((it) => ({ ...it, ax: it.ax * plan.F })), dev: [mouth[0], mouth[1]], merge: plan.whoosh + WHOOSH + hold };
       } else {
@@ -101,15 +103,22 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
         const sizeFor = (b: readonly number[]) => Math.min((W * FILL) / (b[2] - b[0]), (H * FILL) / (b[3] - b[1]));
         const b0 = boundsOf(items, kd, 0), u0 = Math.min(cap, sizeFor(b0));
         // 기기(상자 아래 가운데 바깥) — 꼬리 방향은 u에 거의 기대지 않아 두 번 고쳐 셈한다
-        let u1 = Math.min(cap, sizeFor(boundsOf(items, kd, 1))), b1 = boundsOf(items, kd, 1), tail: Tail | null = null;
+        // 글자 크기는 옛 꼬리 자리(room)로, 꼬리는 모인 자리와 낱개 자리(처음 ~1.3초 — 꼬리가 먼저 솟는다) 둘 다에서 무대 안에 드는 만큼(점검 둘째)
+        let u1 = Math.min(cap, sizeFor(boundsOf(items, kd, 1))), b1 = boundsOf(items, kd, 1), room: Tail | null = null, dev: [number, number] = [0, 0];
         for (let k = 0; k < 2; k++) {
           const ox = W / 2 - ((b1[0] + b1[2]) / 2) * u1, oy = H / 2 - ((b1[1] + b1[3]) / 2) * u1;
-          tail = tailOf(items, kd, [(W / 2 - ox) / u1, (H * (1 + DEV_DROP) - oy) / u1]);
-          b1 = boundsOf(items, kd, 1, tail);
+          dev = [(W / 2 - ox) / u1, (H * (1 + DEV_DROP) - oy) / u1];
+          room = tailOf(items, kd, dev, Infinity, true);
+          b1 = boundsOf(items, kd, 1, room);
           u1 = Math.min(cap, sizeFor(b1));
         }
-        fit.current = { W, H, u0, ox0: W / 2 - ((b0[0] + b0[2]) / 2) * u0, oy0: H / 2 - ((b0[1] + b0[3]) / 2) * u0,
-          u1, ox1: W / 2 - ((b1[0] + b1[2]) / 2) * u1, oy1: H / 2 - ((b1[1] + b1[3]) / 2) * u1, tail, plan: null, spread: items, dev: [0, 0], merge: TAIL_FIRST + SCATTER };
+        const ox0 = W / 2 - ((b0[0] + b0[2]) / 2) * u0, ox1 = W / 2 - ((b1[0] + b1[2]) / 2) * u1, oy1 = H / 2 - ((b1[1] + b1[3]) / 2) * u1, i = room!.from;
+        // 줄 많은 짧은 글은 낱개 말이 무대 높이를 다 써서 옛 길이(2.25) 꼬리도 아래로 나간다 — 그만큼 낱개 말을 위 여백으로 올린다(크기는 그대로, 모이며 내려온다)
+        let oy0 = H / 2 - ((b0[1] + b0[3]) / 2) * u0;
+        const [, ty, , py] = tipAt(tailOf(items, kd, dev, 0), items, [u0, ox0, oy0, rest.pos[i][0], rest.pos[i][1]]);
+        oy0 -= Math.max(0, Math.min(ty + py - H, oy0 + b0[1] * u0));
+        const tail = fitTail(items, kd, dev, [[u1, ox1, oy1, items[i].x, items[i].y], [u0, ox0, oy0, rest.pos[i][0], rest.pos[i][1]]], W, H);
+        fit.current = { W, H, u0, ox0, oy0, u1, ox1, oy1, tail, plan: null, spread: items, dev: [0, 0], merge: TAIL_FIRST + SCATTER };
       }
       draw(performance.now() / 1000, true);
     };

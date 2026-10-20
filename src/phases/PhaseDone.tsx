@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import HomeCharacter from '../character/HomeCharacter';
-import HomeCrowd from '../character/HomeCrowd';
 import DoneSky from '../components/DoneSky';
 import type { ToneState } from '../types';
 import { FEEDBACK_MAX, submitFeedback } from '../lib/firebase';
@@ -36,7 +34,7 @@ const T = {
 interface Props {
     stillDocked: boolean;
     onRestart: () => void;
-    /** 방금 벽에 띄운 내 글 · 그 얼굴 — 하늘(DoneSky)에서 메가폰트 위로 올라가 앉는다. 없으면 회색 지난 말만 */
+    /** 방금 벽에 띄운 내 글 · 그 얼굴 — 하늘(DoneSky)에서 크게 서고 그 위에 작은 사람 둘이 앉는다. 없으면 회색 지난 말만 */
     text?: string;
     tone?: ToneState | null;
 }
@@ -55,19 +53,20 @@ interface Props {
  * 2026-10-06(사용자): 홈의 생김새를 입었다 — 앱에서 이 화면만 따로 놀았다
  * (머리줄 'MEGAFONT · 완료'는 여기에만 있었고, 빨강이 한 곳도 없었다). 첫 화면
  * 높이 한 장(.home-frame)이 홈과 같은 틀이다: 워드마크 자리에 '발화 종료.'와
- * 메아리 한 줄, 가운데 홈의 캐릭터와 다가와 서는 구경꾼, 아래 빨간 주 행동.
- * 캐릭터는 인사하지 않는다(greet=false). 홈의 흐르는 말(HomeVoices)은 가져오지
- * 않는다. 의견 칸과 만든 사람 줄은 그 한 장 **밖** 아래에 붙어 읽는 사람만 본다 —
- * 틀 안에 두면 캐릭터 · 구경꾼이 늘어난 틀 높이로 자리를 잡아 첫 화면 밖으로 내려간다.
+ * 메아리 한 줄, 가운데 하늘(DoneSky), 아래 빨간 주 행동. 홈의 흐르는 말(HomeVoices)은
+ * 가져오지 않는다. 의견 칸과 만든 사람 줄은 그 한 장 **밖** 아래에 붙어 읽는 사람만 본다 —
+ * 틀 안에 두면 하늘이 늘어난 틀 높이로 자리를 잡아 첫 화면 밖으로 내려간다.
+ *
+ * 2026-10-20(결정 32, 디자이너): 메가폰트(HomeCharacter)와 다가와 서는 구경꾼(HomeCrowd)을 뺐다 —
+ * "마지막 화면에 메가폰트를 더 이상 등장시키지 않는다. 만든 말풍선 위에 사람들이 웃으면서
+ * 앉아 있게". 내 말풍선이 크게 서고 벽의 작은 사람 둘이 그 위에 앉는다(DoneSky). 홈은 그대로다.
  */
 export default function PhaseDone({ onRestart, text, tone }: Props) {
     const lang = useLang();
     return <div className="done-home">
      <div className="home-frame">
-      {/* 하늘(2026-10-20, 결정 13) — 바탕 위, 메가폰트 · 글 뒤. '메아리처럼 화면을 맴돕니다'를 그림으로 */}
+      {/* 하늘(2026-10-20, 결정 13 · 32) — 바탕 위, 글 뒤. '메아리처럼 화면을 맴돕니다'를 그림으로 — 회색 메아리, 내 말풍선과 그 위에 앉은 두 사람 */}
       <DoneSky text={text} tone={tone} />
-      <HomeCrowd />
-      <HomeCharacter greet={false} />
       <div className="home-layer">
         <div className="home-intro">
           <h1>{pick(T.title, lang)}</h1>

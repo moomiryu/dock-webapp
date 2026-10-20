@@ -1,4 +1,6 @@
 import happyEyeRaw from '../../by_moomiryu/Renewal_v1/Character/eye/eye_happy.svg?raw';
+import { RF, arrange, boundsOf, gapsOf, kindOf, modulesAt, tailOf } from './aggregate';
+import { ATTITUDE_COLORS } from './palettes-v2';
 
 // 일러스트레이터에서 나온 SVG를 문서에 그대로 부어 넣기 전에 손보는 일.
 //
@@ -2030,21 +2032,16 @@ export function chainSvg(raws: string[], key: string, dur = 11, even = false, lo
 }
 
 /**
- * Step 3 — 한 장면이 세 걸음으로 지어진다.
+ * Step 3 — 메가폰 입에서 당당한 흰 말풍선 '내 생각은…'이 '따다당' 지어지고, 구경꾼이 놀란다.
  *
- *   ① 불빛이 켜진다   ② '내 생각은…'이 한 글자씩 찍힌다   ③ 구경꾼이 놀란다
+ * **한 컷에서 짓는다**(2026-09-29, 작가가 example_step3으로 다시 그렸다). 왼쪽 발화자는 가만히 서 있고,
+ * 오른쪽의 말 · 하늘색 구경꾼의 표정만 산다.
  *
- * **한 컷에서 짓는다**(2026-09-29, 작가가 example_step3으로 다시 그렸다).
- * 전에는 About에서 빌려 온 두 컷(불만 켜진 것 example_about_1 · 다 있는 것 _2)의
- * 차이로 움직였는데, 두 컷 사이에 **왼쪽 발화자의 팔 모양**이 달라서 한 바퀴마다
- * 팔을 휘저었다. 작가가 그 움직임을 뺐다 — 왼쪽은 가만히 서 있고, 오른쪽의 불빛 ·
- * 글자 · 하늘색 구경꾼의 표정만 산다. 한 컷이라 오갈 짝이 없으니 팔은 저절로 선다.
- *
- * 첫 걸음의 '켜진다'는 그림에 없다. 불빛(방사형 그라디언트)을 꺼 두고
- * 시작해 밝기로 켠다 — 어두운 벽이 먼저 있고 거기 불이 들어오는 것이
- * 이 장면의 첫 문장이라서.
+ * 2026-10-20(결정 15, 디자이너): 메가폰 뒤의 화면 판(보라 사각)과 그 안에 한 글자씩 찍히던 흰 글자를 걷고,
+ * 그 자리에 키비주얼처럼 점으로 짓는 말풍선 하나(step3Bubble). 불빛(빛무리)은 결정 10에서 이미 걷혔다
+ * (InfoOverlay가 그 타원을 떼고 넘긴다). still이면 다 선 모습 그대로 — 움직임을 끈 사람의 컷.
  */
-export function step3Svg(raw: string, key: string, dur = 12): string {
+export function step3Svg(raw: string, key: string, dur = 12, still = false): string {
   if (typeof DOMParser === 'undefined') return scopeSvg(raw, key);
   try {
     const B = new DOMParser().parseFromString(raw, 'image/svg+xml').documentElement;
@@ -2053,67 +2050,37 @@ export function step3Svg(raw: string, key: string, dur = 12): string {
     inlineFills(B);
     const ib = itemsOf(B);
 
-    /* 벽면 = 화판을 다 덮지 않는 제일 큰 사각형. 문구는 그 안에 들고
+    /* 화면 판 = 화판을 다 덮지 않는 제일 큰 사각형. 글자는 그 안에 들고
        사람은 그 아래 · 왼쪽에 선다 — 둘을 가르는 선이 이것이다. */
-    let wall: { x: number; y: number; w: number; h: number } | null = null;
+    let wall: { x: number; y: number; w: number; h: number } | null = null, wallEl: Element | null = null;
     for (const it of ib) {
       const b = it.tag === 'rect' ? boxOf(it) : null;
       if (!b || b.w >= vb[2] * 0.99) continue;
-      if (!wall || b.w * b.h > wall.w * wall.h) wall = b;
+      if (!wall || b.w * b.h > wall.w * wall.h) { wall = b; wallEl = it.el; }
     }
-    if (!wall) return scopeSvg(raw, key);
+    if (!wall || !wallEl) return scopeSvg(raw, key);
     const W = wall;
 
-    /* 다섯 마디: 어둠 · 불빛 · 문구 · 머묾 · (도로 어둠). 넷째가 길다 —
-       사람이 걸어 들어오던 자리였고(2026-09-20에 걸음을 걷었다), 지금은
-       켜진 글을 보는 동안이다. 구경꾼은 그 첫머리에 놀란다(startle). */
+    /* 다섯 마디: 어둠 · (불빛) · 말 · 머묾 · (도로 어둠). 구경꾼은 넷째 첫머리에 놀란다(startle) —
+       말풍선의 시각은 이 마디가 아니라 초로 잰다(step3Bubble). */
     const t = timeline([1, 2, 2, 5, 1], [2, 2, 5, 2]);
 
-    // ① 불빛 — 그라디언트를 쓰는 것이 불빛이다
-    let lamps = 0;
-    for (const it of ib) {
-      if (!/^url\(/.test(it.fill)) continue;
-      animateSeq(it.el, 'opacity', ['0', '1', '1', '1', '0'], t, dur);
-      lamps++;
-    }
-
-    /* ② 글자 = 벽 안에 **온전히** 든 흰 조각. 두 컷일 때는 '둘째 컷에만 있는
-       것'이 글자였다 — 한 컷에는 그 차이가 없어서 색과 자리로 고른다. 벽에
-       걸친 빨간 메가폰의 동그라미들은 벽 안에 들어도 흰색이 아니라 안 걸리고,
-       구경꾼의 흰 눈은 벽 아래 끝에 걸쳐 온전히 들지 않는다(재서 확인). */
+    /* 옛 글자 = 판 안에 **온전히** 든 흰 조각. 벽에 걸친 빨간 메가폰의 동그라미들은 판 안에 들어도
+       흰색이 아니라 안 걸리고, 구경꾼의 흰 눈은 판 아래 끝에 걸쳐 온전히 들지 않는다(재서 확인).
+       이것이 안 잡히면 작가 그림이 바뀐 것이라 손대지 않고 물러난다. */
     const inside = (b: { x: number; y: number; w: number; h: number } | null) =>
       !!b && b.x >= W.x && b.y >= W.y && b.x + b.w <= W.x + W.w && b.y + b.h <= W.y + W.h;
     const white = (f: string) => /^(#fff|#ffffff|white)$/i.test(f);
-    /* ② 벽에 뜨는 말은 **한 글자씩 찍힌다.**
-       글자를 다루는 물건이 벽에 글을 올리는 장면이라, 한꺼번에 떠오르는
-       것보다 찍히는 편이 이 화면이 하는 일에 가깝다.
+    const letters = ib.filter((it) => white(it.fill) && inside(boxOf(it)));
+    if (!letters.length) return scopeSvg(raw, key);
 
-       작가가 '내 생각은…'을 글자 윤곽 여럿으로 그려 두었으므로, 그것들을
-       **왼쪽부터 차례로** 켜면 그대로 찍히는 것이 된다. 하나가 켜지는 데는
-       제 몫의 60%만 쓴다 — 100%를 다 쓰면 앞 글자가 채 또렷해지기 전에
-       다음 글자가 겹쳐 흐릿한 띠로 보인다.
-
-       벽 바깥에 선 구경꾼은 처음부터 거기 있다(2026-09-20에 걸음을
-       걷어냈다). 밝기도 자리도 건드리지 않는다. */
-    const letters = ib.filter((it) => white(it.fill) && inside(boxOf(it)))
-      .map((it) => ({ it, x: boxOf(it)?.x ?? 0 }))
-      .sort((m, n) => m.x - n.x);
-    const from = t.at[3], span = t.at[4] - t.at[3];
-    letters.forEach(({ it }, i) => {
-      const on0 = from + (span * i) / letters.length;
-      const on1 = from + (span * (i + 0.6)) / letters.length;
-      put(it.el, 'animate', {
-        attributeName: 'opacity', values: '0;0;1;1;0;0',
-        keyTimes: `0;${r2(on0)};${r2(on1)};${r2(t.at[7])};${r2(t.at[8])};1`,
-        calcMode: 'linear', dur: `${dur}s`
-      });
-    });
-
-    if (!lamps && !letters.length) return scopeSvg(raw, key);
-
-    focusOn(B, ib);
+    focusOn(B, ib);   // 옛 판까지 재서 잰다 — 말풍선이 그 자리에 들어가니 그림의 틀(위아래 자리)은 그대로
+    step3Bubble(wallEl, dur, still);
+    wallEl.remove();
+    for (const it of letters) it.el.remove();
+    if (still) return scopeSvg(new XMLSerializer().serializeToString(B), key);
     markEyes(B);
-    /* 발화자(벽 왼쪽에 선 이)는 깜빡이지도 않는다 — 작가가 뺀 것은 '왼쪽의 움직임'
+    /* 발화자(판 왼쪽에 선 이)는 깜빡이지도 않는다 — 작가가 뺀 것은 '왼쪽의 움직임'
        전부다. 깜빡임은 CSS가 .mf-eye에 건다. 이름표만 떼면 된다 */
     for (const el of Array.from(B.querySelectorAll('.mf-eye'))) {
       const b = boxOf(itemOf(el));
@@ -2124,6 +2091,86 @@ export function step3Svg(raw: string, key: string, dur = 12): string {
   } catch {
     return scopeSvg(raw, key);
   }
+}
+
+/**
+ * Step 3의 말풍선(결정 15) — 당당한(사각 모듈) 흰 짝, 서체 29CM Editorial 513 · 0.8u. 앱의 점 모듈(lib/aggregate)로 짓는다.
+ * 자리는 그림 좌표(390 × 603)로 정했다: 덩어리 가운데 (258, 238) · 폭 214 — 메가폰 꼭짓점(133, 259) 오른쪽 위로 비켜 겹치지 않고,
+ * 꼬리는 메가폰 입(넓은 변 가운데 ≈ 146, 322)을 가리킨다. 층은 옛 판 자리(after) — 메가폰 · 사람들 밑이라 쏘는 점이 메가폰 뒤에서 튀어나온다.
+ * 차례(초, 이 그림의 SMIL 시계): 0.45 ~ 0.85 꼬리가 입 쪽 끝부터 → 1.0초부터 당당 박자(0.42)마다 한 글자 — 0.08초에 걸쳐 입에서 먼 점부터
+ * 쏘고, 점은 화면 1100px/초로 날아 제자리에(easeOut) → 한 글자의 점이 다 닿으면 칠과 글자가 서며 '쿵'(가로 1 + 0.1k · 세로 1 − 0.16k,
+ * k = e^(−12t)) → 다 서고 0.15초 뒤 모듈 사이 틈이 0.25초에 메워진다 → 19/22 ~ 21/22에 옅어진다. 값은 디자이너가 본 견본(kv/step3-shot.html)의 것
+ */
+const S3 = { center: [258, 238], width: 214, mouth: [146, 322], tail: [0.45, 0.85], first: 1, beat: 0.42, burst: 0.08, speed: 1100, fill: [0.15, 0.25], fade: [19 / 22, 21 / 22] } as const;
+function step3Bubble(after: Element, dur: number, still: boolean) {
+  const doc = after.ownerDocument, NS = 'http://www.w3.org/2000/svg';
+  const make = (tag: string, at: Record<string, string | number>, parent?: Element) => {
+    const n = doc.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(at)) n.setAttribute(k, String(v));
+    parent?.appendChild(n);
+    return n;
+  };
+  const pair = ATTITUDE_COLORS.ttoryeot.find((c) => c.id === 'white')!, kd = kindOf('ttoryeot'), items = arrange(['내 생각은…'], 'center', kd);
+  const mods = modulesAt(items, kd, 1), gaps = gapsOf(items, kd), [x0, y0, x1, y1] = boundsOf(items, kd, 1, null);
+  const U = S3.width / (x1 - x0), ox = S3.center[0] - ((x0 + x1) / 2) * U, oy = S3.center[1] - ((y0 + y1) / 2) * U;
+  const X = (x: number) => r2(ox + x * U), Y = (y: number) => r2(oy + y * U);   // 말 좌표(u) → 그림 좌표
+  const dev: [number, number] = [(S3.mouth[0] - ox) / U, (S3.mouth[1] - oy) / U], tail = tailOf(items, kd, dev);
+  const kt = (sec: number) => Math.min(1, Math.max(0, sec / dur)).toFixed(4);   // 초 → keyTimes
+  const anim = (el: Element, attrs: Record<string, string>) => { if (!still) put(el, 'animate', { dur: `${dur}s`, ...attrs }); };
+  const showAt = (el: Element, sec: number) => anim(el, { attributeName: 'opacity', values: '0;1', keyTimes: `0;${kt(sec)}`, calcMode: 'discrete' });
+
+  const g = make('g', { fill: pair.bg });
+  after.after(g);
+  anim(g, { attributeName: 'opacity', values: '1;1;0;0', keyTimes: `0;${S3.fade[0].toFixed(4)};${S3.fade[1].toFixed(4)};1` });
+
+  // 꼬리 — 입 쪽 끝(t = 1)부터 밑동으로 자란다
+  const [ta, tb] = S3.tail;
+  for (const d of tail.dots) {
+    const R = r2(RF * d.r * U), dt = d.t ?? 1, c = make('circle', { cx: X(d.x), cy: Y(d.y), r: still ? R : 0 }, g);
+    anim(c, { attributeName: 'r', values: `0;0;${R};${R}`, keyTimes: `0;${kt(ta + ((tb - ta) * (1 - dt)) / 1.15)};${kt(ta + ((tb - ta) * (1.15 - dt)) / 1.15)};1` });
+  }
+  // 모듈 사이 틈 — 다 서고 나서 메워진다(모듈들이 그 위에 선다)
+  const gapG = make('g', {}, g);
+  for (const d of gaps) make('circle', { cx: X(d.x), cy: Y(d.y), r: r2(RF * U) }, gapG);
+
+  // 글자마다 — 쏘는 점(입에서 날아 제자리로) · 칠 · 글자, 셋이 한 몸으로 '쿵'
+  const thump = (sec: number) => { const k = Math.exp(-12 * sec); return `${r2(1 + 0.1 * k)} ${r2(1 - 0.16 * k)}`; };
+  let all = 0, n = 0;
+  items.forEach((it, i) => {
+    if (!it.ch.trim()) return;
+    const [px, py] = mods.pos[i], mine = mods.dots.filter((d) => d.mod === i);
+    mine.sort((p, q) => Math.hypot(q.x - dev[0], q.y - dev[1]) - Math.hypot(p.x - dev[0], p.y - dev[1]));   // 먼 점부터
+    const t0 = S3.first + n++ * S3.beat, shots = mine.map((d, k) => {
+      const e = t0 + (S3.burst * k) / Math.max(1, mine.length - 1);
+      return { d, e, ar: e + (Math.hypot(d.x - dev[0], d.y - dev[1]) * U) / S3.speed };
+    });
+    const done = Math.max(...shots.map((s) => s.ar));
+    all = Math.max(all, done);
+    const at = make('g', { transform: `translate(${X(px)} ${Y(py)})` }, g), body = make('g', {}, at);
+    if (!still) put(body, 'animateTransform', {
+      attributeName: 'transform', type: 'scale', dur: `${dur}s`,
+      values: ['1 1', '1 1', ...[0, 0.05, 0.1, 0.2].map(thump), '1 1', '1 1'].join(';'),
+      keyTimes: ['0', kt(done - 0.001), ...[0, 0.05, 0.1, 0.2, 0.4].map((s) => kt(done + s)), '1'].join(';')
+    });
+    const local = make('g', { transform: `translate(${-X(px)} ${-Y(py)})` }, body);
+    showAt(make('polygon', { points: mods.polys[i].map(([x, y]) => `${X(x)},${Y(y)}`).join(' ') }, local), done);
+    for (const { d, e, ar } of shots) {
+      const c = make('circle', { cx: X(d.x), cy: Y(d.y), r: r2(RF * U) }, local), dx = r2(X(dev[0]) - X(d.x)), dy = r2(Y(dev[1]) - Y(d.y));
+      showAt(c, e);
+      if (!still) put(c, 'animateTransform', {
+        attributeName: 'transform', type: 'translate', dur: `${dur}s`, calcMode: 'spline',
+        values: `${dx} ${dy};${dx} ${dy};0 0;0 0`, keyTimes: `0;${kt(e)};${kt(ar)};1`, keySplines: '0 0 1 1;0.33 1 0.68 1;0 0 1 1'
+      });
+    }
+    const ch = make('text', {
+      x: X(px), y: Y(py + 0.04), 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: pair.text,
+      'font-family': "'29CM Editorial'", 'font-weight': 513, 'font-size': r2(0.8 * U)
+    }, local);
+    ch.textContent = it.ch;
+    showAt(ch, done);
+  });
+  const [f0, f1] = S3.fill;
+  anim(gapG, { attributeName: 'opacity', values: '0;0;1;1', keyTimes: `0;${kt(all + f0)};${kt(all + f0 + f1)};1` });
 }
 
 /* ─── 새 삽화(2026-10-07, 작가가 도킹 화면과 사용 안내 Step 2를 따로 다시 그렸다) ─────────────────────

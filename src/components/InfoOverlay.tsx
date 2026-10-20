@@ -7,9 +7,9 @@ import { pick, useLang, type Pair } from '../lib/lang';
 
 // 작가가 삽화를 컷으로 나눠 준다. 컷 사이를 이어 도는 일은 svgAsset이 한다.
 //
-//   Step 3(작동)  한 컷(example_step3)으로 **세 걸음**을 짓는다.
-//           ① 불빛이 켜지고 ② '내 생각은…'이 한 글자씩 찍히고 ③ 하늘색 구경꾼이
-//           놀란다. 왼쪽 발화자는 가만히 있다(2026-09-29 작가).
+//   Step 3(작동)  한 컷(example_step3)에서 메가폰 입이 당당한 흰 말풍선 '내 생각은…'을
+//           점으로 쏘아 짓고(2026-10-20 결정 15 — 옛 화면 판 · 흰 글자 대신) 하늘색
+//           구경꾼이 놀란다. 왼쪽 발화자는 가만히 있다(2026-09-29 작가).
 //
 //   Step 1  마지막 네 컷은 앞으로만 재생한 뒤 작성 첫 장면으로 돌아간다.
 //
@@ -145,12 +145,13 @@ export default function InfoOverlay({ onClose, onStart, about }: Props) {
 // 뼈대를 맞출 이유가 없다. 모션을 끈 사람에게는 나중 컷만 준다.
 const morphed = new Map<string, string>();
 
-/** 한 번 지어 두고 다시 쓴다. 모션을 끈 사람에게는 멈춘 한 컷만 준다 */
-function Built({ name, still, make }: { name: string; still: string; make: (key: string) => string }) {
+/** 한 번 지어 두고 다시 쓴다. 모션을 끈 사람에게는 멈춘 한 컷만 준다 — 원본 그대로(문자열)거나,
+ *  컷을 손봐야 하면 지어 주는 함수(Step 3 — 판을 걷고 다 선 말풍선) */
+function Built({ name, still, make }: { name: string; still: string | ((key: string) => string); make: (key: string) => string }) {
   const off = typeof matchMedia !== 'undefined'
     && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const key = off ? `${name}-still` : name;
-  if (!morphed.has(key)) morphed.set(key, off ? scopeSvg(still, key) : make(key));
+  if (!morphed.has(key)) morphed.set(key, !off ? make(key) : typeof still === 'string' ? scopeSvg(still, key) : still(key));
   return <span dangerouslySetInnerHTML={{ __html: morphed.get(key)! }} />;
 }
 
@@ -328,7 +329,7 @@ const GUIDE: Slide[] = [
        5몫이라 그동안 화면이 멈춘 듯 보인다. 1번도 같은 값으로 줄였다.
        그림은 About에서 빌려 온 두 컷이었다가 작가의 한 컷(example_step3)으로
        바뀌었다(2026-09-29) — 두 컷 사이에 발화자의 팔이 휘저어지던 것을 뺐다. */
-    art: <Built name="step3" still={artStep3}
+    art: <Built name="step3" still={(k) => step3Svg(artStep3, k, 8.4, true)}
       make={(k) => step3Svg(artStep3, k, 8.4)} />,
     artClass: 'is-bleed',
     dark: true

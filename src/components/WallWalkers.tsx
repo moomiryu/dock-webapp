@@ -29,6 +29,9 @@ const TOP = 4, STAND_H = FOOT_Y - TOP, CX = HEAD.cx, BODY_W = 2 * HEAD.r;
 const VB = { x: -240, y: -170, w: VIEW.w + 480, h: VIEW.h + 230 };
 /** 구역 — 화면 폭의 몫(빨강 왼쪽 · 파랑 오른쪽) */
 const ZONES: readonly (readonly [number, number])[] = [[0.25, 0.42], [0.58, 0.75]];
+/** 로고 앞을 지나던 중 도킹이 오면 비켜 설 띠 — 가까운 쪽 칸 끝 바깥 이 폭(화면 폭의 몫) 안 아무 데나, 끝에서 그 폭의 20%는 띄운다(점검 둘째:
+ *  늘 칸 끝 한 점에 서서 — 걸음이 2px 앞에서 멈춰 칸 안쪽이었다 — 그대로 앉아 파랑은 합 49.9초 · 빨강은 62.3초를 로고 칸 경계에 있었다) */
+const ASIDE = 0.06;
 /** 하는 일의 몫 · 길이(초) — 견본 값 */
 const DAY = { walk: 0.45, sky: 0.35, sit: [7, 13], stand: [1.5, 4], rest: [0.5, 2] };
 /** 만남 — 첫 만남 · 간격(초) · 거리(몸 폭의 배수) · 수다 · 말하는 쪽이 바뀌는 간격 · 함께 하늘 보기(초) */
@@ -106,7 +109,7 @@ export default function WallWalkers({ beat }: { beat?: { current: DockBeat | nul
     const inZone = (w: Walker) => W * (w.zone[0] + Math.random() * (w.zone[1] - w.zone[0]));
     /** 로고 앞(가운데 폭 16% — 두 구역 사이) — 걸어서 지나가기만 하고, 앉기 · 서기 · 만남 자리로 고르지 않는다(결정 6 · 20) */
     const logo = (x: number) => x > W * ZONES[0][1] && x < W * ZONES[1][0];
-    const offLogo = (x: number) => (x < W / 2 ? W * ZONES[0][1] : W * ZONES[1][0]);
+    const offLogo = (x: number) => { const d = ASIDE * (0.2 + 0.8 * Math.random()); return x < W / 2 ? W * (ZONES[0][1] - d) : W * (ZONES[1][0] + d); };
     const go = (w: Walker, tx: number, fast = 1) => { w.mode = 'walk'; w.tx = tx; w.fast = fast; };
     const sitFor = (w: Walker, now: number, sec: number, look: Look) => { w.mode = 'sit'; w.until = now + sec; w.look = look; w.nextBlink = now + HOLD * rnd([2, 5]); };
 
@@ -156,9 +159,9 @@ export default function WallWalkers({ beat }: { beat?: { current: DockBeat | nul
         if (w.nextSmile) w.smileUntil = now + HOLD * T.smileDur;
         w.nextSmile = Math.max(now, w.smileUntil) + HOLD * rnd(T.smileGap);
       }
-      // 도킹 — 제자리에 서서 올려다본다(그리기). 로고 앞을 지나던 중이면 가까운 칸 끝까지 걸어 나가서 선다(결정 20)
+      // 도킹 — 제자리에 서서 올려다본다(그리기). 로고 앞을 지나던 중이면 가까운 쪽 칸 바깥 띠까지 걸어 나가서 선다(결정 20) — 자리는 한 번만 고른다
       if (docking(now) && !(w.mode === 'walk' && logo(w.x))) return;
-      if (docking(now)) w.tx = offLogo(w.x);
+      if (docking(now) && (logo(w.tx) || w.tx < W / 2 !== w.x < W / 2)) w.tx = offLogo(w.x);
       if (w.mode === 'walk') {
         const dx = w.tx - w.x;
         w.face = dx < 0 ? 1 : -1; w.look = 'ahead';

@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DOCK_TERM_MS, EMPHASIS_MS, STAY_MS } from '../lib/wall';
 import WallGround from '../components/WallGround';
+import WallSkyline from '../components/WallSkyline';
 import WallWalkers, { type DockBeat } from '../components/WallWalkers';
 import WallSky from '../components/WallSky';
 import { SAMPLE_MESSAGES } from '../lib/samples';
@@ -304,6 +305,8 @@ export default function WallSimulation() {
         </div>
       )}
 
+      {/* 기본 배경 — 대학 스카이라인(결정 25). 바탕 바로 위, 모든 것의 뒤 */}
+      <WallSkyline />
       {/* 소리의 결(결정 9) — 도킹 때만 기기에서 퍼진다. 말과 땅 뒤라 땅보다 먼저 놓는다(WallSky가 그린다) */}
       <canvas ref={waves} className="wall-waves" aria-hidden="true" />
       {/* 바닥 — 땅 띠와 그 속의 로고타입(결정 6). 말들 뒤. 왼쪽 위의 원 배지는 뺐다 */}

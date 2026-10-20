@@ -16,11 +16,12 @@ import { SKY } from '../lib/sky';
  * 박아"). 벽 왼쪽 위의 원 배지는 뺐다(폰 홈의 원은 그대로).
  *
  * 새로고침 — 땅 띠 왼쪽 끝, 로고타입처럼 띠 높이의 한가운데에 박힌 아이콘(2026-10-21). 자판 없이 마우스 하나로 벽을 다시 띄운다.
+ * 끄기 — 그 짝으로 오른쪽 끝(2026-10-21). 선을 뽑지 않고 파이를 끈다(WallPower → pi/power.py).
  *
  * 말들 뒤에 선다(작은 사람이 그 위를 걷는다). 움직이지 않는다 — 창이 바뀔 때만 다시 그린다.
  */
-export default function WallGround() {
-  const ref = useRef<HTMLCanvasElement>(null), mark = useRef<HTMLDivElement>(null), reload = useRef<HTMLButtonElement>(null);
+export default function WallGround({ onPower }: { onPower?: () => void }) {
+  const ref = useRef<HTMLCanvasElement>(null), mark = useRef<HTMLDivElement>(null), reload = useRef<HTMLButtonElement>(null), power = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const cv = ref.current;
     const ctx = cv?.getContext('2d');
@@ -49,9 +50,11 @@ export default function WallGround() {
       ctx.fill();
       // 로고타입 — 땅 띠 높이의 한가운데
       if (mark.current) Object.assign(mark.current.style, { fontSize: `${((0.3 * home * H) / 720).toFixed(2)}px`, bottom: `${(band / 2).toFixed(1)}px` });
-      // 새로고침 — 칸은 모서리에 붙이고 아이콘만 띠 한가운데로 띄운다
-      const icon = reload.current?.firstElementChild?.getBoundingClientRect().height ?? 0;
-      if (reload.current) reload.current.style.paddingBottom = `${Math.max(0, band / 2 - icon / 2).toFixed(1)}px`;
+      // 새로고침 · 끄기 — 칸은 모서리에 붙이고 아이콘만 띠 한가운데로 띄운다
+      for (const b of [reload.current, power.current]) {
+        const icon = b?.firstElementChild?.getBoundingClientRect().height ?? 0;
+        if (b) b.style.paddingBottom = `${Math.max(0, band / 2 - icon / 2).toFixed(1)}px`;
+      }
     };
     draw();
     window.addEventListener('resize', draw);
@@ -67,6 +70,15 @@ export default function WallGround() {
             strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
+      {/* 끄기 — 오른쪽 끝, 새로고침의 짝(2026-10-21). 누르면 '종료하시겠어요?'(WallPower) */}
+      {onPower && (
+        <button ref={power} type="button" className="wall-reload wall-power" onClick={onPower} aria-label="종료">
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden focusable="false">
+            <path d="M7.4 6.6 A7.5 7.5 0 1 0 16.6 6.6 M12 2.8 V11" fill="none" stroke="currentColor"
+              strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      )}
     </>
   );
 }

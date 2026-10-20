@@ -129,7 +129,9 @@ export const EYE_SMILE = (() => {
 /**
  * 슬프다 — 벽의 작은 사람이 넘어졌다 일어난 뒤 3초(WallWalkers, 2026-10-04 디자이너 "아파하는 표정도"). 작가의 큰 메가폰트
  * 슬픈 눈(Character/eye/eye_sad.svg) 왼눈을 옮겨 온다: 흰자를 30° 기운 현으로 자른 활꼴 눈꺼풀(몸 색)과 가운데 눈동자.
- * 눈동자와 눈꺼풀이 같은 몸 색이라 흰자는 초승달처럼 남는다. 홈에서는 쓰지 않는다
+ * 눈동자와 눈꺼풀이 같은 몸 색이라 흰자는 초승달처럼 남는다. 홈에서는 쓰지 않는다.
+ * 눈꺼풀은 좌우로 뒤집어 얹는다(2026-10-21 디자이너 "눈 반대로 됨. 지금은 화났잖아") — 작가의 그림은 정면 얼굴이라 왼눈 눈꺼풀이 바깥(왼쪽)
+ * 위를 덮는데, 작은 사람은 왼쪽을 보는 옆얼굴이라 그대로 두면 앞(코 쪽) 위를 덮어 찡그린 눈이 된다. 뒤집으면 뒤쪽 위가 덮여 처진 눈
  */
 export const EYE_SAD = (() => {
   const circles = [...sadSrc.matchAll(/<circle[^>]*cx="([\d.]+)"[^>]*cy="([\d.]+)"[^>]*r="([\d.]+)"/g)].map((m) => m.slice(1).map(Number));
@@ -140,7 +142,7 @@ export const EYE_SAD = (() => {
   const k = EYE_WHITE.r / r;
   return {
     lid, pupil: { cx: EYE_WHITE.cx, cy: EYE_WHITE.cy, r: pr * k },
-    transform: `translate(${EYE_WHITE.cx} ${EYE_WHITE.cy}) scale(${k.toFixed(4)}) translate(${-cx} ${-cy})`
+    transform: `translate(${EYE_WHITE.cx} ${EYE_WHITE.cy}) scale(${(-k).toFixed(4)} ${k.toFixed(4)}) translate(${-cx} ${-cy})`
   };
 })();
 

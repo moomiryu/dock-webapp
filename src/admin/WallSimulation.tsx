@@ -12,6 +12,7 @@ import WallGround from '../components/WallGround';
 import WallSkyline from '../components/WallSkyline';
 import WallWalkers, { type DockBeat } from '../components/WallWalkers';
 import WallSky, { type SkyPerch } from '../components/WallSky';
+import WallPower from '../components/WallPower';
 import { SAMPLE_MESSAGES } from '../lib/samples';
 import {
   isFirebaseConfigured,
@@ -77,6 +78,9 @@ export default function WallSimulation() {
   const [error, setError] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
+  /** 끄기를 묻는 중 — 가운데 '종료하시겠어요?'가 떠 있고 해 · 작은 사람이 슬프다(WallPower) */
+  const [powerAsk, setPowerAsk] = useState(false);
+  const closePower = useCallback(() => setPowerAsk(false), []);
   const [now, setNow] = useState(() => Date.now());
   /** 지금 도킹한 글 — key가 바뀌면 새 도킹, release = 해제(WallSky) */
   const [dock, setDock] = useState<{ msg: StoredMessage; key: number; release: boolean } | null>(null);
@@ -308,15 +312,17 @@ export default function WallSimulation() {
       )}
 
       {/* 기본 배경 — 대학 스카이라인(결정 25). 바탕 바로 위, 모든 것의 뒤 */}
-      <WallSkyline beat={beat} />
+      <WallSkyline beat={beat} sad={powerAsk} />
       {/* 소리의 결(결정 9) — 도킹 때만 기기에서 퍼진다. 말과 땅 뒤라 땅보다 먼저 놓는다(WallSky가 그린다) */}
       <canvas ref={waves} className="wall-waves" aria-hidden="true" />
       {/* 바닥 — 땅 띠와 그 속의 로고타입(결정 6). 말들 뒤. 왼쪽 위의 원 배지는 뺐다 */}
-      <WallGround />
+      <WallGround onPower={() => setPowerAsk(true)} />
       {/* 하늘 · 도킹 — 처음 받은 목록으로 쌓는다(받기 전에 쌓으면 받은 글이 모두 아래에서 올라오는 것으로 읽힌다) */}
       {messages !== null && <WallSky list={visible} dock={dock} beat={beat} waves={waves} perch={perch} />}
       {/* 벽의 작은 사람 둘 — 땅 위를 걷고, 하늘 말 위에도 오른다 */}
-      <WallWalkers beat={beat} sky={perch} />
+      <WallWalkers beat={beat} sky={perch} sad={powerAsk} />
+      {/* 끄기를 묻는 창 — 가운데, 맨 앞 */}
+      <WallPower open={powerAsk} onClose={closePower} />
 
       {showOverlay && (
         <div className="wall-overlay">

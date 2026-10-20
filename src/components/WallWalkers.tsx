@@ -97,7 +97,10 @@ const rndInt = (r: readonly number[]) => Math.floor(r[0] + Math.random() * (r[1]
 const clamp = (k: number) => Math.min(1, Math.max(0, k));
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 
-export default function WallWalkers({ beat, sky }: { beat?: { current: DockBeat | null }; sky?: { current: SkyPerch | null } }) {
+export default function WallWalkers({ beat, sky, sad = false }: { beat?: { current: DockBeat | null }; sky?: { current: SkyPerch | null }; sad?: boolean }) {
+  /** 끄기를 묻는 동안(WallPower) — 새 일을 시작하지 않고(수다 · 나들이도 멈춤) 가운데 창 쪽을 보며 슬픈 눈(EYE_SAD) */
+  const sadRef = useRef(sad);
+  sadRef.current = sad;
   const root = useRef<HTMLDivElement>(null);
   const beatRef = useRef(beat), skyRef = useRef(sky);
   beatRef.current = beat;
@@ -276,6 +279,7 @@ export default function WallWalkers({ beat, sky }: { beat?: { current: DockBeat 
     let nextTrip = start + rnd(TRIP.every);
     const brain = (now: number, ps: Map<string, Perch>) => {
       if (docking(now)) { meet = null; for (const w of ws) w.trip = null; return; }
+      if (sadRef.current) { meet = null; return; }
       if (!meet && now > nextMeet && ws.length > 1 && ws.every((w) => w.mode !== 'off' && w.mode !== 'pop' && !w.trip && !w.on && !w.air)) {
         const v = ws[Math.random() < 0.5 ? 0 : 1], h = ws[v === ws[0] ? 1 : 0], side = v.x < h.x ? -1 : 1;
         // 앉을 이가 걷는 중이거나 로고 앞이면 다음에 — 그 자리에 앉혀 버린다(결정 20: 실제 벽에서 빨강이 로고 위에 섰다)
@@ -393,6 +397,7 @@ export default function WallWalkers({ beat, sky }: { beat?: { current: DockBeat 
       const still = reduce.matches, dk = !still && docking(now) && !w.air, b = beatRef.current?.current;
       // 도킹이면 일어나 가운데로 돌아선다
       if (dk && !(w.mode === 'walk' && logo(w.x))) { w.face = W / 2 < w.x ? 1 : -1; }   // 로고 앞에서 걸어 나가는 동안엔 가는 쪽을 본다
+      if (sadRef.current && !w.air && w.mode !== 'walk') w.face = W / 2 < w.fx ? 1 : -1;   // 끄기를 묻는 창(가운데) 쪽을 본다
       const goal = !dk && w.mode === 'sit' ? 1 : 0;
       w.sitT += Math.sign(goal - w.sitT) * Math.min(Math.abs(goal - w.sitT), dt / RET);
       const seated = w.sitT > 0.5;
@@ -425,7 +430,7 @@ export default function WallWalkers({ beat, sky }: { beat?: { current: DockBeat 
       // 눈 — 도킹이면 올려다봄 · 하늘을 볼 땐 검은자가 위에서 좌우로 천천히 · 수다 중엔 말하는 쪽 쳐다봄↔웃음 · 평소 자주 웃음
       const up = dk || w.look === 'sky';
       const talking = !!meet && meet.phase === 'chat' && !dk && (w === meet.v || w === meet.h);
-      const e: Eye = feye ?? (w.air ? (w.air.scared ? 'wide' : 'smile')   // 뛸 땐 웃고, 놀라 떨어질 땐 동그래진다
+      const e: Eye = sadRef.current ? 'sad' : feye ?? (w.air ? (w.air.scared ? 'wide' : 'smile')   // 뛸 땐 웃고, 놀라 떨어질 땐 동그래진다
         : up ? (!dk && now < w.blinkUntil ? 'shut' : 'up')
         : talking ? (w === speaker ? (Math.floor(now / (HOLD * 0.6)) % 3 === 2 ? 'smile' : 'look') : (Math.floor(now / (HOLD * 2.2)) % 4 === 3 ? 'look' : 'smile'))
         : now < w.smileUntil && (w.mode === 'walk' || w.mode === 'sit') ? 'smile'

@@ -2618,9 +2618,42 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   35%  { transform: scale(1.2) translateY(-6%); }
   100% { transform: scale(1.08) translateY(0); }
 }
+/* 끄기를 묻는 동안(WallPower)엔 해가 슬프다 — 작가의 슬픈 눈꺼풀(eye_sad.svg, 해 색)이 내려오고, 해가 조금 가라앉는다 */
+.wall-sun-sad{ display: none; }
+.wall-sun-sad path{ fill: var(--grey-900); }
+.wall-sun.is-sad{ transform: translateY(4%) scale(0.96); }
+.wall-sun.is-sad .wall-sun-sad{ display: block; }
+.wall-sun.is-sad .onwall-eye-open{ animation: none; opacity: 1; }
+.wall-sun.is-sad .onwall-eye-shut{ animation: none; opacity: 0; }
 @media (prefers-reduced-motion: reduce){
   .wall-sun, .wall-sun .onwall-eye-open, .wall-sun .onwall-eye-pupil{ transition: none; }
   .wall-sun.is-startled{ animation: none; }
+}
+
+/* 벽의 끄기(2026-10-21, WallPower) — 버튼은 새로고침의 짝으로 오른쪽 끝. '종료하시겠어요?'는 가운데, 작은 사람과 같은 층의 뒤에 놓여
+   그들보다 앞. 판은 점으로 지은 면(캔버스, --grey-800), 크기는 토큰 × 벽 높이 / 720(--wk). '예'만 1px 선 칸. '예'를 누르면 벽 전체가
+   여는 장면처럼 옛 TV로 접혀 꺼진다(homeBootOff, 그 장면처럼 --t-slow의 2배) */
+.wall-reload.wall-power{ left: auto; right: 0; }   /* 새로고침의 꼴을 그대로 입고 자리만 오른쪽 — 그 규칙보다 앞에 있어 두 이름으로 이긴다 */
+.wall-power-ask{ position: absolute; left: 50%; top: 50%; z-index: var(--z-elevated); transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: calc(var(--space-section) * var(--wk));
+  padding: calc(var(--space-block) * var(--wk)) calc(var(--space-block) * 1.5 * var(--wk)); cursor: default;
+  font-family: var(--ui-font); color: var(--paper); animation: wallPowerIn var(--t-return) var(--ease-emphasized); }
+.wall-power-ask.is-down{ visibility: hidden; }
+.wall-power-dots{ position: absolute; z-index: -1; pointer-events: none; }
+.wall-power-q{ margin: 0; font-size: calc(var(--fs-h2) * var(--wk)); font-weight: 600; line-height: 1.2; white-space: nowrap; }
+.wall-power-acts{ display: flex; gap: calc(var(--space-in-group) * var(--wk)); }
+.wall-power-acts button{ min-width: calc(var(--btn-xl) * 1.6 * var(--wk)); height: calc(var(--btn-l) * var(--wk)); padding: 0 calc(var(--pad-btn-x) * var(--wk));
+  font: inherit; font-size: calc(var(--fs-btn) * var(--wk)); color: var(--paper); background: none; border: 1px solid transparent;
+  border-radius: calc(var(--r-button) * var(--wk)); cursor: pointer; }
+.wall-power-acts .wall-power-yes{ border-color: var(--paper); }
+.wall-power-acts button:hover, .wall-power-acts button:focus-visible{ color: var(--grey-300); outline: none; }
+.wall-power-acts .wall-power-yes:hover, .wall-power-acts .wall-power-yes:focus-visible{ border-color: var(--grey-300); }
+.wall-power-acts .wall-power-no:focus-visible{ border-color: var(--grey-500); }
+@keyframes wallPowerIn{ from{ opacity: 0; transform: translate(-50%, -46%); } to{ opacity: 1; transform: translate(-50%, -50%); } }
+.wall.is-power-off{ animation: homeBootOff calc(var(--t-slow) * 2) var(--ease-standard) forwards; }
+@media (prefers-reduced-motion: reduce){
+  .wall-power-ask{ animation: none; }
+  .wall.is-power-off{ animation: none; transform: scale(0); }
 }
 
 /* 벽의 하늘(2026-10-20, WallSky) — 말마다 한 겹(캔버스 + 글자)이고 오래된 말부터 놓아 나중 말이 앞에서 가린다. 자리 · 기울기 · 배율은

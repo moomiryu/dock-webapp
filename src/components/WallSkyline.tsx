@@ -4,6 +4,10 @@ import { SKY } from '../lib/sky';
 import { groundPx } from '../lib/ground';
 import { Eyes } from '../phases/PhaseOnWall';
 import type { DockBeat } from './WallWalkers';
+import sadSrc from '../../by_moomiryu/Renewal_v1/Character/eye/eye_sad.svg?raw';
+
+/** 해의 슬픈 눈꺼풀 둘 — 작가의 슬픈 눈(eye_sad.svg)은 07 눈과 판 · 눈 자리가 같아(412 × 172, 흰자 반지름 86.21) 눈꺼풀만 그대로 얹는다 */
+const SAD_LIDS = [...sadSrc.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map((m) => m[1]);
 
 /**
  * 벽의 기본 배경 — 대학 스카이라인(2026-10-20, 결정 25 — 견본 kv/bg-campus.html 'A — 완전 한 색'). 자연 컨셉 때의 나무처럼 깔리는
@@ -44,10 +48,12 @@ const SWAY = 0.015, SWAY_S = 40;
 /** 점 반지름의 덧 — 이웃 점이 겹쳐 속이 한 면이 되게(견본 값) */
 const FILL = 1.08;
 
-export default function WallSkyline({ beat }: { beat?: { current: DockBeat | null } }) {
+export default function WallSkyline({ beat, sad = false }: { beat?: { current: DockBeat | null }; sad?: boolean }) {
   const ref = useRef<HTMLDivElement>(null), sunRef = useRef<HTMLDivElement>(null);
   const beatRef = useRef(beat);
   beatRef.current = beat;
+  // 끄기를 묻는 동안(WallPower) 해가 슬프다 — 눈꺼풀이 내려오고 조금 가라앉는다(app.css .wall-sun.is-sad)
+  useEffect(() => { sunRef.current?.classList.toggle('is-sad', sad); }, [sad]);
   // 해의 눈 — 도킹 중(큰 말이 선 때부터 하늘로 오르기 시작할 때까지)엔 깜짝 놀란다. 그 밖엔 07 눈처럼 느리게 끔뻑(app.css .wall-sun)
   useEffect(() => {
     let raf = 0, on = false;
@@ -117,7 +123,10 @@ export default function WallSkyline({ beat }: { beat?: { current: DockBeat | nul
   }, []);
   return (
     <div ref={ref} className="wall-skyline" aria-hidden="true" style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-      <div ref={sunRef} className="wall-sun"><Eyes /></div>
+      <div ref={sunRef} className="wall-sun">
+        <Eyes />
+        <svg className="onwall-eye wall-sun-sad" viewBox="0 0 412.12 172.43" aria-hidden focusable="false">{SAD_LIDS.map((d) => <path key={d} d={d} />)}</svg>
+      </div>
     </div>
   );
 }

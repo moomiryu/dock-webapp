@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { G, RF } from '../lib/aggregate';
 import { SKY } from '../lib/sky';
 import { groundPx } from '../lib/ground';
+import { Eyes } from '../phases/PhaseOnWall';
+import type { DockBeat } from './WallWalkers';
 
 /**
  * 벽의 기본 배경 — 대학 스카이라인(2026-10-20, 결정 25 — 견본 kv/bg-campus.html 'A — 완전 한 색'). 자연 컨셉 때의 나무처럼 깔리는
@@ -13,7 +15,8 @@ import { groundPx } from '../lib/ground';
  * 격자 — 화면 왼쪽 위가 원점, 간격 = 하늘 말 점 간격 G)마다 반지름 RF × 1.08의 원.
  *
  * 해와 구름(결정 29 — "우리 결로"): 같은 짓는 법, 같은 --grey-900(결정 34 — 한 단계 밝던 --grey-800을 건물과 한 색으로). 해는 왼쪽 위 원 하나(학생회관 돔과 떨어지게),
- * 움직이지 않는다. 구름 넷은 부채꼴 하늘이 비워 두는 네 귀 · 양옆에 — 말풍선이 가장자리에 없어서(디자이너). 화면 끝에서 조금 잘려도 되고,
+ * 자리는 움직이지 않는다. 해에는 눈이 있다(2026-10-21 디자이너 — 07의 두 눈, 흰자는 은은하게): 평소엔 느리게 끔뻑, 도킹 중엔 깜짝 놀란다
+ * (app.css .wall-sun). 구름 넷은 부채꼴 하늘이 비워 두는 네 귀 · 양옆에 — 말풍선이 가장자리에 없어서(디자이너). 화면 끝에서 조금 잘려도 되고,
  * 가운데로 흘러 들어오지 않는다 — 제자리에서 화면 폭의 ±1.5%만 40초에 한 번 오간다, 구름마다 박자를 엇갈려. 움직임 줄이기면 멈춘다.
  *
  * 층은 벽 바탕 바로 위 — 해 → 구름 → 건물 다음에야 소리의 결 · 땅 · 하늘 말 · 부스러기 · 작은 사람(WallSimulation에서 맨 앞에 놓는다).
@@ -41,17 +44,31 @@ const SWAY = 0.015, SWAY_S = 40;
 /** 점 반지름의 덧 — 이웃 점이 겹쳐 속이 한 면이 되게(견본 값) */
 const FILL = 1.08;
 
-export default function WallSkyline() {
-  const ref = useRef<HTMLDivElement>(null);
+export default function WallSkyline({ beat }: { beat?: { current: DockBeat | null } }) {
+  const ref = useRef<HTMLDivElement>(null), sunRef = useRef<HTMLDivElement>(null);
+  const beatRef = useRef(beat);
+  beatRef.current = beat;
+  // 해의 눈 — 도킹 중(큰 말이 선 때부터 하늘로 오르기 시작할 때까지)엔 깜짝 놀란다. 그 밖엔 07 눈처럼 느리게 끔뻑(app.css .wall-sun)
   useEffect(() => {
-    const box = ref.current;
-    if (!box) return;
+    let raf = 0, on = false;
+    const tick = () => {
+      raf = requestAnimationFrame(tick);
+      const b = beatRef.current?.current, now = performance.now() / 1000, dk = !!b && now >= b.start && now < b.rise;
+      if (dk !== on && sunRef.current) { on = dk; sunRef.current.classList.toggle('is-startled', dk); }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  useEffect(() => {
+    const box = ref.current, sun = sunRef.current;
+    if (!box || !sun) return;
     const ink = getComputedStyle(document.documentElement).getPropertyValue('--grey-900').trim();
+    const made: HTMLCanvasElement[] = [];
     const draw = () => {
       const W = window.innerWidth, H = window.innerHeight, dpr = Math.min(2, window.devicePixelRatio || 1);
       const u = SKY.u * H, g = G * u, row = (g * Math.sqrt(3)) / 2, r = RF * u * FILL;
-      /** w × h 안 벌집 점(왼쪽 위가 원점) 중 inside인 것을 color로 — 점이 잘리지 않게 사방 r만큼 넓힌 캔버스를 (x, y)에 놓는다 */
-      const dots = (x: number, y: number, w: number, h: number, color: string, inside: Shape) => {
+      /** w × h 안 벌집 점(왼쪽 위가 원점) 중 inside인 것을 color로 — 점이 잘리지 않게 사방 r만큼 넓힌 캔버스를 (x, y)에 놓는다(해는 제 틀 안에) */
+      const dots = (x: number, y: number, w: number, h: number, color: string, inside: Shape, into: HTMLElement = box) => {
         const cv = document.createElement('canvas'), ctx = cv.getContext('2d')!;
         cv.width = Math.ceil((w + 2 * r) * dpr); cv.height = Math.ceil((h + 2 * r) * dpr);
         cv.style.cssText = `position:absolute;left:${x - r}px;top:${y - r}px;width:${cv.width / dpr}px;height:${cv.height / dpr}px`;
@@ -66,11 +83,14 @@ export default function WallSkyline() {
           }
         }
         ctx.fill();
-        return box.appendChild(cv);
+        made.push(cv);
+        return into === box ? box.appendChild(cv) : into.insertBefore(cv, into.firstChild);   // 해는 눈 뒤에
       };
-      box.replaceChildren();
+      for (const cv of made.splice(0)) cv.remove();
+      // 해 — 눈과 한 틀(.wall-sun)에 넣어 놀랄 때 함께 움찔한다. 틀은 맨 앞 자식이라 구름 · 건물이 그 앞에 선다
       const sr = SUN[2] * H;
-      dots(SUN[0] * W - sr, SUN[1] * H - sr, 2 * sr, 2 * sr, ink, (x, y) => (x - sr) ** 2 + (y - sr) ** 2 <= sr * sr);
+      Object.assign(sun.style, { left: `${SUN[0] * W - sr}px`, top: `${SUN[1] * H - sr}px`, width: `${2 * sr}px`, height: `${2 * sr}px` });
+      dots(0, 0, 2 * sr, 2 * sr, ink, (x, y) => (x - sr) ** 2 + (y - sr) ** 2 <= sr * sr, sun);
       const still = matchMedia('(prefers-reduced-motion: reduce)').matches, A = SWAY * W;
       for (const [cx, cy, fw, phase] of CLOUDS) {
         const w = fw * W, h = w * 0.5;
@@ -95,6 +115,9 @@ export default function WallSkyline() {
     window.addEventListener('resize', draw);
     return () => window.removeEventListener('resize', draw);
   }, []);
-  return <div ref={ref} className="wall-skyline" aria-hidden="true"
-    style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }} />;
+  return (
+    <div ref={ref} className="wall-skyline" aria-hidden="true" style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+      <div ref={sunRef} className="wall-sun"><Eyes /></div>
+    </div>
+  );
 }

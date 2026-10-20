@@ -21,9 +21,10 @@ import type { Align, ToneState } from '../types';
  *   있게", 견본 out-08sit/v-2-fix-s): 쓴 글 · 성격 · 모양 · 색 짝 그대로(5/5와 같은 그리기 — 점은 캔버스, 글자는 VoiceBubble), 가로
  *   가운데 · 몸통 폭 = 화면 폭의 88%, 꼬리는 짧게(옛 길이 2.25u) 아래로. 그 위에 벽의 작은 사람 둘(빨강 왼쪽 · 하늘 오른쪽, walker.ts SIT ·
  *   웃는 눈)이 바깥을 보고 앉는다 — 키 = 한 줄 몸통 높이 × 0.9, 자리 = 몸통 폭의 22.5% · 77.5%, 키의 10%만큼 몸통 윗선에 걸쳐. 두 발만
- *   벽처럼 까딱. 무리(머리 꼭대기 ~ 꼬리 끝)의 가운데 = 회색 말이 내려오는 가장 낮은 곳과 규칙 목록 윗선 사이의 가운데 — 그 칸보다 크면
- *   (긴 글 · 낮은 화면) 줄인다. 말 · 사람 · 꼬리가 한 덩어리로 위아래로만 두둥실(홈 메가폰트 charFloat의 결 — 5.2초 한 바퀴, 폭 ±무리
- *   높이의 2%). 0.6초에 나타난다.
+ *   벽처럼 까딱. 무리(머리 꼭대기 ~ 꼬리 끝)의 가운데 = 회색 말이 내려오는 가장 낮은 곳과 규칙 목록 윗선 사이의 가운데 — 그 칸에 제
+ *   크기로 들지 않으면(긴 글 · 낮은 화면) 줄이지 않고 규칙 위에 붙어 메아리 띠까지 올라간다(회색 말이 그 뒤로 지나간다 — 작은 화면,
+ *   디자이너 "메아리 띠에 겹쳐도 됨"), 부제까지도 모자라면 그때만 줄인다. 말 · 사람 · 꼬리가 한 덩어리로 위아래로만 두둥실(홈 메가폰트
+ *   charFloat의 결 — 5.2초 한 바퀴, 폭 ±무리 높이의 2%). 0.6초에 나타난다.
  * 움직임 줄이기면 다 앉은 모습 그대로.
  *
  * 메가폰트는 08에서 빠졌다(결정 32). 호의 중심은 그것이 서던 상자 그대로 셈한다(HomeCharacter의 제자리 — 폭 min(0.7W, 272) · 가운데
@@ -129,8 +130,12 @@ export default function DoneSky({ text, tone }: { text?: string; tone?: ToneStat
         for (const [x, y] of [[s.m.box[0], s.m.box[3]], [s.m.box[2], s.m.box[3]], tail.tip]) low = Math.max(low, pos[1] + turn([x * k2, y * k2], rot)[1]);
       }
       low = Math.max(low + MOVE.bob, top);   // 회색 말이 없어도 부제 아래로는 올라가지 않는다
-      const span = group.bottom - group.top, u = Math.min((ME.w * W) / (mine.box[2] - mine.box[0]), (rulesTop - low - 2 * ME.gap) / (span * (1 + 2 * ME.amp)));
-      me = { u, ox: W / 2 - ((mine.box[0] + mine.box[2]) / 2) * u, oy: (low + rulesTop) / 2 - ((group.top + group.bottom) / 2) * u, amp: ME.amp * span * u };
+      // 메아리 아래 ~ 규칙 위에 제 크기(폭 88%)로 들면 그 가운데. 모자라면(320 × 568 · 60자 다섯 줄 — 폭 41%까지 줄었다) 제 크기 그대로
+      // 규칙 위에 붙어 메아리 띠까지 올라간다 — 회색 말은 그 뒤로 지나간다(결정 32 작은 화면, 디자이너 "메아리 띠에 겹쳐도 됨"). 부제는 넘지 않는다
+      const span = group.bottom - group.top, need = span * (1 + 2 * ME.amp), full = (ME.w * W) / (mine.box[2] - mine.box[0]);
+      const fits = (rulesTop - low - 2 * ME.gap) / need >= full, u = fits ? full : Math.min(full, (rulesTop - top - 2 * ME.gap) / need), amp = ME.amp * span * u;
+      const oy = fits ? (low + rulesTop) / 2 - ((group.top + group.bottom) / 2) * u : rulesTop - ME.gap - amp - group.bottom * u;
+      me = { u, ox: W / 2 - ((mine.box[0] + mine.box[2]) / 2) * u, oy, amp };
       // 사람 — 키 · 자리는 화면이 바뀔 때만 적는다(두둥실 · 발은 그리는 시계가)
       const ks = (group.h * u) / CLIP_H;
       people.forEach((p, i) => {

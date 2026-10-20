@@ -15,8 +15,8 @@ import type { DockBeat } from './WallWalkers';
 /**
  * 벽 = 하늘에 뜬 말들 + 도킹 장면(2026-10-20, 결정 3 D · 결정 4 · 5). 나무 · 돌 · 구름 · 비눗방울의 풍경을 대체한다.
  *
- * 평소 — 지난 말들이 모인 채(도트 집합체, lib/aggregate.ts) 하늘에 아주 작게 둥실인다. 자리는 기기를 중심으로 한 부채꼴 — 두 겹 호에
- * 자리 번호 차례로 앉아 호의 결을 따라 3분의 1만큼 기운다(결정 9, lib/sky.ts). 꼬리는 기울어도 기기를 가리킨다. 하나가 바뀌면 그 호의
+ * 평소 — 지난 말들이 모인 채(도트 집합체, lib/aggregate.ts) 하늘에 아주 작게 둥실인다. 자리는 기기를 중심으로 한 부채꼴 — 겹겹의 호
+ * (결정 9 · 35 — 몇 겹인지는 lib/sky.ts FAN.rings)에 자리 번호 차례로 앉아 호의 결을 따라 3분의 1만큼 기운다. 꼬리는 기울어도 기기를 가리킨다. 하나가 바뀌면 그 호의
  * 이웃들이 호를 따라 미끄러진다. 겹치면 나중에 온 말이 앞에서 그냥 가린다 — 말마다 한 겹(캔버스 + 글자)이고 오래된 말부터 놓는다.
  *
  * 도킹 —
@@ -33,12 +33,13 @@ import type { DockBeat } from './WallWalkers';
  * 크게 머무는 동안 0.4초마다 쏟아지고 모이며 잦아든다. 말과 땅 뒤(WallSimulation의 .wall-waves)에 --grey-600으로. 결이 지나가면 하늘
  * 말이 덜컥 흔들린다 — 큰 말은 흔들지 않는다(소리의 주인).
  *
- * 돌려 보이기(결정 8) — 하늘엔 많아야 열 개(lib/sky.ts). 못 뜬 말 · 넘쳐 터진 말은 기다림 줄에 선다(지운 게 아니다 — 사흘 약속을 이것으로
+ * 돌려 보이기(결정 8 · 35) — 하늘엔 많아야 SKY.max개(lib/sky.ts). 못 뜬 말 · 넘쳐 터진 말은 기다림 줄에 선다(지운 게 아니다 — 사흘 약속을 이것으로
  * 지킨다). 1분마다 가장 오래 떠 있던 말이 꼬리 끝부터 터져 줄 맨 뒤로 가고, 줄 맨 앞 말이 그 자리 번호를 물려받아 0.9초 뒤 기기에서
  * 0.4배로 쏘아 올라 1.4초(easeOut)에 제자리로 곧게 커지며 붙는다(꼬리는 늘 기기를 가리키고, 기울기는 0에서 제 기울기로). 도킹 중엔
  * 돌지 않고 끝나면 1분을 다시 센다.
  * 쏘아 오르는 중엔 도킹을 열지 않는다(다 붙은 뒤에 연다). '떠 있던 때'는 하늘에 붙은 때다 — 처음 쌓은 말만 쓰인 시각으로 잰다.
- * 사흘이 지나 터진 자리는 다음 돌림이 터뜨리지 않고 올리기만 해서 열 개로 다시 채운다.
+ * 사흘이 지나 터진 자리는 다음 돌림이 터뜨리지 않고 올리기만 해서 상한까지 다시 채운다.
+ * 한 도킹은 한 번만 연다 — 뗀 뒤에도 dock이 { key, release }로 남아 있으니, 끝난 key가 다시 들어와도 열지 않는다(M.opened).
  *
  * 말의 부스러기(결정 6) — 터지는 말의 점 다섯 알에 한 알꼴이 제 색으로(회색으로 가라앉아 있었어도) 땅에 떨어져 모래처럼 쌓이고, 땅 색으로
  * 천천히 바래다 가라앉는다. 기기에서 쏘아 올라 → 하늘에 쌓이고 → 터져 → 땅에 내려앉는 한 바퀴. 더미는 배경 — 작은 사람 뒤에 그린다.
@@ -163,7 +164,10 @@ export default function WallSky({ list, dock, beat, waves, perch }: Props) {
     /** 부스러기 — 점 간격 칸마다 쌓인 더미(아래부터) · 떨어지는 점 · 다시 칠할까 · 마지막으로 칠한 때 · 마지막 걸음 */
     crumbs: { cols: [] as Crumb[][], falls: [] as Fall[], dirty: true, painted: -Infinity, last: NaN, sinking: false },
     /** 하늘 놀이 — 말의 윗선(말 id → 한 번 셈) */
-    tops: new Map<string, Top>() });
+    tops: new Map<string, Top>(),
+    /** 마지막으로 연 도킹의 key — 뗀 뒤에도 WallSimulation의 dock은 { key, release }로 남아 있어, 돌림 말이 붙을 때(landed) 같은 도킹을
+        처음부터 다시 열던 것을 막는다(253ea10부터 라이브에도 — 진행2가 결정 35를 재다 찾음) */
+    opened: -1 });
   const [, bump] = useState(0);
   /** 하늘을 처음 쌓았나 — 그 전에 온 도킹은 쌓은 뒤에 연다 */
   const [ready, setReady] = useState(false);
@@ -243,7 +247,7 @@ export default function WallSky({ list, dock, beat, waves, perch }: Props) {
   };
   /**
    * 새 말의 자리 — 열이 찼으면 가장 오래 떠 있던 말이 터지고 새 말이 그 자리 번호를 물려받는다(slot을 주면 그 번호 — 돌림). 번호가 없으면
-   * 맨 뒤. 두 겹 호에 안 들어가면 하나씩 더 터뜨린다. newer = 하늘의 어느 말보다 새 말인가 — 아니면(늦게 받은 옛 글) 자리가 날 때만 붙고
+   * 맨 뒤. 부채꼴의 호들에 안 들어가면 하나씩 더 터뜨린다. newer = 하늘의 어느 말보다 새 말인가 — 아니면(늦게 받은 옛 글) 자리가 날 때만 붙고
    * 남을 밀어내지 않는다(null — 기다림 줄로)
    */
   const roomFor = (b: Base, t: number, animate: boolean, slot?: number, newer = true): Place | null => {
@@ -264,7 +268,7 @@ export default function WallSky({ list, dock, beat, waves, perch }: Props) {
     }
   };
   /** 돌려 보이기 한 번 — 가장 오래 떠 있던 말이 터져 줄 맨 뒤로 · 줄 맨 앞 말(목록에서 빠진 글은 건너뜀)이 그 자리 번호를 물려받아 ROT.wait 뒤 쏘아
-      오른다. 하늘이 열 개가 안 되면(사흘이 지나 터진 자리) 터뜨리지 않고 올리기만 해 열 개로 다시 채운다(디자이너 10-20) */
+      오른다. 하늘이 상한(SKY.max)에 못 미치면(사흘이 지나 터진 자리) 터뜨리지 않고 올리기만 해 상한까지 다시 채운다(디자이너 10-20) */
   const rotate = (t: number) => {
     const M = model.current;
     M.nextRot = t + ROT.every;
@@ -349,8 +353,11 @@ export default function WallSky({ list, dock, beat, waves, perch }: Props) {
       }
       return;
     }
+    // 이미 열었다 끝난 도킹 — 다시 열지 않는다
+    if (M.opened === dock.key) return;
     // 쏘아 오르는 말이 다 붙은 뒤에 연다(landed가 다시 부른다)
     if (M.shot) return;
+    M.opened = dock.key;
     if (M.dock) { const D = M.dock; M.sky.push({ ...skyAt(D, D.at, W, H, u), born: Date.now() }); M.dock = null; }
     if (M.sky.some((s) => s.id === dock.msg.id)) { M.sky = M.sky.filter((s) => s.id !== dock.msg.id); settle(t, true); }
     M.queue = M.queue.filter((id) => id !== dock.msg.id);

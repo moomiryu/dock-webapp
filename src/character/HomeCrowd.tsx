@@ -198,12 +198,20 @@ export default function HomeCrowd() {
     let raf = 0, last = 0;
     /** 메가폰트가 인사를 마치고 돌아선 때. 구경꾼의 시계는 여기서 0이다 */
     let turned = 0;
+    /* 사람은 그림자 줄을 따라 선다(2026-10-20 점검). 홈이 열리고 메가폰트가 첫 자세로 돌아서는 1.5초쯤 동안 그 줄이 40 ~ 50px 내려가는데
+       (390: 541 → 591 · 320: 379 → 421), 그 사이에 들어온 첫 사람이 옛 줄에 서서 15초쯤 떠 있었다. 줄이 움직이면 서 있는 사람도 같은 만큼 */
+    let groundWas = -1;
     const step = (t: number) => {
       const dt = Math.min((t - (last || t)) / 1000, 0.05);
       last = t;
       const w = frame.clientWidth;
       const floor = groundLimit(frame, frame.clientHeight);
       if (!turned && charPos.greeted) turned = t;
+      if (charPos.ready) {
+        const dg = groundWas < 0 ? 0 : charPos.ground - groundWas;
+        groundWas = charPos.ground;
+        if (dg) for (const p of crowd) if (p.live) p.y = Math.min(floor, p.y + dg);
+      }
 
       /* 메가폰트가 손에 들려 있으면 다들 멈춰 서서 놀란 눈으로 올려다본다.
          걷던 사람은 그 자리에, 앞에 서서 표정을 짓던 사람은 그 칸에 멈춘다

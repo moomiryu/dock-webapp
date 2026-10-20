@@ -296,6 +296,10 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
 
       다만 힌트는 **누를 수 있고** 글자 수는 아니다. 그 차이만 밑줄이 든다. */}
   <div className="write-foot">
+    {/* 글자 수 점 — 한 글자 = 점 하나, 60개(결정 14 · app.css .write-dots). 세는 법은 옆 숫자와 같다. 숫자가 이미 읽히니 낭독기엔 숨긴다 */}
+    <span className="write-dots" aria-hidden="true">
+      {Array.from({ length: 60 }, (_, i) => <i key={i} className={i < text.length ? 'on' : undefined} />)}
+    </span>
     {/* 쓸 수 없는 표현이 있으면 **힌트 자리를 잠시 빌린다**(디자이너 10-19).
         따로 한 줄을 내면 '다 썼어요'와 입력칸 사이에서 눈이 한 번 더 내려가야
         했다. 글을 고치는 순간 힌트가 돌아온다. 어느 말인지는 짚지 않는다(lib/banned.ts). */}

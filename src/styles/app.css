@@ -1492,6 +1492,14 @@
      되물린다 — 구조를 바꾸지 않고 관계만 좁힌다. */
   margin-top: calc(var(--space-in-group) - var(--space-section)); }
 .write-foot .compose-count{ margin-left: auto; }
+/* 글자 수 점(결정 14, 2026-10-20 디자이너) — 말풍선이 글자마다 점 모듈로 지어지듯 여기선 **한 글자 = 점 하나**, 정확히 60개.
+   꾸밈이 아니라 '60자까지'를 한눈에 보이는 쓸모. 숫자(8/60)는 그대로 둔다 — 정확한 수는 숫자, 한눈의 양은 점.
+   안내 줄 바로 위 한 줄, 폭은 안내 줄 폭(양 끝 맞춤 — 가운데에서 가운데 = 폭/59). 쓴 만큼 왼쪽부터 --ink, 남은 칸 --grey-300.
+   02 십자선(결정 12)과 같은 점(--dot-d). 움직임 없음. 흐름 밖(absolute)이라 짜임을 밀지 않고 자판이 올라와도 안내 줄과 같이 간다 */
+.write-foot{ position: relative; }
+.write-dots{ position: absolute; left: 0; right: 0; top: calc(var(--s4) * -1); display: flex; justify-content: space-between; pointer-events: none; }
+.write-dots > i{ width: var(--dot-d); height: var(--dot-d); border-radius: var(--r-full); background: var(--grey-300); }
+.write-dots > i.on{ background: var(--ink); }
 
 /* ── 막막할 때 여는 힌트 ─────────────────────────────────────────────
    입력창이 이 화면의 가운데다. 힌트는 **부를 때만 오는 보조**이므로

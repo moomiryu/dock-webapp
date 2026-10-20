@@ -99,6 +99,10 @@ function fitToBox(el: HTMLElement): number {
  * max를 씌워야 바닥이 진짜 바닥이 된다 — 안쪽 clamp에 넣으면 뒤따르는
  * 곱셈이 다시 깎는다.
  */
+/** 말풍선 속 글자(아래 휜 배치 — 4/5 · 5/5 · 벽 하늘 · 도킹 큰 말 · 08)의 성격별 배율(2026-10-21, 결정 38 — 견본 격자에서 디자이너
+    "나머지는 다 괜찮은데 유머있는만 1.4 정도"). 핸드젯은 같은 크기에서 훨씬 작아 별 모듈 한가운데가 비어 보였다. 모듈 · 말풍선 크기 · 자리는
+    그대로고 낱자만 제자리에서 커진다. opticalFix는 02 · 03 글자에도 걸려 여기 따로 둔다 */
+const IN_BUBBLE: Record<string, number> = { deulseok: 1.4 };
 export default function VoiceBubble({ text, bg, color, fontFamily, font, weight, width = 1, slant = 0, fontSize, align: alignIn = 'center', size = 44, manner = 0, fill, speed, weightPos, perChar, lineTrack, glyphs, glyphBox, children }: Props) {
     /* 글 맞춤은 셋뿐이다 — 나머지 정렬은 형상(cloud.ts)이 줄 · 자리로 이미 풀어 넘긴다 */
     const align = alignIn === 'left' || alignIn === 'right' ? alignIn : 'center';
@@ -133,6 +137,7 @@ export default function VoiceBubble({ text, bg, color, fontFamily, font, weight,
        밀리지 않고, 기운 만큼 넓어진 폭(행간 × tan)은 cloud.ts · lineWidth가 이미 셈에 넣고 있다.
        영문 조각에만 따로 걸던 italic도 이 한 번에 들어간다 */
     const lean: CSSProperties = f.slant ? { display: 'inline-block', transform: `skewX(${-f.slant}deg)` } : {};
+    const k = IN_BUBBLE[font ?? ''] ?? 1;
     /* 무게 축이 없는 서체는 못 움직인다 — 그 칸에서만 획이 대신 답한다.
        나머지 서체는 '0'이 와서 -webkit-text-stroke가 아무 일도 안 한다. */
     return <div ref={body} className={'voice-bubble line-bubble' + (fill ? ' is-fill' : '')} style={{ '--line-bg': bg, color, fontFamily, fontWeight: f.weight, fontVariationSettings: f.variation, '--optical-stroke': f.stroke, letterSpacing: f.letterSpacing, textAlign: align, fontSize: fill ? `${filled * optic}px` : `calc((${fontSize ?? `max(14px, calc(${fitFontSize(text, { min: 3, max: 240 })} * 0.52 * ${scale} / ${Math.max(1, f.scaleX)}))`}) * ${optic})` } as CSSProperties}>
@@ -141,7 +146,7 @@ export default function VoiceBubble({ text, bg, color, fontFamily, font, weight,
       안쪽 .ch는 벽의 펄럭임이 움직이는 자리다 — 자리 · 기울기는 바깥이 들고 있어 서로 안 덮는다 */
    <div className="voice-bubble-text line-bubble-text is-arc" style={{ width: `${glyphBox.w.toFixed(4)}em`, height: `${glyphBox.h.toFixed(4)}em` }}>
     {glyphs.map((g, i) => <span key={i} className="arc-glyph" style={{ left: `${g.x.toFixed(4)}em`, top: `${g.y.toFixed(4)}em`,
-      transform: `translate(-50%, -50%) rotate(${g.a.toFixed(4)}rad) scale(${f.scaleX}, ${f.scaleY})${f.slant ? ` skewX(${-f.slant}deg)` : ''}` }}><span className="ch">{g.c}</span></span>)}
+      transform: `translate(-50%, -50%) rotate(${g.a.toFixed(4)}rad) scale(${f.scaleX * k}, ${f.scaleY * k})${f.slant ? ` skewX(${-f.slant}deg)` : ''}` }}><span className="ch">{g.c}</span></span>)}
     {children}
    </div>
   ) : (

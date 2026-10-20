@@ -135,6 +135,8 @@ export default function HomeCrowd() {
     let reduced = media.matches;
     const nodes = [...host.children] as HTMLElement[];
     const half = (HEIGHT * RATIO) / 2;
+    /** 서 있는 사람끼리 떨어지는 거리 — 몸 폭의 0.6배(결정 27-2) */
+    const SPREAD = 0.6 * 2 * half;
 
     type Walker = {
       el: HTMLElement; art: SVGSVGElement;
@@ -163,7 +165,10 @@ export default function HomeCrowd() {
       /* 그러다 발끝을 메가폰트 그림자 줄 가까이로 좁혔다(2026-10-20, 결정 17 — 디자이너 '그림자 투시가 안 맞는다'). 띠 어디든 서니
          뒤(위)에 선 사람도 앞 사람과 키가 같아 깊이가 어긋났다 — 키 · 그림자는 줄이지 않고(벽 · 키비주얼과 같은 평평한 무대) 그림자 줄
          −10 ~ +40px 안에만 선다. floor 아래로는 안 내려가고, 메가폰트가 아직 자리 잡기 전이면 위의 띠 */
-      p.y = charPos.ready ? Math.min(floor, random(charPos.ground - 10, charPos.ground + 40)) : random(h * 0.53, floor);
+      /* 띠를 −10 ~ +60px로 넓혔다(2026-10-20, 결정 27-2 — +40까지면 서 있는 둘이 한 자리에 겹쳐 한 명처럼 보이는 일이 320에서 66 ~ 78%,
+         390에서 절반). 아래 끝이 버튼 위 한계(floor)를 넘으면 띠를 그만큼 위로 — 320에선 한계에 눌려 모두 한 줄(floor)에 섰다 */
+      const lift = charPos.ready ? Math.max(0, charPos.ground + 60 - floor) : 0;
+      p.y = charPos.ready ? Math.min(floor, random(charPos.ground - 10 - lift, charPos.ground + 60 - lift)) : random(h * 0.53, floor);
       p.speed = random(SPEED.min, SPEED.max);
       p.phase = 'walk';
       p.beat = 0;
@@ -274,10 +279,19 @@ export default function HomeCrowd() {
             // 발끝이 메가폰트보다 **아래**면 그 앞을 지나는 사람이다.
             // 가려질 일이 없으므로 정면 한가운데까지 들어온다(FRONT).
             const near = charPos.ready && p.y > charPos.ground ? FRONT : BLOCK;
+            /* 설 자리 — 닿는 자리. 먼저 서 있는 사람(높이가 겹치는)과 몸 폭의 0.6배 안이면 그만큼 바깥에 선다(2026-10-20, 결정 27-2) —
+               같은 쪽에서 온 사람은 늘 같은 자리에 서서 둘이 한 몸으로 겹쳤다 */
+            let stopX = charPos.x - p.dir * charPos.size * near.x;
+            for (let k = 0, moved = true; moved && k < crowd.length; k++) {
+              moved = false;
+              for (const o of crowd) if (o !== p && o.live && o.phase === 'meet' && Math.abs(o.y - p.y) < HEIGHT && Math.abs(o.x - stopX) < SPREAD) {
+                stopX = o.x - p.dir * SPREAD; moved = true;
+              }
+            }
             if (p.phase === 'walk' && charPos.ready &&
                 Math.abs(p.y - charPos.ground) < charPos.size * near.y &&
-                Math.abs(p.x - charPos.x) < charPos.size * near.x) {
-              p.x = charPos.x - p.dir * charPos.size * near.x;   // 닿은 자리에 세운다
+                (p.x - stopX) * p.dir >= 0) {
+              p.x = stopX;   // 설 자리에 세운다
               p.phase = 'meet';
               p.beat = 0;
               p.el.dataset.eye = MEETING[0].eye;

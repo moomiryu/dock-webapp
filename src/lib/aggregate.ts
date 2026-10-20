@@ -153,7 +153,7 @@ export function arrange(lines: readonly string[], align: Align, kd: Kind): Item[
 }
 
 /* ─── 한 말의 점들 ────────────────────────────────────────────────────────────────────────────────────────── */
-/** 점 하나 — 자리(u) · 배율 · 모듈 차례(-1 = 틈 메움 · 꼬리) · 꼬리 진행(꼬리 점만) */
+/** 점 하나 — 자리(u) · 배율 · 모듈 차례(-1 = 틈 메움 · 꼬리, -2 = 꼬리 밑동의 핀홀 메움 — 입 셈에서 뺀다) · 꼬리 진행(꼬리 점만) */
 export interface Dot { x: number; y: number; r: number; mod: number; t?: number }
 /** 꼬리 — 점들 · 나부끼는 방향(꼬리에 수직) · 붙은 글자 · 끝(터질 때 여기서부터) */
 export interface Tail { dots: Dot[]; perp: P; from: number; tip: P; L: number }
@@ -173,10 +173,118 @@ export function modulesAt(items: readonly Item[], kd: Kind, m: number): { pos: P
   return { pos, dots, polys };
 }
 /**
+ * 핀홀(2026-10-20, 셋째 점검 3번 — 288장면에 0.15칸보다 작은 닫힌 점이 1 ~ 7개, 유머는 1.5 ~ 2px 검은 점) — 원들([가운데 x, y, 반지름], u)과
+ * 칠한 다각형의 합집합 안에 갇힌 빈 곳을 크기와 상관없이 찾아 덮는 점을 돌려준다. 빈 곳의 귀퉁이는 반드시 두 원이(또는 원과 다각형 변이)
+ * 엇갈린 꼭짓점이니 그 바로 바깥만 본다 — 덮이지 않았고, 거기서 32방향 어디로 가도 메움 반지름 RF 안에 덮인 곳이 나오면 갇힌 것이다(바깥
+ * 홈 · 별 사이 홈은 어느 쪽으론가 빠져나가 그대로 열려 있다). 덮는 점 = 가장 먼 방향까지 + 한 걸음. 귀퉁이 하나에서 다 못 덮었으면 덮는 점까지
+ * 넣고 여덟 번까지 다시 본다(새로 넣은 점이 낀 곳만). 거의 맞닿은 두 원(틈이 TOL = 0.01u보다 좁다 — 큰 화면에서도 1px 남짓)은 먼저 그 틈에 아주 작은 다리 점을 놓아
+ * 잇는다 — 칠하면 이어져 보이는 틈이라 그 너머가 갇힌 곳이면 그대로 점으로 남았다(다리 점은 그 틈 안에만 있어 윤곽은 그대로).
+ * lead — 이 원이 낀 짝(꼭짓점)만 본다. want(i, j, bridge) — lead인 i와 짝 j(다각형이면 −1)를 볼지(bridge = 다리를 놓을 짝인가). 덮는 점이 낀 짝은
+ * 늘 보고, 다리 점은 덮기만 한다(그 둘레에서 빈 곳을 찾지 않는다 — 다리는 가르는 것이지 메우는 것이 아니다)
+ */
+function plugs(cs0: readonly (readonly [number, number, number])[], polys: readonly (readonly P[])[], lead?: (i: number) => boolean, want?: (i: number, j: number, bridge: boolean) => boolean): Dot[] {
+  const STEP = RF / 24, DIRS = 32, EPS = 1e-4, TOL = 0.01, out: Dot[] = [], cs = cs0.map(([x, y, r]): [number, number, number] => [x, y, r]);
+  if (!cs.length) return out;
+  const n0 = cs.length;
+  let nb = Infinity;   // 다리 뒤 — 여기부터가 덮는 점
+  const pick = (i: number) => i >= nb || (i < n0 && (!lead || lead(i)));
+  const ok = (i: number, j: number, br = false) => i >= nb || j >= nb || (i < n0 && j < n0 && (!want || want(i, j, br)));
+  // 칸 C(덮였나는 둘레 한 칸 — 반지름 ≤ C, 짝은 둘레 두 칸 — 겹침 ≤ 2C)로 나눈 판. 칸마다 원은 이어 달기(head → next), 다각형은 목록
+  const C = RF + TOL, xs = cs.map((c) => c[0]), ys = cs.map((c) => c[1]);
+  const gx = Math.floor(Math.min(...xs) / C) - 3, gy = Math.floor(Math.min(...ys) / C) - 3, GW = Math.floor(Math.max(...xs) / C) + 4 - gx, GH = Math.floor(Math.max(...ys) / C) + 4 - gy;
+  const head = new Int32Array(GW * GH).fill(-1), next: number[] = [], pg: number[][] = [];
+  const cx = (x: number) => Math.floor(x / C) - gx, cy = (y: number) => Math.floor(y / C) - gy;
+  const put = (i: number) => { const a = cx(cs[i][0]), b = cy(cs[i][1]); if (a >= 0 && b >= 0 && a < GW && b < GH) { next[i] = head[b * GW + a]; head[b * GW + a] = i; } };
+  cs.forEach((_, i) => put(i));
+  const boxes = polys.map((Q) => [Math.min(...Q.map((q) => q[0])), Math.min(...Q.map((q) => q[1])), Math.max(...Q.map((q) => q[0])), Math.max(...Q.map((q) => q[1]))]);
+  boxes.forEach((b, q) => {
+    for (let j = Math.max(0, cy(b[1])); j <= Math.min(GH - 1, cy(b[3])); j++) for (let i = Math.max(0, cx(b[0])); i <= Math.min(GW - 1, cx(b[2])); i++) (pg[j * GW + i] ??= []).push(q);
+  });
+  /** 둘레 (2w + 1)² 칸의 원마다 f — f가 참이면 멈추고 참 */
+  const around = (x: number, y: number, w: number, f: (k: number) => boolean | void) => {
+    const a = cx(x), b = cy(y);
+    for (let j = Math.max(0, b - w); j <= Math.min(GH - 1, b + w); j++) for (let i = Math.max(0, a - w); i <= Math.min(GW - 1, a + w); i++)
+      for (let k = head[j * GW + i]; k >= 0; k = next[k]) if (f(k)) return true;
+    return false;
+  };
+  const covered = (x: number, y: number) => {
+    if (around(x, y, 1, (k) => (x - cs[k][0]) ** 2 + (y - cs[k][1]) ** 2 < cs[k][2] * cs[k][2])) return true;
+    const a = cx(x), b = cy(y), p = a >= 0 && b >= 0 && a < GW && b < GH ? pg[b * GW + a] : undefined;
+    return !!p && p.some((q) => { const o = boxes[q]; return x >= o[0] && x <= o[2] && y >= o[1] && y <= o[3] && inPoly(polys[q], x, y); });
+  };
+  /** (x, y)가 갇힌 빈 곳이면 덮을 반지름, 아니면 0 — a0(바깥일 법한 쪽)부터 번갈아 본다 */
+  const trapped = (x: number, y: number, a0: number) => {
+    let far = 0;
+    for (let d = 0; d < DIRS; d++) {
+      const a = a0 + (d & 1 ? -1 : 1) * Math.ceil(d / 2) * ((2 * Math.PI) / DIRS), ux = Math.cos(a), uy = Math.sin(a);
+      let t = STEP;
+      while (t <= RF && !covered(x + ux * t, y + uy * t)) t += STEP;
+      if (t > RF) return 0;
+      far = Math.max(far, t);
+    }
+    return far + STEP;
+  };
+  const add = (x: number, y: number, r: number) => { out.push({ x, y, r: r / RF, mod: -1 }); cs.push([x, y, r]); put(cs.length - 1); };
+  const plug = (x: number, y: number, a0: number) => { if (!covered(x, y)) { const r = trapped(x, y, a0); if (r) add(x, y, r); } };
+  /** i의 이웃 j(n 앞) — 겹치거나 TOL 안으로 다가선 원. i는 부르는 쪽이 고르고 j는 아무 원 — 둘 다 고를 원(lo 뒤 · pick)이면 한 번만 */
+  const pairs = (i: number, n: number, lo: number, f: (j: number, d: number) => void, br = false) => {
+    const [xi, yi, ri] = cs[i];
+    around(xi, yi, 2, (j) => {
+      if (j === i || j >= n || (j < i && j >= lo && pick(j)) || !ok(i, j, br)) return;
+      const d = Math.hypot(cs[j][0] - xi, cs[j][1] - yi);
+      if (d < ri + cs[j][2] + TOL) f(j, d);
+    });
+  };
+  // 다리 — 거의 맞닿은 두 원
+  for (let i = 0; i < n0; i++) if (pick(i)) pairs(i, n0, 0, (j, d) => {
+    const [xi, yi, ri] = cs[i], [xj, yj, rj] = cs[j], gap = d - ri - rj;
+    if (gap >= 0) add(xi + ((xj - xi) * (ri + gap / 2)) / d, yi + ((yj - yi) * (ri + gap / 2)) / d, gap / 2 + EPS);
+  }, true);
+  nb = cs.length;
+  for (let pass = 0, from = 0; pass < 8; pass++) {   // 첫 번째는 처음 원들 · 다리 뒤(덮는 점)는 다음부터
+    const n0 = out.length, n = cs.length;
+    for (let i = from; i < n; i++) {   // 다시 볼 때는 새로 넣은 점 둘레만
+      if (!pick(i)) continue;
+      const [xi, yi, ri] = cs[i];
+      // 원이 다각형 변과 엇갈린 꼭짓점 바로 바깥(원 바깥쪽 · 변 양쪽으로 EPS) — 다각형이 한 변을 두른 빈 곳
+      const a = cx(xi), b = cy(yi), qs = new Set<number>();
+      for (let j = Math.max(0, b - 2); j <= Math.min(GH - 1, b + 2); j++) for (let k = Math.max(0, a - 2); k <= Math.min(GW - 1, a + 2); k++) for (const q of pg[j * GW + k] ?? []) qs.add(q);
+      if (ok(i, -1)) for (const q of qs) {
+        const Q = polys[q], o = boxes[q];
+        if (xi + ri < o[0] || xi - ri > o[2] || yi + ri < o[1] || yi - ri > o[3]) continue;
+        Q.forEach(([x0, y0], e) => {
+          const [x1, y1] = Q[(e + 1) % Q.length], dx = x1 - x0, dy = y1 - y0, L2 = dx * dx + dy * dy, fx = x0 - xi, fy = y0 - yi;
+          const bq = fx * dx + fy * dy, disc = bq * bq - L2 * (fx * fx + fy * fy - ri * ri);
+          if (disc < 0) return;
+          for (let r = -1; r <= 1; r += 2) {
+            const t = (-bq + r * Math.sqrt(disc)) / L2;
+            if (t < 0 || t > 1) continue;
+            const qx = x0 + dx * t, qy = y0 + dy * t, L = Math.sqrt(L2), nx = -dy / L, ny = dx / L, rx = (qx - xi) / ri, ry = (qy - yi) / ri;
+            for (let s = 1; s >= -1; s -= 2) plug(qx + EPS * (rx + s * nx), qy + EPS * (ry + s * ny), Math.atan2(ry, rx));
+          }
+        });
+      }
+      // 두 원이 엇갈린 꼭짓점 바로 바깥(엇갈림 축을 따라 두 원에서 멀어지는 쪽으로 EPS)
+      pairs(i, n, from, (j, d) => {
+        const [xj, yj, rj] = cs[j];
+        if (d >= ri + rj || d <= Math.abs(ri - rj)) return;
+        const e = (d * d + ri * ri - rj * rj) / (2 * d), h = Math.sqrt(Math.max(0, ri * ri - e * e)), ex = (xj - xi) / d, ey = (yj - yi) / d;
+        for (let s = 1; s >= -1; s -= 2) plug(xi + e * ex - s * (h + EPS) * ey, yi + e * ey + s * (h + EPS) * ex, Math.atan2(s * ex, -s * ey));
+      });
+    }
+    if (out.length === n0) break;
+    from = n;
+  }
+  return out;
+}
+/**
  * 모인 덩어리의 모듈 사이 좁은 틈 — '한 칸 부풀렸다 한 칸 깎기'로 메울 점(모인 자리에서 한 번 셈한다. 모이는 정도의 세제곱으로 나타난다).
  * 덩어리 안에 갇힌 빈칸도 크기와 상관없이 메운다(10-20 점검 둘째 — 여러 줄 단상에서 줄 사이에 갇힌 칸이 검은 얼룩으로 남았다)
  */
+const GAPS = new WeakMap<readonly Item[], { kd: Kind; out: Dot[] }>();
 export function gapsOf(items: readonly Item[], kd: Kind): Dot[] {
+  const had = GAPS.get(items);   // 말마다 한 번 — 꼬리 밑동도 이 메움을 둘레로 본다(tailOf)
+  if (had && had.kd === kd) return had.out;
   const s = sizeAt(kd, 1), key = (i: number, j: number) => `${i},${j}`, has = new Set<string>();
   items.forEach((it) => { for (const [x, y] of lattice(kd.mod, s, it.a, it.p)) has.add(key(...cell(it.x + x, it.y + y))); });
   const grown = new Set(has);
@@ -204,7 +312,14 @@ export function gapsOf(items: readonly Item[], kd: Kind): Dot[] {
       if (!has.has(q) && !fill.has(q) && !seen.has(q) && (!rim.has(q) || nb(i, j).every(([a, c]) => !seen.has(key(a, c))))) fill.add(q);
     }
   }
-  return [...fill].map((q) => { const [i, j] = q.split(',').map(Number); return { x: i * G + (j & 1 ? G / 2 : 0), y: j * ROW, r: 1, mod: -1 }; });
+  const out = [...fill].map((q): Dot => { const [i, j] = q.split(',').map(Number); return { x: i * G + (j & 1 ? G / 2 : 0), y: j * ROW, r: 1, mod: -1 }; });
+  // 핀홀 — 모듈 점 · 윤곽 점 · 다각형 · 위의 메움이 남긴, 한 칸에 훨씬 못 미치는 갇힌 곳(plugs). 격자 위의 점끼리는 서로 사이를 늘 덮으니(RF >
+  // G/√3) 격자를 벗어난 점(윤곽 점)이 낀 곳만 본다
+  const body = modulesAt(items, kd, 1), all = [...body.dots, ...out];
+  const off = all.map((d) => { const j = Math.round(d.y / ROW), i = (d.x - (j & 1 ? G / 2 : 0)) / G; return Math.abs(d.y - j * ROW) > 1e-6 || Math.abs(i - Math.round(i)) > 1e-6; });
+  const done = out.concat(plugs(all.map((d) => [d.x, d.y, RF * d.r] as const), body.polys, (i) => i >= all.length || off[i]));
+  GAPS.set(items, { kd, out: done });
+  return done;
 }
 /**
  * 꼬리 — 맨 아래 줄에서 기기(dev, 덩어리 좌표 u)에 가장 가까운 글자의 가장자리(0.45s)에서 나와 기기를 가리킨다(모인 자리에서 셈한다).
@@ -213,6 +328,8 @@ export function gapsOf(items: readonly Item[], kd: Kind): Dot[] {
  * 끝 절반만 1 − 1.3(t − 0.5). 폰 · 벽 · 홈 · 튜토 모든 말풍선이 함께 바뀐다.
  * max — 길이의 상한(옛 길이 2.25 아래로는 안 줄인다, fitTail). room — 옛 꼴(예전 반폭 · 길이) 그대로: 글자 크기를 잡는 자리로만 쓴다
  */
+/** 꼬리 밑동의 핀홀 메움 — 말(items)마다, 밑동 점 배치마다 한 번만 셈한다 */
+const TAIL_PLUGS = new WeakMap<readonly Item[], Map<string, Dot[]>>();
 export function tailOf(items: readonly Item[], kd: Kind, dev: P, max = Infinity, room = false): Tail {
   const s = sizeAt(kd, 1), last = Math.max(...items.map((i) => i.li));
   let fi = 0, best = Infinity;
@@ -229,6 +346,21 @@ export function tailOf(items: readonly Item[], kd: Kind, dev: P, max = Infinity,
     const t = Math.max(0, Math.min(1, ((x - b[0]) * ux + (y - b[1]) * uy) / (L + w)));
     dots.push({ x: it.x + x, y: it.y + y, r: Math.max(0.12, 1 - 0.88 * t ** 0.85), mod: -1, t });
   }
+  // 밑동 핀홀 — 꼬리 첫 점들(몸통에 닿은 점 — 몸통과 한 덩어리로 보인다)이 낀, 갇힌 아주 작은 곳(plugs). 첫 점과 모듈 사이 · 첫 점과 둘째
+  // 줄 사이의 세모가 몸통 아래 가장자리의 검은 점으로 보였다. 첫 점끼리 거의 맞닿은 틈엔 다리를 놓는다. 둘째 줄부터의 꼬리 점끼리 틈은 꼬리의
+  // 점 결이라 그대로 둔다 — 그것까지 메우면 밑동이 한 덩어리가 됐다. 꼬리는 그림마다 다시 셈하니 밑동 1.2u 안만 본다. 밑동이라 나부끼지 않고 가장 먼저 솟는다(t = 0)
+  const ro: P = [it.x + ax, it.y + ay], close = (d: Dot) => Math.hypot(d.x - ro[0], d.y - ro[1]) < 1.2, tc = dots.filter(close);
+  const memo = TAIL_PLUGS.get(items) ?? new Map<string, Dot[]>(), k = `${fi}|${tc.map((d) => `${d.x.toFixed(3)},${d.y.toFixed(3)},${d.r.toFixed(2)}`).join(';')}`;
+  let got = memo.get(k);
+  if (!got) {
+    const body = modulesAt(items.filter((o) => Math.hypot(o.x - it.x, o.y - it.y) < 2 * s), kd, 1), bc = [...body.dots, ...gapsOf(items, kd)].filter(close);
+    const B = bc.length, first = tc.map((d) => bc.some((b) => Math.hypot(b.x - d.x, b.y - d.y) < RF * (b.r + d.r)));
+    got = plugs([...bc, ...tc].map((d) => [d.x, d.y, RF * d.r] as const), body.polys, (i) => i >= B, (i, j, br) => j < B || (br ? first[i - B] && first[j - B] : first[i - B] || first[j - B]))
+      .map((d) => ({ ...d, mod: -2, t: 0 }));
+    if (memo.size > 48) memo.delete(memo.keys().next().value!);
+    memo.set(k, got); TAIL_PLUGS.set(items, memo);
+  }
+  dots.push(...got);
   return { dots, perp: [-uy, ux], from: fi, tip: [it.x + ax + ux * L, it.y + ay + uy * L], L };
 }
 /**
@@ -261,7 +393,7 @@ export function follow(tail: Tail, items: readonly Item[], at: readonly number[]
 }
 /** 입 = 꼬리 밑동 — t가 가장 작은 꼬리 점 셋의 가운데. 큰 말의 점들이 기기가 아니라 여기서 나간다(결정 9) */
 export function mouthOf(tail: Tail): P {
-  const ds = [...tail.dots].sort((a, b) => (a.t ?? 0) - (b.t ?? 0)).slice(0, 3);
+  const ds = tail.dots.filter((d) => d.mod === -1).sort((a, b) => (a.t ?? 0) - (b.t ?? 0)).slice(0, 3);
   return [ds.reduce((s, d) => s + d.x, 0) / ds.length, ds.reduce((s, d) => s + d.y, 0) / ds.length];
 }
 /** 꼬리가 먼저(결정 9) — 도킹하면 꼬리가 기기 쪽 끝부터 밑동으로 이 초에 솟고(easeOut), 그 뒤에 첫 글자가 나간다 */

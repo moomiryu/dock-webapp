@@ -2167,7 +2167,7 @@ function step3Bubble(after: Element, dur: number, still: boolean) {
   }
   // 모듈 사이 틈 — 다 서고 나서 메워진다(모듈들이 그 위에 선다)
   const gapG = make('g', {}, g);
-  for (const d of gaps) make('circle', { cx: X(d.x), cy: Y(d.y), r: r2(RF * U) }, gapG);
+  for (const d of gaps) make('circle', { cx: X(d.x), cy: Y(d.y), r: r2(RF * d.r * U) }, gapG);   // 핀홀 메움은 작다(d.r)
 
   // 글자마다 — 쏘는 점(입에서 날아 제자리로) · 칠 · 글자, 셋이 한 몸으로 '쿵'
   const thump = (sec: number) => { const k = Math.exp(-12 * sec); return `${r2(1 + 0.1 * k)} ${r2(1 - 0.16 * k)}`; };

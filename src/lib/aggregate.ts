@@ -278,6 +278,19 @@ export function dockPlanOf(items: readonly Item[], kd: Kind, W: number, H: numbe
   const mouth = mouthOf(follow(tail, items, rest.pos[tail.from])), plan = planEntrance(items, kd, mouth, S, W);
   return { S, dev, tail, rest, mouth, plan };
 }
+/**
+ * 일찍 뗀 도킹(결정 21) — 등장 at초에 폰이 빠졌는데 아직 쏘기 시작하지 않은 글자가 있으면, 그 글자들을 차례대로 gap초 간격으로 당겨
+ * 세운다(점 속도 · 한 글자 쌓는 시간은 그대로, 이미 날아오는 글자는 그대로). 휭은 없다(F = 1) — 다 서면 곧장 모인다
+ */
+export const HURRY = 0.15;
+export function hurry(plan: Plan, at: number, gap = HURRY): Plan {
+  const start = plan.modDone.map((_, i) => Math.min(...plan.shots.filter((s) => s.mod === i).map((s) => s.e)));
+  const shift = new Map<number, number>();
+  start.map((s, i) => [s, i] as const).filter(([s]) => s > at).sort((a, b) => a[0] - b[0]).forEach(([s, i], k) => shift.set(i, at + k * gap - s));
+  const shots = plan.shots.map((d) => { const k = shift.get(d.mod) ?? 0; return k ? { ...d, e: d.e + k, arrive: d.arrive + k } : d; });
+  const modDone = plan.modDone.map((d, i) => d + (shift.get(i) ?? 0));
+  return { shots, modDone, whoosh: Math.max(...modDone) + 0.15, F: 1, landed: Math.max(...shots.map((d) => d.arrive)) };
+}
 /** 휭 — 살짝 넘쳤다 돌아온다(결정 4: 1 + 2.2(t − 1)³ + 1.2(t − 1)²) */
 export const backOut = (t: number) => 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2;
 /** 날아오는 점 하나 — 붙을 자리(낱개 자리, u) · 모듈 · 떠나는 때 · 닿는 때(초) · 휘는 길의 조절점 */

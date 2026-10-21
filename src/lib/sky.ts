@@ -103,7 +103,8 @@ export function fanOf<T extends Seated>(list: readonly T[], W: number, H: number
 }
 
 /**
- * 소리의 결(결정 9 · 11) — 평소 · 돌림 땐 없고 도킹 때만 메가폰처럼 격렬하게. 벽(WallSky)과 폰 07이 같은 박자로 그린다.
+ * 소리의 결(결정 9 · 11) — 도킹 때 메가폰처럼 격렬하게. 벽(WallSky)과 폰 07이 같은 박자로 그린다. 벽은 평소에도 얕게 난다(결정 49 —
+ * 아래 IDLE · idleWavesAt. 폰 07은 그대로 도킹 때만).
  * 쏟아짐: 결 사이 k 0.2 · 빠르기 k 0.5/초(0.4초마다 하나) · 세기 1.4 · 도킹 0.3초 뒤부터 1초에 차오르고, 잦아들 때는 0.7초(벽은 모임).
  * 한 방: 도킹 순간 세기 4 · 1초, 글자가 설 때마다 세기 2.2 · 1.5초(easeOut). k 0.12까지 생겨나고 1.45 앞 0.45에서 잦아든다.
  * 벽: 기기 중심 타원(부채꼴 바깥 호 × k) · 선 높이/540 × 세기 · --grey-600, 지나가면 하늘 말이 덜컥(0.3u × Σ(정도 × min(세기, 3) ×
@@ -124,6 +125,26 @@ export function wavesAt(t: number, letters: readonly number[], calm = Infinity):
 }
 /** 결이 보이는 정도 — 생겨나고 잦아드는 것 × 그 결의 정도 */
 export const waveAlpha = (w: Wave) => clamp(w.k / WAVE.born) * clamp((WAVE.end - w.k) / WAVE.fade) * w.a;
+
+/**
+ * 평소의 얕은 결(결정 49, 2026-10-21 디자이너 — "도킹할 때에만 파동 동심원이 두둥 나오잖음. 평상시에도 하단 중앙에서 얕게 조금씩").
+ * 도킹 결과 같은 꼴 · 자리 · 색에서, every마다 한 겹이 기기에서 생겨나 dur 동안 reach(바깥 호의 몫)까지 퍼지며 잦아든다. 시간은
+ * --t-hold의 배수, 퍼짐은 ease(--ease-standard). 하늘 말을 덜컥이게 하지 않고, 도킹 · 끄기 창 · 움직임 줄이기 땐 없다(WallSky).
+ * 폰 07은 평소에 결이 없다(wavesAt만 쓴다).
+ * 견본 '가끔 한 번 · 숨 쉬듯 · 잔물결' 중 숨 쉬듯을 골랐고("좀 더 연속성이 있게 여러 겹이 나와도 될 듯 — 속도가 느려서 괜찮을 것"),
+ * 그 빠르기로 겹을 촘촘히 한 셋(한 겹 · 2~3겹 · 4겹쯤) 중 가장 이어지는 것: --t-hold의 2배마다 한 겹이 8배에 걸쳐 가운데 호까지
+ * 퍼진다 — 한 화면에 4겹쯤이 함께, 한 겹은 옅게(a), 도킹 결보다 조금 굵게(s)
+ */
+export const IDLE = { every: 2, dur: 8, reach: 0.92, a: 0.4, s: 1.2 } as const;
+/** 평소의 결 — t = 페이지 시계(초) · hold = --t-hold(초) · ease = 퍼지는 꼴. 지금 지나는 겹들(나온 차례로) */
+export function idleWavesAt(t: number, hold: number, ease: (k: number) => number): Wave[] {
+  const v = IDLE, out: Wave[] = [], every = v.every * hold, dur = v.dur * hold;
+  for (let n = Math.floor(t / every); n >= 0 && t - n * every < dur; n--) {
+    const p = (t - n * every) / dur;
+    out.push({ k: v.reach * ease(p), s: v.s, a: v.a * (1 - p) });
+  }
+  return out;
+}
 
 /**
  * 광각 퍼짐(결정 4) — 도킹하면 하늘 말들이 큰 말을 빙 둘러싼 고리(화면 가장자리 너머까지 — 잘려도 된다)로 퍼진다. 고리 = 화면 가운데

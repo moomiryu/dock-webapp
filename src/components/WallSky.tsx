@@ -2,13 +2,13 @@ import { memo, useEffect, useRef, useState } from 'react';
 import VoiceBubble from './VoiceBubble';
 import { ENTRANCE, G, RD, RF, arrange, arrangeOf, dockPlanOf, evenSpread, gapsOf, hurry, kindOf, modulesAt, tailOf, type Dot, type Item, type Kind, type Plan, type Tail } from '../lib/aggregate';
 import { paintBody, paintEntrance, placeGlyphs, type Glyph, type Pop } from '../lib/dotPaint';
-import { FAN, SKY, WAVE, WIDE, bodyOf, fanOf, profileOf, ringOf, turn, waveAlpha, wavesAt, type Box, type Seat, type Seated } from '../lib/sky';
+import { FAN, SKY, WAVE, WIDE, bodyOf, fanOf, idleWavesAt, profileOf, ringOf, turn, waveAlpha, wavesAt, type Box, type Seat, type Seated } from '../lib/sky';
 import { foldLines } from '../lib/fit';
 import { cssRgb, hash, rng } from '../lib/hatch';
 import { fontMap } from '../lib/palettes';
 import { grainKnots, groundPx, swellAt } from '../lib/ground';
 import { FILL, buildingsAt } from './WallSkyline';
-import { tokenS } from '../lib/motion';
+import { easeOf, tokenS } from '../lib/motion';
 import { colorsOf } from '../lib/messageStyle';
 import type { StoredMessage } from '../lib/firebase';
 import type { DockBeat } from './WallWalkers';
@@ -30,9 +30,10 @@ import type { DockBeat } from './WallWalkers';
  *      제 색 · 제자리로 돌아온다.
  * 사흘이 지난 말도 꼬리 끝부터 연쇄로 터진다.
  *
- * 소리의 결(결정 9) — 평소엔 없다. 도킹 때만 메가폰처럼 격렬하게: 도킹 순간 가장 굵은 결 한 방(광각 퍼짐과 함께), 글자가 설 때마다 한 방,
+ * 소리의 결(결정 9 · 49) — 도킹 때 메가폰처럼 격렬하게: 도킹 순간 가장 굵은 결 한 방(광각 퍼짐과 함께), 글자가 설 때마다 한 방,
  * 크게 머무는 동안 0.4초마다 쏟아지고 모이며 잦아든다. 말과 땅 뒤(WallSimulation의 .wall-waves)에 --grey-600으로. 결이 지나가면 하늘
- * 말이 덜컥 흔들린다 — 큰 말은 흔들지 않는다(소리의 주인).
+ * 말이 덜컥 흔들린다 — 큰 말은 흔들지 않는다(소리의 주인). 평소엔 같은 자리에서 얕은 결이 숨 쉬듯 여러 겹 느리게 퍼진다(결정 49 —
+ * lib/sky.ts IDLE). 하늘 말은 흔들지 않고, 도킹 · 끄기 창이면 잦아들어 도킹 결이 이어받는다.
  *
  * 돌려 보이기(결정 8 · 35) — 하늘엔 많아야 SKY.max개(lib/sky.ts). 못 뜬 말 · 넘쳐 터진 말은 기다림 줄에 선다(지운 게 아니다 — 사흘 약속을 이것으로
  * 지킨다). 1분마다 가장 오래 떠 있던 말이 꼬리 끝부터 터져 줄 맨 뒤로 가고, 줄 맨 앞 말이 그 자리 번호를 물려받아 0.9초 뒤 기기에서
@@ -178,12 +179,15 @@ interface Props {
   waves?: { current: HTMLCanvasElement | null };
   /** 작은 사람이 딛을 하늘 말을 내줄 곳(하늘 놀이) */
   perch?: { current: SkyPerch | null };
+  /** 끄기를 묻는 중(WallPower) — 평소의 결을 멈춘다 */
+  hush?: boolean;
 }
 
-export default function WallSky({ list, dock, beat, waves, perch }: Props) {
-  const beatRef = useRef(beat), wavesRef = useRef(waves);
+export default function WallSky({ list, dock, beat, waves, perch, hush = false }: Props) {
+  const beatRef = useRef(beat), wavesRef = useRef(waves), hushRef = useRef(hush);
   beatRef.current = beat;
   wavesRef.current = waves;
+  hushRef.current = hush;
   const host = useRef<HTMLDivElement>(null), dockCv = useRef<HTMLCanvasElement>(null), dockText = useRef<HTMLDivElement>(null), crumbCv = useRef<HTMLCanvasElement>(null);
   const els = useRef(new Map<string, Els>());
   /** queue = 기다림 줄(글 id, 앞이 먼저) · shot = 쏘아 오르는 말 · nextRot = 다음 돌림(초) */
@@ -408,6 +412,10 @@ export default function WallSky({ list, dock, beat, waves, perch }: Props) {
     const bldg = cssRgb(css.getPropertyValue('--grey-900'));
     /** 결 캔버스에 지난 그림이 남아 있나 — 도킹이 끝나면 한 번 지운다 */
     let waved = false;
+    /** 평소의 결이 얼마나 나와 있나(0~1) · 마지막으로 잰 때 — 도킹 · 끄기 창이면 --t-slow에 잦아들고(도킹 결이 이어받는다), 끝나면 그만큼에
+        돌아온다. 끄고 켜는 순간에 겹이 툭 끊기거나 도킹 결과 두 겹으로 겹치지 않게 */
+    let idle = 0, idleAt = NaN;
+    const HOLD = tokenS('--t-hold', 0.7), SLOW = tokenS('--t-slow', 0.4), easeStd = easeOf('--ease-standard');
     const mix = (c: string, k: number, to = grey) => { if (k <= 0) return c; const a = cssRgb(c); return `rgb(${a.map((v, i) => Math.round(v + (to[i] - v) * k)).join(' ')})`; };
     let raf = 0, last = -Infinity;
     const glyphEls = (e: HTMLElement | null) => [...(e?.querySelectorAll<HTMLElement>('.arc-glyph') ?? [])];
@@ -578,10 +586,15 @@ export default function WallSky({ list, dock, beat, waves, perch }: Props) {
       const T = M.dock ? times(M.dock) : null;
       if (beatRef.current) beatRef.current.current = M.dock && T ? { start: M.dock.T, letters: M.dock.plan.modDone.map((x) => M.dock!.T + x), rise: T.rise } : null;
       const P = !M.dock || !T ? 0 : t < T.rise ? easeOut(clamp((t - M.dock.T) / WIDE.t)) : 1 - easeIO(clamp((t - T.rise) / RISE));
-      // 소리의 결 — 도킹 때만(움직임을 줄인 화면엔 없다). 말과 땅 뒤의 캔버스에 그린다
+      // 소리의 결 — 도킹 때 격렬하게(움직임을 줄인 화면엔 없다). 말과 땅 뒤의 캔버스에 그린다
       const ws = M.dock && T && !quiet ? wavesAt(t - M.dock.T, M.dock.plan.modDone, T.merge - M.dock.T) : [], wc = wavesRef.current?.current, dv: P = [W / 2, H * (1 + SKY.devDrop)];
+      // 평소의 얕은 결(결정 49) — 도킹 · 끄기 창 · 움직임 줄이기면 잦아든다. 하늘 말을 덜컥이게 하지 않는다(아래 jolt는 ws만)
+      const want = !M.dock && !hushRef.current && !quiet ? 1 : 0;
+      idle += Math.sign(want - idle) * Math.min(Math.abs(want - idle), Number.isNaN(idleAt) ? 1 : (t - idleAt) / SLOW);
+      idleAt = t;
+      const calm = idle > 0 ? idleWavesAt(t, HOLD, easeStd).map((w) => ({ ...w, a: w.a * idle })) : [], all = [...calm, ...ws];
       const RX = FAN.rings[0].a * W, RY = FAN.rings[0].b * H;
-      if (wc && (ws.length || waved)) {
+      if (wc && (all.length || waved)) {
         if (wc.width !== Math.round(W * dpr)) { wc.width = Math.round(W * dpr); wc.height = Math.round(H * dpr); }
         const g = wc.getContext('2d');
         if (g) {
@@ -589,7 +602,7 @@ export default function WallSky({ list, dock, beat, waves, perch }: Props) {
           g.clearRect(0, 0, wc.width, wc.height);
           g.setTransform(dpr, 0, 0, dpr, 0, 0);
           g.strokeStyle = waveCol;
-          for (const w of ws) {
+          for (const w of all) {
             const a = waveAlpha(w);
             if (a <= 0) continue;
             g.globalAlpha = a; g.lineWidth = WAVE.line * H * w.s;
@@ -597,7 +610,7 @@ export default function WallSky({ list, dock, beat, waves, perch }: Props) {
           }
           g.globalAlpha = 1;
         }
-        waved = ws.length > 0;
+        waved = all.length > 0;
       }
       // 덜컥 — 결이 지나가는 자리의 하늘 말이 기기 반대쪽으로 밀렸다 돌아온다(말의 k = 기기에서 그 자리까지를 바깥 호 타원으로 잰 배수)
       const jolt = (X: number, Y: number): P => {

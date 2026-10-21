@@ -340,7 +340,7 @@ export default function WallSimulation() {
       {/* 바닥 — 땅 띠와 그 속의 로고타입(결정 6). 말들 뒤. 왼쪽 위의 원 배지는 뺐다 */}
       <WallGround onPower={() => setPowerAsk(true)} />
       {/* 하늘 · 도킹 — 처음 받은 목록으로 쌓는다(받기 전에 쌓으면 받은 글이 모두 아래에서 올라오는 것으로 읽힌다) */}
-      {messages !== null && <WallSky list={visible} dock={dock} beat={beat} waves={waves} perch={perch} />}
+      {messages !== null && <WallSky list={visible} dock={dock} beat={beat} waves={waves} perch={perch} hush={powerAsk} />}
       {/* 벽의 작은 사람 둘 — 땅 위를 걷고, 하늘 말 위에도 오른다 */}
       <WallWalkers beat={beat} sky={perch} sad={powerAsk} />
       {/* 끄기를 묻는 창 — 가운데, 맨 앞 */}

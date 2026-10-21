@@ -8,13 +8,14 @@ import { scopeSvg } from '../lib/svgAsset';
 //     M · L · C · L · C · L · C · Z   = 점 13개
 // 라서 점끼리 짝지어 보간할 수 있다. 그래서 진짜로 모핑이 된다.
 //
-// _light 두 포즈만 그라디언트 속도선이 한 겹 더 있다. 그건 보간하지 않고
-// 투명도로 얹었다 뺀다 — 빠르게 지나갈 때만 나오는 겹이라 그걸로 충분하다.
+// 소리가 뻗는 옆모습 _light 둘(노란 속도선이 한 겹 더 있다)은 부르지 않는다 —
+// 2026-10-21 결정 51, 디자이너 "빛은 삭제". 홈의 소리는 이제 입에서 퍼지는
+// 결(HomeBubbles)이 맡는다. 그림은 작가 폴더에 그대로 있다.
 //
 // 2026-09-15에 그림이 Renewal_v1으로 바뀌었다. 옛 그림은 파일마다 화판이
 // 달라서 포즈마다 가운데를 다시 맞춰야 했는데, 새 그림은 아홉 장이 전부
 // 같은 1920×1080 화면 안에 들어 있다. 그래서 여기서는 그 화면에서 창
-// 하나를 오려 내기만 한다 — 포즈별 보정은 _light 둘뿐이다.
+// 하나를 오려 내기만 한다.
 
 // 이 폴더에 캐릭터만 있는 게 아니다 — 작가가 화면 스케치와 삽화 견본도
 // 같이 넣는다. 폴더를 통째로 끌어오면 그것까지 번들에 실려 나간다.
@@ -30,6 +31,7 @@ import { scopeSvg } from '../lib/svgAsset';
 const files = import.meta.glob(
   [
     '../../by_moomiryu/Renewal_v1/Character/megafont/*.svg',
+    '!../../by_moomiryu/Renewal_v1/Character/megafont/*_light.svg',
     '../../by_moomiryu/Renewal_v1/Character/eye/*.svg'
   ],
   { query: '?raw', import: 'default', eager: true }
@@ -44,8 +46,7 @@ for (const [path, raw] of Object.entries(files)) {
 
 export const POSES = [
   'front_center', 'front_left', 'front_right',
-  'left', 'right', 'back_left', 'back_right',
-  'left_light', 'right_light'
+  'left', 'right', 'back_left', 'back_right'
 ] as const;
 export const EYES = [
   'general', 'happy', 'surprise', 'angry', 'sad',
@@ -156,8 +157,6 @@ export interface PoseGeo {
   dot: { cx: number; cy: number; r: number };
   /** 눈 자리. 뒷모습처럼 눈이 없는 포즈는 null */
   eye: { x: number; y: number; w: number; h: number } | null;
-  /** Light 포즈의 속도선. 보간하지 않고 투명도로만 다룬다 */
-  trail: string | null;
   /** 화면에서 차지하는 비율 — 벽에 닿는 지점을 정할 때 쓴다 */
   span: { x: number; y: number };
 }
@@ -176,19 +175,13 @@ export function poseGeometry(pose: Pose): PoseGeo {
     const f = fills[p.getAttribute('class') ?? ''] ?? '';
     return f.startsWith('#');
   });
-  const trailEl = paths.find((p) => (fills[p.getAttribute('class') ?? ''] ?? '').startsWith('url('));
 
   const raw = solid.map((p) => ({
     pts: flatten(p.getAttribute('d')!),
     fill: fills[p.getAttribute('class') ?? ''] ?? '#000'
   }));
 
-  // _light 포즈는 속도선이 한쪽으로 길게 뻗느라 몸이 화면 가운데에서 비켜나
-  // 앉아 있다. 그대로 두면 빨라지는 순간 캐릭터가 옆으로 순간이동한 것처럼
-  // 보인다. 그래서 그 둘만 몸을 다시 가운데로 끌어온다.
-  const light = pose.endsWith('_light');
-  const bodyXs = raw.flatMap((c) => c.pts.filter((_, k) => k % 2 === 0));
-  const dx = -ORIGIN_X + (light ? 960 - (Math.min(...bodyXs) + Math.max(...bodyXs)) / 2 : 0);
+  const dx = -ORIGIN_X;
   const dy = -ORIGIN_Y;
   const shift = (pts: number[]) => pts.map((n, k) => n + (k % 2 ? dy : dx));
 
@@ -229,28 +222,6 @@ export function poseGeometry(pose: Pose): PoseGeo {
       }
     : { ...centre, r: 0 };
 
-  // 속도선은 보간하지 않는다. 좌표를 펴는 대신 원본을 통째로 옮겨 놓는다 —
-  // 그라디언트가 userSpaceOnUse라 같은 무리 안에 있어야 색이 안 어긋나고,
-  // 속도선 옆의 작은 막대(rect)는 제 회전을 들고 있어 점으로 못 편다.
-  let trail: string | null = null;
-  if (trailEl) {
-    const defs = root.querySelector('defs')?.cloneNode(true) as Element | null;
-    defs?.querySelectorAll('style').forEach((s) => s.remove());
-    const drawn = [trailEl, ...Array.from(root.querySelectorAll('rect'))]
-      .map((el) => {
-        const copy = el.cloneNode(true) as Element;
-        copy.setAttribute('fill', fills[copy.getAttribute('class') ?? ''] ?? 'none');
-        copy.removeAttribute('class');
-        return copy.outerHTML;
-      })
-      .join('');
-    trail = scopeSvg(
-      `${defs ? defs.outerHTML : ''}` +
-        `<g transform="translate(${dx.toFixed(2)} ${dy.toFixed(2)})">${drawn}</g>`,
-      pose.replace(/[^a-z0-9]+/gi, '-')
-    );
-  }
-
   const geo: PoseGeo = {
     body: body.pts,
     hat: hat.pts,
@@ -258,10 +229,9 @@ export function poseGeometry(pose: Pose): PoseGeo {
     hatFill: hat.fill,
     dot,
     eye,
-    trail,
     // 옆을 보면 세로로 길고, 앞을 보면 가로로 넓다. 재서 나온 값이다:
     // 앞모습 607.1 × 381.6, 옆모습 418.4 × 606.7.
-    span: light || pose === 'left' || pose === 'right'
+    span: pose === 'left' || pose === 'right'
       ? { x: 0.7, y: 1 }
       : { x: 1, y: 381.6 / CANVAS }
   };
@@ -297,7 +267,6 @@ export function blendGeo(from: PoseGeo, to: PoseGeo, t: number): PoseGeo {
           h: mix(from.eye.h, to.eye.h, t)
         }
       : (from.eye ?? to.eye),
-    trail: t < 0.5 ? from.trail : to.trail,
     span: { x: mix(from.span.x, to.span.x, t), y: mix(from.span.y, to.span.y, t) }
   };
 }

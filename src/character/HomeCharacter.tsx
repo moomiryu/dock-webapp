@@ -185,7 +185,6 @@ export default function HomeCharacter({ onTap, greet = true }: {
   const hatRef = useRef<SVGPathElement>(null);
   const dotRef = useRef<SVGCircleElement>(null);
   const eyeRef = useRef<SVGSVGElement>(null);
-  const trailRef = useRef<SVGGElement>(null);
 
   // 표정만 React가 들고 있다. 벽에 닿을 때만 바뀌고 최소 2초를 버티므로
   // 리렌더가 드물다. 포즈와 위치는 매 프레임이라 DOM을 직접 만진다.
@@ -391,13 +390,6 @@ export default function HomeCharacter({ onTap, greet = true }: {
          자체가 없어졌고 — 앞모습과 옆모습은 둘 다 눈을 갖고 있어 늘 1이다. */
       eye.style.opacity = String(eyeOpacity(from, to, progress));
 
-      const trail = trailRef.current!;
-      const wanted = geo.trail ?? '';
-      if (trail.dataset.key !== wanted) {
-        trail.innerHTML = wanted;
-        trail.dataset.key = wanted;
-      }
-
       /* 글자가 앉을 자리 — 실루엣에서 직접 잰다.
          span으로 셈하던 때는 **실루엣이 상자 한가운데 있다고 치고** 있었다.
          옆모습은 몸이 한쪽으로 쏠려 있어서 그 가정이 깨지고, 글자가 몸에서
@@ -486,18 +478,10 @@ export default function HomeCharacter({ onTap, greet = true }: {
      * 대신 오래 머문다. 몇 초마다 돌아서면 두리번거리는 것이 되어 가만히
      * 서 있는 것으로 안 읽힌다.
      *
-     * 소리가 뻗는 옆모습(_light) 둘도 같은 식구다. 넷 중에서 고르되
-     * **방향은 반드시 바꾼다** — 왼쪽에 서 있었으면 오른쪽 둘 중 하나로.
-     * 소리가 뻗는 쪽은 가끔만 나온다. 늘 뻗고 있으면 그건 상태지 사건이
-     * 아니다.
+     * 소리가 뻗는 옆모습(_light — 입에서 노란 빛) 둘도 가끔 섞었는데 걷었다(2026-10-21 결정 51, 디자이너 "빛은 삭제").
+     * 소리는 이제 입에서 퍼지는 결이 맡는다(HomeBubbles).
      */
-    const idlePose = (): Pose => {
-      const toRight = pose === 'left' || pose === 'left_light';
-      const loud = Math.random() < 0.35;
-      return toRight
-        ? (loud ? 'right_light' : 'right')
-        : (loud ? 'left_light' : 'left');
-    };
+    const idlePose = (): Pose => (pose === 'left' ? 'right' : 'left');
 
     const step = (t: number) => {
       const dt = Math.min((t - (lastTime || t)) / 1000, 0.035);
@@ -778,7 +762,6 @@ export default function HomeCharacter({ onTap, greet = true }: {
       <span className="home-char-shade" aria-hidden="true" />
       <span className="home-char-motion" aria-hidden="true">
         <svg viewBox={`0 0 ${CANVAS} ${CANVAS}`}>
-          <g ref={trailRef} />
           <path ref={bodyRef} />
           <path ref={hatRef} />
           <circle ref={dotRef} r="0" />

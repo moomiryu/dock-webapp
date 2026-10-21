@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { G, RF } from '../lib/aggregate';
-import { SKY } from '../lib/sky';
+import { DOTS, SKY } from '../lib/sky';
+import { tokenMs } from '../lib/motion';
 import { groundPx } from '../lib/ground';
 import { Eyes } from '../phases/PhaseOnWall';
 import type { DockBeat } from './WallWalkers';
@@ -23,7 +24,7 @@ const TIRED_LIDS = [...tiredSrc.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map((m) =>
  *
  * 해와 구름(결정 29 — "우리 결로"): 같은 짓는 법, 같은 --grey-900(결정 34 — 한 단계 밝던 --grey-800을 건물과 한 색으로). 해는 실제 시계로
  * 하늘 위 큰 호를 지나고, 밤엔 같은 길을 초승달이 지난다(ORB). 해에는 눈이 있다(2026-10-21 디자이너 — 07의 두 눈, 흰자는 은은하게): 평소엔
- * 느리게 끔뻑, 도킹 중엔 깜짝 놀라 가운데 큰 말을 본다(app.css .wall-sun). 달은 같은 눈에 피곤한 눈꺼풀. 구름 둘은 위 두 귀에 크게 — 화면 위 끝에서 잘려 하늘 위 가장자리를 채운다(2026-10-21 디자이너 — 말풍선과 크기 차가
+ * 느리게 끔뻑, 도킹 중엔 깜짝 놀라 가운데 큰 말을 본다(app.css .wall-sun). 낮의 해 둘레엔 둥근 점 햇살 8줄이 천천히 돈다(RAYS). 달은 같은 눈에 피곤한 눈꺼풀. 구름 둘은 위 두 귀에 크게 — 화면 위 끝에서 잘려 하늘 위 가장자리를 채운다(2026-10-21 디자이너 — 말풍선과 크기 차가
  * 없어 애매해 보였다. 위 두 귀 · 위 가장자리 띠 · 네 귀 × 2배 · 3배 견본에서 '위 두 귀 · 3배'. 옆의 작은 둘은 뺐다). 가운데로 흘러 들어오지
  * 않는다 — 제자리에서 화면 폭의 ±1.5%만 40초에 한 번 오간다, 구름마다 박자를 엇갈려. 움직임 줄이기면 멈춘다.
  *
@@ -50,6 +51,13 @@ const BUILDINGS: readonly (readonly ['rect' | 'roof' | 'dome', number, number, n
  * 높이의 몫) · 자리를 다시 셈하는 간격(초 — 1920 벽에서 10초에 0.5px쯤이라 멈춘 듯 보인다)
  */
 const ORB = { cx: 0.5, rx: 0.45, horizon: 0.86, noon: 0.13, r: 0.065, every: 10 };
+/**
+ * 햇살 — 해 둘레에서 바깥으로 뻗는 둥근 점 점선(2026-10-22 결정 54, 디자이너 "해가 해 같지가 않대" — 02 십자선 · 소리 결과 같은 점, 점
+ * 사이 = 지름 × DOTS.gap). 낮에만, 달엔 없다. 8 · 12줄 × 가만히 · 천천히 돎 · 숨 쉬기 견본에서 '8줄 · 천천히 돎', 이어 "더 작아도 돼,
+ * 여기 주인공은 말풍선" → 점 2 · 3개 × 지름 0.06 · 0.08 · 0.10 격자에서 '2개 · 0.08'. 줄 수 · 줄마다 점 수 · 첫 점 자리 · 점 지름(둘 다
+ * 해 반지름의 몫) · 한 칸(45°) 도는 데 --t-home-ring의 몇 배(12줄 견본과 같은 각속도 — 40초에 30°)
+ */
+const RAYS = { n: 8, dots: 2, from: 1.3, d: 0.08, turn: 1.5 };
 /** 그때 해인가 달인가 · 호 위의 자리(벽의 몫) */
 function orbAt(d: Date) {
   const h = d.getHours() + d.getMinutes() / 60, moon = h < 6 || h >= 18, k = (Math.PI * ((h - (moon ? 18 : 6) + 24) % 24)) / 12;
@@ -140,6 +148,25 @@ export default function WallSkyline({ beat, sad = false }: { beat?: { current: D
       dots(0, 0, 2 * sr, 2 * sr, ink, (x, y) => (x - sr) ** 2 + (y - sr) ** 2 <= sr * sr && (!moon || (x - sr / 2) ** 2 + (y - sr) ** 2 > (0.9 * sr) ** 2), sun);
       place();
       const still = matchMedia('(prefers-reduced-motion: reduce)').matches, A = SWAY * W;
+      // 햇살 — 해 원판 뒤에 한 장. 점은 한 번에 칠하고 캔버스째 돈다(움직임 줄이기면 가만히). 해와 한 틀이라 놀라면 함께 움찔한다
+      if (!moon) {
+        const d = RAYS.d * sr, step = d * DOTS.gap, reach = sr * RAYS.from + (RAYS.dots - 1) * step + d;
+        const cv = document.createElement('canvas'), ctx = cv.getContext('2d')!;
+        cv.width = cv.height = Math.ceil(2 * reach * dpr);
+        cv.style.cssText = `position:absolute;left:${sr - reach}px;top:${sr - reach}px;width:${cv.width / dpr}px;height:${cv.height / dpr}px`;
+        ctx.setTransform(dpr, 0, 0, dpr, reach * dpr, reach * dpr);
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--grey-800').trim();
+        ctx.beginPath();
+        for (let i = 0; i < RAYS.n; i++) for (let k = 0; k < RAYS.dots; k++) {
+          const a = (i / RAYS.n) * 2 * Math.PI, at = sr * RAYS.from + k * step;
+          ctx.moveTo(Math.cos(a) * at + d / 2, Math.sin(a) * at);
+          ctx.arc(Math.cos(a) * at, Math.sin(a) * at, d / 2, 0, 2 * Math.PI);
+        }
+        ctx.fill();
+        made.push(cv);
+        sun.insertBefore(cv, sun.firstChild);
+        if (!still) cv.animate([{ transform: 'rotate(0deg)' }, { transform: `rotate(${360 / RAYS.n}deg)` }], { duration: tokenMs('--t-home-ring', 40000) * RAYS.turn, iterations: Infinity });
+      }
       for (const [cx, cy, fw, phase] of CLOUDS) {
         const w = fw * W, h = w * 0.5;
         const cv = dots(cx * W - w / 2, cy * H - h / 2, w, h, ink, (x, y) =>

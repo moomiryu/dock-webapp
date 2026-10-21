@@ -2579,7 +2579,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .wall-sun.is-startled{ transform: scale(1.08); animation: sunStartle var(--t-slow) var(--ease-emphasized); }
 .wall-sun.is-startled .onwall-eye-open{ animation: none; opacity: 1; transform: scale(0.45); }
 .wall-sun.is-startled .onwall-eye-shut{ animation: none; opacity: 0; }
-.wall-sun.is-startled .onwall-eye-pupil{ transform: translate(5%, 10%); }
+.wall-sun.is-startled .onwall-eye-pupil{ transform: translate(var(--look-x, 5%), var(--look-y, 10%)); }
 @keyframes sunStartle{
   0%   { transform: scale(1) translateY(0); }
   35%  { transform: scale(1.2) translateY(-6%); }
@@ -2592,6 +2592,13 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .wall-sun.is-sad .wall-sun-sad{ display: block; }
 .wall-sun.is-sad .onwall-eye-open{ animation: none; opacity: 1; }
 .wall-sun.is-sad .onwall-eye-shut{ animation: none; opacity: 0; }
+/* 밤엔 달(2026-10-21 디자이너, WallSkyline ORB) — 초승달의 밝은 쪽(오른쪽) 안에 눈을 1.25배로(해 눈의 절반쯤 — 그보다 작으면 벽 거리에서
+   안 읽혔다), 작가의 피곤한 눈꺼풀(eye_tired.svg)로 반만 뜬다. 놀라면 번쩍 뜨고, 끄기를 물으면 슬픈 눈꺼풀로 바뀐다 */
+.wall-sun.is-moon .onwall-eye{ left: 83%; top: 51%; width: 31%; }
+.wall-moon-lids{ display: none; }
+.wall-moon-lids path{ fill: var(--grey-900); }
+.wall-sun.is-moon .wall-moon-lids{ display: block; }
+.wall-sun.is-moon.is-startled .wall-moon-lids, .wall-sun.is-moon.is-sad .wall-moon-lids{ display: none; }
 @media (prefers-reduced-motion: reduce){
   .wall-sun, .wall-sun .onwall-eye-open, .wall-sun .onwall-eye-pupil{ transition: none; }
   .wall-sun.is-startled{ animation: none; }

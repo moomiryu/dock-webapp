@@ -5,9 +5,12 @@ import { groundPx } from '../lib/ground';
 import { Eyes } from '../phases/PhaseOnWall';
 import type { DockBeat } from './WallWalkers';
 import sadSrc from '../../by_moomiryu/Renewal_v1/Character/eye/eye_sad.svg?raw';
+import tiredSrc from '../../by_moomiryu/Renewal_v1/Character/eye/eye_tired.svg?raw';
 
 /** 해의 슬픈 눈꺼풀 둘 — 작가의 슬픈 눈(eye_sad.svg)은 07 눈과 판 · 눈 자리가 같아(412 × 172, 흰자 반지름 86.21) 눈꺼풀만 그대로 얹는다 */
 const SAD_LIDS = [...sadSrc.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map((m) => m[1]);
+/** 달의 피곤한 눈꺼풀 둘 — 작가의 피곤한 눈(eye_tired.svg)도 같은 판이라 위쪽 반원 눈꺼풀만 얹는다(반만 뜬 눈) */
+const TIRED_LIDS = [...tiredSrc.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map((m) => m[1]);
 
 /**
  * 벽의 기본 배경 — 대학 스카이라인(2026-10-20, 결정 25 — 견본 kv/bg-campus.html 'A — 완전 한 색'). 자연 컨셉 때의 나무처럼 깔리는
@@ -18,10 +21,11 @@ const SAD_LIDS = [...sadSrc.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map((m) => m[1
  * 0.385 ~ 0.63은 비움 — 로고 · 기기, 하늘 말 꼬리들의 꼭짓점) · 기숙사 · 학생회관(돔) · 강의동(작은 탑). 그 합집합 안의 벌집 격자 점(벽
  * 격자 — 화면 왼쪽 위가 원점, 간격 = 하늘 말 점 간격 G)마다 반지름 RF × 1.08의 원.
  *
- * 해와 구름(결정 29 — "우리 결로"): 같은 짓는 법, 같은 --grey-900(결정 34 — 한 단계 밝던 --grey-800을 건물과 한 색으로). 해는 왼쪽 위 원 하나(학생회관 돔과 떨어지게),
- * 자리는 움직이지 않는다. 해에는 눈이 있다(2026-10-21 디자이너 — 07의 두 눈, 흰자는 은은하게): 평소엔 느리게 끔뻑, 도킹 중엔 깜짝 놀란다
- * (app.css .wall-sun). 구름 넷은 부채꼴 하늘이 비워 두는 네 귀 · 양옆에 — 말풍선이 가장자리에 없어서(디자이너). 화면 끝에서 조금 잘려도 되고,
- * 가운데로 흘러 들어오지 않는다 — 제자리에서 화면 폭의 ±1.5%만 40초에 한 번 오간다, 구름마다 박자를 엇갈려. 움직임 줄이기면 멈춘다.
+ * 해와 구름(결정 29 — "우리 결로"): 같은 짓는 법, 같은 --grey-900(결정 34 — 한 단계 밝던 --grey-800을 건물과 한 색으로). 해는 실제 시계로
+ * 하늘 위 큰 호를 지나고, 밤엔 같은 길을 초승달이 지난다(ORB). 해에는 눈이 있다(2026-10-21 디자이너 — 07의 두 눈, 흰자는 은은하게): 평소엔
+ * 느리게 끔뻑, 도킹 중엔 깜짝 놀라 가운데 큰 말을 본다(app.css .wall-sun). 달은 같은 눈에 피곤한 눈꺼풀. 구름 둘은 위 두 귀에 크게 — 화면 위 끝에서 잘려 하늘 위 가장자리를 채운다(2026-10-21 디자이너 — 말풍선과 크기 차가
+ * 없어 애매해 보였다. 위 두 귀 · 위 가장자리 띠 · 네 귀 × 2배 · 3배 견본에서 '위 두 귀 · 3배'. 옆의 작은 둘은 뺐다). 가운데로 흘러 들어오지
+ * 않는다 — 제자리에서 화면 폭의 ±1.5%만 40초에 한 번 오간다, 구름마다 박자를 엇갈려. 움직임 줄이기면 멈춘다.
  *
  * 층은 벽 바탕 바로 위 — 해 → 구름 → 건물 다음에야 소리의 결 · 땅 · 하늘 말 · 부스러기 · 작은 사람(WallSimulation에서 맨 앞에 놓는다).
  * 도킹 때도 그대로다 — 창 크기가 바뀔 때만 다시 그린다.
@@ -37,10 +41,22 @@ const BUILDINGS: readonly (readonly ['rect' | 'roof' | 'dome', number, number, n
   ['rect', 0.72, 0.86, 0.1], ['dome', 0.79, 0.79, 0.1, 0.055],        // 학생회관 — 돔
   ['rect', 0.88, 1, 0.13], ['rect', 0.925, 0.95, 0.18]                // 강의동 — 작은 탑
 ];
-/** 해 — 가운데(벽 폭 · 높이의 몫), 반지름(벽 높이의 몫) */
-const SUN = [0.12, 0.17, 0.065] as const;
-/** 구름 — 가운데 가로 · 세로(벽의 몫), 폭(벽 폭의 몫), 오가는 박자의 출발점(한 번 오가는 것의 몫). 왼쪽 위 · 오른쪽 위 · 왼쪽 옆 · 오른쪽 옆 */
-const CLOUDS = [[0.06, 0.07, 0.13, 0], [0.93, 0.09, 0.12, 0.4], [0.03, 0.37, 0.1, 0.7], [0.96, 0.33, 0.11, 0.15]] as const;
+/**
+ * 해 · 달 — 실제 시계로 하늘 위 큰 호를 지난다(2026-10-21 디자이너 "이게 시간이 지나는 거면 해의 위치도 바뀌어야 하는 거 아니냐, 해랑 달이
+ * 반복되는?" — 부스러기가 글의 나이로 바래니 해도 같은 시계로. 실제 시계 · 빠르게 한 바퀴 · 그대로 중 실제 시계, 큰 호 · 위 가장자리를 따라
+ * 중 큰 호). 오전 6시 왼쪽 건물 뒤에서 떠서 정오에 하늘 맨 위 가운데, 오후 6시 오른쪽 건물 뒤로 진다. 밤엔 같은 길을 달이 — 초승달 ·
+ * 피곤한 눈(벽은 밤에도 켜 둔다. 보름 · 반달 · 초승 × 뜬 · 피곤한 · 감은 눈 견본에서). 해와 달이 바뀌는 때는 지평선, 건물 뒤다. 한낮엔
+ * 말풍선 뒤로 지나가 눈이 가려질 때가 있다(알고 골랐다). 호의 가운데 가로 · 가로 반지름(벽 폭의 몫) · 지평선 · 한낮 높이 · 반지름(벽
+ * 높이의 몫) · 자리를 다시 셈하는 간격(초 — 1920 벽에서 10초에 0.5px쯤이라 멈춘 듯 보인다)
+ */
+const ORB = { cx: 0.5, rx: 0.45, horizon: 0.86, noon: 0.13, r: 0.065, every: 10 };
+/** 그때 해인가 달인가 · 호 위의 자리(벽의 몫) */
+function orbAt(d: Date) {
+  const h = d.getHours() + d.getMinutes() / 60, moon = h < 6 || h >= 18, k = (Math.PI * ((h - (moon ? 18 : 6) + 24) % 24)) / 12;
+  return { moon, x: ORB.cx - ORB.rx * Math.cos(k), y: ORB.horizon - (ORB.horizon - ORB.noon) * Math.sin(k) };
+}
+/** 구름 — 가운데 가로 · 세로(벽의 몫), 폭(벽 폭의 몫 — 그 전 구름의 3배), 오가는 박자의 출발점(한 번 오가는 것의 몫). 왼쪽 위 · 오른쪽 위 */
+const CLOUDS = [[0.07, 0.03, 0.39, 0], [0.93, 0.04, 0.36, 0.4]] as const;
 /** 구름 꼴 — 폭 w · 높이 0.5w 상자 안 둥근 혹 다섯의 합집합 [가로, 세로, 반지름](w의 몫), 아래는 0.82h에서 평평하게(견본 식 그대로) */
 const BUMPS = [[0.18, 0.62, 0.17], [0.38, 0.42, 0.24], [0.6, 0.48, 0.21], [0.8, 0.64, 0.15], [0.48, 0.7, 0.2]] as const;
 /** 구름이 오가는 폭(벽 폭의 몫) · 한 번 오가는 시간(초) */
@@ -84,6 +100,15 @@ export default function WallSkyline({ beat, sad = false }: { beat?: { current: D
     if (!box || !sun) return;
     const ink = getComputedStyle(document.documentElement).getPropertyValue('--grey-900').trim();
     const made: HTMLCanvasElement[] = [];
+    /** 해 · 달을 지금 시각의 자리로 — 놀랄 때 눈동자가 볼 쪽(벽 가운데)도 그 자리에서 셈한다(app.css --look-x · --look-y). 해 ↔ 달이 바뀌었으면 다시 그린다 */
+    const place = () => {
+      const o = orbAt(new Date());
+      if (o.moon !== sun.classList.contains('is-moon')) return draw();
+      const W = window.innerWidth, H = window.innerHeight, sr = ORB.r * H, x = o.x * W, y = o.y * H, dx = W / 2 - x, dy = H / 2 - y, d = Math.hypot(dx, dy) || 1;
+      Object.assign(sun.style, { left: `${x - sr}px`, top: `${y - sr}px` });
+      sun.style.setProperty('--look-x', `${((11 * dx) / d).toFixed(1)}%`);
+      sun.style.setProperty('--look-y', `${((11 * dy) / d).toFixed(1)}%`);
+    };
     const draw = () => {
       const W = window.innerWidth, H = window.innerHeight, dpr = Math.min(2, window.devicePixelRatio || 1);
       const u = SKY.u * H, g = G * u, row = (g * Math.sqrt(3)) / 2, r = RF * u * FILL;
@@ -107,10 +132,13 @@ export default function WallSkyline({ beat, sad = false }: { beat?: { current: D
         return into === box ? box.appendChild(cv) : into.insertBefore(cv, into.firstChild);   // 해는 눈 뒤에
       };
       for (const cv of made.splice(0)) cv.remove();
-      // 해 — 눈과 한 틀(.wall-sun)에 넣어 놀랄 때 함께 움찔한다. 틀은 맨 앞 자식이라 구름 · 건물이 그 앞에 선다
-      const sr = SUN[2] * H;
-      Object.assign(sun.style, { left: `${SUN[0] * W - sr}px`, top: `${SUN[1] * H - sr}px`, width: `${2 * sr}px`, height: `${2 * sr}px` });
-      dots(0, 0, 2 * sr, 2 * sr, ink, (x, y) => (x - sr) ** 2 + (y - sr) ** 2 <= sr * sr, sun);
+      // 해 · 달 — 눈과 한 틀(.wall-sun)에 넣어 놀랄 때 함께 움찔한다. 틀은 맨 앞 자식이라 구름 · 건물이 그 앞에 선다. 초승달은 원에서 왼쪽으로
+      // 반지름의 절반 비킨 0.9배 원을 뺀 것(밝은 쪽이 오른쪽)
+      const sr = ORB.r * H, moon = orbAt(new Date()).moon;
+      Object.assign(sun.style, { width: `${2 * sr}px`, height: `${2 * sr}px` });
+      sun.classList.toggle('is-moon', moon);
+      dots(0, 0, 2 * sr, 2 * sr, ink, (x, y) => (x - sr) ** 2 + (y - sr) ** 2 <= sr * sr && (!moon || (x - sr / 2) ** 2 + (y - sr) ** 2 > (0.9 * sr) ** 2), sun);
+      place();
       const still = matchMedia('(prefers-reduced-motion: reduce)').matches, A = SWAY * W;
       for (const [cx, cy, fw, phase] of CLOUDS) {
         const w = fw * W, h = w * 0.5;
@@ -124,13 +152,15 @@ export default function WallSkyline({ beat, sad = false }: { beat?: { current: D
     };
     draw();
     window.addEventListener('resize', draw);
-    return () => window.removeEventListener('resize', draw);
+    const clock = window.setInterval(place, ORB.every * 1000);
+    return () => { window.removeEventListener('resize', draw); clearInterval(clock); for (const cv of made) cv.remove(); };
   }, []);
   return (
     <div ref={ref} className="wall-skyline" aria-hidden="true" style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
       <div ref={sunRef} className="wall-sun">
         <Eyes />
         <svg className="onwall-eye wall-sun-sad" viewBox="0 0 412.12 172.43" aria-hidden focusable="false">{SAD_LIDS.map((d) => <path key={d} d={d} />)}</svg>
+        <svg className="onwall-eye wall-moon-lids" viewBox="0 0 412.12 172.43" aria-hidden focusable="false">{TIRED_LIDS.map((d) => <path key={d} d={d} />)}</svg>
       </div>
     </div>
   );

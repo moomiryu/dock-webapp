@@ -46,7 +46,21 @@ const BUMPS = [[0.18, 0.62, 0.17], [0.38, 0.42, 0.24], [0.6, 0.48, 0.21], [0.8, 
 /** 구름이 오가는 폭(벽 폭의 몫) · 한 번 오가는 시간(초) */
 const SWAY = 0.015, SWAY_S = 40;
 /** 점 반지름의 덧 — 이웃 점이 겹쳐 속이 한 면이 되게(견본 값) */
-const FILL = 1.08;
+export const FILL = 1.08;
+
+/** 건물들의 합집합 — 벽 W × H에서 (x, y)가 건물 안인가. 말의 부스러기도 이 안에만 쌓인다(WallSky — 건물이 그릇) */
+export function buildingsAt(W: number, H: number): Shape {
+  const gTop = H - groundPx(H), X = (f: number) => f * W, Y = (f: number) => gTop - f * H;
+  const shapes: Shape[] = BUILDINGS.map(([kind, x0, x1, h, k = 0]) => {
+    if (kind === 'rect') return (x, y) => x >= X(x0) && x <= X(x1) && y >= Y(h) && y <= gTop;
+    if (kind === 'dome') return (x, y) => (x - X(x0)) ** 2 + (y - Y(h)) ** 2 <= (k * H) ** 2;
+    return (x, y) => {   // 박공 · 첨탑 — 밑변 높이 h에서 k만큼 솟은 세모
+      const top = Y(h + k), bot = Y(h), half = (X(x1) - X(x0)) / 2;
+      return y >= top && y <= bot && Math.abs(x - (X(x0) + X(x1)) / 2) <= (half * (y - top)) / (bot - top);
+    };
+  });
+  return (x, y) => shapes.some((f) => f(x, y));
+}
 
 export default function WallSkyline({ beat, sad = false }: { beat?: { current: DockBeat | null }; sad?: boolean }) {
   const ref = useRef<HTMLDivElement>(null), sunRef = useRef<HTMLDivElement>(null);
@@ -106,16 +120,7 @@ export default function WallSkyline({ beat, sad = false }: { beat?: { current: D
         const steps = Array.from({ length: 25 }, (_, k) => ({ transform: `translateX(${A * Math.sin((k / 24) * 2 * Math.PI)}px)` }));
         cv.animate(steps, { duration: SWAY_S * 1000, iterations: Infinity, iterationStart: phase });
       }
-      const gTop = H - groundPx(H), X = (f: number) => f * W, Y = (f: number) => gTop - f * H;
-      const shapes: Shape[] = BUILDINGS.map(([kind, x0, x1, h, k = 0]) => {
-        if (kind === 'rect') return (x, y) => x >= X(x0) && x <= X(x1) && y >= Y(h) && y <= gTop;
-        if (kind === 'dome') return (x, y) => (x - X(x0)) ** 2 + (y - Y(h)) ** 2 <= (k * H) ** 2;
-        return (x, y) => {   // 박공 · 첨탑 — 밑변 높이 h에서 k만큼 솟은 세모
-          const top = Y(h + k), bot = Y(h), half = (X(x1) - X(x0)) / 2;
-          return y >= top && y <= bot && Math.abs(x - (X(x0) + X(x1)) / 2) <= (half * (y - top)) / (bot - top);
-        };
-      });
-      dots(0, 0, W, H, ink, (x, y) => shapes.some((f) => f(x, y)));
+      dots(0, 0, W, H, ink, buildingsAt(W, H));
     };
     draw();
     window.addEventListener('resize', draw);

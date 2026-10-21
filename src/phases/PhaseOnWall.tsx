@@ -4,7 +4,7 @@ import { DOCK_TERM_MS, EMPHASIS_MS, EMPHASIS_SEC } from '../lib/wall';
 import { isDevMode } from '../lib/stage';
 import { pick, useLang } from '../lib/lang';
 import { arrange, arrangeOf, dockPlanOf, kindOf } from '../lib/aggregate';
-import { SKY, waveAlpha, wavesAt } from '../lib/sky';
+import { SKY, waveAlpha, waveArc, wavesAt } from '../lib/sky';
 import { foldLines } from '../lib/fit';
 import type { ToneState } from '../types';
 
@@ -155,8 +155,9 @@ function Waves({ text, tone, startedAt }: { text: string; tone: ToneState; start
             for (const w of wavesAt(t, letters)) {
                 const a = PHONE_WAVE.alpha * waveAlpha(w);
                 if (a <= 0) continue;
-                ctx.globalAlpha = a; ctx.lineWidth = PHONE_WAVE.line * w.s;
-                ctx.beginPath(); ctx.arc(W / 2, H + PHONE_WAVE.drop, w.k * PHONE_WAVE.r * H, Math.PI, 2 * Math.PI); ctx.stroke();
+                ctx.globalAlpha = a;
+                const r = w.k * PHONE_WAVE.r * H;
+                waveArc(ctx, W / 2, H + PHONE_WAVE.drop, r, r, -Math.PI / 2, Math.PI / 2, PHONE_WAVE.line * w.s);
             }
             ctx.globalAlpha = 1;
         };

@@ -108,7 +108,8 @@ export function fanOf<T extends Seated>(list: readonly T[], W: number, H: number
  * 쏟아짐: 결 사이 k 0.2 · 빠르기 k 0.5/초(0.4초마다 하나) · 세기 1.4 · 도킹 0.3초 뒤부터 1초에 차오르고, 잦아들 때는 0.7초(벽은 모임).
  * 한 방: 도킹 순간 세기 4 · 1초, 글자가 설 때마다 세기 2.2 · 1.5초(easeOut). k 0.12까지 생겨나고 1.45 앞 0.45에서 잦아든다.
  * 벽: 기기 중심 타원(부채꼴 바깥 호 × k) · 선 높이/540 × 세기 · --grey-600, 지나가면 하늘 말이 덜컥(0.3u × Σ(정도 × min(세기, 3) ×
- * exp(−((결의 k − 말의 k) / 0.04)²))). 폰: 화면 아래 바깥이 중심인 원(높이 0.9 × k) · 2px × 세기 · --paper · 0.45배 옅게
+ * exp(−((결의 k − 말의 k) / 0.04)²))). 폰: 화면 아래 바깥이 중심인 원(높이 0.9 × k) · 2px × 세기 · --paper · 0.45배 옅게.
+ * 선은 둥근 점 점선으로 긋는다(결정 53 — 아래 DOTS · waveArc, 점 지름 = 선 굵기 × 2.2)
  */
 export const WAVE = { gap: 0.2, v: 0.5, end: 1.45, born: 0.12, fade: 0.45, stream: 1.4, pour: 0.3, fill: 1, calm: 0.7,
   first: { s: 4, dur: 1 }, letter: { s: 2.2, dur: 1.5 }, line: 1 / 540, bob: 0.3, sig: 0.04 } as const;
@@ -125,6 +126,23 @@ export function wavesAt(t: number, letters: readonly number[], calm = Infinity):
 }
 /** 결이 보이는 정도 — 생겨나고 잦아드는 것 × 그 결의 정도 */
 export const waveAlpha = (w: Wave) => clamp(w.k / WAVE.born) * clamp((WAVE.end - w.k) / WAVE.fade) * w.a;
+
+/**
+ * 결의 점선(결정 53, 2026-10-22 디자이너 — "이 동심원 선도 우리가 … '원형 도트 반복 선'으로"). 02 십자선(결정 12)과 같은 둥근 점:
+ * 점 지름 = 그 결의 선 굵기 × d, 점 사이(가운데에서 가운데) = 점 지름 × gap. 길이 0인 대시에 둥근 끝을 달면 점이 된다 — 점을 하나씩
+ * 그리지 않고 선 한 번 긋는 값으로(파이). 가운데 각 mid에서 양쪽으로 half만큼, 둘로 나눠 그어 가운데에 점 하나가 선다.
+ * 벽(평소 · 도킹) · 홈 · 폰 07이 이것 하나로 그린다. 견본 셋(고운 점 1.5 · 2 / 굵은 점 2.2 · 2 / 굵고 성긴 점 2.2 · 3) 중 굵고 성긴 점
+ */
+export const DOTS = { d: 2.2, gap: 3 } as const;
+export function waveArc(g: CanvasRenderingContext2D, cx: number, cy: number, rx: number, ry: number, mid: number, half: number, line: number) {
+  const d = line * DOTS.d;
+  g.lineWidth = d; g.lineCap = 'round'; g.setLineDash([0, d * DOTS.gap]);
+  g.beginPath();
+  g.ellipse(cx, cy, rx, ry, 0, mid, mid - half, true);
+  g.moveTo(cx + rx * Math.cos(mid), cy + ry * Math.sin(mid));
+  g.ellipse(cx, cy, rx, ry, 0, mid, mid + half);
+  g.stroke();
+}
 
 /**
  * 평소의 얕은 결(결정 49, 2026-10-21 디자이너 — "도킹할 때에만 파동 동심원이 두둥 나오잖음. 평상시에도 하단 중앙에서 얕게 조금씩").

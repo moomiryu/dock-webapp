@@ -2,7 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import VoiceBubble from './VoiceBubble';
 import { ENTRANCE, G, RD, RF, arrange, arrangeOf, dockPlanOf, evenSpread, gapsOf, hurry, kindOf, modulesAt, tailOf, type Dot, type Item, type Kind, type Plan, type Tail } from '../lib/aggregate';
 import { paintBody, paintEntrance, placeGlyphs, type Glyph, type Pop } from '../lib/dotPaint';
-import { FAN, SKY, WAVE, WIDE, bodyOf, fanOf, idleWavesAt, profileOf, ringOf, turn, waveAlpha, wavesAt, type Box, type Seat, type Seated } from '../lib/sky';
+import { FAN, SKY, WAVE, WIDE, bodyOf, fanOf, idleWavesAt, profileOf, ringOf, turn, waveAlpha, waveArc, wavesAt, type Box, type Seat, type Seated } from '../lib/sky';
 import { foldLines } from '../lib/fit';
 import { cssRgb, hash, rng } from '../lib/hatch';
 import { fontMap } from '../lib/palettes';
@@ -605,8 +605,8 @@ export default function WallSky({ list, dock, beat, waves, perch, hush = false }
           for (const w of all) {
             const a = waveAlpha(w);
             if (a <= 0) continue;
-            g.globalAlpha = a; g.lineWidth = WAVE.line * H * w.s;
-            g.beginPath(); g.ellipse(dv[0], dv[1], w.k * RX, w.k * RY, 0, Math.PI, 2 * Math.PI); g.stroke();
+            g.globalAlpha = a;
+            waveArc(g, dv[0], dv[1], w.k * RX, w.k * RY, -Math.PI / 2, Math.PI / 2, WAVE.line * H * w.s);
           }
           g.globalAlpha = 1;
         }

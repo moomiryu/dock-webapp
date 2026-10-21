@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { arrange, boundsOf, gapsOf, kindOf, tailOf, type Item, type Kind, type Tail, type Dot } from '../lib/aggregate';
 import { paintBody } from '../lib/dotPaint';
-import { idleWavesAt, waveAlpha } from '../lib/sky';
+import { idleWavesAt, waveAlpha, waveArc } from '../lib/sky';
 import { says } from '../character/says';
 import { easeOf, tokenS } from '../lib/motion';
 
@@ -136,8 +136,8 @@ export default function HomeBubbles() {
         for (const w of ws) {
           const a = Math.min(1, amp * RING.alpha * waveAlpha(w));
           if (a <= 0) continue;
-          bg.globalAlpha = a; bg.lineWidth = RING.line * w.s;
-          bg.beginPath(); bg.arc(side.at[0], side.at[1], w.k * R, a0 - sp, a0 + sp); bg.stroke();
+          bg.globalAlpha = a;
+          waveArc(bg, side.at[0], side.at[1], w.k * R, w.k * R, a0, sp, RING.line * w.s);
         }
         bg.globalAlpha = 1;
       }

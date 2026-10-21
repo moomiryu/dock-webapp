@@ -168,7 +168,6 @@
 .home-info-btn:active,
 .info-step:active:not(:disabled),
 .z-cycle:active,
-.sim-replay:active,
 .info-close:active,
 .done-home-link:active,
 .z-back:active {
@@ -192,19 +191,19 @@
    (4/5 '이렇게 담을게요' — .color-panel > .primary-action). */
 .primary-action, .home-cta, .home-info-btn, .z-back, .tone-more, .hint-open, .hint-close, .home-poster-about,
 .color-roll-arrows > button, .ask-answers > button, .done-home-link,
-.sim-replay, .feedback-send{
+.feedback-send{
   transition: scale var(--t-return) var(--ease-standard);
 }
 :is(.primary-action, .home-cta, .home-info-btn, .z-back, .tone-more, .hint-open, .hint-close, .home-poster-about,
   .color-roll-arrows > button, .ask-answers > button, .done-home-link,
-  .sim-replay, .feedback-send)[data-pressed]:not(:disabled){
+  .feedback-send)[data-pressed]:not(:disabled){
   scale: var(--press-scale);
   transition-duration: calc(var(--t-return) / 4);
 }
 @media (prefers-reduced-motion: reduce){
   :is(.primary-action, .home-cta, .home-info-btn, .z-back, .tone-more, .hint-open, .hint-close, .home-poster-about,
     .color-roll-arrows > button, .ask-answers > button, .done-home-link,
-    .sim-replay, .feedback-send)[data-pressed]{ scale: none; }
+    .feedback-send)[data-pressed]{ scale: none; }
 }
 /* 누름 — 슬라이더(같은 날, 사용자 · '판만 작아지기'). 누르는 동안 틀은 그대로, 안의 판만
    --press-scale로 준다 — 3/5 · 4/5 스위치 판, 게이지 채움, 2/5 네 칸의 판, 4/5 색 창. 끄는
@@ -843,38 +842,6 @@
   transition: background-color 650ms ease;
 }
 
-/* 모션에는 이름이 없다 — 지금 보고 있는 게 어느 시간인지 말해준다 */
-.sim-legend{
-  display: flex;
-  align-items: center;
-  gap: var(--s5);
-  font-family: var(--label-font);
-  font-size: var(--fs-cap-s);
-  letter-spacing: 0.02em;
-}
-
-.sim-legend span{
-  color: var(--muted);
-  transition: color 300ms ease;
-}
-
-.sim-legend span.on{
-  color: var(--ink);
-}
-
-.sim-replay{
-  margin-left: auto;
-  background: none;
-  border: 1px solid var(--line);
-  border-radius: var(--r-s);
-  padding: 0 var(--pad-btn-x);
-  min-height: var(--btn-m);   /* 일반 버튼 44. 32였다 — 닿는 자리를 ::after로 늘려 두었었다 */
-  font-family: var(--label-font);
-  font-size: var(--fs-body-s);
-  letter-spacing: 0.02em;
-  color: var(--muted);
-  cursor: pointer;
-}
 
 /* 모션을 껐을 때 — 흐르지는 않되 **자리는 지킨다.**
    전에는 여기서 animation을 통째로 지웠다. 그러면 풍경의 여섯 줄이 쓰던
@@ -2118,7 +2085,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    입력칸 · 스위치 · 칩은 3px(--r-control) 그대로, 원형 아이콘 버튼은 원 그대로다. */
 .primary-action, .home-cta, .home-info-btn, .info-close,
 .z-cycle, .z-steps, .dock-next, .fail-keep,
-.sim-replay, .done-home-link, .tone-selected button, .format-button,
+.done-home-link, .tone-selected button, .format-button,
 .color-reel-option{
   border-radius: var(--r-button);
 }
@@ -3079,7 +3046,6 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 @media (hover: hover) {
   .home-link:hover,
   .done-home-link:hover{ color: var(--ink); }
-  .sim-replay:hover{ color: var(--ink); border-color: var(--ink); }
 }
 
 /* ─── 03 조율 — 2026-09-15 스케치(_3) ──────────────────────────
@@ -3168,15 +3134,12 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 /* align-items: center였다 — 알약이 252px 고정폭이라 가운데 세웠다.
    눈금 줄은 화면 폭을 다 쓴다(다섯 칸을 나눠야 해서). stretch로 되돌린다. */
 
-.sim-legend{ justify-content: flex-end; }
-
 /* ── 5/5는 화면 전체가 벽이다 (2026-09-27, 사용자) ──────────────────────
    16:9 액자(벽 2.5 × 1.4m의 비율)를 흰 화면 가운데 두던 것을 걷었다. 액자는
    폰 폭의 절반 높이(201px)라 발화가 작게 떴고, 흰 여백 속의 검은 띠가 '벽'보다
    '화면 속 화면'으로 읽혔다. 이제 화면째 검정이고, 머리줄과 보내기 버튼
-   사이가 통째로 벽이다 — 벽의 비율이 아니라 **이 폰에서** 어떻게 뜨는지를
-   보여 준다. 크기는 벽 부품이 폰으로 /wall을 열었을 때 쓰는 규칙 그대로다
-   (PhasePreview의 --big-side: 높이 95% · 폭 88% 중 작은 쪽 — 이 칸에 대고 잰다).
+   사이가 통째로 무대다. 2026-10-21(결정 47)부터 그 가운데에 4/5에서 담은 말풍선이
+   다 모인 모습 그대로 멈춰 선다(아래 .dot-bubble 폭) — 큰 말 등장과 '다시 보기'는 걷었다.
    검은 무대의 머리줄·글자·선은 4/5와 같은 값이다. */
 .preview-screen{ background: var(--ink); }
 .preview-screen .step-header{ --step-ink: var(--paper);
@@ -3192,9 +3155,10 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    더 계산시키면 풀려서 잘못이 숨는다). 0으로 못 박으면 처음부터 풀린다. */
 .preview-screen .sim-frame.is-wall{ flex: 1 1 0; min-height: 0; aspect-ratio: auto; border: 0;
   margin-inline: calc(var(--pad-x) * -1); width: auto; }
-.preview-screen .sim-replay{ border-color: color-mix(in srgb, var(--paper) var(--rule-mix), transparent); color: var(--grey-400); }
+/* 말풍선 칸은 4/5 무대와 같은 폭(2026-10-21, 결정 47 — 4/5에서 담은 말 그대로) — 4/5의 액자(.proj-frame)가 안쪽으로 폭의 4%씩
+   비우므로 여기도 화면 폭의 92%. 칸 크기가 같아야 DotBubble(pick)이 같은 글자 크기 · 같은 꼬리로 선다(4/5 · 05 나란히 재서 확인) */
+.preview-screen .sim-frame.is-wall > .dot-bubble{ width: 92%; margin-inline: auto; }
 .preview-screen .error-banner{ border-color: var(--grey-500); color: var(--paper); }
-@media (hover: hover){ .preview-screen .sim-replay:hover{ color: var(--paper); border-color: var(--paper); } }
 
 /* ─── 머리줄 밑 구분선 — 한 규칙 (2026-09-25) ─────────────────────
    내비게이션과 본문 사이에 선 하나. 튜토리얼 머리줄의 선(1px · --line ·

@@ -170,6 +170,17 @@ export function nextMoodIndex(current: number): number {
 // 다시 견줘 보고 지금 그대로 뒀다(디자이너 — 섞지 않음 · 지금 · 모두 어둡게 · 모두 곱하기 중 "지금이 제일 낫다").
 // 이름은 4/5 룰렛 창에 뜬다(2026-09-29, 디자이너 — '가' 한 자 대신 "실제 색 이름을") — 위 옛 짝의 '이름은 UI에 뜨지 않는다'는
 // 여기엔 해당하지 않는다. 낭독 이름도 같다. 옛 글은 제가 고른 칠 · 글자색(hex)을 그대로 들고 있다.
+//
+// 2026-10-21 다시 짰다(결정 48, 디자이너 — "특정한 것만 채도가 너무 높은 건 문제지만, 지금은 색의 다양성이 부족하다. 이름도
+// 쉽고 직관적으로"). OKLab으로 재 보니 같은 성격 안에 거의 같은 짝이 있었고(다정 코랄–복숭아 0.036 · 유머 형광 초록–아쿠아 0.041 ·
+// 차분 짙은 초록–청록 0.048), 색상이 한쪽에 몰려 큰 빈 구간이 났고(다정 노랑→연보라 230° — 초록 · 파랑이 없었다 · 차분 빨강→초록
+// 134° · 유머 핑크→라임 118° · 당당 보라→빨강 87°), 몇 칠만 진하기가 튀었다(해바라기 C 0.17 · 진홍 0.14 · 일렉트릭 0.14).
+// 짠 법: 성격마다 여덟 그대로, 그 성격의 결(밝기 · 진하기 · 글자색 — 위 네 줄)은 지키고 색상만 약 45°씩 고르게 넓혔다. 진하기 위는
+// 0.12에서 자른다. 가장 닮은 짝 거리는 다정 0.036 → 0.058 · 유머 0.041 → 0.076 · 차분 0.048 → 0.075 · 당당 0.073 → 0.074가 됐고,
+// 칠과 글자의 대비는 서른두 짝 모두 6.4 이상이다(가장 낮은 것 다정 제비꽃 6.47). 이름은 사물로 — 다만 "당당함은 원래대로
+// 딱딱하게"(디자이너)라 당당한만 기본 색이름이고 id도 그대로 둔다(하늘 자리가 분홍). 튜토 Step 3의 흰 말풍선이 당당 'white'를
+// 찾는다(svgAsset step3Bubble). 다른 성격의 id는 영어 이름을 따른다. 영어 이름은 영문판용 초안이다.
+// 견본: 정하는 세션 scratchpad out-color/color-sheet.png · proposal-final.json
 export interface ColorPair {
   id: string;
   name: Pair;
@@ -179,31 +190,28 @@ export interface ColorPair {
 const cp = (id: string, ko: string, en: string, bg: string, text: string): ColorPair => ({ id, name: { ko, en }, bg, text });
 export const ATTITUDE_COLORS: Record<string, readonly ColorPair[]> = {
   ttoryeot: [
-    cp('yellow', '노랑', 'Yellow', '#F6E67B', '#000000'), cp('white', '흰', 'White', '#F0E9DB', '#000000'),
-    cp('red', '빨강', 'Red', '#DC7671', '#000000'), cp('blue', '파랑', 'Blue', '#6590C8', '#000000'),
-    cp('green', '초록', 'Green', '#59A173', '#000000'), cp('orange', '주황', 'Orange', '#E99768', '#000000'),
-    cp('violet', '보라', 'Violet', '#9883C9', '#000000'), cp('sky', '하늘', 'Sky', '#6CB9D7', '#000000')
+    cp('yellow', '노랑', 'Yellow', '#F4E886', '#000000'), cp('white', '흰', 'White', '#F0E9DB', '#000000'),
+    cp('red', '빨강', 'Red', '#DF7F77', '#000000'), cp('blue', '파랑', 'Blue', '#5EA7D5', '#000000'),
+    cp('green', '초록', 'Green', '#69B27A', '#000000'), cp('orange', '주황', 'Orange', '#F1A366', '#000000'),
+    cp('violet', '보라', 'Violet', '#A08BCE', '#000000'), cp('pink', '분홍', 'Pink', '#D887AE', '#000000')
   ],
   chabun: [
-    cp('navy', '남색', 'Navy', '#1E3655', '#FFE600'), cp('forest', '짙은 초록', 'Forest', '#134329', '#FFFFFF'),
-    cp('crimson', '진홍', 'Crimson', '#801420', '#FFFFFF'), cp('teal', '청록', 'Teal', '#07513C', '#FFFFFF'),
-    cp('plum', '보라', 'Plum', '#3E315A', '#FFFFFF'), cp('ink', '먹', 'Ink', '#2B2B2B', '#FFFFFF'),
-    cp('stone', '돌빛', 'Stone', '#CCC1BA', '#2B2B2B'), cp('mist', '연청', 'Mist', '#B5D0F2', '#1E3655')
+    cp('night-sky', '밤하늘', 'Night sky', '#1D3559', '#FFE600'), cp('forest', '숲', 'Forest', '#16452A', '#FFFFFF'),
+    cp('red-bean', '팥', 'Red bean', '#642724', '#FFFFFF'), cp('olive', '올리브', 'Olive', '#514815', '#FFFFFF'),
+    cp('eggplant', '가지', 'Eggplant', '#4A2C57', '#FFFFFF'), cp('ink', '먹', 'Ink', '#2B2B2B', '#FFFFFF'),
+    cp('pebble', '조약돌', 'Pebble', '#CCC1BA', '#2B2B2B'), cp('mist', '안개', 'Mist', '#B5D0F2', '#1E3655')
   ],
   doran: [
-    cp('coral', '코랄', 'Coral', '#F78D8C', '#1E3655'), cp('bubblegum', '버블검', 'Bubblegum', '#F690BC', '#1E3655'),
-    cp('sunflower', '해바라기', 'Sunflower', '#FFA400', '#1E3655'), cp('apricot', '살구', 'Apricot', '#FFCAA8', '#1E3655'),
-    cp('orchid', '난초', 'Orchid', '#BE80C7', '#142438'), cp('peach', '복숭아', 'Peach', '#FB9376', '#1E3655'),
-    cp('lavender', '라벤더', 'Lavender', '#C9B6EE', '#1E3655'), cp('blush', '연분홍', 'Blush', '#FAC7DD', '#1E3655')
+    cp('strawberry-milk', '딸기우유', 'Strawberry milk', '#F9AFC5', '#1E3655'), cp('peach', '복숭아', 'Peach', '#F9B597', '#1E3655'),
+    cp('chick', '병아리', 'Chick', '#F5D983', '#1E3655'), cp('pea', '완두콩', 'Pea', '#BBDEA1', '#1E3655'),
+    cp('peppermint', '박하', 'Peppermint', '#98E3CE', '#1E3655'), cp('sky', '하늘', 'Sky', '#92D5F4', '#1E3655'),
+    cp('wild-violet', '제비꽃', 'Wild violet', '#B2B8F7', '#1E3655'), cp('lilac', '라일락', 'Lilac', '#E3B4EA', '#1E3655')
   ],
-  /* 유머있는 = 비(2026-10-04) — 칠한 면 없이 검은 바탕에 선 원 · 글자를 이 색 하나로 긋는다. 일렉트릭(#3A50A5 · 2.9:1) · 마젠타(#86437F ·
-     3.1:1)는 검정 위 가는 선으로 어두워 색상 · 채도는 그대로 밝기만 올렸다(7:1 — 여덟 중 가장 어두운 핫핑크 7.1과 같은 선, 디자이너).
-     둘째 값(글자색)은 비에서 쓰이지 않는다 — 두 색은 밝아진 칠 위에서도 읽히게 검정 */
   deulseok: [
-    cp('neon-green', '형광 초록', 'Neon green', '#81BA99', '#000000'), cp('hot-pink', '핫핑크', 'Hot pink', '#DB779E', '#000000'),
-    cp('electric', '일렉트릭', 'Electric', '#7591EC', '#000000'), cp('lime', '라임', 'Lime', '#C1CC65', '#1F2D80'),
-    cp('aqua', '아쿠아', 'Aqua', '#83BBB6', '#1F2D80'), cp('cyan', '시안', 'Cyan', '#9ED2E5', '#1F2D80'),
-    cp('magenta', '마젠타', 'Magenta', '#C57DBC', '#000000'), cp('ice', '얼음', 'Ice', '#CFE0DB', '#1F2D80')
+    cp('bubblegum', '풍선껌', 'Bubblegum', '#E68AAD', '#000000'), cp('mango', '망고', 'Mango', '#F5AC69', '#000000'),
+    cp('banana', '바나나', 'Banana', '#EDDD7B', '#000000'), cp('green-apple', '청사과', 'Green apple', '#9CCF7F', '#000000'),
+    cp('mint', '민트', 'Mint', '#71D3BA', '#000000'), cp('soda', '소다', 'Soda', '#78CBE7', '#000000'),
+    cp('blueberry', '블루베리', 'Blueberry', '#849BE3', '#000000'), cp('plum', '자두', 'Plum', '#BF8FD4', '#000000')
   ]
 };
 /** 이 성격이 고르는 여덟 짝. 성격을 모르는 글(옛 서체 키)은 당당한의 짝으로 */

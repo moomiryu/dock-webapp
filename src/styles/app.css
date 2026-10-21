@@ -2651,6 +2651,10 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .wall-power-acts .wall-power-no:focus-visible{ border-color: var(--grey-500); }
 @keyframes wallPowerIn{ from{ opacity: 0; transform: translate(-50%, -46%); } to{ opacity: 1; transform: translate(-50%, -50%); } }
 .wall.is-power-off{ animation: homeBootOff calc(var(--t-slow) * 2) var(--ease-standard) forwards; }
+/* 벽의 마우스 포인터(결정 46, WallSimulation) — 움직일 때만 보통 화살표(global.css .wall의 손가락 대신), 단추 위는 제 손가락. 멈추면
+   숨긴다(.is-cursor-idle — 안의 모든 것까지. 두 이름이라 단추의 cursor: pointer보다 이긴다) */
+.wall:not(.is-cursor-idle){ cursor: default; }
+.wall.is-cursor-idle, .wall.is-cursor-idle *{ cursor: none; }
 @media (prefers-reduced-motion: reduce){
   .wall-power-ask{ animation: none; }
   .wall.is-power-off{ animation: none; transform: scale(0); }

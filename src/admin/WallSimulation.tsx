@@ -13,6 +13,7 @@ import WallSkyline from '../components/WallSkyline';
 import WallWalkers, { type DockBeat } from '../components/WallWalkers';
 import WallSky, { type SkyPerch } from '../components/WallSky';
 import WallPower from '../components/WallPower';
+import { tokenMs } from '../lib/motion';
 import { SAMPLE_MESSAGES } from '../lib/samples';
 import {
   isFirebaseConfigured,
@@ -81,6 +82,26 @@ export default function WallSimulation() {
   /** 끄기를 묻는 중 — 가운데 '종료하시겠어요?'가 떠 있고 해 · 작은 사람이 슬프다(WallPower) */
   const [powerAsk, setPowerAsk] = useState(false);
   const closePower = useCallback(() => setPowerAsk(false), []);
+
+  // 마우스 포인터는 움직일 때만(결정 46, 2026-10-21 디자이너 — "wall에 마우스 포인터가 너무 눈에 띈다"). 켤 때부터 숨기고, 움직이면 보통
+  // 화살표(단추 위는 손가락), 멈추고 --t-hold의 4배가 지나면 다시 숨긴다. 끄기 창이 떠 있어도 같다. 표시는 React className이 아니라
+  // classList로 — 다시 그릴 때 끄기의 접힘(is-power-off)을 지우지 않게
+  const wallRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = wallRef.current;
+    if (!el) return;
+    const rest = tokenMs('--t-hold', 700) * 4;
+    let timer = 0;
+    el.classList.add('is-cursor-idle');
+    const wake = () => {
+      el.classList.remove('is-cursor-idle');
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => el.classList.add('is-cursor-idle'), rest);
+    };
+    el.addEventListener('pointermove', wake);
+    el.addEventListener('pointerdown', wake);
+    return () => { el.removeEventListener('pointermove', wake); el.removeEventListener('pointerdown', wake); window.clearTimeout(timer); };
+  }, []);
   const [now, setNow] = useState(() => Date.now());
   /** 지금 도킹한 글 — key가 바뀌면 새 도킹, release = 해제(WallSky) */
   const [dock, setDock] = useState<{ msg: StoredMessage; key: number; release: boolean } | null>(null);
@@ -268,6 +289,7 @@ export default function WallSimulation() {
 
   return (
     <div
+      ref={wallRef}
       className="wall"
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('button, a')) return;

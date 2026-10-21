@@ -2171,6 +2171,20 @@ function step3Bubble(after: Element, dur: number, still: boolean) {
 
   // 글자마다 — 쏘는 점(입에서 날아 제자리로) · 칠 · 글자, 셋이 한 몸으로 '쿵'
   const thump = (sec: number) => { const k = Math.exp(-12 * sec); return `${r2(1 + 0.1 * k)} ${r2(1 - 0.16 * k)}`; };
+  /** 모듈 가운데 (px, py)를 축으로 done에 '쿵' 눌리는 겹 — 그 안에 그림 좌표 그대로 그린다 */
+  const thumped = (parent: Element, px: number, py: number, done: number) => {
+    const at = make('g', { transform: `translate(${X(px)} ${Y(py)})` }, parent), body = make('g', {}, at);
+    if (!still) put(body, 'animateTransform', {
+      attributeName: 'transform', type: 'scale', dur: `${dur}s`,
+      values: ['1 1', '1 1', ...[0, 0.05, 0.1, 0.2].map(thump), '1 1', '1 1'].join(';'),
+      keyTimes: ['0', kt(done - 0.001), ...[0, 0.05, 0.1, 0.2, 0.4].map((s) => kt(done + s)), '1'].join(';')
+    });
+    return make('g', { transform: `translate(${-X(px)} ${-Y(py)})` }, body);
+  };
+  /* 글자는 모두 맨 위층 한 겹에 — 글자마다 [칠 · 점 · 글자]를 한 묶음으로 쌓았더니 뒤 글자를 지을 점이 입(왼쪽 아래)에서 날아오르며
+     이미 선 앞 글자를 덮어 '내 생각은…'이 안 읽혔다(2026-10-21, 결정 42 — 디자이너 "글자 등장할 때마다 가려서"). 점은 선 글자 뒤로
+     지나가고, 글자는 제 칠과 같은 박자로 쿵 눌린다 */
+  const words: [number, number, number, string][] = [];
   let all = 0, n = 0;
   items.forEach((it, i) => {
     if (!it.ch.trim()) return;
@@ -2182,13 +2196,7 @@ function step3Bubble(after: Element, dur: number, still: boolean) {
     });
     const done = Math.max(...shots.map((s) => s.ar));
     all = Math.max(all, done);
-    const at = make('g', { transform: `translate(${X(px)} ${Y(py)})` }, g), body = make('g', {}, at);
-    if (!still) put(body, 'animateTransform', {
-      attributeName: 'transform', type: 'scale', dur: `${dur}s`,
-      values: ['1 1', '1 1', ...[0, 0.05, 0.1, 0.2].map(thump), '1 1', '1 1'].join(';'),
-      keyTimes: ['0', kt(done - 0.001), ...[0, 0.05, 0.1, 0.2, 0.4].map((s) => kt(done + s)), '1'].join(';')
-    });
-    const local = make('g', { transform: `translate(${-X(px)} ${-Y(py)})` }, body);
+    const local = thumped(g, px, py, done);
     showAt(make('polygon', { points: mods.polys[i].map(([x, y]) => `${X(x)},${Y(y)}`).join(' ') }, local), done);
     for (const { d, e, ar } of shots) {
       const c = make('circle', { cx: X(d.x), cy: Y(d.y), r: r2(RF * U) }, local), dx = r2(X(dev[0]) - X(d.x)), dy = r2(Y(dev[1]) - Y(d.y));
@@ -2198,13 +2206,17 @@ function step3Bubble(after: Element, dur: number, still: boolean) {
         values: `${dx} ${dy};${dx} ${dy};0 0;0 0`, keyTimes: `0;${kt(e)};${kt(ar)};1`, keySplines: '0 0 1 1;0.33 1 0.68 1;0 0 1 1'
       });
     }
+    words.push([px, py, done, it.ch]);
+  });
+  const top = make('g', {}, g);
+  for (const [px, py, done, c] of words) {
     const ch = make('text', {
       x: X(px), y: Y(py + 0.04), 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: pair.text,
       'font-family': "'29CM Editorial'", 'font-weight': 513, 'font-size': r2(0.8 * U)
-    }, local);
-    ch.textContent = it.ch;
+    }, thumped(top, px, py, done));
+    ch.textContent = c;
     showAt(ch, done);
-  });
+  }
   const [f0, f1] = S3.fill;
   anim(gapG, { attributeName: 'opacity', values: '0;0;1;1', keyTimes: `0;${kt(all + f0)};${kt(all + f0 + f1)};1` });
 }

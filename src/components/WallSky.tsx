@@ -131,9 +131,11 @@ interface Sky extends Base, Place { from?: P; fromRot?: number; mv?: number; up?
 /** 도킹하는 말 — 시작(초) · 크게 선 1u(px) · 등장 계획 · 휭 퍼진 낱개 자리 · 낱개 자리의 모듈 · 기기(u) · 큰 꼬리 · 하늘 자리 · 해제(초) · 광각 고리 */
 interface Dock extends Base { key: number; T: number; S: number; plan: Plan; spread: Item[]; rest: ReturnType<typeof modulesAt>; mouth: readonly [number, number]; tail: Tail; at: Place; release: number; ring: Map<Sky, { to: P; rot: number }>;
   /** 글자가 다 서기 전에 뗐다(결정 21) — 남은 글자를 당겨 세우고 휭 · 머묾 없이 곧장 모인다 */
-  early?: boolean }
-/** 돌림으로 기기에서 쏘아 오르는 말 — 하늘 자리 · 쏘는 때(초) */
-interface Launch { b: Base; at: Place; T: number }
+  early?: boolean;
+  /** 하늘 제자리에 붙은 때(초) — 하늘 말 겹이 생겨 칠해질 때까지 큰 겹은 마지막 모습으로 남는다(settled) */
+  settleAt?: number }
+/** 돌림으로 기기에서 쏘아 오르는 말 — 하늘 자리 · 쏘는 때(초) · 붙은 때(초, 도킹과 같다) */
+interface Launch { b: Base; at: Place; T: number; settleAt?: number }
 const times = (D: Dock) => {
   // 모이고(0.7초) 0.4초 있다 하늘로 — 꼬리는 하늘에 붙은 뒤에 자란다(결정 56)
   // 시각은 모두 페이지 시계(초) — 계획(plan)의 값은 큰 말이 선 때(D.T)부터 센 것이라 D.T를 더한다(예전엔 휭 끝을 더하지 않아 휭 도중에
@@ -431,7 +433,7 @@ export default function WallSky({ list, dock, beat, waves, perch, hush = false, 
     // 쏘아 오르는 말이 다 붙은 뒤에 연다(landed가 다시 부른다)
     if (M.shot) return;
     M.opened = dock.key;
-    if (M.dock) { const D = M.dock; M.sky.push({ ...skyAt(D, D.at, W, H, u), born: Date.now(), grow: t }); M.dock = null; }
+    if (M.dock) { const D = M.dock; if (D.settleAt === undefined) M.sky.push({ ...skyAt(D, D.at, W, H, u), born: Date.now(), grow: t }); M.dock = null; }
     if (M.sky.some((s) => s.id === dock.msg.id)) { M.sky = M.sky.filter((s) => s.id !== dock.msg.id); settle(t, true); }
     M.queue = M.queue.filter((id) => id !== dock.msg.id);
     const b = baseOf(dock.msg), at = roomFor(b, t, true)!;
@@ -462,6 +464,12 @@ export default function WallSky({ list, dock, beat, waves, perch, hush = false, 
     const mix = (c: string, k: number, to = grey) => { if (k <= 0) return c; const a = cssRgb(c); return `rgb(${a.map((v, i) => Math.round(v + (to[i] - v) * k)).join(' ')})`; };
     let raf = 0, last = -Infinity;
     const glyphEls = (e: HTMLElement | null) => [...(e?.querySelectorAll<HTMLElement>('.arc-glyph') ?? [])];
+    /**
+     * 붙은 말의 하늘 겹이 생겨 글자까지 놓였나 — 이번 장면의 하늘 그리기가 이미 칠했다. 큰 겹(도킹) · 쏘아 오르던 겹(돌림)은 이때 걷는다.
+     * 붙자마자 걷으면 하늘 겹은 화면 틀이 다음 차례에 만들고 하늘은 1초에 30번만 다시 그려서, 그 사이 한 장면 동안 몸통만 남고 글자가
+     * 비었다(2026-10-22 — 화면 송출을 장면마다 받아 확인). 같은 자리 · 같은 모습이라 겹쳐 있는 동안은 티가 안 난다. 0.5초 넘게 안 생기면 그냥 걷는다
+     */
+    const settled = (id: string, since: number, t: number) => { const e = els.current.get(id); return (!!e && glyphEls(e.text).length > 0) || t - since > 0.5; };
     /*
      * 부스러기 → 건물 안(결정 37 · 2026-10-21) — 떨어지는 점은 중력으로 내려오며 담길 칸 쪽으로 끌려, 그 칸에 찬 높이에 닿으면 그 말 몸통 폭의
      * 칸들 중 가장 덜 찬 칸에 얹힌다(물이 차오르듯 평평하게). 칸이 지붕까지 차면 그 줄의 가장 오래된 맨 아래 알이 SINK초에 걸쳐 땅 띠 속으로
@@ -743,7 +751,8 @@ export default function WallSky({ list, dock, beat, waves, perch, hush = false, 
       while (M.spills.length) spill(M.spills.shift()!);
       // 도킹이 끝났다 — 하늘의 제자리로 들어간다
       // — 도킹한 말은 하늘에 붙는 이 순간이 '떠오른 때'(가장 늦게 터진다). 돌림의 1분은 여기서 다시 센다
-      if (D && t >= times(D).end) { M.sky.push({ ...skyAt(D, D.at, W, H, u), born: Date.now(), grow: t }); M.dock = null; M.nextRot = t + ROT.every; rerender(); }
+      // — 큰 겹은 하늘 겹이 칠해진 장면에 걷는다(아래 settled)
+      if (D && D.settleAt === undefined && t >= times(D).end) { M.sky.push({ ...skyAt(D, D.at, W, H, u), born: Date.now(), grow: t }); D.settleAt = t; M.nextRot = t + ROT.every; rerender(); }
       if (!M.dock && !M.shot && M.queue.length && t >= M.nextRot) rotate(t);
       const before = M.leaving.length;
       M.leaving = M.leaving.filter((s) => t < (s.popAt ?? 0) + POP_DONE);
@@ -827,18 +836,23 @@ export default function WallSky({ list, dock, beat, waves, perch, hush = false, 
       // 돌림으로 쏘아 오르는 말 — 기기에서 0.4배로 나와 제자리로 곧게 커지며 붙는다. 기울기는 0에서 제 기울기로, 꼬리는 그 순간의 자리에서
       // 기기를 가리킨다. 쏘기 전엔 글자를 숨긴다
       const Sh = M.shot;
-      if (dockText.current) dockText.current.style.visibility = !Dk && Sh && t < Sh.T ? 'hidden' : '';
+      // 쏘기 전 · 붙어 걷은 뒤엔 큰 겹의 글자를 숨긴다 — 걷은 글자는 화면 틀이 다음 차례에 치우는데, 그 사이 하늘 겹의 같은 글자와 겹쳐 한 장면
+      // 두꺼워 보였다
+      const hideText = () => { if (dockText.current) dockText.current.style.visibility = 'hidden'; };
+      if (dockText.current) dockText.current.style.visibility = !Dk && (!Sh || t < Sh.T) ? 'hidden' : '';
       if (!Dk && Sh) {
         if (t < Sh.T) return;
+        if (Sh.settleAt !== undefined && settled(Sh.b.id, Sh.settleAt, t)) { M.shot = null; hideText(); setLanded((v) => v + 1); rerender(); return; }
         const e = easeOut(clamp((t - Sh.T) / ROT.shot)), [dx, dy, dq] = quiet ? [0, 0, 0] : drift(Sh.b, t, u), Su = lerp(ROT.from * u, u, e), rot = (Sh.at.rot + dq) * e;
         const X = lerp(W / 2, Sh.at.pos[0] + dx, e), Y = lerp(H * (1 + SKY.devDrop), Sh.at.pos[1] + dy, e);
         put(ctx, Su, X, Y, rot, dpr);
         ctx.fillStyle = Sh.b.bg;
         putText(paintBody(ctx, Sh.b.items, Sh.b.kd, Sh.b.gaps, 1, null, 0, t, Sh.b.ph, quiet), Su, X, Y, rot);
-        if (e >= 1) { M.sky.push({ ...skyAt(Sh.b, Sh.at, W, H, u), born: Date.now(), grow: t }); M.shot = null; setLanded((v) => v + 1); rerender(); }
+        if (e >= 1 && Sh.settleAt === undefined) { M.sky.push({ ...skyAt(Sh.b, Sh.at, W, H, u), born: Date.now(), grow: t }); Sh.settleAt = t; rerender(); }
         return;
       }
       if (!Dk || !T) return;
+      if (Dk.settleAt !== undefined && settled(Dk.id, Dk.settleAt, t)) { M.dock = null; hideText(); rerender(); return; }
       const age = quiet ? Infinity : t - Dk.T;
       ctx.fillStyle = Dk.bg;
       let gs: Glyph[], Su = Dk.S, X = W / 2, Y = H / 2, rot = 0;

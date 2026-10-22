@@ -2,7 +2,7 @@ import { useEffect, useRef, type CSSProperties } from 'react';
 import { BODY, CLIP_H, EYE_LOOK, EYE_SAD, EYE_SHUT, EYE_SMILE, EYE_UP, EYE_WHITE, EYE_WIDE, FOOT_Y, HEAD, SIT, VIEW, WALK } from '../character/walker';
 import { groundPx } from '../lib/ground';
 import { easeOf, tokenS } from '../lib/motion';
-import type { Perch, SkyPerch } from './WallSky';
+import type { Perch, SkyPerch, Yard } from './WallSky';
 
 /**
  * 벽의 작은 사람 둘(2026-10-04, 디자이너가 움직이는 견본 design/landscape-character-wall.html에서 골랐다) — 빨강(이미 말을 한 사람)과
@@ -34,8 +34,8 @@ const COLORS = ['--brand-main', '--char-cyan'];
 const TOP = 4, STAND_H = FOOT_Y - TOP, CX = HEAD.cx, BODY_W = 2 * HEAD.r;
 /** 그림 둘레의 여유(화판 좌표) — 앉으면 발이 앞으로 나온다 */
 const VB = { x: -240, y: -170, w: VIEW.w + 480, h: VIEW.h + 230 };
-/** 구역 — 화면 폭의 몫(빨강 왼쪽 · 파랑 오른쪽) */
-const ZONES: readonly (readonly [number, number])[] = [[0.25, 0.42], [0.58, 0.75]];
+/** 구역 — 화면 폭의 몫(빨강 왼쪽 · 파랑 오른쪽). 두 구역 사이가 로고 칸 — 도킹 때 흘린 티끌도 그 앞엔 쌓이지 않는다(WallSky) */
+export const ZONES: readonly (readonly [number, number])[] = [[0.25, 0.42], [0.58, 0.75]];
 /** 로고 앞을 지나던 중 도킹이 오면 비켜 설 띠 — 가까운 쪽 칸 끝 바깥 이 폭(화면 폭의 몫) 안 아무 데나, 끝에서 그 폭의 20%는 띄운다(점검 둘째:
  *  늘 칸 끝 한 점에 서서 — 걸음이 2px 앞에서 멈춰 칸 안쪽이었다 — 그대로 앉아 파랑은 합 49.9초 · 빨강은 62.3초를 로고 칸 경계에 있었다) */
 const ASIDE = 0.06;
@@ -90,6 +90,8 @@ type Walker = {
   on: Spot | null; air: Air | null; trip: Trip | null; land: number; fx: number; fy: number; rot: number;
   /** 이번 도킹의 호들갑 · 그걸 고른 도킹(큰 말이 선 때) */
   fuss: Fuss; fussAt: number;
+  /** 제 쪽(왼 0 · 오른 1) · 티끌 나르기(결정 55) — 더미 끝 뒤로 가는 중(go) · 굴리는 중(push), 굴리는 쪽 · 마지막 눈덩이 가운데 · 반지름(px) */
+  side: 0 | 1; carry: { step: 'go' | 'push'; dir: 1 | -1; bx?: number; R?: number } | null;
 };
 
 const rnd = (r: readonly number[]) => r[0] + Math.random() * (r[1] - r[0]);
@@ -97,7 +99,9 @@ const rndInt = (r: readonly number[]) => Math.floor(r[0] + Math.random() * (r[1]
 const clamp = (k: number) => Math.min(1, Math.max(0, k));
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 
-export default function WallWalkers({ beat, sky, sad = false }: { beat?: { current: DockBeat | null }; sky?: { current: SkyPerch | null }; sad?: boolean }) {
+export default function WallWalkers({ beat, sky, sad = false, yard }: { beat?: { current: DockBeat | null }; sky?: { current: SkyPerch | null }; sad?: boolean; yard?: { current: Yard | null } }) {
+  const yardRef = useRef(yard);
+  yardRef.current = yard;
   /** 끄기를 묻는 동안(WallPower) — 새 일을 시작하지 않고(수다 · 나들이도 멈춤) 가운데 창 쪽을 보며 슬픈 눈(EYE_SAD) */
   const sadRef = useRef(sad);
   sadRef.current = sad;
@@ -128,7 +132,7 @@ export default function WallWalkers({ beat, sky, sad = false }: { beat?: { curre
       return {
         el, p, mode: 'off', zone: ZONES[i] ?? ZONES[0], t0: start + HOLD * rnd(T.popAt), x: 0, face: i ? 1 : -1, tx: 0, fast: 1, until: 0, look: 'ahead',
         sitT: 0, pop: 0, walking: false, anim: false, pace: 0, ph: i * 1.3, nextBlink: 0, blinkUntil: 0, nextSmile: 0, smileUntil: 0, eye: 'look',
-        on: null, air: null, trip: null, land: -Infinity, fx: 0, fy: 0, rot: 0, fuss: 'a', fussAt: NaN
+        on: null, air: null, trip: null, land: -Infinity, fx: 0, fy: 0, rot: 0, fuss: 'a', fussAt: NaN, side: i ? 1 : 0, carry: null
       };
     });
 
@@ -280,7 +284,20 @@ export default function WallWalkers({ beat, sky, sad = false }: { beat?: { curre
     const brain = (now: number, ps: Map<string, Perch>) => {
       if (docking(now)) { meet = null; for (const w of ws) w.trip = null; return; }
       if (sadRef.current) { meet = null; return; }
-      if (!meet && now > nextMeet && ws.length > 1 && ws.every((w) => w.mode !== 'off' && w.mode !== 'pop' && !w.trip && !w.on && !w.air)) {
+      // 티끌 나르기(결정 55, 디자이너 '곧장') — 제 쪽 땅에 더미가 생기면 하던 일(앉기 · 서기 · 수다 · 하늘 구경)을 멈추고 일어나 빌 때까지 나른다.
+      // 하늘 나들이 중이면 늘 내려오던 길(윗선 끝까지 걸어가 바깥으로)로 내려와서, 뛰는 중이면 닿은 뒤에
+      const Y = yardRef.current?.current;
+      for (const w of ws) {
+        if (!Y || w.carry || w.mode === 'off' || w.mode === 'pop' || w.air || !Y.pile(w.side)) continue;
+        if (w.on) { w.trip = { ...(w.trip ?? { board: null }), hops: 0, stayed: true, sat: true }; if (w.mode !== 'walk') w.until = Math.min(w.until, now); continue; }
+        if (meet && (meet.v === w || meet.h === w)) {
+          const o = meet.v === w ? meet.h : meet.v;
+          meet = null; nextMeet = now + rnd(MEET.every);
+          if (!o.carry) { o.mode = 'idle'; o.until = now + RET; o.look = 'ahead'; }
+        }
+        w.trip = null; w.carry = { step: 'go', dir: 1 }; w.mode = 'idle'; w.look = 'ahead';
+      }
+      if (!meet && now > nextMeet && ws.length > 1 && ws.every((w) => w.mode !== 'off' && w.mode !== 'pop' && !w.trip && !w.on && !w.air && !w.carry)) {
         const v = ws[Math.random() < 0.5 ? 0 : 1], h = ws[v === ws[0] ? 1 : 0], side = v.x < h.x ? -1 : 1;
         // 앉을 이가 걷는 중이거나 로고 앞이면 다음에 — 그 자리에 앉혀 버린다(결정 20: 실제 벽에서 빨강이 로고 위에 섰다)
         if (h.mode === 'walk' || logo(h.x)) { nextMeet = now + 1; return; }
@@ -301,7 +318,7 @@ export default function WallWalkers({ beat, sky, sad = false }: { beat?: { curre
       // 하늘 나들이 — 서 있거나 앉아 있던 이가 가까운(낮은) 말의 끝 옆까지 종종걸음으로 가서 뛰어오른다. 다른 이가 하늘에 있어도 나선다
       if (ps.size && now > nextTrip) {
         nextTrip = now + TRIP.retry;   // 나설 이(걷는 중이면 안 나선다) · 글자를 안 가리는 자리가 없으면 차례를 버리지 않고 곧 다시 본다
-        const free = ws.filter((w) => !w.trip && !w.on && !w.air && (w.mode === 'idle' || w.mode === 'sit') && !logo(w.x));
+        const free = ws.filter((w) => !w.trip && !w.on && !w.air && !w.carry && (w.mode === 'idle' || w.mode === 'sit') && !logo(w.x));
         if (free.length) {
           const w = free[Math.floor(Math.random() * free.length)];
           // 뛰어오를 자리 = 그 끝의 바깥 옆 땅(x) — 가까운 곳 · 낮은 말일수록. 화면을 가로질러 오래 걷지 않게 건너갈 거리 안에서만, 오르는 길이
@@ -327,7 +344,7 @@ export default function WallWalkers({ beat, sky, sad = false }: { beat?: { curre
           }
           continue;
         }
-        if (w.on || w.air) continue;
+        if (w.on || w.air || w.carry) continue;
         if (w.mode === 'off' || w.mode === 'pop' || w.mode === 'walk' || now < w.until) continue;
         const r = Math.random();
         if (r < DAY.walk) go(w, inZone(w));
@@ -338,6 +355,40 @@ export default function WallWalkers({ beat, sky, sad = false }: { beat?: { curre
     /** 수다에서 지금 말하는 쪽 */
     const speakerOf = (now: number) => (meet && meet.phase === 'chat' && !docking(now) ? (Math.floor((now - meet.t) / MEET.turn) % 2 ? meet.h : meet.v) : null);
 
+    /** 땅에서 dx 쪽으로 한 걸음(보통 걸음) */
+    const stride = (w: Walker, dx: number, dt: number) => {
+      w.face = dx < 0 ? 1 : -1; w.fast = 1;
+      if (w.pace !== w.fast) { w.pace = w.fast; for (const a of w.p.anims) a.setAttribute('dur', `${Math.round(walkMs / w.fast)}ms`); }
+      w.x += Math.sign(dx) * Math.min(Math.abs(dx), speed * dt);
+      w.walking = true;
+    };
+    /**
+     * 티끌 나르기 한 걸음(결정 55, 견본 carry.html 'B 눈덩이') — 제 쪽 더미 중 지금 채울 건물에서 먼 끝의 바깥으로 가서(go) 건물 쪽으로 눈덩이를
+     * 민다(push): 굴러 지나가는 더미 칸을 뭉치며 커지고, 건물 앞(yard.dest)에 닿으면 부서져 건물로 들어간다. 더미가 남았으면 다음 판(brain이 다시
+     * 맡긴다), 비었으면 원래 일상으로. 걸음은 늘 걷던 그 걸음 — 맨 바깥 건물까지는 오래 걸린다(알고 둔다). 구역(결정 6)은 나를 때만 넓어진다
+     */
+    const carry = (w: Walker, now: number, dt: number) => {
+      const Y = yardRef.current?.current, c = w.carry!;
+      if (!Y) { w.carry = null; return false; }
+      w.mode = 'idle'; w.until = now + 1; w.look = 'ahead';
+      const dest = Y.dest(w.side);
+      if (c.step === 'go') {
+        const p = Y.pile(w.side);
+        if (!p) { w.carry = null; w.until = now + rnd(DAY.rest); return false; }
+        const far = Math.abs(p.ends[0] - dest) > Math.abs(p.ends[1] - dest) ? p.ends[0] : p.ends[1];
+        c.dir = dest >= far ? 1 : -1;
+        const tx = far - c.dir * (0.5 * cw + 0.35 * hc);
+        if (Math.abs(tx - w.x) > 2) { stride(w, tx - w.x, dt); return true; }
+        c.step = 'push'; c.bx = c.R = undefined;
+      }
+      // 눈덩이 뒤로 돌아온다(도킹 때 로고 앞에서 비켜 섰다면) — 그다음 민다
+      if (c.bx !== undefined && c.R !== undefined) { const back = c.bx - c.dir * (c.R + 0.5 * cw); if (Math.abs(back - w.x) > 3) { stride(w, back - w.x, dt); return true; } }
+      stride(w, c.dir * W, dt);
+      [c.bx, c.R] = Y.roll(w.side, w.x + c.dir * 0.5 * cw, c.dir);
+      if (c.dir > 0 ? c.bx >= dest : c.bx <= dest) { Y.burst(w.side); w.carry = null; w.land = now; w.until = now + RET; }
+      return true;
+    };
+
     // ── 한 걸음
     const step = (w: Walker, now: number, dt: number, ps: Map<string, Perch>) => {
       if (w.mode === 'off') {
@@ -346,7 +397,7 @@ export default function WallWalkers({ beat, sky, sad = false }: { beat?: { curre
       }
       if (reduce.matches) {
         if (w.on || w.air) w.x = inZone(w);   // 하늘에 있었으면 제 구역 땅으로
-        w.on = w.air = w.trip = null; w.mode = 'sit'; w.pop = w.sitT = 1; w.walking = false; w.until = Infinity; w.look = 'ahead'; return;
+        w.on = w.air = w.trip = w.carry = null; w.mode = 'sit'; w.pop = w.sitT = 1; w.walking = false; w.until = Infinity; w.look = 'ahead'; return;
       }
       if (w.mode === 'pop') { w.pop = Math.min(1, (now - w.t0) / SLOW); if (w.pop >= 1) { w.mode = 'idle'; w.until = now + rnd(DAY.rest); } return; }
       if ((w.mode === 'walk' || w.mode === 'sit') && now >= w.nextSmile) {
@@ -369,6 +420,9 @@ export default function WallWalkers({ beat, sky, sad = false }: { beat?: { curre
         if (w.mode === 'sit' && now > w.nextBlink && now >= w.smileUntil) { w.blinkUntil = now + RET; w.nextBlink = now + HOLD * rnd(T.blink); }
         return;
       }
+      // 티끌 나르기(결정 55) — 도킹 · 끄기 창이면 눈덩이를 그 자리에 두고 멈췄다가(호들갑이 먼저) 끝나면 이어서. 도킹 때 로고 앞이었으면 아래처럼 비켜 선다
+      if (w.carry && !docking(now) && !sadRef.current && carry(w, now, dt)) return;
+      if (w.carry && docking(now) && logo(w.x) && w.mode !== 'walk' && !aside.has(w)) w.mode = 'walk';
       // 도킹 — 제자리에 서서 올려다본다(그리기). 로고 앞을 지나던 중이면 가까운 쪽 칸 바깥 띠까지 걸어 나가서 선다(결정 20) — 자리는 한 번만
       // 고르고, 띠를 벗어난 뒤에도 그 자리까지 걷는다(벗어나는 순간 서면 띠 가장자리 0~2.5px 밖에 섰다 — 셋째 점검)
       if (!docking(now)) aside.delete(w);

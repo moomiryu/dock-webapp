@@ -43,6 +43,12 @@ const BUILDINGS: readonly (readonly ['rect' | 'roof' | 'dome', number, number, n
   ['rect', 0.88, 1, 0.13], ['rect', 0.925, 0.95, 0.18]                // 강의동 — 작은 탑
 ];
 /**
+ * 건물 하나하나의 땅 위 가로 범위(벽 폭의 몫, 왼쪽부터) — 사각 몸통끼리 겹치면 한 건물(강의동의 작은 탑), 맞닿기만 한 도서관 · 낮은 동은 둘.
+ * 작은 사람이 티끌을 가운데에서 가까운 건물부터 나른다(결정 55, WallSky)
+ */
+export const HALLS: readonly (readonly [number, number])[] = BUILDINGS.filter(([kind]) => kind === 'rect').map(([, a, b]) => [a, b] as [number, number])
+  .sort((p, q) => p[0] - q[0]).reduce<[number, number][]>((out, [a, b]) => { const l = out[out.length - 1]; if (l && a < l[1]) l[1] = Math.max(l[1], b); else out.push([a, b]); return out; }, []);
+/**
  * 해 · 달 — 실제 시계로 하늘 위 큰 호를 지난다(2026-10-21 디자이너 "이게 시간이 지나는 거면 해의 위치도 바뀌어야 하는 거 아니냐, 해랑 달이
  * 반복되는?" — 부스러기가 글의 나이로 바래니 해도 같은 시계로. 실제 시계 · 빠르게 한 바퀴 · 그대로 중 실제 시계, 큰 호 · 위 가장자리를 따라
  * 중 큰 호). 오전 6시 왼쪽 건물 뒤에서 떠서 정오에 하늘 맨 위 가운데, 오후 6시 오른쪽 건물 뒤로 진다. 밤엔 같은 길을 달이 — 초승달 ·

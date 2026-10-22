@@ -20,8 +20,9 @@ const T = {
 interface Props { onStart: () => void; }
 /**
  * 홈 — 워드마크 · 부제 · 소개 글자 · 가운데 큰 메가폰트 · 걸어와 그 앞에 서면 빨개지는 사람들 · 버튼(2026-10-20 디자이너가 이 구도로 되돌렸다.
- * 10-06 ~ 10-20은 풍경 포스터 HomePoster였다). 큰 메가폰트의 입에서 소리 결이 숨 쉬듯 퍼지고, 사람이 빨개질 때마다 굵은 결과
- * 작은 점 말풍선이 하나 나온다(HomeBubbles, 2026-10-21 결정 51 — 그전엔 큰 회색 말풍선이 떠올랐고, 더 전엔 글이 흘렀다).
+ * 10-06 ~ 10-20은 풍경 포스터 HomePoster였다). 큰 메가폰트의 입에서 소리 결이 숨 쉬듯 퍼지고, 사람이 빨개질 때마다 굵은 결이
+ * 한 번 나간다(HomeBubbles, 2026-10-21 결정 51 — 그전엔 큰 회색 말풍선이 떠올랐고, 더 전엔 글이 흘렀다. 결정 51의 작은 점 말풍선은
+ * 10-22 결정 56에 뺐다).
  */
 export default function PhaseHome({ onStart }: Props) {
   /** 소개 판 — '자세히 보기'는 About 한 장, '처음이에요'는 사용 안내 세 장(2026-09-27) */
@@ -32,7 +33,7 @@ export default function PhaseHome({ onStart }: Props) {
   if (info) return <InfoOverlay about={info === 'about'} onClose={() => setInfo(null)} onStart={onStart} />;
   return (
     <div className="home-frame">
-      {/* 소리 결은 맨 뒤(층 번호 없음), 작은 말풍선은 메가폰트 바로 앞(app.css .home-bubbles) */}
+      {/* 소리 결은 맨 뒤(층 번호 없음) */}
       <HomeBubbles />
       {/* 구경꾼이 먼저 그려져야 메가폰트 뒤에 선다 */}
       <HomeCrowd />

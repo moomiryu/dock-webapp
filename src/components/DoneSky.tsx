@@ -27,6 +27,9 @@ import type { Align, ToneState } from '../types';
  *   charFloat의 결 — 5.2초 한 바퀴, 폭 ±무리 높이의 2%). 0.6초에 나타난다.
  * 움직임 줄이기면 다 앉은 모습 그대로.
  *
+ * 2026-10-22 결정 56 — 회색 말도 내 말도 꼬리를 그리지 않는다(폰의 말엔 꼬리가 없다). 크기 셈은 꼬리가 있던 때 그대로, 내 말 무리는
+ * 꼬리 몫만큼 내려 규칙 위 빈 띠를 없앤다(디자이너 — 메아리와의 간격이 그만큼 넓어진다).
+ *
  * 메가폰트는 08에서 빠졌다(결정 32). 호의 중심은 그것이 서던 상자 그대로 셈한다(HomeCharacter의 제자리 — 폭 min(0.7W, 272) · 가운데
  * (W/2, 높이의 REST_Y), 단 규칙 목록 위 24px에서 상자 아래 반(폭 × 0.527, 옆모습)이 걸리지 않게) — 회색 말이 지금 자리 그대로 돈다.
  */
@@ -52,7 +55,8 @@ function msgOf(lines: string[], font: string | undefined, align: Align | undefin
   for (const d of [...modulesAt(items, kd, 1).dots, ...gaps]) { b[0] = Math.min(b[0], d.x - RF); b[1] = Math.min(b[1], d.y - RF); b[2] = Math.max(b[2], d.x + RF); b[3] = Math.max(b[3], d.y + RF); }
   return { kd, items, gaps, box: b, ph, me };
 }
-/** 내 말 무리의 셈(u, 말 좌표) — 꼬리 · 두 사람의 키 · 엉덩이 자리(가로, 몸통 윗선 + 걸침) · 무리 위아래 */
+/** 내 말 무리의 셈(u, 말 좌표) — 꼬리 · 두 사람의 키 · 엉덩이 자리(가로, 몸통 윗선 + 걸침) · 무리 위아래 ·
+ *  drop = 그리지 않는 꼬리의 몫(몸통 아래 끝 ~ 꼬리 끝) — 자리는 꼬리째 셈하고 그만큼 내린다(결정 56) */
 function groupOf(m: Msg) {
   const cx = (m.box[0] + m.box[2]) / 2, tail: Tail = tailOf(m.items, m.kd, [cx, m.box[3] + 40], ME.tail);
   const one = msgOf(['가'], undefined, 'center', false, 0), h = ME.h * (one.box[3] - one.box[1]) * (m.kd.k / one.kd.k), half = (h * HEAD.r) / CLIP_H;
@@ -62,7 +66,7 @@ function groupOf(m: Msg) {
     return [x, Math.min(...(near.length ? near : dots).map((d) => d.y)) - RF + ME.sink * h] as [number, number];
   });
   const top = Math.min(...seats.map(([, y]) => y - h)), bottom = Math.max(m.box[3], tail.tip[1] + RF);
-  return { tail, h, seats, top, bottom };
+  return { h, seats, top, bottom, drop: bottom - m.box[3] };
 }
 
 export default function DoneSky({ text, tone }: { text?: string; tone?: ToneState | null }) {
@@ -134,7 +138,8 @@ export default function DoneSky({ text, tone }: { text?: string; tone?: ToneStat
       // 규칙 위에 붙어 메아리 띠까지 올라간다 — 회색 말은 그 뒤로 지나간다(결정 32 작은 화면, 디자이너 "메아리 띠에 겹쳐도 됨"). 부제는 넘지 않는다
       const span = group.bottom - group.top, need = span * (1 + 2 * ME.amp), full = (ME.w * W) / (mine.box[2] - mine.box[0]);
       const fits = (rulesTop - low - 2 * ME.gap) / need >= full, u = fits ? full : Math.min(full, (rulesTop - top - 2 * ME.gap) / need), amp = ME.amp * span * u;
-      const oy = fits ? (low + rulesTop) / 2 - ((group.top + group.bottom) / 2) * u : rulesTop - ME.gap - amp - group.bottom * u;
+      // 꼬리째 셈한 자리에서 꼬리 몫만큼 내린다 — 규칙 위 빈 띠가 없어지고 메아리와의 간격이 그만큼 넓어진다(결정 56, 디자이너)
+      const oy = (fits ? (low + rulesTop) / 2 - ((group.top + group.bottom) / 2) * u : rulesTop - ME.gap - amp - group.bottom * u) + group.drop * u;
       me = { u, ox: W / 2 - ((mine.box[0] + mine.box[2]) / 2) * u, oy, amp };
       // 사람 — 키 · 자리는 화면이 바뀔 때만 적는다(두둥실 · 발은 그리는 시계가)
       const ks = (group.h * u) / CLIP_H;
@@ -167,8 +172,7 @@ export default function DoneSky({ text, tone }: { text?: string; tone?: ToneStat
         ctx.setTransform(c, n, -n, c, X * dpr, Y * dpr);
         ctx.globalAlpha = alpha;
         ctx.fillStyle = grey;
-        // 꼬리는 기운 말의 좌표에서 호의 중심을 가리킨다
-        paintBody(ctx, s.m.items, s.m.kd, s.m.gaps, 1, tailOf(s.m.items, s.m.kd, turn([(C[0] - X) / k, (C[1] - Y) / k], -rot)), 1, sec, s.m.ph, quiet);
+        paintBody(ctx, s.m.items, s.m.kd, s.m.gaps, 1, null, 1, sec, s.m.ph, quiet);
       }
       ctx.globalAlpha = 1;
       if (!mine || !group || !colors || !me.u) return;
@@ -177,7 +181,7 @@ export default function DoneSky({ text, tone }: { text?: string; tone?: ToneStat
       ctx.setTransform(me.u * dpr, 0, 0, me.u * dpr, me.ox * dpr, Y * dpr);
       ctx.globalAlpha = show;
       ctx.fillStyle = colors.bg;
-      const gs = paintBody(ctx, mine.items, mine.kd, mine.gaps, 1, group.tail, 1, sec, mine.ph, quiet);
+      const gs = paintBody(ctx, mine.items, mine.kd, mine.gaps, 1, null, 1, sec, mine.ph, quiet);
       ctx.globalAlpha = 1;
       const el = textRef.current;
       if (el) {

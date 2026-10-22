@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import VoiceBubble from './VoiceBubble';
-import { ENTRANCE, TAIL_FIRST, arrange, arrangeOf, bigScale, evenSpread, boundsOf, fitTail, follow, gapsOf, kindOf, modulesAt, mouthOf, planEntrance, tailOf, tipAt, type Item, type Plan, type Tail } from '../lib/aggregate';
+import { ENTRANCE, arrange, arrangeOf, bigScale, evenSpread, boundsOf, follow, gapsOf, kindOf, modulesAt, mouthOf, planEntrance, tailOf, type Item, type Plan } from '../lib/aggregate';
 import { paintBody, paintEntrance, placeGlyphs } from '../lib/dotPaint';
 import { fontMap, opticalFix } from '../lib/palettes';
 import type { Align, ToneState } from '../types';
@@ -18,17 +18,19 @@ import type { Align, ToneState } from '../types';
  *   메움 없이 작은 점, 다 쌓인 글자는 제 몸짓으로 내려앉으며 글자가 선다. 다 서면 줄이 화면 가로 94%까지 휭 퍼지고(살짝 넘쳤다 돌아옴),
  *   hold초 머문 뒤 그 퍼진 자리에서 꼬리 단 채 모인다(꼬리는 첫 글자를 따라간다).
  * 그 뒤로는 꼬리만 나부낀다. still · 움직임 줄이기 = 모인 그대로 한 장.
+ *
+ * 2026-10-22 결정 56 — 폰의 말엔 꼬리가 없다(꼬리는 벽 하늘에 자리 잡은 뒤에 생긴다, 디자이너). 그리지만 않고 셈은 그대로 둔다 — 글자
+ * 크기는 꼬리가 있던 때와 같고, pick의 자리는 꼬리 몫을 빼고 무대 한가운데(디자이너 "가운데로 내림"). 점이 나가는 입(show)은 꼬리
+ * 밑동 그대로. pick은 꼬리가 솟던 TAIL_FIRST초를 건너 낱개부터 선다.
  */
 const SCATTER = 0.9, GATHER = 0.7, WHOOSH = 0.7;
-/** 다시 그리는 간격 — 모인 뒤 꼬리 나부낌은 30fps(띠 구름 · 나무와 같았다) */
+/** 다시 그리는 간격 — 모인 뒤 점의 숨은 30fps(띠 구름 · 나무와 같았다) */
 const FRAME_MS = 33;
 /** pick — 상자 안 여백(몫)과 글자 크기 상한(px, RainPreview와 같다 — 높이의 6%, 28 ~ 72px) */
 const FILL = 0.86;
 /** 기기 — 화면 아래 가운데 바깥(견본 30px@720) */
 const DEV_DROP = 30 / 720;
 const easeOut = (k: number) => 1 - (1 - k) ** 3;
-/** pick의 꼬리 먼저 — 쏘는 점도 다 선 글자도 없는 등장. paintEntrance에 주면 꼬리만 입 쪽 끝부터 솟는다(5/5와 같은 꼬리 셈) */
-const NOTHING_YET = (n: number): Plan => ({ shots: [], modDone: Array(n).fill(Infinity), whoosh: Infinity, F: 1, Fy: 1, landed: Infinity });
 const clamp = (k: number) => Math.min(1, Math.max(0, k));
 
 interface Props {
@@ -51,7 +53,6 @@ type Fit = {
   W: number; H: number;
   /** pick — 낱개(0) · 모인 말(1)의 1u(px)와 원점. show는 둘이 같다 */
   u0: number; ox0: number; oy0: number; u1: number; ox1: number; oy1: number;
-  tail: Tail | null;
   /** show — 등장 계획 · 휭 퍼진 낱개 자리 · 점이 나가는 곳(입, 말 좌표). 모이기 시작하는 때(둘 다) */
   plan: Plan | null; spread: Item[]; dev: [number, number]; merge: number;
 };
@@ -64,7 +65,7 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
   const optic = opticalFix[tone.font]?.scale ?? 1;
   const color = useRef(bg);
   color.current = bg;
-  const fit = useRef<Fit>({ W: 0, H: 0, u0: 0, ox0: 0, oy0: 0, u1: 0, ox1: 0, oy1: 0, tail: null, plan: null, spread: [], dev: [0, 0], merge: 0 });
+  const fit = useRef<Fit>({ W: 0, H: 0, u0: 0, ox0: 0, oy0: 0, u1: 0, ox1: 0, oy1: 0, plan: null, spread: [], dev: [0, 0], merge: 0 });
   const redraw = useRef<() => void>(() => {});
 
   useEffect(() => {
@@ -95,30 +96,24 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
         }
         // 꼬리가 먼저(결정 9 — 벽과 같은 차례) — 모였을 때의 꼬리를 첫 글자의 퍼진 자리에 붙여 먼저 세우고, 글자 점들은 그 밑동(입)에서 나간다
         const i = room.from, t1 = tailOf(items, kd, dev1), mouth = mouthOf(follow(t1, items, rest.pos[i])), plan = planEntrance(items, kd, mouth, S, W, H, evenSpread(arr), t1);
-        const tail = fitTail(items, kd, dev1, [[S1, W / 2, H / 2, items[i].x, items[i].y], [S, W / 2, H / 2, rest.pos[i][0] * plan.F, rest.pos[i][1] * plan.Fy]], W, H);
-        fit.current = { W, H, u0: S, ox0: W / 2, oy0: H / 2, u1: S1, ox1: W / 2, oy1: H / 2, tail, plan,
+        fit.current = { W, H, u0: S, ox0: W / 2, oy0: H / 2, u1: S1, ox1: W / 2, oy1: H / 2, plan,
           spread: items.map((it) => ({ ...it, ax: it.ax * plan.F, ay: it.ay * plan.Fy })), dev: [mouth[0], mouth[1]], merge: plan.whoosh + WHOOSH + hold };
       } else {
         const cap = Math.max(28, Math.min(72, H * 0.06));
         const sizeFor = (b: readonly number[]) => Math.min((W * FILL) / (b[2] - b[0]), (H * FILL) / (b[3] - b[1]));
         const b0 = boundsOf(items, kd, 0), u0 = Math.min(cap, sizeFor(b0));
-        // 기기(상자 아래 가운데 바깥) — 꼬리 방향은 u에 거의 기대지 않아 두 번 고쳐 셈한다
-        // 글자 크기는 옛 꼬리 자리(room)로, 꼬리는 모인 자리와 낱개 자리(처음 ~1.3초 — 꼬리가 먼저 솟는다) 둘 다에서 무대 안에 드는 만큼(점검 둘째)
-        let u1 = Math.min(cap, sizeFor(boundsOf(items, kd, 1))), b1 = boundsOf(items, kd, 1), room: Tail | null = null, dev: [number, number] = [0, 0];
+        // 글자 크기는 옛 꼬리 자리(room)째로 잡는다 — 꼬리가 있던 때와 같은 크기(결정 56). 기기(상자 아래 가운데 바깥) — 꼬리 방향은 u에
+        // 거의 기대지 않아 두 번 고쳐 셈한다
+        let u1 = Math.min(cap, sizeFor(boundsOf(items, kd, 1))), b1 = boundsOf(items, kd, 1);
         for (let k = 0; k < 2; k++) {
           const ox = W / 2 - ((b1[0] + b1[2]) / 2) * u1, oy = H / 2 - ((b1[1] + b1[3]) / 2) * u1;
-          dev = [(W / 2 - ox) / u1, (H * (1 + DEV_DROP) - oy) / u1];
-          room = tailOf(items, kd, dev, Infinity, true);
-          b1 = boundsOf(items, kd, 1, room);
+          b1 = boundsOf(items, kd, 1, tailOf(items, kd, [(W / 2 - ox) / u1, (H * (1 + DEV_DROP) - oy) / u1], Infinity, true));
           u1 = Math.min(cap, sizeFor(b1));
         }
-        const ox0 = W / 2 - ((b0[0] + b0[2]) / 2) * u0, ox1 = W / 2 - ((b1[0] + b1[2]) / 2) * u1, oy1 = H / 2 - ((b1[1] + b1[3]) / 2) * u1, i = room!.from;
-        // 줄 많은 짧은 글은 낱개 말이 무대 높이를 다 써서 옛 길이(2.25) 꼬리도 아래로 나간다 — 그만큼 낱개 말을 위 여백으로 올린다(크기는 그대로, 모이며 내려온다)
-        let oy0 = H / 2 - ((b0[1] + b0[3]) / 2) * u0;
-        const [, ty, , py] = tipAt(tailOf(items, kd, dev, 0), items, [u0, ox0, oy0, rest.pos[i][0], rest.pos[i][1]]);
-        oy0 -= Math.max(0, Math.min(ty + py - H, oy0 + b0[1] * u0));
-        const tail = fitTail(items, kd, dev, [[u1, ox1, oy1, items[i].x, items[i].y], [u0, ox0, oy0, rest.pos[i][0], rest.pos[i][1]]], W, H);
-        fit.current = { W, H, u0, ox0, oy0, u1, ox1, oy1, tail, plan: null, spread: items, dev: [0, 0], merge: TAIL_FIRST + SCATTER };
+        // 자리는 몸통만으로 — 낱개도 모인 말도 무대 한가운데(결정 56, 디자이너 "가운데로 내림")
+        const bb = boundsOf(items, kd, 1);
+        const ox0 = W / 2 - ((b0[0] + b0[2]) / 2) * u0, oy0 = H / 2 - ((b0[1] + b0[3]) / 2) * u0, ox1 = W / 2 - ((bb[0] + bb[2]) / 2) * u1, oy1 = H / 2 - ((bb[1] + bb[3]) / 2) * u1;
+        fit.current = { W, H, u0, ox0, oy0, u1, ox1, oy1, plan: null, spread: items, dev: [0, 0], merge: SCATTER };
       }
       draw(performance.now() / 1000, true);
     };
@@ -134,11 +129,9 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
       ctx.clearRect(0, 0, c.width, c.height);
       ctx.setTransform(u * dpr, 0, 0, u * dpr, ox * dpr, oy * dpr);
       ctx.fillStyle = color.current;
-      // 큰 말의 등장(휭까지) · pick의 꼬리 먼저(아직 아무 점도 안 날아온 등장 — 꼬리만 솟고 글자는 숨는다) · 그 뒤 모임과 꼬리
-      const first = F.tail ? { tail: F.tail, items, sec, ph, still: quiet } : undefined;
-      const gs = P && age < F.merge ? paintEntrance(ctx, rest, P, F.dev, age, land, WHOOSH, first)
-        : !P && first && age < TAIL_FIRST ? paintEntrance(ctx, rest, NOTHING_YET(items.length), F.dev, age, land, WHOOSH, first)
-        : paintBody(ctx, F.spread, kd, gaps, m, F.tail, 1, sec, ph, quiet);
+      // 큰 말의 등장(휭까지) · 그 뒤 모임 — 꼬리 없이(결정 56)
+      const gs = P && age < F.merge ? paintEntrance(ctx, rest, P, F.dev, age, land, WHOOSH)
+        : paintBody(ctx, F.spread, kd, gaps, m, null, 1, sec, ph, quiet);
       if (text.current) text.current.style.fontSize = `${u.toFixed(2)}px`;
       placeGlyphs(glyphs(), gs, u, ox, oy);
     };

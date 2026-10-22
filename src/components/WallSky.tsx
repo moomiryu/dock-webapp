@@ -22,12 +22,13 @@ import { ZONES, type DockBeat } from './WallWalkers';
  *
  * 도킹 —
  *   1. 하늘 말들이 0.6초에 광각처럼 퍼진다(큰 말을 둘러싼 고리, 1.45배 · 고리 따라 기울기)며 회색(--grey-800, 글자도)으로 가라앉는다.
- *   2. 새 말이 화면 정중앙에 크게 — 꼬리가 먼저(결정 9): 첫 글자의 퍼진 자리에서 기기 쪽 끝부터 밑동으로 0.45초에 솟고, 그 밑동(입)에서
- *      글자 점들이 성격별 등장(쿵 · 몽글 · 착 · 뿅)으로 나간다 → 다 서면 줄이 화면 가로 94%까지 휭(꼬리는 첫 글자를 따라간다).
- *   3. 크게 머문다(도킹 중, 꼬리 단 채). 새 말의 하늘 자리는 이때 미리 정한다(열이 찼거나 호에 안 들어가면 가장 오래 떠 있던 말이 꼬리
- *      끝부터 터지고 새 말이 그 자리 번호를 물려받는다 — 없으면 맨 뒤 번호).
- *   4. 해제 → 그 퍼진 자리에서 꼬리 단 채 모임 0.7초 → 0.4초 뒤 1.4초(easeInOut)에 작아지며 하늘의 제자리로. 이때 하늘 말들이
- *      제 색 · 제자리로 돌아온다.
+ *   2. 새 말이 화면 정중앙에 크게 — 꼬리 없이(결정 56, 2026-10-22 디자이너 — "꼬리가 처음에 나오니까 되게 어색하더라". 결정 9의 '꼬리가
+ *      먼저'를 뒤집었다): 첫 글자 아래, 꼬리 밑동이 붙던 자리(입)에서 글자 점들이 성격별 등장(쿵 · 몽글 · 착 · 뿅)으로 나간다 → 다 서면 줄이
+ *      화면 가로 94%까지 휭.
+ *   3. 크게 머문다(도킹 중). 새 말의 하늘 자리는 이때 미리 정한다(열이 찼거나 호에 안 들어가면 가장 오래 떠 있던 말이 꼬리 끝부터 터지고
+ *      새 말이 그 자리 번호를 물려받는다 — 없으면 맨 뒤 번호).
+ *   4. 해제 → 그 퍼진 자리에서 모임 0.7초 → 0.4초 뒤 1.4초(easeInOut)에 작아지며 하늘의 제자리로. 이때 하늘 말들이 제 색 · 제자리로
+ *      돌아온다. 제자리에 붙은 뒤에야 꼬리가 밑동에서 기기 쪽으로 점이 이어지며 --t-hold에 자란다(1분 돌림 · 아래에서 올라오는 말도 같다).
  * 사흘이 지난 말도 꼬리 끝부터 연쇄로 터진다.
  *
  * 소리의 결(결정 9 · 49) — 도킹 때 메가폰처럼 격렬하게: 도킹 순간 가장 굵은 결 한 방(광각 퍼짐과 함께), 글자가 설 때마다 한 방,
@@ -124,7 +125,9 @@ interface Base { id: string; msg: StoredMessage; lines: string[]; kd: Kind; item
 /** 하늘의 자리 — 부채꼴 위 자리(px, 말 원점) · 기울기(라디안) · 자리 번호 · 몸통 상자(px, 기울기 전) */
 type Place = Seat & Seated;
 /** 하늘에 붙은 말 — 자리 · 미끄러지는 중(from → pos, fromRot → rot, mv초부터) · 아래에서 올라오는 중 · 꼬리 · 캔버스 범위(u) · 터지는 때 */
-interface Sky extends Base, Place { from?: P; fromRot?: number; mv?: number; up?: number; tail: Tail; box: Box; popAt?: number }
+interface Sky extends Base, Place { from?: P; fromRot?: number; mv?: number; up?: number; tail: Tail; box: Box; popAt?: number;
+  /** 꼬리가 자라기 시작한 때(초, 결정 56 — 하늘 제자리에 붙은 때). 없으면 처음부터 다 자란 꼬리(켤 때 쌓은 말) */
+  grow?: number }
 /** 도킹하는 말 — 시작(초) · 크게 선 1u(px) · 등장 계획 · 휭 퍼진 낱개 자리 · 낱개 자리의 모듈 · 기기(u) · 큰 꼬리 · 하늘 자리 · 해제(초) · 광각 고리 */
 interface Dock extends Base { key: number; T: number; S: number; plan: Plan; spread: Item[]; rest: ReturnType<typeof modulesAt>; mouth: readonly [number, number]; tail: Tail; at: Place; release: number; ring: Map<Sky, { to: P; rot: number }>;
   /** 글자가 다 서기 전에 뗐다(결정 21) — 남은 글자를 당겨 세우고 휭 · 머묾 없이 곧장 모인다 */
@@ -132,7 +135,7 @@ interface Dock extends Base { key: number; T: number; S: number; plan: Plan; spr
 /** 돌림으로 기기에서 쏘아 오르는 말 — 하늘 자리 · 쏘는 때(초) */
 interface Launch { b: Base; at: Place; T: number }
 const times = (D: Dock) => {
-  // 꼬리는 처음부터 있다(결정 9) — 모이고(0.7초) 0.4초 있다 하늘로
+  // 모이고(0.7초) 0.4초 있다 하늘로 — 꼬리는 하늘에 붙은 뒤에 자란다(결정 56)
   // 시각은 모두 페이지 시계(초) — 계획(plan)의 값은 큰 말이 선 때(D.T)부터 센 것이라 D.T를 더한다(예전엔 휭 끝을 더하지 않아 휭 도중에
   // 떼면 휭을 기다리지 않고 모였다). 일찍 뗐으면(결정 21) 마지막 글자가 서자마자 모인다 — 휭 · 크게 머묾은 건너뛴다
   const merge = D.early ? D.T + Math.max(...D.plan.modDone) : Math.max(D.T + D.plan.whoosh + WHOOSH, D.release), rise = merge + GATHER + WAIT;
@@ -402,7 +405,7 @@ export default function WallSky({ list, dock, beat, waves, perch, hush = false, 
       if (m.id === dockId || m.id === M.shot?.b.id || M.queue.includes(m.id) || M.sky.some((s) => s.id === m.id) || M.leaving.some((s) => s.id === m.id)) continue;
       const b = baseOf(m), oldest = Math.min(Infinity, ...M.sky.map((s) => s.born)), at = roomFor(b, t, true, undefined, b.born > oldest);
       if (!at) { M.queue.push(m.id); continue; }
-      M.sky.push({ ...skyAt(b, at, M.W, M.H, M.u), up: t, born: Date.now() });
+      M.sky.push({ ...skyAt(b, at, M.W, M.H, M.u), up: t, born: Date.now(), grow: t + RISE });
       changed = true;
     }
     if (changed) rerender();
@@ -428,11 +431,11 @@ export default function WallSky({ list, dock, beat, waves, perch, hush = false, 
     // 쏘아 오르는 말이 다 붙은 뒤에 연다(landed가 다시 부른다)
     if (M.shot) return;
     M.opened = dock.key;
-    if (M.dock) { const D = M.dock; M.sky.push({ ...skyAt(D, D.at, W, H, u), born: Date.now() }); M.dock = null; }
+    if (M.dock) { const D = M.dock; M.sky.push({ ...skyAt(D, D.at, W, H, u), born: Date.now(), grow: t }); M.dock = null; }
     if (M.sky.some((s) => s.id === dock.msg.id)) { M.sky = M.sky.filter((s) => s.id !== dock.msg.id); settle(t, true); }
     M.queue = M.queue.filter((id) => id !== dock.msg.id);
     const b = baseOf(dock.msg), at = roomFor(b, t, true)!;
-    // 꼬리가 먼저(결정 9) — 모였을 때의 꼬리를 첫 글자의 퍼진 자리에 붙이고, 글자 점들은 그 밑동(입)에서 나간다. 폰 07도 같은 셈으로
+    // 글자 점들은 꼬리 밑동이 붙던 자리(입 — 첫 글자의 퍼진 자리 아래)에서 나간다. 꼬리는 그리지 않는다(결정 56). 폰 07도 같은 셈으로
     // 결의 박자를 읽는다(dockPlanOf). 미소 · 단호는 휭도 가로세로 같이 — 가로만 벌리면 단호 12°가 8~10°로 눕는다(셋째 점검)
     const { S, tail, rest, mouth, plan } = dockPlanOf(b.items, b.kd, W, H, SKY.devDrop, evenSpread(arrangeOf(dock.msg.tone?.font, dock.msg.tone?.align)));
     M.dock = { ...b, key: dock.key, T: t, S, plan, spread: b.items.map((it) => ({ ...it, ax: it.ax * plan.F, ay: it.ay * plan.Fy })), rest, mouth,
@@ -453,6 +456,9 @@ export default function WallSky({ list, dock, beat, waves, perch, hush = false, 
         돌아온다. 끄고 켜는 순간에 겹이 툭 끊기거나 도킹 결과 두 겹으로 겹치지 않게 */
     let idle = 0, idleAt = NaN;
     const HOLD = tokenS('--t-hold', 0.7), SLOW = tokenS('--t-slow', 0.4), easeStd = easeOf('--ease-standard');
+    /** 꼬리가 자란 정도(결정 56) — 하늘 제자리에 붙은 때(grow)부터 --t-hold에 밑동에서 기기 쪽으로 점이 이어진다. 다 자라기 전에 터지면 그
+        길이에서 멈춘다(터짐은 늘 그렇듯 꼬리 끝 자리에서 번진다). 움직임을 줄인 화면은 붙자마자 다 자란 꼬리 */
+    const tailG = (s: Sky, t: number) => (quiet || s.grow === undefined ? 1 : easeStd(clamp((Math.min(t, s.popAt ?? t) - s.grow) / HOLD)));
     const mix = (c: string, k: number, to = grey) => { if (k <= 0) return c; const a = cssRgb(c); return `rgb(${a.map((v, i) => Math.round(v + (to[i] - v) * k)).join(' ')})`; };
     let raf = 0, last = -Infinity;
     const glyphEls = (e: HTMLElement | null) => [...(e?.querySelectorAll<HTMLElement>('.arc-glyph') ?? [])];
@@ -737,7 +743,7 @@ export default function WallSky({ list, dock, beat, waves, perch, hush = false, 
       while (M.spills.length) spill(M.spills.shift()!);
       // 도킹이 끝났다 — 하늘의 제자리로 들어간다
       // — 도킹한 말은 하늘에 붙는 이 순간이 '떠오른 때'(가장 늦게 터진다). 돌림의 1분은 여기서 다시 센다
-      if (D && t >= times(D).end) { M.sky.push({ ...skyAt(D, D.at, W, H, u), born: Date.now() }); M.dock = null; M.nextRot = t + ROT.every; rerender(); }
+      if (D && t >= times(D).end) { M.sky.push({ ...skyAt(D, D.at, W, H, u), born: Date.now(), grow: t }); M.dock = null; M.nextRot = t + ROT.every; rerender(); }
       if (!M.dock && !M.shot && M.queue.length && t >= M.nextRot) rotate(t);
       const before = M.leaving.length;
       M.leaving = M.leaving.filter((s) => t < (s.popAt ?? 0) + POP_DONE);
@@ -797,7 +803,7 @@ export default function WallSky({ list, dock, beat, waves, perch, hush = false, 
         ctx.setTransform(res, 0, 0, res, -s.box[0] * res, -s.box[1] * res);
         ctx.fillStyle = mix(s.bg, P);
         const pop: Pop | undefined = s.popAt === undefined ? undefined : { now: t, at: (px, py) => s.popAt! + (Math.hypot(px - s.tail.tip[0], py - s.tail.tip[1]) * u) / (POP_V * W) };
-        const gs = paintBody(ctx, s.items, s.kd, s.gaps, 1, s.tail, 1, t, s.ph, quiet, pop);
+        const gs = paintBody(ctx, s.items, s.kd, s.gaps, 1, s.tail, tailG(s, t), t, s.ph, quiet, pop);
         placeGlyphs(glyphEls(e.text), gs, u);
         const vb = e.text.firstElementChild as HTMLElement | null;
         if (vb) vb.style.color = mix(s.fg, P);
@@ -828,8 +834,8 @@ export default function WallSky({ list, dock, beat, waves, perch, hush = false, 
         const X = lerp(W / 2, Sh.at.pos[0] + dx, e), Y = lerp(H * (1 + SKY.devDrop), Sh.at.pos[1] + dy, e);
         put(ctx, Su, X, Y, rot, dpr);
         ctx.fillStyle = Sh.b.bg;
-        putText(paintBody(ctx, Sh.b.items, Sh.b.kd, Sh.b.gaps, 1, tailAt(Sh.b, [X, Y], rot, W, H, Su), 1, t, Sh.b.ph, quiet), Su, X, Y, rot);
-        if (e >= 1) { M.sky.push({ ...skyAt(Sh.b, Sh.at, W, H, u), born: Date.now() }); M.shot = null; setLanded((v) => v + 1); rerender(); }
+        putText(paintBody(ctx, Sh.b.items, Sh.b.kd, Sh.b.gaps, 1, null, 0, t, Sh.b.ph, quiet), Su, X, Y, rot);
+        if (e >= 1) { M.sky.push({ ...skyAt(Sh.b, Sh.at, W, H, u), born: Date.now(), grow: t }); M.shot = null; setLanded((v) => v + 1); rerender(); }
         return;
       }
       if (!Dk || !T) return;
@@ -838,16 +844,15 @@ export default function WallSky({ list, dock, beat, waves, perch, hush = false, 
       let gs: Glyph[], Su = Dk.S, X = W / 2, Y = H / 2, rot = 0;
       if (!quiet && t < T.merge) {
         put(ctx, Su, X, Y, 0, dpr);
-        gs = paintEntrance(ctx, Dk.rest, Dk.plan, Dk.mouth, age, ENTRANCE[Dk.kd.mod].land, WHOOSH, { tail: Dk.tail, items: Dk.items, sec: t, ph: Dk.ph, still: quiet });
+        gs = paintEntrance(ctx, Dk.rest, Dk.plan, Dk.mouth, age, ENTRANCE[Dk.kd.mod].land, WHOOSH);
       } else {
-        // 꼬리 단 채 모인다 — 꼬리는 첫 글자를 따라간다(paintBody)
-        const m = quiet ? 1 : easeOut(clamp((t - T.merge) / GATHER)), g = 1, r = easeIO(clamp((t - T.rise) / RISE));
+        // 모인다 — 꼬리 없이(결정 56)
+        const m = quiet ? 1 : easeOut(clamp((t - T.merge) / GATHER)), r = easeIO(clamp((t - T.rise) / RISE));
         const [dx, dy, dq] = quiet ? [0, 0, 0] : drift(Dk, t, u);
         X = lerp(W / 2, Dk.at.pos[0] + dx, r); Y = lerp(H / 2, Dk.at.pos[1] + dy, r); Su = lerp(Dk.S, u, r); rot = (Dk.at.rot + dq) * r;
-        // 오르는 동안 기울기는 0에서 제 기울기로, 꼬리는 그 순간의 자리에서 기기를 가리킨다
-        const tail = r > 0 ? tailAt(Dk, [X, Y], rot, W, H, Su) : Dk.tail;
+        // 오르는 동안 기울기는 0에서 제 기울기로
         put(ctx, Su, X, Y, rot, dpr);
-        gs = paintBody(ctx, r > 0 ? Dk.items : Dk.spread, Dk.kd, Dk.gaps, r > 0 ? 1 : m, tail, g, t, Dk.ph, quiet);
+        gs = paintBody(ctx, r > 0 ? Dk.items : Dk.spread, Dk.kd, Dk.gaps, r > 0 ? 1 : m, null, 0, t, Dk.ph, quiet);
       }
       putText(gs, Su, X, Y, rot);
     };

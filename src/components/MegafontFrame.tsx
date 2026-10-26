@@ -12,6 +12,7 @@ interface Props {
   phaseLabel: string;
   children: ReactNode;
   style?: CSSProperties;
+  className?: string;
   /**
    * 주면 머리줄 왼쪽의 워드마크 자리가 '이전'으로 바뀐다.
    * 그 자리는 다른 화면 전부에서 뒤로 가기가 서는 자리다 — 한 화면만
@@ -26,15 +27,16 @@ interface Props {
   onHome?: () => void;
 }
 
-export default function MegafontFrame({ phaseLabel, children, style, onBack, onHome }: Props) {
+export default function MegafontFrame({ phaseLabel, children, style, className, onBack, onHome }: Props) {
   const lang = useLang();
   return (
-    <div className="mf-frame" style={style}>
+    <div className={className ? `mf-frame ${className}` : 'mf-frame'} style={style}>
       <div className="mf-header">
-        {onBack ? <BackButton label={pick(T.back, lang)} onClick={onBack}/>
-          : onHome ? <HomeButton label={pick(T.home, lang)} onClick={onHome}/>
-          : <span>MEGAFONT</span>}
-        <span>{phaseLabel}</span>
+        {/* 처음으로(도킹)는 작성 단계처럼 오른쪽 X 하나만 — 이름표 없이(2026-10-27) */}
+        {onHome && !onBack ? <HomeButton label={pick(T.home, lang)} onClick={onHome}/> : <>
+          {onBack ? <BackButton label={pick(T.back, lang)} onClick={onBack}/> : <span>MEGAFONT</span>}
+          <span>{phaseLabel}</span>
+        </>}
       </div>
       {children}
     </div>

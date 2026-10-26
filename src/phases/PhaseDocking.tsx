@@ -282,7 +282,7 @@ export default function PhaseDocking({ messageId, onDocked, onHome }: Props) {
   }
 
   return (
-    <MegafontFrame phaseLabel={pick(T.label, lang)} onHome={onHome}>
+    <MegafontFrame className="dock-screen" phaseLabel={pick(T.label, lang)} onHome={onHome}>
       <div className="guide-hero docking-simple">
         <h1>{pick(T.title, lang)}</h1>
         {/* 5초가 지나면 안내 문장 자리가 '꽂았는데 안 넘어가요' 버튼이 된다(2026-10-07, 사용자). 맨 아래에 있었는데

@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { pick, useLang } from '../lib/lang';
+import { HomeX } from './StepHeader';
 
 const T = {
   erase: { ko: '만든 발화 기록이 사라져요.', en: 'What you made will be deleted.' },
@@ -23,11 +24,8 @@ interface Props {
  * 그렇다고 아무 문도 없이 두면 꽂지 않기로 한 사람이 화면에 갇힌다 —
  * 그래서 문은 남기되 **뒤가 아니라 처음으로** 낸다.
  *
- * 자리와 상자를 뒤로 가기와 똑같이 쓴다(.z-back). 왼쪽 위 그 자리는 이 앱에서
- * '여기서 나가는 문'이고, 모양만 집으로 바뀌어 어디로 나가는지를 말한다.
- *
- * 획은 2.2다 — 갈매기(2.6)보다 가늘다. 집은 선이 다섯이라 같은 굵기로
- * 그리면 한 획짜리 갈매기보다 훨씬 검게 보인다.
+ * 모양과 자리는 작성 단계의 X(HomeX)와 같다 — 오른쪽 위(2026-10-27, 디자이너:
+ * 이 화면만 집 아이콘 + '도킹' 글자로 남아 있어 완성도가 낮아 보였다).
  *
  * **한 번 더 묻는다.** 이 자리는 뒤로 가기와 같은 자리라, 앞 화면들에서
  * 스무 번 눌러 온 손이 여기서도 습관으로 누른다. 그런데 여기서는 그 한 번이
@@ -41,17 +39,7 @@ export default function HomeButton({ label, onClick }: Props) {
 
   return (
     <>
-      <button ref={backRef} type="button" className="z-back" onClick={() => setAsking(true)} aria-label={label}>
-        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden focusable="false">
-          <path
-            d="M3.5 11.2 L12 4 L20.5 11.2 M6.2 9.6 V20 H17.8 V9.6"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round" strokeLinejoin="round"
-          />
-        </svg>
-      </button>
+      <HomeX buttonRef={backRef} label={label} onClick={() => setAsking(true)} />
       {asking && (
         <AskLeave desc={pick(T.erase, lang)} onYes={onClick}
           onNo={() => { setAsking(false); backRef.current?.focus(); }} />

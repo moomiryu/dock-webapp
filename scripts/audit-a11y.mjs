@@ -28,6 +28,12 @@ const BROWSERS = [
   'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
 ];
 
+// dev 서버가 꺼져 있으면 브라우저가 영어 오류 더미를 토한다 — 먼저 한 줄로 말하고 멈춘다
+if (!(await fetch(BASE).then((r) => r.ok, () => false))) {
+  console.log(`${BASE} 에 dev 서버가 없다 — 다른 터미널에서 npm run dev 를 먼저 띄운다.`);
+  process.exit(2);
+}
+
 const browser = await chromium.launch({ executablePath: BROWSERS.find((p) => existsSync(p)) });
 const page = await (
   await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'ko-KR' })

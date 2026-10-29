@@ -102,8 +102,7 @@ npx oh-my-design-cli@latest design-md validate DESIGN.md
 `npm run dev`를 띄운 채로:
 
 ```bash
-npx tsc --noEmit && npm run build
-node scripts/audit-a11y.mjs     # 위반 0이 기준선. 한 건이라도 나오면 회귀다
+npm run check     # 빌드(타입 검사 포함) → audit-a11y. 위반 0이 기준선. 한 건이라도 나오면 회귀다
 ```
 
 **`e2e-dock.mjs`(폰↔벽 왕복)는 평소에 돌리지 않는다**(2026-09-28, 내가 정했다).

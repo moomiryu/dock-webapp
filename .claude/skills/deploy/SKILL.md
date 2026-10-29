@@ -15,24 +15,18 @@ allowed-tools: Read, Bash(npx tsc *), Bash(npm run build), Bash(node scripts/*),
 1. **한 단계라도 실패하면 멈추고 알린다.** 다음으로 넘어가지 않는다.
 2. **push는 반드시 사용자에게 확인받고 한다.** 나머지는 알아서 진행해도 된다.
 
-## 1. 코드가 성립하는가
-
-```bash
-npx tsc --noEmit
-npm run build
-```
-
-## 2. 화면이 성립하는가
+## 1~2. 코드와 화면이 성립하는가
 
 dev 서버가 떠 있어야 한다. 안 떠 있으면 `npm run dev`를 백그라운드로 띄우고
 `curl -s -o /dev/null -w "%{http_code}" http://localhost:5173/`가 200을 줄
 때까지 기다린다.
 
 ```bash
-node scripts/audit-a11y.mjs     # 위반 0이 기준선이다
+npm run check                    # 빌드(타입 검사 포함) → audit-a11y. 위반 0이 기준선이다
+npm run check -- http://localhost:5181   # 사본 서버를 볼 때 — 주소는 audit-a11y로 넘어간다
 ```
 
-`audit-a11y`는 **위반이 0이 아니면 회귀다.** 한 건이라도 나오면 멈춘다.
+**위반이 0이 아니면 회귀다.** 한 건이라도 나오면 멈춘다.
 
 **`e2e-dock`(폰↔벽 왕복)은 배포 때도 돌리지 않는다**(2026-09-28, 사용자). 실제
 Firestore에 테스트 글을 쓰는데 운영 규칙이 지우기를 막아 그 글이 사흘 동안 벽에
@@ -55,11 +49,21 @@ CSS나 토큰을 건드렸다면 `scripts/verify-tokens.mjs`로 전후 계산값
 
 ## 4. push와 확인 — 여기서 멈추고 물어본다
 
-**push는 사용자에게 확인받고 한다.** 확인을 받았으면:
+다른 세션이 같은 폴더에서 동시에 커밋한다. main을 통째로 밀면 그 사이 남이 올린
+커밋까지 라이브에 나간다(2026-10-06에 실제로 그랬다). 그래서 **확인받은 커밋까지만** 민다.
 
-```bash
-git push origin main
-```
+1. 나갈 것을 따로 본다 — **이 명령과 push를 한 줄로 잇지 않는다.** 남의 커밋을 보고 멈출 틈을 남긴다:
+   ```bash
+   git fetch origin
+   git log --oneline origin/main..<내 마지막 커밋>
+   ```
+2. 목록에 내 것이 아닌 커밋이 있으면 그것도 같이 나간다고 말하고 묻는다
+3. 확인을 받았으면, 따로:
+   ```bash
+   git push origin <내 마지막 커밋>:refs/heads/main
+   ```
+4. push가 거절되면(origin과 로컬이 갈라짐) **force를 쓰지 않는다.** 멈추고 묻는다 —
+   2026-10-20에 합침 커밋으로 풀었다(기억 `main_history_joined.md`)
 
 그리고 **정말 나갔는지 눈으로 확인한다.** Vercel이 빌드하는 데 30초쯤 걸리고,
 로컬 빌드와 해시가 다를 수 있으므로 *번들 이름이 바뀌는 것*을 본다:

@@ -66,11 +66,15 @@ const OUTLINE: Partial<Record<Module, (s: number) => P[]>> = {
   hexagon,
   star: (s) => ngon(5, 0.62 * s, 0.3 * s)
 };
+/** 바로 앞과 같은 크기면 지어 둔 윤곽을 그대로 — 격자점 하나를 볼 때마다 윤곽을 새로 지었더니 4/5에서 장면마다 가장 큰 일이었다
+    (2026-10-29, 유머있는 · CPU 4배 느림에서 7초에 0.5초) */
+const lastOf = (f: (s: number) => P[]) => { let k = NaN, q: P[] = []; return (s: number) => (s === k ? q : ((k = s), (q = f(s)))); };
+const hexAt = lastOf(hexagon), starAt = lastOf(OUTLINE.star!);
 const INSIDE: Record<Module, (x: number, y: number, s: number) => boolean> = {
   circle: (x, y, s) => x * x + y * y <= (s / 2) ** 2,
   square: (x, y, s) => Math.abs(x) <= 0.44 * s && Math.abs(y) <= 0.44 * s,
-  hexagon: (x, y, s) => inPoly(hexagon(s), x, y),
-  star: (x, y, s) => inPoly(OUTLINE.star!(s), x, y)
+  hexagon: (x, y, s) => inPoly(hexAt(s), x, y),
+  star: (x, y, s) => inPoly(starAt(s), x, y)
 };
 /** 모듈이 가운데에서 가장 멀리 나간 거리(s의 몫) — 맞춰 넣을 때 */
 const REACH: Record<Module, number> = { circle: 0.5, square: 0.63, hexagon: 0.56, star: 0.62 };

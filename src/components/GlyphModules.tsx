@@ -35,7 +35,9 @@ export default function GlyphModules({ of, font }: { of: RefObject<HTMLElement |
       const box = cv.getBoundingClientRect(), marks: [number, number, number][] = [];
       const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
       for (let n = walk.nextNode() as Text | null; n; n = walk.nextNode() as Text | null) {
-        const u = parseFloat(getComputedStyle(n.parentElement ?? el).fontSize) / 0.85;
+        /* 첫 장의 크기 훑기는 글자 크기가 아니라 배율 --demo-k다(app.css .tone-figure-text, 2026-10-29) — 모듈도 그만큼 */
+        const cs = getComputedStyle(n.parentElement ?? el);
+        const u = (parseFloat(cs.fontSize) * (parseFloat(cs.getPropertyValue('--demo-k')) || 1)) / 0.85;
         for (let i = 0; i < n.length; i++) {
           if (!n.data[i].trim()) continue;
           range.setStart(n, i); range.setEnd(n, i + 1);
@@ -47,7 +49,10 @@ export default function GlyphModules({ of, font }: { of: RefObject<HTMLElement |
       if (next === sig) return;
       sig = next;
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      cv.width = Math.round(box.width * dpr); cv.height = Math.round(box.height * dpr);
+      /* 판 크기가 같으면 새로 만들지 않고 지우기만 한다 — 첫 장의 훑기는 매 장면 다시 그린다(2026-10-29 점검) */
+      const W = Math.round(box.width * dpr), H = Math.round(box.height * dpr);
+      if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+      else { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H); }
       ctx.fillStyle = paper;
       for (const [x, y, u] of marks) {
         ctx.setTransform(u * dpr, 0, 0, u * dpr, x * dpr, y * dpr);

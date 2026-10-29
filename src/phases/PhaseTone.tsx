@@ -361,6 +361,14 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
     const glyph = useRef<HTMLDivElement>(null);
     const optic = opticalFix[shown.font]?.scale ?? 1;
     const [run, setRun] = useState<{ w: number; h: number } | null>(null);
+    /* 처음 재기 전에는 크기 전이(app.css .z-glyph 260ms)를 끈다 — 어림값 크기에서 잰 크기로 건너가는 것이 4/5에서 뒤로 올 때
+       그대로 보여, 견본이 3분의 1 크기로 떴다가 커졌다(2026-10-29 점검). 잰 크기가 선 다음 장면부터 켠다 */
+    const [armed, setArmed] = useState(false);
+    useEffect(() => {
+        if (!run || armed) return;
+        const id = requestAnimationFrame(() => setArmed(true));
+        return () => cancelAnimationFrame(id);
+    }, [run, armed]);
     const runTries = useRef({ key: '', n: 0 });
     useLayoutEffect(() => {
         const el = glyph.current;
@@ -510,7 +518,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
       onPointerCancel={() => { tap.current = null; }} onKeyDown={faceKey}>
      <div className="z-glyph-fit">
       <GlyphModules of={glyph} font={tone.font} />
-      <div ref={glyph} className={'z-glyph is-line' + (form.slant ? ' is-gust' : '')} style={face}>
+      <div ref={glyph} className={'z-glyph is-line' + (form.slant ? ' is-gust' : '') + (armed ? '' : ' is-unmeasured')} style={face}>
        <span>{lines.map((l, i) => <b key={i} className="z-glyph-char">{l}</b>)}</span>
       </div>
      </div>

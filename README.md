@@ -204,6 +204,7 @@ npm install
 npm run dev        # http://localhost:5173
 npm run typecheck
 npm run build
+npm run check      # 코드를 바꾼 뒤: 빌드(타입 검사 포함) → 접근성 감사. dev 서버를 띄운 채로
 ```
 
 ### 화면 캡처
@@ -334,4 +335,7 @@ Adobe Fonts 설정에서 그 목록을 먼저 확인한다 — 빠져 있으면 
 - 출시 전 보안: Firestore 규칙 좁히기, App Check, rate limit
 - 벽 하늘을 파이 실기에서 본다 — 하늘 말들 + 도킹 큰 말 + 쏘는 점 + 소리의 결을 매 장면 그리는 것이
   파이의 크로미움에서 매끄러운가. 무거우면 붙어 있는 말은 그림으로 구워 두고 움직임만 옮긴다
+- 유머있는으로 3/5 → 4/5, 4/5 모양을 바꿀 때 잠깐 멈칫한다 — 모이는 동안 `DotBubble.tsx`가 매
+  프레임 글자 크기를 바꾸고 Handjet이 그때마다 다시 짜인다. 3/5의 같은 원인은 cc6e36a에서 고쳤다
+  (`--demo-k` 배율). DotBubble은 다른 세션이 손대는 중이라 기다린다
 - 관리자 삭제 경로

@@ -1,5 +1,7 @@
+import { useRef } from 'react';
 import StepHeader from '../components/StepHeader';
 import DotBubble from '../components/DotBubble';
+import PreviewYard, { roomOf, type Rim } from '../components/PreviewYard';
 import { colorsOf } from '../lib/messageStyle';
 import { foldLines } from '../lib/fit';
 import { pick, useLang } from '../lib/lang';
@@ -34,8 +36,11 @@ interface Props {
  * (DotBubble show — 정중앙에 크게, 성격별 등장 → 휭 퍼짐 → 머묾 → 모임). 10-20부터 아이폰에서만 이 화면이 비는 일이 있었는데
  * 원인은 끝내 못 찾았다 — 큰 말 등장을 걷으며 그 길도 함께 없어졌다.
  *
- * 이제 4/5와 같은 그림(DotBubble pick)을 **다 모인 마지막 모습으로 멈춰**(still) 무대 가운데에 둔다. 색 · 성격 · 모양 · 꼬리 ·
- * 크기 셈이 4/5와 같고, 등장 움직임은 없다. 색 · 줄 접기는 벽과 같은 함수(colorsOf · foldLines).
+ * 이제 4/5와 같은 그림(DotBubble pick)을 **다 모인 마지막 모습으로 멈춰**(still) 무대 가운데에 둔다. 색 · 성격 · 모양 · 크기 셈이
+ * 4/5와 같고, 등장 움직임은 없다. 색 · 줄 접기는 벽과 같은 함수(colorsOf · foldLines).
+ *
+ * 2026-10-29(디자이너): 그 말의 밑동에서 꼬리가 자라고(결정 56의 예외 — 폰에서 꼬리가 있는 곳은 여기뿐), 벽의 작은 사람 둘이 뛰어들어
+ * 기뻐하고, 말풍선에서 튕겨 떨어진 부스러기를 눈덩이로 굴려 화면 밖으로 내보낸다(PreviewYard). 한 번만.
  *
  * 무대는 2026-09-27부터 **화면 전체**다(사용자) — 화면째 검정이고 머리줄과 보내기 버튼 사이가 통째로 무대다
  * (app.css · '5/5는 화면 전체가 벽이다'). 시간의 이야기는 발화 종료 화면이 한다.
@@ -45,6 +50,7 @@ export default function PhasePreview({ text, tone, onConfirm, onBack, onHome, bu
     // 벽과 같은 색 · 줄 — 그림은 4/5와 같은 DotBubble(pick)의 다 모인 모습(결정 47)
     const { bg, text: fg } = colorsOf({ id: 'preview', text, tone, createdAt: 0 });
     const lines = foldLines(text);
+    const rim = useRef<Rim | null>(null);
     return <div className="z-frame preview-screen"><StepHeader at={5} back={{ label: pick(T.back, lang), onClick: () => { if (!busy) onBack(); } }}
       onHome={() => { if (!busy) onHome(); }} />
  {/* 여기가 마지막이라는 것을 말로 해 둔다. 이 뒤(도킹)에는 '이전'이 없다 —
@@ -62,7 +68,9 @@ export default function PhasePreview({ text, tone, onConfirm, onBack, onHome, bu
  <div className="proj-stage"><div className="sim">
   <div className="sim-frame is-wall" aria-label={pick(T.frame, lang)}>
    {/* 4/5에서 '이렇게 담을게요'를 누를 때의 그 말 — 모양(기본 · 미소 · 단호)은 tone.align이 정한다 */}
-   <DotBubble still lines={lines} tone={tone} bg={bg} fg={fg} />
+   <DotBubble still lines={lines} tone={tone} bg={bg} fg={fg}
+     tail={{ room: roomOf, onRim: (dots, at, floor) => { rim.current = { dots, at, floor }; } }} />
+   <PreviewYard rim={rim} color={bg} />
   </div>
  </div></div>
  {error && <p role="alert" className="error-banner">{error}<br />{pick(T.kept, lang)}</p>}

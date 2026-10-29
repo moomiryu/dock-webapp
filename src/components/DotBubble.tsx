@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react';
 import VoiceBubble from './VoiceBubble';
-import { ENTRANCE, arrange, arrangeOf, bigScale, evenSpread, boundsOf, follow, gapsOf, kindOf, modulesAt, mouthOf, planEntrance, tailOf, type Item, type Plan } from '../lib/aggregate';
+import { ENTRANCE, arrange, arrangeOf, bigScale, evenSpread, boundsOf, fitTail, follow, G, gapsOf, kindOf, modulesAt, mouthOf, planEntrance, tailOf, type Item, type Plan, type Tail } from '../lib/aggregate';
 import { paintBody, paintEntrance, placeGlyphs } from '../lib/dotPaint';
+import { easeOf, tokenS } from '../lib/motion';
 import { fontMap, opticalFix } from '../lib/palettes';
 import type { Align, ToneState } from '../types';
 
@@ -52,6 +53,12 @@ interface Props {
   still?: boolean;
   /** pick — 이 값이 바뀌면 낱개부터 다시 모인다(4/5에서 모양을 고를 때) */
   play?: unknown;
+  /**
+   * pick · still — 다 모인 말의 밑동에서 기기 쪽(무대 아래 가운데)으로 꼬리가 자란다(5/5, 2026-10-29 디자이너 — 결정 56의 예외). 벽 하늘에
+   * 붙은 말과 같은 꼬리 · 같은 박자(--t-slow 뒤 --t-hold · --ease-standard로 밑동부터). room = 꼬리 끝이 비켜 둘 무대 아래(px, 무대 W · H로),
+   * onRim = 말의 점 수 · 몸통 아랫가장자리 점들(px, 점 간격마다 가장 아래 점 — 부스러기가 여기서 튕겨 나간다) · 땅(px — 작은 사람이 서는 줄). 놓을 때마다. 움직임 줄이기면 다 자란 꼬리로 선다
+   */
+  tail?: { room: (W: number, H: number) => number; onRim?: (dots: number, rim: [number, number][], floor: number) => void };
   className?: string;
 }
 
@@ -61,9 +68,11 @@ type Fit = {
   u0: number; ox0: number; oy0: number; u1: number; ox1: number; oy1: number;
   /** show — 등장 계획 · 휭 퍼진 낱개 자리 · 점이 나가는 곳(입, 말 좌표). 모이기 시작하는 때(둘 다) */
   plan: Plan | null; spread: Item[]; dev: [number, number]; merge: number;
+  /** pick · tail — 모인 자리의 꼬리 */
+  tail: Tail | null;
 };
 
-export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', hold = 3, still, play, className }: Props) {
+export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', hold = 3, still, play, tail, className }: Props) {
   const wrap = useRef<HTMLDivElement>(null), cv = useRef<HTMLCanvasElement>(null), text = useRef<HTMLDivElement>(null);
   const kd = kindOf(tone.font), arr = arrangeOf(tone.font, align ?? tone.align);
   const items = useMemo(() => arrange(lines, arr, kd), [lines.join('\n'), arr, kd]);
@@ -71,13 +80,17 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
   const optic = opticalFix[tone.font]?.scale ?? 1;
   const color = useRef(bg);
   color.current = bg;
-  const fit = useRef<Fit>({ W: 0, H: 0, u0: 0, ox0: 0, oy0: 0, u1: 0, ox1: 0, oy1: 0, plan: null, spread: [], dev: [0, 0], merge: 0 });
+  const fit = useRef<Fit>({ W: 0, H: 0, u0: 0, ox0: 0, oy0: 0, u1: 0, ox1: 0, oy1: 0, plan: null, spread: [], dev: [0, 0], merge: 0, tail: null });
+  const tailOpt = useRef(tail);
+  tailOpt.current = tail;
   const redraw = useRef<() => void>(() => {});
 
   useEffect(() => {
     const el = wrap.current, c = cv.current;
     if (!el || !c || !items.length) return;
-    const quiet = still || (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const reduced = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches, quiet = still || reduced;
+    // 자라는 꼬리(tail) — 멈춘 말이라도 자라는 동안만 그린다
+    const SLOW = tokenS('--t-slow', 0.4), HOLD = tokenS('--t-hold', 0.7), easeStd = easeOf('--ease-standard'), growing = !!tailOpt.current && mode === 'pick' && !reduced;
     const ph = items.length * 1.7 + lines.join('').length * 0.37, land = ENTRANCE[kd.mod].land, rest = modulesAt(items, kd, 0);
     let raf = 0, last = -Infinity;
     const t0 = performance.now() / 1000;
@@ -103,7 +116,7 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
         // 꼬리가 먼저(결정 9 — 벽과 같은 차례) — 모였을 때의 꼬리를 첫 글자의 퍼진 자리에 붙여 먼저 세우고, 글자 점들은 그 밑동(입)에서 나간다
         const i = room.from, t1 = tailOf(items, kd, dev1), mouth = mouthOf(follow(t1, items, rest.pos[i])), plan = planEntrance(items, kd, mouth, S, W, H, evenSpread(arr), t1);
         fit.current = { W, H, u0: S, ox0: W / 2, oy0: H / 2, u1: S1, ox1: W / 2, oy1: H / 2, plan,
-          spread: items.map((it) => ({ ...it, ax: it.ax * plan.F, ay: it.ay * plan.Fy })), dev: [mouth[0], mouth[1]], merge: plan.whoosh + WHOOSH + hold };
+          spread: items.map((it) => ({ ...it, ax: it.ax * plan.F, ay: it.ay * plan.Fy })), dev: [mouth[0], mouth[1]], merge: plan.whoosh + WHOOSH + hold, tail: null };
       } else {
         const cap = Math.max(28, Math.min(72, H * 0.06));
         const sizeFor = (b: readonly number[]) => Math.min((W * FILL) / (b[2] - b[0]), (H * FILL) / (b[3] - b[1]));
@@ -118,15 +131,31 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
         }
         // 자리는 몸통만으로 — 낱개도 모인 말도 무대 한가운데(결정 56, 디자이너 "가운데로 내림")
         const bb = boundsOf(items, kd, 1);
-        const ox0 = W / 2 - ((b0[0] + b0[2]) / 2) * u0, oy0 = H / 2 - ((b0[1] + b0[3]) / 2) * u0, ox1 = W / 2 - ((bb[0] + bb[2]) / 2) * u1, oy1 = H / 2 - ((bb[1] + bb[3]) / 2) * u1;
-        fit.current = { W, H, u0, ox0, oy0, u1, ox1, oy1, plan: null, spread: items, dev: [0, 0], merge: SCATTER };
+        const ox0 = W / 2 - ((b0[0] + b0[2]) / 2) * u0, oy0 = H / 2 - ((b0[1] + b0[3]) / 2) * u0, ox1 = W / 2 - ((bb[0] + bb[2]) / 2) * u1;
+        let oy1 = H / 2 - ((bb[1] + bb[3]) / 2) * u1;
+        // 자라는 꼬리 — 기기(무대 아래 가운데 바깥)를 가리키되 끝은 땅(floor) 위 room에서 멈춘다(fitTail). 말풍선 위 끝 ~ 땅(작은 사람의 발)을 한
+        // 덩어리로 무대 세로 가운데에 둔다(2026-10-29 디자이너 — "무게 중심 자체가 너무 낮다, 캐릭터 ~ 말풍선 끝의 중심이 거의 중앙에"). 덩어리가
+        // 무대보다 크면 위에 붙이고 땅은 무대 바닥, 꼬리가 줄어든다
+        let tl: Tail | null = null, floor = H;
+        const to = tailOpt.current;
+        if (to) {
+          const devAt = (oy: number): [number, number] => [(W / 2 - ox1) / u1, (H * (1 + DEV_DROP) - oy) / u1], room = to.room(W, H);
+          const tall = (tailOf(items, kd, devAt(oy1)).tip[1] - bb[1]) * u1 + room, top = Math.max(0, (H - tall) / 2);
+          oy1 = top - bb[1] * u1; floor = Math.min(H, top + tall);
+          const dev = devAt(oy1), it = items[tailOf(items, kd, dev).from], at = [u1, ox1, oy1, it.x, it.y];
+          tl = fitTail(items, kd, dev, [at], W, floor - room);
+          const body = modulesAt(items, kd, 1).dots, low = new Map<number, (typeof body)[number]>();
+          for (const d of body) { const k = Math.round(d.x / G), o = low.get(k); if (!o || d.y > o.y) low.set(k, d); }
+          to.onRim?.(body.length + gaps.length + tl.dots.length, [...low.values()].map((d): [number, number] => [ox1 + d.x * u1, oy1 + d.y * u1]), floor);
+        }
+        fit.current = { W, H, u0, ox0, oy0, u1, ox1, oy1, plan: null, spread: items, dev: [0, 0], merge: SCATTER, tail: tl };
       }
       draw(performance.now() / 1000, true);
     };
     const draw = (sec: number, force = false) => {
       const ctx = c.getContext('2d'), F = fit.current;
       if (!ctx || !F.u1) return;
-      if (!force && quiet) return;
+      if (!force && quiet && !growing) return;
       const age = quiet ? Infinity : sec - t0, P = F.plan;
       // 모이는 정도 m — pick은 꼬리가 솟고 낱개로 선 뒤(merge), show는 휭 퍼져 머문 뒤(merge) 모인다. 꼬리는 둘 다 처음부터 있다
       const m = easeOut(clamp((age - F.merge) / GATHER));
@@ -135,9 +164,9 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
       ctx.clearRect(0, 0, c.width, c.height);
       ctx.setTransform(u * dpr, 0, 0, u * dpr, ox * dpr, oy * dpr);
       ctx.fillStyle = color.current;
-      // 큰 말의 등장(휭까지) · 그 뒤 모임 — 꼬리 없이(결정 56)
+      // 큰 말의 등장(휭까지) · 그 뒤 모임 — 꼬리 없이(결정 56). 5/5만 다 모인 말에서 꼬리가 자란다(tail)
       const gs = P && age < F.merge ? paintEntrance(ctx, rest, P, F.dev, age, land, WHOOSH)
-        : paintBody(ctx, F.spread, kd, gaps, m, null, 1, sec, ph, quiet);
+        : paintBody(ctx, F.spread, kd, gaps, m, F.tail, reduced ? 1 : easeStd(clamp((sec - t0 - SLOW) / HOLD)), sec, ph, quiet);
       /* 글자는 FONT_PX로 짜 두고 보이는 크기는 낱글자 안쪽(.ch)의 배율로 — 제 가운데에서 줄고 는다(FONT_PX) */
       const gl = glyphs(), ks = (u / FONT_PX).toFixed(4);
       placeGlyphs(gl, gs, u, ox, oy);
@@ -146,6 +175,7 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
     redraw.current = () => draw(performance.now() / 1000, true);
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
+      if (quiet) { draw(now / 1000, true); if (now / 1000 - t0 > SLOW + HOLD) cancelAnimationFrame(raf); return; }   // 멈춘 말 — 꼬리가 다 자라면 그친다
       const sec = now / 1000, settling = sec - t0 < fit.current.merge + GATHER;
       if (!settling && now - last < FRAME_MS) return;
       last = now;
@@ -157,7 +187,7 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
     const ro = new ResizeObserver(layout);
     ro.observe(el);
     layout();
-    if (!quiet) raf = requestAnimationFrame(tick);
+    if (!quiet || growing) raf = requestAnimationFrame(tick);
     return () => { ro.disconnect(); cancelAnimationFrame(raf); };
   }, [items, gaps, kd, still, play, mode, hold]);
   // 색만 바뀔 때 — 다시 놓지 않고 칠만 다시(4/5 첫 장의 색 시연)

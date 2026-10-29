@@ -28,12 +28,13 @@ import type { Perch, SkyPerch, Yard } from './WallSky';
  */
 
 /** 키 = 벽 높이의 6.5%(실물 약 9cm) — 4.5 · 6.5 · 9% 중 */
-const SIZE = 0.065;
+export const SIZE = 0.065;
 /** 둘의 색 — 빨강(이미 말을 한 사람) · 파랑(홈에서 메가폰트를 만나기 전의 색) */
-const COLORS = ['--brand-main', '--char-cyan'];
-const TOP = 4, STAND_H = FOOT_Y - TOP, CX = HEAD.cx, BODY_W = 2 * HEAD.r;
+export const COLORS = ['--brand-main', '--char-cyan'];
+const TOP = 4;
+export const STAND_H = FOOT_Y - TOP, CX = HEAD.cx, BODY_W = 2 * HEAD.r;
 /** 그림 둘레의 여유(화판 좌표) — 앉으면 발이 앞으로 나온다 */
-const VB = { x: -240, y: -170, w: VIEW.w + 480, h: VIEW.h + 230 };
+export const VB = { x: -240, y: -170, w: VIEW.w + 480, h: VIEW.h + 230 };
 /** 구역 — 화면 폭의 몫(빨강 왼쪽 · 파랑 오른쪽). 두 구역 사이가 로고 칸 — 도킹 때 흘린 티끌도 그 앞엔 쌓이지 않는다(WallSky) */
 export const ZONES: readonly (readonly [number, number])[] = [[0.25, 0.42], [0.58, 0.75]];
 /** 로고 앞을 지나던 중 도킹이 오면 비켜 설 띠 — 가까운 쪽 칸 끝 바깥 이 폭(화면 폭의 몫) 안 아무 데나, 끝에서 그 폭의 20%는 띄운다(점검 둘째:
@@ -61,7 +62,7 @@ const T = { popAt: [1, 3], smileGap: [2.5, 4], smileDur: 3, blink: [3, 7], kick:
  */
 const TRIP = { every: [30, 50], retry: 3, hops: [2, 4], stay: [1, 2.5], sit: [12, 18], sink: 0.1, clear: 1.3, reach: 0.35 };
 /** 뛰기 — 웅크림 · 늘어남 · 착지 눌림(키의 몫) */
-const JUMP = { crouch: 0.18, stretch: 0.1, land: 0.2 };
+export const JUMP = { crouch: 0.18, stretch: 0.1, land: 0.2 };
 
 /** 도킹의 박자 — 큰 말이 선 때 · 글자마다 다 쌓인 때 · 하늘로 오르기 시작하는 때(초, performance.now 기준. 아직 모르면 Infinity) */
 export type DockBeat = { start: number; letters: readonly number[]; rise: number };
@@ -542,51 +543,7 @@ export default function WallWalkers({ beat, sky, sad = false, yard }: { beat?: {
       style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 'var(--z-elevated)' } as CSSProperties}>
       {COLORS.map((color, i) => (
         <div key={i} className="wall-walker" style={{ position: 'absolute', left: 0, top: 0, display: 'none', willChange: 'transform' }}>
-          <svg viewBox={`${VB.x} ${VB.y} ${VB.w} ${VB.h}`} style={{ display: 'block', overflow: 'visible' }} aria-hidden="true" focusable="false">
-            <defs>
-              <clipPath id={`wk-body-${i}`}><rect width={VIEW.w} height={CLIP_H} /></clipPath>
-              <clipPath id={`wk-legs-${i}`}><rect x={-600} y={-600} width={1600} height={600 + FOOT_Y} /></clipPath>
-            </defs>
-            <g data-p="flip" style={{ color: `var(${color})` }}>
-              {/* 걷는 다리 — 작가가 그린 65프레임(walker.ts WALK). 멈출 땐 0프레임(서 있는 자세)에 재운다 */}
-              <g data-p="walk">
-                <path fill="currentColor" d={WALK.farRest}>
-                  <animate attributeName="d" dur={`${WALK.ms}ms`} repeatCount="indefinite" calcMode="linear" keyTimes={WALK.keyTimes} values={WALK.far} />
-                </path>
-                <path fill="currentColor" d={WALK.nearRest}>
-                  <animate attributeName="d" dur={`${WALK.ms}ms`} repeatCount="indefinite" calcMode="linear" keyTimes={WALK.keyTimes} values={WALK.near} />
-                </path>
-              </g>
-              {/* 앉은 두 발(walker.ts SIT) — 바닥 밑으로는 안 나간다 */}
-              <g data-p="sit" clipPath={`url(#wk-legs-${i})`} style={{ display: 'none' }}>
-                <g data-p="far"><path fill="currentColor" d={SIT.far} /></g>
-                <g data-p="near"><path fill="currentColor" d={SIT.near} /></g>
-              </g>
-              <g data-p="drop">
-                <g transform={`translate(${WALK.bobRest})`}>
-                  <animateTransform attributeName="transform" type="translate" dur={`${WALK.ms}ms`} repeatCount="indefinite" calcMode="linear" keyTimes={WALK.keyTimes} values={WALK.bob} />
-                  <g transform={`rotate(${WALK.tiltRest})`}>
-                    <animateTransform attributeName="transform" type="rotate" dur={`${WALK.ms}ms`} repeatCount="indefinite" calcMode="linear" keyTimes={WALK.keyTimes} values={WALK.tilt} />
-                    <g clipPath={`url(#wk-body-${i})`}>
-                      <circle fill="currentColor" cx={HEAD.cx} cy={HEAD.cy} r={HEAD.r} />
-                      <path data-p="stand" fill="currentColor" d={BODY} />
-                      <path data-p="seat" fill="currentColor" d={SIT.body} style={{ display: 'none' }} />
-                      <circle fill="var(--paper)" cx={EYE_WHITE.cx} cy={EYE_WHITE.cy} r={EYE_WHITE.r} />
-                      <circle data-eye="look" fill="currentColor" cx={EYE_LOOK.cx} cy={EYE_LOOK.cy} r={EYE_LOOK.r} />
-                      <circle data-eye="wide" fill="currentColor" cx={EYE_WIDE.cx} cy={EYE_WIDE.cy} r={EYE_WIDE.r} style={{ display: 'none' }} />
-                      <circle data-eye="up" fill="currentColor" cx={EYE_UP.cx} cy={EYE_UP.cy} r={EYE_UP.r} style={{ display: 'none' }} />
-                      <path data-eye="shut" d={EYE_SHUT} fill="none" stroke="currentColor" strokeWidth="20" strokeLinecap="round" style={{ display: 'none' }} />
-                      <path data-eye="smile" d={EYE_SMILE.d} transform={EYE_SMILE.transform} fill="currentColor" style={{ display: 'none' }} />
-                      <g data-eye="sad" style={{ display: 'none' }}>
-                        <circle fill="currentColor" cx={EYE_SAD.pupil.cx} cy={EYE_SAD.pupil.cy} r={EYE_SAD.pupil.r} />
-                        <path fill="currentColor" d={EYE_SAD.lid} transform={EYE_SAD.transform} />
-                      </g>
-                    </g>
-                  </g>
-                </g>
-              </g>
-            </g>
-          </svg>
+          <WalkerArt i={i} color={color} />
         </div>
       ))}
       {/* 수다의 점 세 알 — 말하는 쪽 머리 위(그 사람 색, 지름 키의 9%). 자리는 그리는 시계가 */}
@@ -595,5 +552,59 @@ export default function WallWalkers({ beat, sky, sad = false, yard }: { beat?: {
           style={{ position: 'absolute', left: 0, top: 0, display: 'none', borderRadius: 'var(--r-full)', background: `var(${color})` }} />
       )))}
     </div>
+  );
+}
+
+/**
+ * 작은 사람 한 명의 그림(작가의 조각 — walker.ts). 움직이는 쪽은 [data-p] · [data-eye]로 찾아 자세 · 눈을 바꾼다. 벽(WallWalkers)과
+ * 5/5(PreviewYard)가 같이 쓴다 — id는 페이지마다 겹치지 않게 key로
+ */
+export function WalkerArt({ i, color, id = 'wk' }: { i: number; color: string; id?: string }) {
+  return (
+    <svg viewBox={`${VB.x} ${VB.y} ${VB.w} ${VB.h}`} style={{ display: 'block', overflow: 'visible' }} aria-hidden="true" focusable="false">
+      <defs>
+        <clipPath id={`${id}-body-${i}`}><rect width={VIEW.w} height={CLIP_H} /></clipPath>
+        <clipPath id={`${id}-legs-${i}`}><rect x={-600} y={-600} width={1600} height={600 + FOOT_Y} /></clipPath>
+      </defs>
+      <g data-p="flip" style={{ color: `var(${color})` }}>
+        {/* 걷는 다리 — 작가가 그린 65프레임(walker.ts WALK). 멈출 땐 0프레임(서 있는 자세)에 재운다 */}
+        <g data-p="walk">
+          <path fill="currentColor" d={WALK.farRest}>
+            <animate attributeName="d" dur={`${WALK.ms}ms`} repeatCount="indefinite" calcMode="linear" keyTimes={WALK.keyTimes} values={WALK.far} />
+          </path>
+          <path fill="currentColor" d={WALK.nearRest}>
+            <animate attributeName="d" dur={`${WALK.ms}ms`} repeatCount="indefinite" calcMode="linear" keyTimes={WALK.keyTimes} values={WALK.near} />
+          </path>
+        </g>
+        {/* 앉은 두 발(walker.ts SIT) — 바닥 밑으로는 안 나간다 */}
+        <g data-p="sit" clipPath={`url(#${id}-legs-${i})`} style={{ display: 'none' }}>
+          <g data-p="far"><path fill="currentColor" d={SIT.far} /></g>
+          <g data-p="near"><path fill="currentColor" d={SIT.near} /></g>
+        </g>
+        <g data-p="drop">
+          <g transform={`translate(${WALK.bobRest})`}>
+            <animateTransform attributeName="transform" type="translate" dur={`${WALK.ms}ms`} repeatCount="indefinite" calcMode="linear" keyTimes={WALK.keyTimes} values={WALK.bob} />
+            <g transform={`rotate(${WALK.tiltRest})`}>
+              <animateTransform attributeName="transform" type="rotate" dur={`${WALK.ms}ms`} repeatCount="indefinite" calcMode="linear" keyTimes={WALK.keyTimes} values={WALK.tilt} />
+              <g clipPath={`url(#${id}-body-${i})`}>
+                <circle fill="currentColor" cx={HEAD.cx} cy={HEAD.cy} r={HEAD.r} />
+                <path data-p="stand" fill="currentColor" d={BODY} />
+                <path data-p="seat" fill="currentColor" d={SIT.body} style={{ display: 'none' }} />
+                <circle fill="var(--paper)" cx={EYE_WHITE.cx} cy={EYE_WHITE.cy} r={EYE_WHITE.r} />
+                <circle data-eye="look" fill="currentColor" cx={EYE_LOOK.cx} cy={EYE_LOOK.cy} r={EYE_LOOK.r} />
+                <circle data-eye="wide" fill="currentColor" cx={EYE_WIDE.cx} cy={EYE_WIDE.cy} r={EYE_WIDE.r} style={{ display: 'none' }} />
+                <circle data-eye="up" fill="currentColor" cx={EYE_UP.cx} cy={EYE_UP.cy} r={EYE_UP.r} style={{ display: 'none' }} />
+                <path data-eye="shut" d={EYE_SHUT} fill="none" stroke="currentColor" strokeWidth="20" strokeLinecap="round" style={{ display: 'none' }} />
+                <path data-eye="smile" d={EYE_SMILE.d} transform={EYE_SMILE.transform} fill="currentColor" style={{ display: 'none' }} />
+                <g data-eye="sad" style={{ display: 'none' }}>
+                  <circle fill="currentColor" cx={EYE_SAD.pupil.cx} cy={EYE_SAD.pupil.cy} r={EYE_SAD.pupil.r} />
+                  <path fill="currentColor" d={EYE_SAD.lid} transform={EYE_SAD.transform} />
+                </g>
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+    </svg>
   );
 }

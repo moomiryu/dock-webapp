@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
 import SnapSwitch from '../components/SnapSwitch';
-import DotBubble from '../components/DotBubble';
+import DotBubble, { REGATHER } from '../components/DotBubble';
 import { foldLines } from '../lib/fit';
 import { arrangementsFor, defaultAlign } from '../lib/aggregate';
 import { colorsFor, type ColorPair } from '../lib/palettes-v2';
@@ -101,30 +101,24 @@ const firstOf = (pairs: readonly ColorPair[]) => Math.max(0, pairs.findIndex((m)
 const PALE = new Set(['white', 'pebble', 'mist', 'sky']);
 
 /**
- * 첫 장의 시연(2026-09-28, 사용자) — 3/5에서 다듬은 내 글이 위에서 굴러 떨어져
- * 가운데 말풍선에 들어가고, 그 말풍선이 색 짝을 차례로 갈아입는다.
+ * 첫 장의 시연 — 고르는 장에서 모양을 누를 때와 같은 움직임(2026-10-29, 디자이너가 견본 셋 중 C를 골랐다 — "색 바뀌는 게
+ * 늦어 앵~ 싶다, 형태가 바뀌는 것도 함께"). 들어오자마자 낱개가 모여 서고, 다 모여 --t-hold 머문 뒤 다른 모양 · 다른 색으로
+ * 흩어졌다 다시 모인다(DotBubble play · REGATHER). 그전(2026-09-28~)엔 말풍선이 모인 채 서서 1.7초 뒤부터 색만 돌았다.
  *
- * 떨어져 들어가는 움직임은 CSS(app.css · colorDemoFall · colorDemoInk)가 하고(말풍선은
- * 처음부터 서 있다), 색은 이 부품의 제 상태가 돈다 — 참여자가 고른 색(bg · fg)에는 닿지 않는다. 룰렛의
- * 성격의 여덟 짝(pairs)을 같은 시간씩 차례로 도므로 어느 색도 권하지 않는다(절대원칙). 시작은 지금 색이다.
- * 움직임 줄이기를 켠 사람에게는 떨어지지도 돌지도 않는다.
+ * 색은 성격의 여덟 짝(pairs), 모양은 그 성격의 칸을 같은 시간씩 차례로 돈다 — 어느 것도 권하지 않는다(절대원칙). 시작은
+ * 지금 색 · 첫 칸이다. 참여자가 고른 값에는 닿지 않는다. 움직임 줄이기면 모인 채 그대로다.
  */
 function ColorDemo({ lines, tone, from, pairs }: { lines: string[]; tone: ToneState; from: number; pairs: readonly ColorPair[] }) {
+    const shapes = arrangementsFor(tone.font);
     const [i, setI] = useState(from);
+    const [s, setS] = useState(0);
     useEffect(() => {
         if (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-        /* 박자는 토큰에서 읽는다 — 글이 나타나 자리 잡는 동안(--t-hold × 2.4)은 첫 색 그대로,
-           그 뒤 --t-hold × 1.5마다 한 짝씩 */
-        const hold = tokenMs('--t-hold', 700);
-        let iv = 0;
-        const t = window.setTimeout(() => {
-            iv = window.setInterval(() => setI((k) => (k + 1) % pairs.length), hold * 1.5);
-        }, hold * 2.4);
-        return () => { window.clearTimeout(t); window.clearInterval(iv); };
+        const iv = window.setInterval(() => { setI((k) => (k + 1) % pairs.length); setS((k) => k + 1); }, REGATHER * 1000 + tokenMs('--t-hold', 700));
+        return () => window.clearInterval(iv);
     }, []);
     const m = pairs[i % pairs.length];
-    /* 말은 처음부터 모여 서 있고(꼬리까지) 글만 제자리에서 옅게 나타난다(app.css · colorDemoIn) */
-    return <DotBubble lines={lines} tone={tone} bg={m.bg} fg={m.text} still />;
+    return <DotBubble lines={lines} tone={tone} align={shapes[s % shapes.length]} bg={m.bg} fg={m.text} play={s} />;
 }
 
 /**

@@ -24,8 +24,14 @@ import type { Align, ToneState } from '../types';
  * 밑동 그대로. pick은 꼬리가 솟던 TAIL_FIRST초를 건너 낱개부터 선다.
  */
 const SCATTER = 0.9, GATHER = 0.7, WHOOSH = 0.7;
+/** pick — play가 바뀐 뒤 낱개로 섰다가 다 모이기까지(초). 4/5 첫 장 시연이 이 박자에 맞춰 다음 모양으로 넘어간다 */
+export const REGATHER = SCATTER + GATHER;
 /** 다시 그리는 간격 — 모인 뒤 점의 숨은 30fps(띠 구름 · 나무와 같았다) */
 const FRAME_MS = 33;
+/** 글자를 짜는 기준 크기(px) — 화면에 보이는 크기가 아니다. 보이는 크기는 낱글자 배율(u / FONT_PX)이 준다. 핸드젯(유머있는)은 새 글자
+    크기마다 서체를 다시 준비하는 데 60ms쯤 들어, 크기가 매 장면 · 모양마다 바뀌면 4/5가 멈칫했다(2026-10-29 점검). 한 값으로 두면 폰의
+    말풍선이 모두 한 번 준비한 서체를 같이 쓴다 */
+const FONT_PX = 64;
 /** pick — 상자 안 여백(몫)과 글자 크기 상한(px, RainPreview와 같다 — 높이의 6%, 28 ~ 72px) */
 const FILL = 0.86;
 /** 기기 — 화면 아래 가운데 바깥(견본 30px@720) */
@@ -132,8 +138,10 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
       // 큰 말의 등장(휭까지) · 그 뒤 모임 — 꼬리 없이(결정 56)
       const gs = P && age < F.merge ? paintEntrance(ctx, rest, P, F.dev, age, land, WHOOSH)
         : paintBody(ctx, F.spread, kd, gaps, m, null, 1, sec, ph, quiet);
-      if (text.current) text.current.style.fontSize = `${u.toFixed(2)}px`;
-      placeGlyphs(glyphs(), gs, u, ox, oy);
+      /* 글자는 FONT_PX로 짜 두고 보이는 크기는 낱글자 안쪽(.ch)의 배율로 — 제 가운데에서 줄고 는다(FONT_PX) */
+      const gl = glyphs(), ks = (u / FONT_PX).toFixed(4);
+      placeGlyphs(gl, gs, u, ox, oy);
+      for (const e of gl) { const ch = e.firstElementChild as HTMLElement | null; if (ch && ch.style.scale !== ks) ch.style.scale = ks; }
     };
     redraw.current = () => draw(performance.now() / 1000, true);
     const tick = (now: number) => {
@@ -141,6 +149,9 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
       const sec = now / 1000, settling = sec - t0 < fit.current.merge + GATHER;
       if (!settling && now - last < FRAME_MS) return;
       last = now;
+      /* 모이는 동안만 글자마다 제 그림층 — 배율이 바뀔 때마다 핸드젯 글자를 다시 칠하면 장면이 빠졌다. 다 모이면 풀어 제 크기로 또렷하게
+         다시 칠한다(app.css .dot-text[data-moving]) */
+      if (text.current && text.current.hasAttribute('data-moving') !== settling) text.current.toggleAttribute('data-moving', settling);
       draw(sec);
     };
     const ro = new ResizeObserver(layout);
@@ -152,11 +163,11 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
   // 색만 바뀔 때 — 다시 놓지 않고 칠만 다시(4/5 첫 장의 색 시연)
   useEffect(() => { redraw.current(); }, [bg]);
 
-  const F = fit.current, em = F.u1 * optic || 1;
+  const F = fit.current, em = FONT_PX * optic;
   return (
     <div ref={wrap} className={'dot-bubble' + (className ? ' ' + className : '')} role="img" aria-label={lines.join(' ')}>
       <canvas ref={cv} aria-hidden="true" />
-      <div ref={text} className="dot-text" aria-hidden="true">
+      <div ref={text} className="dot-text" aria-hidden="true" style={{ fontSize: FONT_PX }}>
         <VoiceBubble text={lines.join('\n')} bg={bg} color={fg} fontFamily={fontMap[tone.font]} font={tone.font}
           weight={tone.wght} width={tone.tone} slant={tone.slnt} size={tone.size} manner={tone.manner} speed={tone.speed} weightPos={tone.weight}
           fontSize="1em" glyphs={items.map((it) => ({ c: it.ch, x: 0, y: 0, a: it.a }))} glyphBox={{ w: (F.W || 1) / em, h: (F.H || 1) / em }} />

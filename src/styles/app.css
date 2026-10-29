@@ -122,11 +122,13 @@
   outline-offset: 2px;
 }
 
+/* 초점 테두리는 두 자리뿐이다(2026-10-29 점검 — 여섯 간격이 섞여 있었다): 홀로 선 것은 바깥 2(위 기본), 채운 면 ·
+   틀 안의 칸 · 화면 끝까지 가는 면은 안쪽 2. 채운 버튼은 검은 무대(04 · 05) 위에서 바깥 검은 테두리가 묻혀 안쪽에 둔다 */
 .primary-action:focus-visible,
 .home-cta:focus-visible,
 .style-card.on:focus-visible{
   outline-color: var(--ink);
-  outline-offset: -5px;
+  outline-offset: -2px;
 }
 
 /* 쓰는 자리는 검은 액자 전체다 -- 어디를 눌러도 입력이 잡힌다. 그래서
@@ -161,11 +163,11 @@
    버튼의 상태 계약으로 못박는다. 우리에게 없던 건 pressed 하나였다.
    loading은 이 앱에 제자리 로딩 버튼이 없어 해당 사항이 없다(05가 화면 전체를 쓴다). */
 .primary-action:active:not(:disabled),
-.home-cta:active {
+.home-cta:active,
+.home-info-btn:active {
   filter: brightness(0.96);
 }
 
-.home-info-btn:active,
 .info-step:active:not(:disabled),
 .z-cycle:active,
 .info-close:active,
@@ -327,9 +329,11 @@
   background: var(--brand-strong);
   color: var(--paper);
   border: 1px solid var(--brand-strong);
+  padding: 0 var(--pad-btn-x);   /* 작성 화면의 주 버튼(.primary-action)과 같은 안쪽 · 자간(2026-10-29 점검 — 같은 부품인데 갈려 있었다) */
   font-family: inherit;
   font-size: var(--fs-btn);
   font-weight: 500;
+  letter-spacing: -0.01em;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -337,15 +341,20 @@
 }
 
 /* 정보는 '있으면 보는 것'이 아니라 처음 온 사람이 반드시 거쳐야 할 곳이라,
-   글자 링크가 아니라 시작하기와 같은 폭의 버튼으로 둔다. */
+   글자 링크가 아니라 시작하기와 같은 폭의 버튼으로 둔다.
+   크기 · 글자는 주 버튼 그대로, 면은 옅은 회색(--grey-100). 2026-10-29 점검에서 1px 검정 선 칸으로 바꿨다가 같은 날
+   디자이너가 비교 견본(선 칸 · 글자만 · 회색 면)에서 회색 면으로 되돌리고 짝 버튼을 모두 이것으로 맞췄다("선 칸만 테두리가 있어
+   어색"). 확인 창 '아니오'(.ask-no) · 벽 끄기 창 '아니오'(어두운 판이라 --grey-700)도 같은 면이다 */
 .home-info-btn{
   width: 100%;
-  min-height: var(--btn-m);   /* 일반 버튼 44 */
+  min-height: var(--btn-l);
   background: var(--grey-100);
   color: var(--ink);
   border: 1px solid var(--grey-100);
+  padding: 0 var(--pad-btn-x);
   font-family: inherit;
-  font-size: var(--fs-body);
+  font-size: var(--fs-btn);
+  letter-spacing: -0.01em;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -403,16 +412,16 @@
   line-height: 1;
   text-align: center;
   /* 무게·장평·크기가 눈금에서 눈금으로 건너뛴다. 값이 다섯 칸뿐이라
-     그냥 두면 한 칸에 100씩 튀어 딱딱 끊긴다. 260ms를 물려 획이
+     그냥 두면 한 칸에 100씩 튀어 딱딱 끊긴다. --t-return(2026-10-29까지 260ms)을 물려 획이
      자라는 것으로 보이게 한다 — font-variation-settings는 같은 축이면
      보간된다(무게 축이 있는 둘에서만 — 당당한·다정한은 축이 없다). */
-  transition: transform 260ms var(--ease-standard), font-size 260ms var(--ease-standard),
-              font-variation-settings 260ms var(--ease-standard),
-              font-weight 260ms var(--ease-standard), font-style 260ms var(--ease-standard),
-              -webkit-text-stroke-width 260ms var(--ease-standard),
+  transition: transform var(--t-return) var(--ease-standard), font-size var(--t-return) var(--ease-standard),
+              font-variation-settings var(--t-return) var(--ease-standard),
+              font-weight var(--t-return) var(--ease-standard), font-style var(--t-return) var(--ease-standard),
+              -webkit-text-stroke-width var(--t-return) var(--ease-standard),
               color 200ms;
   transform-origin: center;
-  /* 획 보정 — 축이 없는 당당한·다정한은 무게 대신 이것이 답한다. 같은 260ms를
+  /* 획 보정 — 축이 없는 당당한·다정한은 무게 대신 이것이 답한다. 같은 --t-return을
      타야 다른 셋과 같은 박자로 굵어진다(palettes.ts에 사다리와 그 근거). */
   -webkit-text-stroke: var(--optical-stroke, 0) currentColor;
   paint-order: stroke fill;
@@ -689,7 +698,7 @@
   from{ opacity: 0; translate: 0 10px; }
   to{ opacity: 1; translate: 0 0; }
 }
-.info-slide{ animation: infoSlideIn 280ms var(--ease-standard) both; }
+.info-slide{ animation: infoSlideIn var(--t-return) var(--ease-standard) both; }
 @media (prefers-reduced-motion: reduce){ .info-slide{ animation: none; } }
 /* 한 장 안에서 삽화가 다음 그림으로 넘어갈 때(Relay). 장이 넘어가는 결보다
    조용하게 — 자리를 옮기지 않고 번지기만 한다. */
@@ -987,7 +996,7 @@
    세운 차례가 그 한 줄에 뒤집힌다. 회색 사다리에서 짝을 찾는다:
    밝은 화면의 밑줄은 흰 바탕 대비 1.23:1이고, grey-900은 --night 대비
    1.22:1이다. 같은 무게의 실선이 된다. */
-.info-overlay.is-dark .info-head{ --rule-color: var(--rule-dark); }
+.info-overlay.is-dark .info-head{ --rule-color: color-mix(in srgb, var(--paper) var(--rule-mix), transparent); }   /* 다른 어두운 화면(03 · 04 · 05 · 06)과 같은 선(2026-10-29 점검 — 여기만 --rule-dark였다) */
 
 /* 초점 테두리는 :focus-visible이 순검정(--ink)으로 못박아 둔다. --night
    위에서는 1.04:1이라 사실상 안 보인다 — 탭으로 짚어 확인했다. 검은 면
@@ -1703,21 +1712,21 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    두 장이 겹쳐 있고 transform으로만 치워 두었다. 치워진 장이 그대로
    살아 있어서 탭이 거기로 굴러떨어졌다 — 첫 장을 보고 있는 사람이
    안 보이는 둘째 장의 눈금자까지 만질 수 있었다(재서 확인: 탭 여덟 번
-   중 일곱 번이 안 보이는 쪽이었다). 슬라이드가 520ms라, 먹었는지 확신
+   중 일곱 번이 안 보이는 쪽이었다). 슬라이드가 --t-slow(2026-10-29까지 520ms)라, 먹었는지 확신
    못 해 한 번 더 누른 탭이 미끄러져 들어오는 패널에 떨어지기도 한다.
 
    visibility로 끊는다 — 탭 순서에서도, 낭독기에서도, 손가락에서도
    한꺼번에 빠진다. 나가는 장은 다 나간 **뒤에** 꺼져야 하므로 그 쪽만
-   520ms 늦춘다(transition의 마지막 항). */
+   그만큼 늦춘다(transition의 마지막 항). */
 .tone-pane{ position: absolute; inset: 0; display: flex; flex-direction: column;
   gap: var(--s5); background: var(--paper);
   padding: var(--s5) var(--pad-x) max(var(--s6), env(safe-area-inset-bottom, 0px));
   visibility: hidden;
-  transition: transform 520ms var(--ease-emphasized), visibility 0s linear 520ms; }
+  transition: transform var(--t-slow) var(--ease-emphasized), visibility 0s linear var(--t-slow); }
 .tone-deck[data-step="intro"] .tone-intro,
 .tone-deck[data-step="work"] .tone-work{
   visibility: visible;
-  transition: transform 520ms var(--ease-emphasized), visibility 0s; }
+  transition: transform var(--t-slow) var(--ease-emphasized), visibility 0s; }
 .tone-deck[data-step="intro"] .tone-work{ transform: translateY(100%); }
 .tone-deck[data-step="work"] .tone-intro{ transform: translateY(-100%); }
 /* ── 미리보기와 조작 영역 사이에 흰 띠를 두지 않는다 (2026-09-22) ────
@@ -2034,7 +2043,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    겹칠 만큼이다. 줄어들 수 있는 것은 패널의 켜 사이와 안쪽 여백뿐이고,
    차례(정보 → 도구 → 조절)는 --s5로도 갈린다. 재서 확인: 99 → 139px. */
 @media (max-height: 700px){
-  .tone-panel{ padding: var(--s5) var(--pad-x) max(var(--s5), env(safe-area-inset-bottom, 0px));
+  .tone-panel{ padding: var(--s5) var(--pad-x) max(var(--s6), env(safe-area-inset-bottom, 0px));   /* 아래는 줄이지 않는다 — 주 버튼이 다른 화면처럼 바닥에서 24(2026-10-29 점검) */
     gap: var(--s5); }
   .tone-pane{ gap: var(--s4); }
   /* 조작하는 장은 예외다 — 줄어든 이 간격도 미리보기와 패널 사이에서는
@@ -2270,12 +2279,12 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   filter: blur(calc(var(--char-box) * 0.02 * var(--lift-k, 0)));
   translate: -50% -50%; width: calc(var(--shade-w, 0.38) * 100% * (1 + 0.3 * var(--lift-k, 0))); height: 6%;
   border-radius: 50%; background: var(--char-shade-floor); pointer-events: none;
-  /* 포즈가 바뀌면 실루엣이 달라진다. 글자·형태가 건너가는 260ms를 같이 탄다.
+  /* 포즈가 바뀌면 실루엣이 달라진다. 글자·형태가 건너가는 --t-return을 같이 탄다.
      top만 --t-return이다 — 놓았을 때 몸이 그 시간에 내려오므로 그림자의
      되돌림(top 안의 --lift)도 같은 시간이어야 바닥에 붙어 있는 것으로
      보인다. 들고 있는 동안은 transition을 끈다 — 프레임마다 바뀌는 top을
      따라가느라 그림자가 바닥에서 미끄러진다. */
-  transition: width 260ms var(--ease-standard), top var(--t-return) var(--ease-standard), filter var(--t-return) var(--ease-standard); }
+  transition: width var(--t-return) var(--ease-standard), top var(--t-return) var(--ease-standard), filter var(--t-return) var(--ease-standard); }
 .home-char[data-held] .home-char-shade{ transition: none; }
 /* 가끔 뱉는 글자 (2026-09-15 홈_4 스케치).
    몸 바깥에 둔다 — 몸이 기울고 눌릴 때 같이 일그러지면 글자로 안 읽힌다.
@@ -2545,7 +2554,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 /* 고른 색은 글자 뒤에 깔린 알약이 아니라 **배경 전체**다 (스케치 04a).
    쓰는 동안에는 액자가 통째로 그 색이고, 물러서면 그 색이 한 덩이로
    줄어든다 — 검정이 드러나는 건 물러선 뒤뿐이다. */
-.compose-editor{ background: var(--pane-bg); transition: background 420ms var(--ease-emphasized); }
+.compose-editor{ background: var(--pane-bg); transition: background var(--t-return) var(--ease-emphasized); }
 .compose-editor.is-pulled{ background: var(--ink); }
 /* 머리줄은 흰색 붙박이였다 — 배경이 형광색이 되면 읽히지 않는다.
    메시지의 글자색을 그대로 쓴다. 그 색은 배경과 대비되도록 고른 값이다. */
@@ -2574,6 +2583,10 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .dot-bubble > canvas{ position: absolute; inset: 0; width: 100%; height: 100%; }
 .dot-text{ position: absolute; inset: 0; pointer-events: none; }
 .dot-text .line-bubble{ width: auto; max-width: none; padding: 0; }
+.dot-text[data-moving] .ch{ will-change: scale; }   /* 모이는 동안만 글자마다 제 그림층(DotBubble FONT_PX, 2026-10-29) */
+/* 글 칸을 줄 위에 얹지 않고 맨 위에 세운다 — 줄 속 상자(inline-block)면 칸의 윗변이 바탕 글자 크기의 줄 높이만큼 내려간다. 글자가
+   작을 때는 0으로 맞아 안 보였는데, 글자를 FONT_PX로 짜면서 5/5 글자가 56px 아래로 밀렸다(2026-10-29) */
+.dot-bubble > .dot-text > .voice-bubble{ display: block; }
 /* 벽의 해 눈(2026-10-21 디자이너, WallSkyline) — 07 대기 화면의 두 눈(흰자 + 해 색으로 뚫린 눈동자)을 해 가운데 조금 위에. 흰자는
    --grey-700(또렷 --paper · 중간 --grey-500 · 은은 중 은은 — 배경으로 물러나 있다가 가까이서 보면 눈이 있다). 평소엔 07 깜빡임을 여는
    장면처럼 2배로 늦춘 '끔뻑'(10.8초에 한 번 — 처음 끔뻑은 켠 뒤 2.5초쯤). 도킹 중(.is-startled — 큰 말이 선 때부터 하늘로 오르기
@@ -2615,7 +2628,8 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 
 /* 벽의 끄기(2026-10-21, WallPower) — 버튼은 새로고침의 짝으로 오른쪽 끝. '종료하시겠어요?'는 가운데, 작은 사람과 같은 층의 뒤에 놓여
    그들보다 앞. 판은 점으로 지은 면(캔버스, --grey-800), 크기는 토큰 × 벽 높이 / 720(--wk). '예'만 1px 선 칸. '예'를 누르면 벽 전체가
-   여는 장면처럼 옛 TV로 접혀 꺼진다(homeBootOff, 그 장면처럼 --t-slow의 2배) */
+   여는 장면처럼 옛 TV로 접혀 꺼진다(homeBootOff, 그 장면처럼 --t-slow의 2배).
+   2026-10-29 점검: 폰 확인 창과 같은 짝으로 — '예'는 채운 칸(어두운 판이라 흰 면), '아니오'는 옅은 면(폰의 --grey-100 자리 — 판이 --grey-800이라 한 단 밝은 --grey-700, 같은 날 디자이너). 그전엔 '예'가 선 칸, '아니오'가 글자라 폰과 거꾸로였다 */
 .wall-reload.wall-power{ left: auto; right: 0; }   /* 새로고침의 꼴을 그대로 입고 자리만 오른쪽 — 그 규칙보다 앞에 있어 두 이름으로 이긴다 */
 .wall-power-ask{ position: absolute; left: 50%; top: 50%; z-index: var(--z-elevated); transform: translate(-50%, -50%);
   display: flex; flex-direction: column; align-items: center; gap: calc(var(--space-section) * var(--wk));
@@ -2628,10 +2642,11 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .wall-power-acts button{ min-width: calc(var(--btn-xl) * 1.6 * var(--wk)); height: calc(var(--btn-l) * var(--wk)); padding: 0 calc(var(--pad-btn-x) * var(--wk));
   font: inherit; font-size: calc(var(--fs-btn) * var(--wk)); color: var(--paper); background: none; border: 1px solid transparent;
   border-radius: calc(var(--r-button) * var(--wk)); cursor: pointer; }
-.wall-power-acts .wall-power-yes{ border-color: var(--paper); }
-.wall-power-acts button:hover, .wall-power-acts button:focus-visible{ color: var(--grey-300); outline: none; }
-.wall-power-acts .wall-power-yes:hover, .wall-power-acts .wall-power-yes:focus-visible{ border-color: var(--grey-300); }
-.wall-power-acts .wall-power-no:focus-visible{ border-color: var(--grey-500); }
+.wall-power-acts .wall-power-yes{ background: var(--paper); color: var(--ink); border-color: var(--paper); }
+.wall-power-acts .wall-power-no{ background: var(--grey-700); border-color: var(--grey-700); }
+.wall-power-acts button:hover, .wall-power-acts button:focus-visible{ outline: none; }
+.wall-power-acts .wall-power-yes:hover, .wall-power-acts .wall-power-yes:focus-visible{ background: var(--grey-300); border-color: var(--grey-300); }
+.wall-power-acts .wall-power-no:hover, .wall-power-acts .wall-power-no:focus-visible{ background: var(--grey-600); border-color: var(--grey-600); }
 @keyframes wallPowerIn{ from{ opacity: 0; transform: translate(-50%, -46%); } to{ opacity: 1; transform: translate(-50%, -50%); } }
 .wall.is-power-off{ animation: homeBootOff calc(var(--t-slow) * 2) var(--ease-standard) forwards; }
 /* 벽의 마우스 포인터(결정 46, WallSimulation) — 움직일 때만 보통 화살표(global.css .wall의 손가락 대신), 단추 위는 제 손가락. 멈추면
@@ -2670,7 +2685,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   transition: color var(--t-return) var(--ease-standard); }
 .wall-reload:hover, .wall-reload:focus-visible{ color: var(--grey-400); }
 
-.compose-count{ transition: opacity 240ms; }
+.compose-count{ transition: opacity var(--t-return) var(--ease-standard); }
 @media (prefers-reduced-motion: reduce) {
   .wave-ring-path, .wave-core, .compose-editor.is-pulled .compose-pane,
   .tone-adjust .z-glyph > span, .tone-adjust .z-glyph-char { animation: none; }
@@ -2714,7 +2729,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    차례다. 검정으로 깔았더니 안 쓰는 검은 띠가 하나 더 생겼고,
    '배경 전체'가 화면이 아니라 액자까지만 가리키게 됐다.
    물러서면 화면째 검정이 되고 한 덩이만 색으로 남는다(스케치 04c). */
-.compose-screen{ background: var(--pane-bg, var(--ink)); transition: background 420ms var(--ease-emphasized); }
+.compose-screen{ background: var(--pane-bg, var(--ink)); transition: background var(--t-return) var(--ease-emphasized); }
 .compose-screen.is-pulled{ background: var(--ink); }
 /* '이렇게 담을게요'가 **그 색**이다. 고른 짝(배경·글자)을 버튼이 그대로
    입는다 — 누르기 전에 결과가 버튼 안에 있다.
@@ -2725,7 +2740,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .color-panel > .primary-action{   /* 2026-09-28: 조정판 안으로 옮겼다 — 같은 모습 */
   background: var(--pane-bg); color: var(--chrome-ink);
   border: 0;
-  transition: background 420ms var(--ease-emphasized), color 420ms var(--ease-emphasized),
+  transition: background var(--t-return) var(--ease-emphasized), color var(--t-return) var(--ease-emphasized),
     scale var(--t-return) var(--ease-standard);   /* 누름(위 '누름' 블록) */
 }
 /* 흰 짝(흑백)일 때만 진한 회색 버튼(2026-09-29, 사용자 · 견본 여섯 칸 중 5번).
@@ -2740,19 +2755,19 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 /* ── 04 첫 장: 설명 + 시연 (2026-09-28, 사용자 — 3/5와 같은 흐름) ─────────────
    3/5처럼 설명하는 장이 먼저 서고, 화면을 누르면 위로 빠지며 고르는 장(지금까지의
    04 화면)이 아래에서 올라온다. 넘기는 시간·곡선은 3/5의 .tone-pane과 같은 값이다
-   (520ms · --ease-emphasized — 3/5가 쓰는 그 숫자, 아직 토큰이 없다).
+   (--t-slow · --ease-emphasized — 3/5와 같은 값, 2026-10-29까지 520ms).
    고르는 장의 뼈대는 그대로 두고 이 장이 위를 덮는다 — 정렬 방식 작업 중인 04의
    구조를 옮기지 않으려고. 안 보이는 장은 3/5처럼 visibility로 손 · 탭 · 낭독기에서
    빠진다. */
 .color-choice{ position: relative; }
 .color-choice[data-step="intro"]{ overflow: hidden; }
-.color-intro{ position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; gap: var(--s5);
+.color-intro{ position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; gap: var(--space-section);   /* 머리줄 → 제목 24 — 2/5 · 3/5와 같다(2026-10-29 점검, 16이었다) */
   background: var(--ink); color: var(--paper);
   padding: var(--top-safe) var(--pad-x) max(var(--s6), env(safe-area-inset-bottom, 0px));
   visibility: hidden; transform: translateY(-100%);
-  transition: transform 520ms var(--ease-emphasized), visibility 0s linear 520ms; }
+  transition: transform var(--t-slow) var(--ease-emphasized), visibility 0s linear var(--t-slow); }
 .color-choice[data-step="intro"] > .color-intro{ visibility: visible; transform: none;
-  transition: transform 520ms var(--ease-emphasized), visibility 0s; }
+  transition: transform var(--t-slow) var(--ease-emphasized), visibility 0s; }
 /* 머리줄 — 검은 무대의 값(4/5 · 5/5와 같다). 밑줄은 틀의 여백 밖까지 */
 .color-intro > .z-header{ margin-inline: calc(var(--pad-x) * -1); padding-inline: var(--pad-x);
   --rule-color: color-mix(in srgb, var(--paper) var(--rule-mix), transparent); }
@@ -2762,9 +2777,9 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 /* 시연 자리 — 남는 높이를 다 받는다. 기준 0으로 못 박는다(5/5와 같은 까닭:
    flex: 1(= 1 1 0%)이면 첫 계산에서 cqh가 0으로 풀려 말풍선이 0으로 섰다) */
 .color-intro > .color-demo{ flex: 1 1 0; min-height: 0; width: auto; height: auto; }
-/* 시연: 말풍선은 처음부터 서 있고(2026-09-28, 사용자), 글은 그 안 제자리에서 옅게 나타난다(2026-10-21, 디자이너 —
+/* 시연: 글은 그 안 제자리에서 옅게 나타난다(2026-10-21, 디자이너 —
    위에서 굴러 떨어져 앉던 것보다 자연스럽게. 떨어지는 동안 검은 무대에 묻히지 않게 흰색으로 지나가던 처리도 함께 걷었다 —
-   이제 처음부터 짝의 글자색이다). 색이 도는 것은 PhaseColor의 ColorDemo가 한다(--t-hold × 2.4 뒤부터) */
+   이제 처음부터 짝의 글자색이다). 모양 · 색이 도는 것은 PhaseColor의 ColorDemo가 한다(2026-10-29 — 들어오자마자 낱개가 모이고, 흩어졌다 모이며 돈다. 그전엔 말풍선이 처음부터 서 있었다) */
 .color-demo .dot-text{ animation: colorDemoIn var(--t-hold) var(--ease-standard) var(--t-slow) both; }
 @keyframes colorDemoIn{ from{ opacity: 0; } }
 /* 고르는 장 — 첫 장이 떠 있는 동안은 숨어 있다. 한 번이라도 넘긴 뒤에는 첫 장과
@@ -2772,8 +2787,8 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    때 그만큼 내려간다. transform이 아니라 animation으로 건다 — 04의 버튼·색판에
    걸린 제 전환(색 바뀜 · colorTray)을 덮어쓰지 않으려고 */
 .color-choice[data-step="intro"] > :not(.color-intro){ visibility: hidden; }
-.color-choice[data-step="intro"][data-moved] > :not(.color-intro){ animation: colorWorkOut 520ms var(--ease-emphasized) both; }
-.color-choice[data-step="work"][data-moved] > :not(.color-intro){ animation: colorWorkIn 520ms var(--ease-emphasized) both; }
+.color-choice[data-step="intro"][data-moved] > :not(.color-intro){ animation: colorWorkOut var(--t-slow) var(--ease-emphasized) both; }
+.color-choice[data-step="work"][data-moved] > :not(.color-intro){ animation: colorWorkIn var(--t-slow) var(--ease-emphasized) both; }
 @keyframes colorWorkIn{ from{ translate: 0 var(--vvh, 100dvh); } to{ translate: 0 0; } }
 @keyframes colorWorkOut{ from{ translate: 0 0; visibility: visible; } to{ translate: 0 var(--vvh, 100dvh); visibility: hidden; } }
 @media (prefers-reduced-motion: reduce){
@@ -2827,11 +2842,19 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .color-roll-arrows > button:active{ background: var(--press-tint); }
 .color-roll-arrows > button:focus-visible{ outline: 2px solid var(--ink); outline-offset: -2px; }
 .color-roll-arrows svg{ width: var(--s4); height: auto; fill: currentColor; }
+/* 닿는 자리만 틀 바깥 위아래로 --s3씩 넓힌다 — 보이는 모양은 그대로, ▲ · ▼ 각각 44 × 30(2026-10-29 점검, 위 주석 '보고 작으면 키운다').
+   위는 판 안쪽 여백, 아래는 다음 줄과의 사이(--space-group 16)의 절반 안이라 이웃과 겹치지 않는다 */
+.color-roll-arrows > button{ position: relative; }
+.color-roll-arrows > button::after{ content: ''; position: absolute; inset: 0; }
+.color-roll-arrows > button:first-child::after{ top: calc(var(--s3) * -1); }
+.color-roll-arrows > button:last-child::after{ bottom: calc(var(--s3) * -1); }
 .cta-loading { font-size:var(--fs-h3); letter-spacing:var(--s1); }
 .primary-action[aria-busy=true] { background:var(--brand-strong); color:var(--paper); }
-.docking-simple { justify-content:flex-start; padding-top:var(--s7); }
+.docking-simple { justify-content:flex-start; padding-top:0; }   /* 머리줄 → 제목은 틀의 gap(24)만 — 다른 질문 화면과 같다(2026-10-29 점검, 32를 더해 56이었다) */
 /* 06의 바깥 칸은 장(--s1) 여백 없이 --pad-x 한 겹이다 — 튜토리얼 몫(--pad-x + --s1)을 되물리면 양쪽 4px씩 넘쳐 화면이 옆으로 밀렸다(2026-10-29 점검) */
 .docking-simple > .info-art.is-wide { margin-inline:calc(var(--pad-x) * -1); }
+/* 제목과 짧은 설명은 한 묶음 — 질문 화면처럼 --space-title-desc(4). 이 칸의 gap(12)을 그만큼 되물린다(2026-10-29 점검) */
+.docking-simple > h1 + p { margin-top:calc(var(--space-title-desc) - var(--s4)); }
 /* 07 아래 한 줄 — 왜 아직 안 넘어가는지. 지시(p)보다 물러난 얼굴이라
    설명이 지시를 밀어내지 않는다. 뜨고 지는 자리라 그림의 높이는 안 건드린다 */
 .dock-note { align-self:center; max-width:30ch; margin:var(--s5) 0 0; text-align:center; color:var(--muted); font-size:var(--fs-cap); }
@@ -2867,7 +2890,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   place-items: center;
   padding: var(--pad-x);
   background: color-mix(in srgb, var(--ink) 58%, transparent);
-  animation: askIn 180ms var(--ease-standard) both;
+  animation: askIn var(--t-return) var(--ease-standard) both;
 }
 @keyframes askIn{ from { opacity: 0; } to { opacity: 1; } }
 .ask-card{
@@ -2884,6 +2907,11 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   animation: askRise var(--t-return) var(--ease-emphasized) both;
 }
 @keyframes askRise{ from { transform: translateY(8px); } to { transform: translateY(0); } }
+/* 닫힐 때도 같은 박자로 거꾸로(2026-10-29 점검 — 열 때만 부드럽고 닫을 때는 툭 사라졌다). 끝나면 AskLeave가 걷는다 */
+.ask-veil.is-closing{ animation: askOut var(--t-return) var(--ease-standard) both; pointer-events: none; }
+.ask-veil.is-closing .ask-card{ animation: askSink var(--t-return) var(--ease-standard) both; }
+@keyframes askOut{ from { opacity: 1; } to { opacity: 0; } }
+@keyframes askSink{ from { transform: translateY(0); } to { transform: translateY(8px); } }
 .ask-card h2{
   font-size: var(--fs-h4);
   font-weight: 600;
@@ -2907,14 +2935,15 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   min-height: var(--btn-l);
   border-radius: var(--r-button);   /* 사각 버튼(2026-09-29) */
   font: inherit;
-  font-size: var(--fs-body);
-  font-weight: 500;
+  font-size: var(--fs-btn);   /* 주 버튼과 같은 글자(2026-10-29 점검 — 16/500이었다) */
+  font-weight: 600;
+  letter-spacing: -0.01em;
   cursor: pointer;
 }
 .ask-yes{ background: var(--brand-strong); border: 1px solid var(--brand-strong); color: var(--paper); }
-.ask-no{ background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
-.ask-yes:active{ filter: brightness(0.94); }
-.ask-no:active{ background: var(--grey-100); }
+/* 홈 '써봤어요'와 같은 옅은 회색 면(2026-10-29 디자이너) */
+.ask-no{ background: var(--grey-100); border: 1px solid var(--grey-100); color: var(--ink); }
+.ask-yes:active, .ask-no:active{ filter: brightness(0.96); }
 @media (prefers-reduced-motion: reduce){
   .ask-veil, .ask-card{ animation: none; }
 }
@@ -3394,7 +3423,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   font-family: var(--text-font); font-size: var(--fs-body); color: var(--grey-700); cursor: inherit;
   transition: color var(--t-return) var(--ease-standard); }
 .tseg-side.on{ color: var(--paper); }
-.tseg-side:focus-visible{ outline: 2px solid var(--ink); outline-offset: -4px; }
+.tseg-side:focus-visible{ outline: 2px solid var(--ink); outline-offset: -2px; }
 .tseg-side.on:focus-visible{ outline-color: var(--paper); }
 
 /* ── 3/5의 말투 스위치는 게이지와 같은 틀 (2026-09-27, 견본 7a) ──────────
@@ -3433,6 +3462,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 /* 워드마크 자리의 제목. 크기 · 굵기는 그전 08 제목 그대로다 */
 .done-home .home-intro h1{ text-wrap: balance; word-break: keep-all; font-size: var(--fs-h1); font-weight: 700;
   letter-spacing: -0.02em; line-height: var(--lh-head); }
+.done-home .home-subtitle{ margin-top: var(--space-title-desc); }   /* 제목 → 짧은 설명 4 — 질문 화면과 같다(2026-10-29 점검, 12였다) */
 /* 보조 글자(--muted, grey-600)는 grey-200 바닥에서 3.75:1이라 작은 글자 기준(4.5)에 못 미친다.
    한 칸 짙은 본문 회색(grey-700, 5.78:1)으로. 입력칸 안 안내문은 흰 바탕이라 그대로 둔다 */
 .done-home .info-rules dt, .done-home .feedback-desc, .done-home .done-credits{ color: var(--body-text); }
@@ -3446,10 +3476,11 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   padding: var(--pad-box-s); border: 1px solid var(--grey-500); border-radius: var(--r-control);
   font-family: var(--text-font); font-size: var(--fs-body); line-height: 1.5; color: var(--ink); background: var(--paper); }
 .feedback-input::placeholder{ color: var(--muted); }
-.feedback-input:focus-visible{ outline: 2px solid var(--ink); outline-offset: 1px; }
-.feedback-foot{ margin-top: var(--space-in-group); display: flex; align-items: center; gap: var(--space-in-group); flex-wrap: wrap; }
+.feedback-input:focus-visible{ outline: 2px solid var(--ink); outline-offset: 2px; }
+/* 보내기는 입력칸 오른쪽 선에 맞춰 오른쪽 끝(2026-10-29 디자이너 — 왼쪽에선 아래 '© 2026'과 한 줄로 읽혀 자리가 이상했다) */
+.feedback-foot{ margin-top: var(--space-in-group); display: flex; align-items: center; justify-content: flex-end; gap: var(--space-in-group); flex-wrap: wrap; }
 /* 보내기 — 글자 버튼. 테두리 없음. 누르는 자리는 44 */
-.feedback-send{ order: -1; min-height: var(--btn-m); min-width: var(--btn-m); text-align: start; padding: 0; border: 0; background: none;   /* 누르는 자리 44 이상 — 글자는 제자리(2026-10-29 점검) */
+.feedback-send{ order: 1; min-height: var(--btn-m); min-width: var(--btn-m); text-align: end; padding: 0; border: 0; background: none;   /* 누르는 자리 44 이상 — 글자는 제자리(2026-10-29 점검) */
   font-family: var(--text-font); font-size: var(--fs-body); font-weight: 600; color: var(--ink); cursor: pointer; }
 .feedback-send:disabled{ color: var(--grey-500); cursor: default; }
 .feedback-error{ font-size: var(--fs-body-s); color: var(--body-text); }
@@ -3538,7 +3569,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .home-poster-about:focus-visible > span::after{ transform: scaleY(1); }
 @media (hover: hover){ .home-poster-about:hover > span::after{ transform: scaleY(1); } }
 .home-poster-about:active{ color: var(--ink); }
-.home-poster-about:focus-visible{ outline: 2px solid var(--ink); outline-offset: 4px; }
+.home-poster-about:focus-visible{ outline: 2px solid var(--ink); outline-offset: 2px; }
 /* 손으로 옮기는 것들(원 · 링크 · 두 캐릭터) — 끄는 동안 화면이 움직이지 않게 */
 .home-poster [data-drag]{ touch-action: none; cursor: grab; -webkit-user-select: none; user-select: none; }
 /* 스플래시 동안 화면 어디를 눌러도 끝 장면으로 */

@@ -69,20 +69,29 @@ export function AskLeave({ desc, onYes, onNo }: { desc: string; onYes: () => voi
   /* 부모가 다시 그려질 때마다 초점을 '네'로 되돌리지 않도록, 여는 순간 한 번만 */
   const no = useRef(onNo);
   no.current = onNo;
+  /* '아니오' · ESC는 열릴 때와 같은 박자로 닫힌 뒤 걷힌다(app.css .ask-veil.is-closing, 2026-10-29 점검). 움직임 줄이기면 바로 */
+  const [closing, setClosing] = useState(false);
+  const close = useRef(() => {});
+  close.current = () => {
+    if (closing) return;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) no.current();
+    else setClosing(true);
+  };
   useEffect(() => {
     yesRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); no.current(); } };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); close.current(); } };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, []);
   return createPortal(
-    <div className="ask-veil" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+    <div className={'ask-veil' + (closing ? ' is-closing' : '')} role="dialog" aria-modal="true" aria-labelledby={titleId}
+      onAnimationEnd={(e) => { if (closing && e.target === e.currentTarget) no.current(); }}>
       <div className="ask-card">
         <h2 id={titleId}>{pick(T.ask, lang)}</h2>
         <p>{desc}</p>
         <div className="ask-answers">
           <button ref={yesRef} type="button" className="ask-yes" onClick={onYes}>{pick(T.yes, lang)}</button>
-          <button type="button" className="ask-no" onClick={() => no.current()}>{pick(T.no, lang)}</button>
+          <button type="button" className="ask-no" onClick={() => close.current()}>{pick(T.no, lang)}</button>
         </div>
       </div>
     </div>,

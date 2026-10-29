@@ -99,7 +99,8 @@ function Boot() {
   }, [phase]);
   if (phase === 'gone') return null;
   return (
-    <div className={'onwall-screen home-boot is-' + phase} style={{ '--boot-k': BOOT_K } as CSSProperties} onClick={() => phase === 'on' && setPhase('shut')}
+    /* 누르면 바로 걷힌다(2026-10-29 점검 — 위 주석대로. 그전엔 누른 뒤에도 눈 감기 · 접히기가 1.3초 이어졌다) */
+    <div className={'onwall-screen home-boot is-' + phase} style={{ '--boot-k': BOOT_K } as CSSProperties} onClick={() => setPhase('gone')}
       onAnimationEnd={(e) => { if (e.target === e.currentTarget && phase === 'off') setPhase('gone'); }}>
       <span className="sr-only" role="status">{pick(T.boot, lang)}</span>
       <div className="onwall-floor"><Eyes /></div>

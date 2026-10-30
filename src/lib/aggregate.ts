@@ -124,6 +124,20 @@ const deg = (d: number) => (d * Math.PI) / 180;
  * 낱개 자리 — 기본은 가로 벌림 + 세로 1.3배, 미소 · 단호는 가로세로 같이 벌림(벽 큰 말은 도킹 내내 낱개로 퍼져 있다 — 세로만 덜 벌리면
  * 단호의 기울기가 눕는다, 결정 31)
  */
+/**
+ * 같은 글 · 모양 · 성격의 배치는 한 벌을 같이 쓴다 — 틈 메움(gapsOf) · 꼬리 메움이 배치(items)마다 한 번만 셈하므로, 4/5의 두 말풍선(첫 장
+ * 시연 · 고르는 장)과 벽의 도킹(하늘에 이미 있는 그 글의 큰 말)이 처음부터 다시 셈하던 것이 한 번이 된다(2026-10-29 · 30 점검). 돌려받은
+ * 배치는 고쳐 쓰지 않는다
+ */
+const ARRANGED = new Map<string, Item[]>();
+export function arranged(lines: readonly string[], align: Align, kd: Kind): Item[] {
+  const key = `${lines.join('\n')}|${align}|${kd.mod}`, had = ARRANGED.get(key);
+  if (had) return had;
+  if (ARRANGED.size > 64) ARRANGED.delete(ARRANGED.keys().next().value!);
+  const items = arrange(lines, align, kd);
+  ARRANGED.set(key, items);
+  return items;
+}
 export function arrange(lines: readonly string[], align: Align, kd: Kind): Item[] {
   const adv = kd.adv * G, spread = (adv + kd.arrive * G) / adv, lh = kd.rows * ROW;
   const L = lines.map((ln) => { const cs = [...ln], av = cs.map((ch) => (ch === ' ' ? G : adv)); return { cs, av, len: av.reduce((a, b) => a + b, 0) }; });

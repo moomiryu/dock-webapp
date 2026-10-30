@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import VoiceBubble from './VoiceBubble';
-import { ENTRANCE, G, RD, RF, arrange, arrangeOf, dockPlanOf, evenSpread, gapsOf, hurry, kindOf, modulesAt, tailOf, type Dot, type Item, type Kind, type Plan, type Tail } from '../lib/aggregate';
+import { ENTRANCE, G, RD, RF, arranged, arrangeOf, dockPlanOf, evenSpread, gapsOf, hurry, kindOf, modulesAt, tailOf, type Dot, type Item, type Kind, type Plan, type Tail } from '../lib/aggregate';
 import { paintBody, paintEntrance, placeGlyphs, type Glyph, type Pop } from '../lib/dotPaint';
 import { FAN, SKY, WAVE, WIDE, bodyOf, fanOf, idleWavesAt, profileOf, ringOf, turn, waveAlpha, waveArc, wavesAt, type Box, type Seat, type Seated } from '../lib/sky';
 import { foldLines } from '../lib/fit';
@@ -145,7 +145,7 @@ const times = (D: Dock) => {
 };
 
 function baseOf(msg: StoredMessage): Base {
-  const tone = msg.tone, lines = foldLines(msg.text), kd = kindOf(tone?.font), items = arrange(lines, arrangeOf(tone?.font, tone?.align), kd);
+  const tone = msg.tone, lines = foldLines(msg.text), kd = kindOf(tone?.font), items = arranged(lines, arrangeOf(tone?.font, tone?.align), kd);
   const { bg, text } = colorsOf(msg), h = hash(msg.id);
   return { id: msg.id, msg, lines, kd, items, gaps: gapsOf(items, kd), bg, fg: text, ph: (h % 628) / 100, dr: [((h >>> 8) % 628) / 100, ((h >>> 16) % 628) / 100, ((h >>> 24) * 6.28) / 256], born: msg.createdAt };
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import VoiceBubble from './VoiceBubble';
-import { ENTRANCE, arrange, arrangeOf, bigScale, evenSpread, boundsOf, fitTail, follow, G, gapsOf, kindOf, modulesAt, mouthOf, planEntrance, tailOf, type Item, type Plan, type Tail } from '../lib/aggregate';
+import { ENTRANCE, arranged, arrangeOf, bigScale, evenSpread, boundsOf, fitTail, follow, G, gapsOf, kindOf, modulesAt, mouthOf, planEntrance, tailOf, type Item, type Plan, type Tail } from '../lib/aggregate';
 import { paintBody, paintEntrance, placeGlyphs } from '../lib/dotPaint';
 import { easeOf, tokenS } from '../lib/motion';
 import { fontMap, opticalFix } from '../lib/palettes';
@@ -24,17 +24,6 @@ import type { Align, ToneState } from '../types';
  * 크기는 꼬리가 있던 때와 같고, pick의 자리는 꼬리 몫을 빼고 무대 한가운데(디자이너 "가운데로 내림"). 점이 나가는 입(show)은 꼬리
  * 밑동 그대로. pick은 꼬리가 솟던 TAIL_FIRST초를 건너 낱개부터 선다.
  */
-/** 같은 글 · 모양 · 성격의 배치는 한 벌을 같이 쓴다 — 틈 메움(gapsOf)은 배치마다 한 번만 셈하므로, 4/5의 두 말풍선(첫 장 시연 · 고르는 장)이
-    따로 짓던 것이 한 번이 된다(2026-10-29). 시연이 모양을 돌 때도 두 바퀴부터는 다시 셈하지 않는다 */
-const ARR = new Map<string, Item[]>();
-const shared = (lines: readonly string[], arr: Align, kd: ReturnType<typeof kindOf>) => {
-  const key = `${lines.join('\n')}|${arr}|${kd.mod}`, had = ARR.get(key);
-  if (had) return had;
-  if (ARR.size > 24) ARR.delete(ARR.keys().next().value!);
-  const items = arrange(lines, arr, kd);
-  ARR.set(key, items);
-  return items;
-};
 const SCATTER = 0.9, GATHER = 0.7, WHOOSH = 0.7;
 /** pick — play가 바뀐 뒤 낱개로 섰다가 다 모이기까지(초). 4/5 첫 장 시연이 이 박자에 맞춰 다음 모양으로 넘어간다 */
 export const REGATHER = SCATTER + GATHER;
@@ -86,7 +75,7 @@ type Fit = {
 export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', hold = 3, still, play, tail, className }: Props) {
   const wrap = useRef<HTMLDivElement>(null), cv = useRef<HTMLCanvasElement>(null), text = useRef<HTMLDivElement>(null);
   const kd = kindOf(tone.font), arr = arrangeOf(tone.font, align ?? tone.align);
-  const items = useMemo(() => shared(lines, arr, kd), [lines.join('\n'), arr, kd]);
+  const items = useMemo(() => arranged(lines, arr, kd), [lines.join('\n'), arr, kd]);
   const gaps = useMemo(() => gapsOf(items, kd), [items, kd]);
   const optic = opticalFix[tone.font]?.scale ?? 1;
   const color = useRef(bg);

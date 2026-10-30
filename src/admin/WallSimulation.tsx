@@ -6,7 +6,7 @@
 // 이 파일은 글을 받고 도킹 신호를 읽어 WallSky에 넘긴다. 그리기는 WallSky가, 땅은 WallGround가, 작은 사람 둘은 WallWalkers가 한다.
 // 그전(~10-19)의 나무 · 돌 · 구름 · 비눗방울 풍경(물리 · 큰 나무 · 큰 돌 · 비 · 새 떼 · 마네킹 나무)은 걷었다 — git 기록에 있다.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { DOCK_TERM_MS, EMPHASIS_MS, STAY_MS } from '../lib/wall';
 import WallGround from '../components/WallGround';
 import WallSkyline from '../components/WallSkyline';
@@ -300,36 +300,34 @@ export default function WallSimulation() {
     >
       {/* Empty/error/loading panel */}
       {(isLoading || isEmpty || error) && (
-        <div className="wall-empty">
-          {isLoading && (
-            <>
-              <div className="wall-empty-glyph">···</div>
-              <div className="wall-empty-text">벽을 불러오고 있어요</div>
-            </>
-          )}
+        // 2026-10-30 점검 · 디자이너: 판 없이 하늘에 글자만, 끄기 창과 같은 서체 · 크기(--wk) · 단추 짝. 시험 손잡이(샘플 · 직접 쓰기)는
+        // 시험 모드(?mock=1)에서만 — 실제 벽에선 누르면 진짜 저장소에 글이 사흘 뜬다. '데모 모드로 보기'도 같은 까닭으로 뺐다
+        <div className={'wall-empty' + (error ? ' is-error' : '')} style={{ '--wk': window.innerHeight / 720 } as CSSProperties}>
+          <div className={'wall-empty-dots' + (isLoading ? ' is-wait' : '')} aria-hidden="true"><i /><i /><i /></div>
+          {isLoading && <p className="wall-empty-text">벽을 불러오고 있어요</p>}
           {error && (
             <>
-              <div className="wall-empty-glyph" style={{ color: '#f55' }}>!</div>
-              <div className="wall-empty-text" style={{ color: '#f55', maxWidth: 420, textAlign: 'center', lineHeight: 1.6 }}>
-                {error}
-              </div>
-              <div className="wall-error-actions">
-                <button className="wall-cta" onClick={retry}>다시 시도</button>
-                <a className="wall-cta" href="/wall?mock=1">데모 모드로 보기 →</a>
+              <p className="wall-empty-text">벽을 불러오지 못했어요</p>
+              <p className="wall-empty-note">{error}</p>
+              <div className="wall-empty-acts">
+                <button type="button" className="wall-empty-main" onClick={retry}>다시 시도</button>
               </div>
             </>
           )}
           {isEmpty && !error && (
             <>
-              <div className="wall-empty-glyph">···</div>
-              <div className="wall-empty-text">아직 벽이 비어 있어요</div>
-              <div className="wall-empty-mode">
-                {isFirebaseConfigured() ? '저장소: Firestore (라이브)' : '저장소: 로컬 mock (?mock=1)'}
-              </div>
-              <button className="wall-cta" onClick={seedSamples} disabled={seeding}>
-                {seeding ? '추가 중…' : isFirebaseConfigured() ? 'Firestore에 샘플 5개 추가' : 'mock에 샘플 5개 추가'}
-              </button>
-              <a href="/?stage=enter" className="wall-link-secondary">또는 직접 메시지 쓰기 →</a>
+              <p className="wall-empty-text">아직 벽이 비어 있어요</p>
+              {!isFirebaseConfigured() && (
+                <>
+                  <p className="wall-empty-note">시험 모드 · 이 브라우저에만 저장</p>
+                  <div className="wall-empty-acts">
+                    <button type="button" className="wall-empty-main" onClick={seedSamples} disabled={seeding}>
+                      {seeding ? '추가 중…' : '샘플 5개 추가'}
+                    </button>
+                    <a href="/?stage=enter&mock=1">직접 메시지 쓰기</a>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>

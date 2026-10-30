@@ -5,7 +5,8 @@ import { SKY } from '../lib/sky';
 /**
  * 벽의 끄기(2026-10-21 디자이너 — "이때까지 그냥 라즈베리파이 선 뽑는 걸로 무식하게 끔"). 땅 띠 오른쪽 끝의 끄기 버튼(WallGround, 왼쪽
  * 새로고침의 짝) → 가운데 '종료하시겠어요? 예 / 아니오'. 판은 우리 결 — 스카이라인 · 땅처럼 벌집 점을 겹쳐 속은 한 면, 가장자리만 점 결
- * (--grey-800, 땅 띠와 같은 색). 주 행동 '예'만 1px 선 칸, '아니오'는 글자. 열리면 '아니오'에 먼저 초점(실수로 끄지 않게), Esc로도 닫힌다.
+ * (--grey-800, 땅 띠와 같은 색). '예'는 채운 칸, '아니오'는 옅은 면(2026-10-29 — 폰 확인 창과 같은 짝). 열리면 '아니오'에 먼저 초점(실수로
+ * 끄지 않게), Esc로도 닫힌다. 닫힐 때는 열릴 때와 같은 박자로 거꾸로(2026-10-30 점검 — 열 때만 부드럽고 닫을 때는 툭 사라졌다).
  * 떠 있는 동안 해와 작은 사람이 슬프다(WallSimulation이 sad로 넘긴다 — 디자이너 "해당 장면 때 해랑 캐릭터들 슬픈 표정").
  *
  * '예' → 벽 전체가 옛 TV처럼 위아래로 접혀 가로 한 줄이 됐다가 사라지고(여는 장면의 homeBootOff — 그 장면처럼 2배 느리게) → 파이 안의
@@ -20,6 +21,12 @@ const FILL = 1.08;
 export default function WallPower({ open, onClose }: { open: boolean; onClose: () => void }) {
   const panel = useRef<HTMLDivElement>(null), dots = useRef<HTMLCanvasElement>(null), no = useRef<HTMLButtonElement>(null);
   const [down, setDown] = useState(false);
+  const [closing, setClosing] = useState(false);
+  /* 아니오 · Esc — 접혀 사라진 뒤 닫는다(app.css .wall-power-ask.is-closing). 움직임 줄이기면 바로 */
+  const close = () => { if (matchMedia('(prefers-reduced-motion: reduce)').matches) onClose(); else setClosing(true); };
+  useEffect(() => { if (open) setClosing(false); }, [open]);
+  /* 창 글꼴을 미리 — 처음 열 때 글꼴이 늦게 와서 판이 0.06초 동안 481 → 438px로 줄었다(2026-10-30 점검) */
+  useEffect(() => { const f = getComputedStyle(document.documentElement).getPropertyValue('--ui-font').trim(); if (f) for (const w of [400, 600]) void document.fonts?.load(`${w} 16px ${f}`, '종료하시겠어요?예아니오').catch(() => {}); }, []);
   const [k, setK] = useState(() => window.innerHeight / 720);
 
   // 판 — 벌집 점으로 짓는다(창 크기가 바뀌면 다시)
@@ -44,7 +51,7 @@ export default function WallPower({ open, onClose }: { open: boolean; onClose: (
     const resize = () => { setK(window.innerHeight / 720); requestAnimationFrame(paint); };
     requestAnimationFrame(paint);
     no.current?.focus();
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && !down) onClose(); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && !down) close(); };
     window.addEventListener('resize', resize);
     window.addEventListener('keydown', esc);
     return () => { window.removeEventListener('resize', resize); window.removeEventListener('keydown', esc); };
@@ -73,13 +80,14 @@ export default function WallPower({ open, onClose }: { open: boolean; onClose: (
 
   if (!open) return null;
   return (
-    <div ref={panel} className={'wall-power-ask' + (down ? ' is-down' : '')} role="dialog" aria-modal="true" aria-labelledby="wall-power-q"
-      style={{ '--wk': k } as CSSProperties} onClick={(e) => e.stopPropagation()}>
+    <div ref={panel} className={'wall-power-ask' + (down ? ' is-down' : '') + (closing ? ' is-closing' : '')} role="dialog" aria-modal="true" aria-labelledby="wall-power-q"
+      style={{ '--wk': k } as CSSProperties} onClick={(e) => e.stopPropagation()}
+      onAnimationEnd={(e) => { if (closing && e.target === e.currentTarget) onClose(); }}>
       <canvas ref={dots} className="wall-power-dots" aria-hidden="true" />
       <p id="wall-power-q" className="wall-power-q">종료하시겠어요?</p>
       <div className="wall-power-acts">
         <button type="button" className="wall-power-yes" onClick={() => setDown(true)}>예</button>
-        <button ref={no} type="button" className="wall-power-no" onClick={onClose}>아니오</button>
+        <button ref={no} type="button" className="wall-power-no" onClick={close}>아니오</button>
       </div>
     </div>
   );

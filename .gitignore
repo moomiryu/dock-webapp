@@ -23,3 +23,8 @@ reference capture/
 # Generated Python cache
 __pycache__/
 *.py[cod]
+
+# 시연 영상 녹화물 (다시 찍으면 생긴다)
+promo/video/frames/
+promo/video/stills/
+promo/video/*.mp4

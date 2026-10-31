@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="http://localhost:5173/src/styles/tokens.css">
+<link rel="stylesheet" href="http://localhost:5173/src/styles/pretendard.css">
+<style>
+  @font-face { font-family: 'Lineal VF'; src: url('http://localhost:5173/fonts/LinealVF.ttf') format('truetype'); font-weight: 100 1200; }
+  /* Whois — 앱(global.css)과 같은 두 이름: 'Whois'는 영문·숫자만(한글 사이 빈칸은 Pretendard), 'Whois Text'는 빈칸·부호까지(영문 타이틀) */
+  @font-face { font-family: 'Whois'; src: url('http://localhost:5173/fonts/WhoisMono-400.ttf'); font-weight: 400; unicode-range: U+0030-0039, U+0041-005A, U+0061-007A; }
+  @font-face { font-family: 'Whois Text'; src: url('http://localhost:5173/fonts/WhoisMono-400.ttf'); font-weight: 400; unicode-range: U+0020-007E, U+00B0, U+2013-2014, U+2018-2019, U+201C-201D; }
+  @font-face { font-family: 'Whois'; src: url('http://localhost:5173/fonts/WhoisMono-500.ttf'); font-weight: 500; unicode-range: U+0030-0039, U+0041-005A, U+0061-007A; }
+  @font-face { font-family: 'Whois Text'; src: url('http://localhost:5173/fonts/WhoisMono-500.ttf'); font-weight: 500; unicode-range: U+0020-007E, U+00B0, U+2013-2014, U+2018-2019, U+201C-201D; }
+  @font-face { font-family: 'Whois'; src: url('http://localhost:5173/fonts/WhoisMono-600.ttf'); font-weight: 600; unicode-range: U+0030-0039, U+0041-005A, U+0061-007A; }
+  @font-face { font-family: 'Whois Text'; src: url('http://localhost:5173/fonts/WhoisMono-600.ttf'); font-weight: 600; unicode-range: U+0020-007E, U+00B0, U+2013-2014, U+2018-2019, U+201C-201D; }
+  @font-face { font-family: 'Whois'; src: url('http://localhost:5173/fonts/WhoisMono-700.ttf'); font-weight: 700; unicode-range: U+0030-0039, U+0041-005A, U+0061-007A; }
+  @font-face { font-family: 'Whois Text'; src: url('http://localhost:5173/fonts/WhoisMono-700.ttf'); font-weight: 700; unicode-range: U+0020-007E, U+00B0, U+2013-2014, U+2018-2019, U+201C-201D; }
+  @font-face { font-family: 'Whois'; src: url('http://localhost:5173/fonts/WhoisMono-900.ttf'); font-weight: 900; unicode-range: U+0030-0039, U+0041-005A, U+0061-007A; }
+  @font-face { font-family: 'Whois Text'; src: url('http://localhost:5173/fonts/WhoisMono-900.ttf'); font-weight: 900; unicode-range: U+0020-007E, U+00B0, U+2013-2014, U+2018-2019, U+201C-201D; }
+  /* ── 영상 값은 여기 한곳 ──
+     앱과 같은 것(색 · 글자 크기 · 움직임)은 tokens.css를 역할 이름으로 다시 부르고,
+     영상에만 있는 값(1920 화면의 치수)만 여기 직접 적는다. 이름의 뜻 · 정해진 값과 임시 값은 design/video-system.md */
+  #scene {
+    /* 화면 */
+    --v-frame-w: 1920px; --v-frame-h: 1080px; --v-half: 960px;
+    --v-win-w: 390px;                        /* 창 폭 = 앱의 폰 폭(scripts/lib/drive.mjs PHONE) */
+    /* 색 역할 */
+    --v-ground: var(--ink);                  /* 땅 — 판 밖. 영상 · 사진이 올라갈 자리 */
+    --v-panel: var(--grey-100);              /* 판 — 창을 담는 면 */
+    --v-title-on-ground: var(--paper);
+    --v-body-on-ground: var(--grey-400);
+    --v-title-on-panel: var(--ink);
+    --v-body-on-panel: var(--grey-600);
+    --v-label: var(--grey-700);              /* 영상 자리 이름표 */
+    --v-credit: var(--grey-500);
+    --v-accent: var(--brand-main);           /* 강조 — 크레딧 로고 한 곳뿐 */
+    /* 글 역할 — 크기 · 굵기 · 행간을 한 묶음으로. 값은 디자이너가 정한다.
+       크기 36 · 26은 2026-10-31 격자(타이틀 36·52·68 × 설명 22·26·30)에서 골랐다 — 22는 땅 위에서 실처럼 가늘었다.
+       가운데 배치도 같은 36 — 창 옆이라 키우자는 안은 규칙 하나로 두려고 접었다 */
+    --v-title-size: var(--fs-h1); --v-title-weight: 700; --v-title-lh: 1.25;
+    --v-body-size: 26px;          --v-body-weight: 400;  --v-body-lh: 1.6;
+    --v-label-size: var(--fs-cap);
+    --v-mark-size: var(--fs-home-mark);
+    --v-credit-size: var(--fs-body); --v-credit-num-size: var(--fs-cap);
+    /* 여백 */
+    --v-margin: 120px;                       /* 반 칸 안 글 덩어리의 좌우 */
+    --v-title-gap: 18px;                     /* 타이틀과 설명 사이 */
+    --v-body-max: 560px;
+    --v-group-gap: var(--v-margin);          /* 묶음 배치에서 글 덩어리와 창 사이 — 80 · 120 · 160 중 골랐다(10-31), 반 나눔 여백과 같은 값 */
+    --v-label-bottom: 56px;
+    --v-credits-gap: 22px;
+    /* 움직임 */
+    --v-pan: var(--t-hold) var(--ease-emphasized);   /* 판이 옮겨 가는 것 */
+    --v-fade: var(--t-slow) var(--ease-standard);    /* 글 · 이름표가 바뀌는 것 */
+    --v-rise: 24px;                          /* 글이 바뀔 때 아래에서 올라오고 위로 빠지는 거리 */
+  }
+
+  /* 16:9. 판이 전체 → 오른쪽 반 → 왼쪽 반 → 오른쪽 반 → 퇴장 → 가운데로 옮겨 다니고,
+     빈 쪽은 땅(검정) — 나중에 영상 · 사진을 얹을 자리. 글은 땅(반 나눔) 또는 창 양옆(가운데)에. ?s=2 로 키워 찍는다 */
+  html, body { margin: 0; height: 100%; background: var(--ink); overflow: hidden; }
+  #scene { position: relative; width: var(--v-frame-w); height: var(--v-frame-h); transform: scale(var(--s, 1)); transform-origin: 0 0; overflow: hidden;
+    font-family: Whois, 'Pretendard Variable', sans-serif; }
+  .num { font-family: 'Whois Text', 'Lineal VF', 'Pretendard Variable', sans-serif; }
+
+  /* 판 */
+  .panel { position: absolute; top: 0; height: 100%; left: 0; width: 100%; background: var(--v-panel);
+    display: grid; place-items: center; transition: left var(--v-pan), width var(--v-pan), opacity var(--v-pan); }
+  .panel.right { left: var(--v-half); width: var(--v-half); }
+  .panel.left { left: 0; width: var(--v-half); }
+  .panel.out { left: 100%; width: var(--v-half); }
+  .panel.hidden { opacity: 0; }
+  .panel.instant { transition: none; }
+  .stack { transition: scale var(--v-pan), translate var(--v-pan); }
+  /* 묶음: 글 덩어리(설명 최대 폭) + 사이 + 창을 한 덩어리로 보고 그 덩어리를 화면 가운데에 — 창은 그 절반만큼 오른쪽으로 */
+  .panel.group .stack { translate: calc((var(--v-body-max) + var(--v-group-gap)) / 2) 0; }
+  .panel.hidden .stack { scale: .94; }
+
+  /* ── 흉내 낸 물건: 맥 창 · 아이폰 자판 · 손가락 ──
+     여기 치수와 신호등 색은 그 물건의 사본이라 영상 값이 아니다(메시지 색이 토큰이 아닌 것과 같은 까닭) */
+  /* 창 — 위 막대 40 + 화면 780 */
+  .win { position: relative; width: var(--v-win-w); height: 820px; border-radius: 12px; overflow: hidden; background: var(--paper);
+    box-shadow: 0 0 0 1px var(--grey-200), 0 24px 70px rgb(0 0 0 / 14%), 0 6px 18px rgb(0 0 0 / 8%); }
+  .top { height: 40px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--grey-200); }
+  .top i { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+  .top i:nth-child(1) { background: #ff5f57; } .top i:nth-child(2) { background: #febc2e; } .top i:nth-child(3) { background: #28c840; }
+  .url { flex: 1; min-width: 0; margin-left: 8px; height: 26px; border-radius: 7px; background: var(--grey-100);
+    display: flex; align-items: center; justify-content: center; gap: 5px; color: var(--grey-700); font-size: var(--fs-cap-s); }
+  .url svg { opacity: .7; }
+  iframe { display: block; width: var(--v-win-w); height: 780px; border: 0; background: var(--paper); }
+
+  /* 아이폰 한글 자판(두벌식, 밝은 모드) — 올라오면 그만큼 화면이 줄어든다 */
+  .kb { position: absolute; left: 0; bottom: 0; width: 390px; height: 291px; box-sizing: border-box; padding: 8px 3px 0;
+    background: var(--grey-300); translate: 0 100%; transition: translate var(--t-return) var(--ease-standard); }
+  .kb.on { translate: 0 0; }
+  .kb .row { display: flex; justify-content: center; gap: 6px; margin-bottom: 12px; }
+  .kb .layer { display: none; } .kb .layer.on { display: block; }
+  .k { position: relative; width: 33px; height: 42px; border-radius: 5px; background: var(--paper); box-shadow: 0 1px 0 var(--grey-500);
+    display: grid; place-items: center; font-size: var(--fs-h4); color: var(--ink); }
+  .k.fn { width: 42px; background: var(--grey-400); font-size: var(--fs-body); }
+  .k.wide { width: 88px; font-size: var(--fs-body); }
+  .k.space { flex: 1; max-width: 186px; font-size: var(--fs-body); }
+  .k.fn.press, .k.wide.press { background: var(--paper); }
+  .k.space.press { background: var(--grey-400); }
+  /* 글자 글쇠를 누르면 위로 큰 말풍선 */
+  .k .pop { display: none; position: absolute; left: -9px; right: -9px; bottom: 30px; height: 56px; border-radius: 8px 8px 6px 6px;
+    background: var(--paper); box-shadow: 0 1px 4px rgb(0 0 0 / 22%); place-items: center; font-size: var(--fs-h2); z-index: 2; }
+  .k.press .pop { display: grid; }
+  .kb .foot { display: flex; justify-content: space-between; padding: 6px 22px 0; color: var(--grey-700); }
+
+  /* 글 — 반 나눔이면 검정 쪽 가운데 덩어리, 가운데면 창 왼쪽에 타이틀 · 오른쪽에 설명 */
+  /* 글은 수직으로 바뀐다 — 아래에서 올라와 서고(on), 나갈 때는 위로 빠진다(leave) */
+  .cap { position: absolute; inset: 0; pointer-events: none; opacity: 0; translate: 0 var(--v-rise); transition: opacity var(--v-fade), translate var(--v-fade); }
+  .cap.on { opacity: 1; translate: 0 0; }
+  .cap.leave { opacity: 0; translate: 0 calc(-1 * var(--v-rise)); }
+  .cap h2 { margin: 0; font-family: 'Whois Text', sans-serif; font-weight: var(--v-title-weight); font-size: var(--v-title-size); line-height: var(--v-title-lh); color: var(--v-title-on-ground); }
+  .cap p { margin: 0; font-size: var(--v-body-size); font-weight: var(--v-body-weight); line-height: var(--v-body-lh); color: var(--v-body-on-ground); word-break: keep-all; }
+  .cap .t, .cap .b { position: absolute; top: 0; height: 100%; box-sizing: border-box; display: grid; align-content: center; }
+  .cap.L .t, .cap.R .t { width: var(--v-half); padding: 0 var(--v-margin); gap: var(--v-title-gap); }
+  .cap.L .t { left: 0; } .cap.R .t { left: var(--v-half); }
+  .cap.L .b, .cap.R .b { display: none; }
+  .cap.L p, .cap.R p { max-width: var(--v-body-max); }
+  /* 묶음(G): 판 위, 창 왼쪽. 덩어리 왼쪽 끝 = (화면 폭 − 글 폭 − 사이 − 창 폭) ÷ 2 */
+  .cap.G .t { left: calc((var(--v-frame-w) - var(--v-body-max) - var(--v-group-gap) - var(--v-win-w)) / 2); width: var(--v-body-max); gap: var(--v-title-gap);
+    justify-items: end; text-align: right; }   /* 창 쪽으로 오른쪽 맞춤 — 글 끝이 창에서 사이만큼 떨어진 선에 선다(10-31) */
+  .cap.G .b { display: none; }
+  .cap.G h2 { color: var(--v-title-on-panel); }
+  .cap.G p { color: var(--v-body-on-panel); }
+
+  /* 영상 자리 — 이름표만 아래에 작게 */
+  .slot { position: absolute; top: 0; height: 100%; box-sizing: border-box; padding-bottom: var(--v-label-bottom); display: grid; align-content: end; justify-items: center;
+    color: var(--v-label); font-size: var(--v-label-size); opacity: 0; transition: opacity var(--v-fade); }
+  .slot.on { opacity: 1; }
+  .L-half { left: 0; width: var(--v-half); } .F-full { left: 0; width: 100%; }
+
+  /* 크레딧 */
+  .credits { position: absolute; inset: 0; background: var(--v-ground); display: grid; place-content: center; justify-items: center; gap: var(--v-credits-gap);
+    opacity: 0; pointer-events: none; transition: opacity var(--t-hold) var(--ease-standard); }
+  .credits.on { opacity: 1; }
+  .credits .mark { font-family: 'Lineal VF', sans-serif; font-weight: 900; font-variation-settings: 'wght' 1200; font-size: var(--v-mark-size); color: var(--v-accent); }
+  .credits .num { font-size: var(--v-credit-num-size); color: var(--v-body-on-ground); }
+  .credits p { margin: 0; font-size: var(--v-credit-size); color: var(--v-credit); }
+
+  /* 손가락 — 닿을 때만 보인다(아이폰 '터치 보기'처럼) */
+  .tap { position: absolute; left: 0; top: 0; z-index: 9; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%;
+    pointer-events: none; opacity: 0; scale: 1.25;
+    background: color-mix(in srgb, var(--ink) 22%, transparent); box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--paper) 85%, transparent);
+    transition: opacity 140ms ease-out, scale 140ms ease-out; }
+  .tap.on { opacity: 1; scale: 1; }
+  .tap.down { scale: .86; background: color-mix(in srgb, var(--ink) 34%, transparent); }
+  .tap.up { opacity: 0; scale: 1.5; transition-duration: 320ms; }
+  .tap.quick { transition-duration: 60ms; }
+</style>
+</head>
+<body>
+<div id="scene">
+  <div class="slot L-half" id="slot-write">영상 자리 · 05–08</div>
+  <div class="slot L-half" id="slot-dock">꽂는 영상 자리 · 12–13</div>
+  <div class="slot F-full" id="slot-full">전면 영상 + 사진 자리 · 15초</div>
+
+  <div class="panel" id="panel">
+    <div class="stack">
+      <div class="win">
+        <div class="top"><i></i><i></i><i></i>
+          <div class="url"><svg width="9" height="11" viewBox="0 0 9 11"><path fill="currentColor" d="M1.5 5V3.5a3 3 0 0 1 6 0V5h.5a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1.3 0h3.4V3.5a1.7 1.7 0 0 0-3.4 0z"/></svg><span>megafont.vercel.app</span></div>
+        </div>
+        <iframe id="site"></iframe>
+        <div class="kb" id="kb"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cap" id="cap"><div class="t"><h2 id="capT"></h2><p id="capB1"></p></div><div class="b"><p id="capB2"></p></div></div>
+
+  <div class="credits" id="credits">
+    <div class="mark">MegaFont</div>
+    <span class="num">© 2026 WoongandRyu</span>
+    <p>기획·디자인·개발 류주성 · 강태웅</p>
+  </div>
+  <div class="tap" id="tap"></div>
+</div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const S = Number(q.get('s') || 1);
+  document.documentElement.style.setProperty('--s', S);
+  const $ = (id) => document.getElementById(id);
+  const tap = $('tap'), panel = $('panel'), cap = $('cap'), kb = $('kb'), site = $('site'), scene = $('scene');
+  const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
+
+  // 자판 — 글자 층과 숫자 층. 각 글쇠의 data-k가 누를 이름이다
+  const KO = [['ㅂ','ㅈ','ㄷ','ㄱ','ㅅ','ㅛ','ㅕ','ㅑ','ㅐ','ㅔ'], ['ㅁ','ㄴ','ㅇ','ㄹ','ㅎ','ㅗ','ㅓ','ㅏ','ㅣ'], ['⇧','ㅋ','ㅌ','ㅊ','ㅍ','ㅠ','ㅜ','ㅡ','⌫']];
+  const NUM = [['1','2','3','4','5','6','7','8','9','0'], ['-','/',':',';','(',')','₩','&','@','"'], ['#+=','.',',','?','!',"'",'⌫']];
+  const FN = new Set(['⇧', '⌫', '#+=']);
+  const layer = (rows, id, sw) => `<div class="layer${id === 'ko' ? ' on' : ''}" id="kb-${id}">` +
+    rows.map((r) => `<div class="row">${r.map((k) => `<div class="k${FN.has(k) ? ' fn' : ''}" data-k="${k}">${k}${FN.has(k) ? '' : `<span class="pop">${k}</span>`}</div>`).join('')}</div>`).join('') +
+    `<div class="row"><div class="k wide" data-k="${sw}">${sw}</div><div class="k space" data-k=" ">스페이스</div><div class="k wide" data-k="⏎">엔터</div></div></div>`;
+  kb.innerHTML = layer(KO, 'ko', '123') + layer(NUM, 'num', 'ㄱㄴㄷ') +
+    `<div class="foot"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg>` +
+    `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4"/></svg></div>`;
+  const KB_H = 291;
+
+  window.stage = {
+    // 진짜 누르기는 바깥(playwright)이 보낸다 — 여기는 보이는 손가락만
+    async touch(x, y, phase) {
+      if (phase === 'in') { tap.className = 'tap'; tap.style.left = x + 'px'; tap.style.top = y + 'px'; tap.offsetWidth; tap.classList.add('on'); await wait(140); }
+      if (phase === 'down') tap.classList.add('down');
+      if (phase === 'move') { tap.style.left = x + 'px'; tap.style.top = y + 'px'; }
+      if (phase === 'up') { tap.classList.remove('down'); tap.classList.add('up'); }
+    },
+    // 판 자리: '' 전체 · group(전체, 창을 묶음 자리로) · right · left · out(오른쪽으로 퇴장) · hidden(가운데에서 등장 전)
+    layout(name, instant) {
+      panel.className = 'panel' + (instant ? ' instant' : '') + (name ? ' ' + name : '');
+      if (instant) { panel.offsetWidth; panel.classList.remove('instant'); }
+    },
+    // 글: mode L · R(반 나눔에서 글이 놓일 쪽) · G(묶음 — 판 위, 창 왼쪽). 바뀔 때는 위로 빠지고 새 글이 아래에서 올라온다
+    async cap(mode, title, body) {
+      if (cap.classList.contains('on')) { cap.classList.replace('on', 'leave'); await wait(400); }   // 400 = --t-slow
+      if (!mode) return;
+      cap.style.transition = 'none';   // 위에서 아래 출발점으로는 순간 이동
+      cap.className = 'cap ' + mode;
+      $('capT').textContent = title; $('capB1').textContent = body; $('capB2').textContent = body;
+      cap.offsetWidth; cap.style.transition = ''; cap.classList.add('on');
+    },
+    show(id, on) { $(id).classList.toggle('on', on); },
+    // 자판 올리기 · 내리기 — 다 올라온 뒤에 화면이 줄어든다(사파리처럼)
+    async kb(on) {
+      if (on) { kb.classList.add('on'); await wait(240); site.style.height = (780 - KB_H) + 'px'; }
+      else { site.style.height = '780px'; kb.classList.remove('on'); }
+    },
+    // 글쇠 하나 누르기 — 손가락 + 눌림 + 말풍선
+    async key(k) {
+      const el = kb.querySelector(`.layer.on [data-k="${CSS.escape(k)}"]`);
+      if (!el) throw new Error('없는 글쇠: ' + k);
+      const r = el.getBoundingClientRect(), s = scene.getBoundingClientRect();
+      const x = (r.left + r.width / 2 - s.left) / S, y = (r.top + r.height / 2 - s.top) / S;
+      tap.className = 'tap quick'; tap.style.left = x + 'px'; tap.style.top = y + 'px'; tap.offsetWidth;
+      tap.classList.add('on', 'down'); el.classList.add('press');
+      await wait(85);
+      el.classList.remove('press'); tap.classList.remove('down'); tap.classList.add('up');
+      if (k === '123' || k === 'ㄱㄴㄷ') { $('kb-ko').classList.toggle('on'); $('kb-num').classList.toggle('on'); }
+      // 숫자 층에서 띄어쓰기를 치면 글자 층으로 돌아온다(아이폰과 같다)
+      if (k === ' ' && $('kb-num').classList.contains('on')) { $('kb-ko').classList.add('on'); $('kb-num').classList.remove('on'); }
+    },
+  };
+  site.src = q.get('src') || 'http://localhost:5173/?mock=1';
+</script>
+</body>
+</html>

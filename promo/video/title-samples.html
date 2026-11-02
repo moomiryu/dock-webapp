@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>타이틀 견본</title>
+<!--
+  메가폰트 타이틀 영상 견본(2026-11-02) — 시연 영상(stage.html) 앞에 붙는 첫 10초.
+  열기: npm run dev → /promo/video/title-samples.html · 한 장만 크게: ?n=1~5
+  재료는 작가 원본을 그 자리에서 읽는다(by_moomiryu/Renewal_v1/Character). 색 · 시간 · 이징은 tokens.css,
+  영상에만 있는 1920 화면 치수와 안무 시각은 아래 #scene 묶음과 각 견본에 [임시]로 적는다.
+-->
+<link rel="stylesheet" href="/src/styles/tokens.css">
+<link rel="stylesheet" href="/src/styles/pretendard.css">
+<style>
+  @font-face { font-family: 'Lineal VF'; src: url('/fonts/LinealVF.ttf') format('truetype'); font-weight: 100 1200; }
+  @font-face { font-family: 'Whois Text'; src: url('/fonts/WhoisMono-400.ttf'); font-weight: 400; unicode-range: U+0020-007E, U+00B0, U+2013-2014, U+2018-2019, U+201C-201D; }
+  @font-face { font-family: 'Whois Text'; src: url('/fonts/WhoisMono-700.ttf'); font-weight: 700; unicode-range: U+0020-007E, U+00B0, U+2013-2014, U+2018-2019, U+201C-201D; }
+  @font-face { font-family: '29CM Editorial'; src: url('/fonts/29CM-Editorial-VF.woff2') format('woff2'); font-weight: 100 900; }
+  @font-face { font-family: 'Handjet'; src: url('/fonts/HandjetVF.woff2') format('woff2'); font-weight: 100 900; }
+  @font-face { font-family: 'Mapo Dacapo'; src: url('/fonts/MapoDacapo.woff2') format('woff2'); }
+
+  /* 영상 값 — stage.html #scene과 같은 이름, 타이틀에만 있는 것만 더했다 */
+  .scene {
+    --v-frame-w: 1920px; --v-frame-h: 1080px;
+    --v-ground: var(--ink); --v-panel: var(--grey-100);
+    --v-title-on-ground: var(--paper); --v-body-on-ground: var(--grey-400);
+    --v-title-on-panel: var(--ink); --v-body-on-panel: var(--grey-600);
+    --v-accent: var(--brand-main);
+    --v-title-size: var(--fs-h1); --v-title-lh: 1.25;
+    --v-rise: 24px;
+    --v-mark-title: 200px;   /* [임시] 타이틀 워드마크 — 크기는 디자이너가 고른다 */
+    /* 크레딧 — stage.html과 같은 값 */
+    --v-credit: var(--grey-500); --v-mark-size: var(--fs-home-mark);
+    --v-credit-size: var(--fs-body); --v-credit-num-size: var(--fs-cap); --v-credits-gap: 22px;
+  }
+
+  body { margin: 0; background: var(--paper); color: var(--ink); font: var(--fs-cap)/1.5 'Pretendard Variable', sans-serif; padding: var(--space-block); }
+  h1 { font-size: var(--fs-h3); margin: 0 0 var(--space-title-desc); }
+  .note { color: var(--muted); margin: 0 0 var(--space-block); max-width: 960px; }
+  .row { display: flex; flex-wrap: wrap; gap: var(--space-section); }
+  figure { margin: 0; width: 900px; }
+  .cell { width: 900px; height: 506.25px; overflow: hidden; border: 1px solid var(--line); }
+  figcaption { margin-top: var(--space-in-group); max-width: 900px; }
+  figcaption b { color: var(--ink); }
+  figcaption a { color: var(--muted); }
+  body.one { padding: 0; background: var(--ink); overflow: hidden; }
+  body.one h1, body.one .note, body.one figcaption { display: none; }
+  body.one .cell { border: 0; }
+
+  .scene { position: relative; width: var(--v-frame-w); height: var(--v-frame-h); background: var(--v-ground);
+    transform-origin: 0 0; overflow: hidden; font-family: 'Whois Text', 'Pretendard Variable', sans-serif; }
+  .scene > * { position: absolute; }
+  .mark { font-family: 'Lineal VF', sans-serif; font-weight: 900; font-variation-settings: 'wght' 1200; letter-spacing: -0.01em;
+    font-size: var(--v-mark-title); line-height: 1; color: var(--v-accent); white-space: nowrap; }
+  .line { font-size: var(--v-title-size); line-height: var(--v-title-lh); white-space: nowrap; }
+  .panel { inset: 0; background: var(--v-panel); }
+  .art { pointer-events: none; }
+  .credits { inset: 0; display: grid; place-content: center; justify-items: center; gap: var(--v-credits-gap); }
+  .credits .mark { font-size: var(--v-mark-size); }
+  .credits .num { font-size: var(--v-credit-num-size); color: var(--v-body-on-ground); }
+  .credits p { margin: 0; font-family: 'Pretendard Variable', sans-serif; font-size: var(--v-credit-size); color: var(--v-credit); }
+</style>
+</head>
+<body>
+<h1>타이틀 견본 — 시연 영상 앞의 10초</h1>
+<p class="note">다섯 장 모두 같은 재료(Lineal 1200 워드마크 · 작가 캐릭터 · 영문 문구)를 다른 방식으로 엮었다. 10초마다 되풀이한다.
+색 · 시간 · 이징은 토큰, 워드마크 크기(200)와 문구는 <b>임시</b>다. 장 이름의 링크를 누르면 그 장만 크게 열린다.</p>
+<div class="row" id="sheet"></div>
+
+<script type="module">
+// 앱 코드를 그대로 불러 쓴다(개발 서버가 풀어 준다) — 벽 건물 · 점 결 · 홈의 소리 결 · 사람 그림자
+import { buildingsAt, FILL } from '/src/components/WallSkyline.tsx';
+import { groundPx } from '/src/lib/ground.ts';
+import { G, RF } from '/src/lib/aggregate.ts';
+import { SKY, idleWavesAt, waveAlpha, waveArc } from '/src/lib/sky.ts';
+import { easeOf } from '/src/lib/motion.ts';
+import { SHADOW, SHADOW_SIDE } from '/src/character/walker.ts';
+const ART = '/by_moomiryu/Renewal_v1/Character/';
+const LOOP = 10;                 // 초 — [임시] 타이틀 길이
+const root = getComputedStyle(document.documentElement);
+const tok = (n) => root.getPropertyValue(n).trim();
+const ms = (n) => parseFloat(tok(n)) / (tok(n).endsWith('ms') ? 1000 : 1);   // 빌드가 700ms를 .7s로 적기도 한다
+const HOLD = ms('--t-hold'), SLOW = ms('--t-slow');
+const EMPH = tok('--ease-emphasized'), STD = tok('--ease-standard');
+
+// 말풍선 색 = palettes-v2.ts의 참여자 색(데이터 — 토큰이 아니다)
+const VOICE = {
+  ttoryeot: { font: "'29CM Editorial'", wght: 513, bg: '#5EA7D5', fg: '#000000' },
+  doran:    { font: "'Mapo Dacapo'",    wght: 400, bg: '#F5D983', fg: '#1E3655' },
+  deulseok: { font: "'Handjet'",        wght: 500, bg: '#E68AAD', fg: '#000000' },
+  chabun:   { font: "'29CM Editorial'", wght: 300, bg: '#1D3559', fg: '#FFE600' },
+  quiet:    { font: "'29CM Editorial'", wght: 400, bg: tok('--grey-300'), fg: 'transparent' },
+};
+
+const h = (tag, attrs = {}, parent) => { const e = document.createElement(tag); Object.assign(e, attrs); parent?.append(e); return e; };
+const css = (e, s) => (Object.assign(e.style, s), e);
+
+// 시각(초)마다 상태를 적으면 한 바퀴(LOOP) 되풀이 애니메이션이 된다. ease는 그 시각부터 다음 시각까지의 곡선
+function key(el, steps) {
+  const frames = steps.map(([t, p]) => { const { ease = 'linear', ...rest } = p; return { offset: t / LOOP, easing: ease, ...rest }; });
+  if (frames[0].offset > 0) frames.unshift({ ...frames[0], offset: 0 });
+  if (frames.at(-1).offset < 1) frames.push({ ...frames.at(-1), offset: 1 });
+  el.animate(frames, { duration: LOOP * 1000, iterations: Infinity });
+}
+// 아래에서 올라와 서고, 위로 빠지며 흐려진다(영상 체계 5절 — 글은 수직으로 바뀐다)
+const rise = (el, inAt, outAt) => key(el, [
+  [inAt, { opacity: 0, translate: '0 var(--v-rise)', ease: STD }], [inAt + SLOW, { opacity: 1, translate: '0 0' }],
+  [outAt, { opacity: 1, translate: '0 0', ease: STD }], [outAt + SLOW, { opacity: 0, translate: '0 calc(-1 * var(--v-rise))' }],
+]);
+// 바닥에서 쑥 — 발밑을 축으로 커지며 선다
+const pop = (el, inAt, outAt) => key(el, [
+  [inAt, { scale: 0, ease: EMPH }], [inAt + HOLD, { scale: 1 }], [outAt, { scale: 1, ease: STD }], [outAt + SLOW, { scale: 0 }],
+]);
+
+// 메가폰트 — 나팔 입(넓은 쪽 가운데)을 기준점으로. 원본 1920×1080에서 입 = (787.57, 540), 몸 높이 582
+function megafont(scene, mouth, bodyH, tilt = 0, file = 'left') {
+  const s = bodyH / 582, wrap = h('div', { className: 'art' }, scene);
+  css(wrap, { left: `${mouth.x}px`, top: `${mouth.y}px`, rotate: `${tilt}deg` });
+  const img = h('img', { src: `${ART}megafont/${file}.svg` }, wrap);
+  css(img, { position: 'absolute', width: `${1920 * s}px`, left: `${-787.57 * s}px`, top: `${-540 * s}px` });
+  return wrap;
+}
+// 작은 사람 — 한 파일의 양 끝 자세 중 하나를 잘라 쓴다. foot = 그림자 가운데, h = 키
+function person(scene, color, facing, foot, ht) {
+  const src = { x: facing === 'left' ? 396.79 : 1523.21, top: 414.87, foot: 956.68 };
+  const k = ht / (src.foot - src.top), vx = src.x - 270, vy = 405;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', `${vx} ${vy} 540 590`);
+  svg.innerHTML = `<image href="${ART}people/Character_${color}.svg" width="1920" height="1080"/>`;
+  svg.classList.add('art');
+  scene.append(svg);
+  return css(svg, { position: 'absolute', width: `${540 * k}px`, height: `${590 * k}px`,
+    left: `${foot.x - (src.x - vx) * k}px`, top: `${foot.y - (src.foot - vy) * k}px`,
+    transformOrigin: `${(src.x - vx) * k}px ${(src.foot - vy) * k}px` });
+}
+// 벌집 점 말풍선(키비주얼 결정 1) — 몸통을 벌집 격자의 같은 점으로 메워 윤곽이 점의 결로 남는다.
+// 꼬리는 점 세 알이 작아지며 tail(라디안) 쪽으로. 반환한 요소의 기준점은 몸통 가운데
+function bubble(scene, voice, text, u, center, tail) {
+  const v = VOICE[voice], ctx = document.createElement('canvas').getContext('2d');
+  ctx.font = `${v.wght} ${u}px ${v.font}`;
+  const w = Math.max(ctx.measureText(text).width + 0.9 * u, 1.8 * u), ht = 1.6 * u;
+  const g = 0.45 * u, r = g / Math.sqrt(3) * 1.05, dy = g * Math.sqrt(3) / 2;
+  let dots = '';
+  for (let j = 0, y = 0; y <= ht + 0.01; j++, y += dy)
+    for (let x = (j % 2) * g / 2; x <= w + 0.01; x += g) dots += `<circle cx="${x - w / 2}" cy="${y - ht / 2}" r="${r}"/>`;
+  if (tail != null) {
+    const ux = Math.cos(tail), uy = Math.sin(tail), reach = Math.abs(ux) * w / 2 + Math.abs(uy) * ht / 2;
+    [0.8, 0.6, 0.42].forEach((k, i) => { const d = reach + (0.6 + i * 0.7) * u; dots += `<circle cx="${ux * d}" cy="${uy * d}" r="${r * 2.2 * k}"/>`; });
+  }
+  const box = h('div', { className: 'art' }, scene);
+  css(box, { left: `${center.x}px`, top: `${center.y}px`, width: '0', height: '0', overflow: 'visible' });
+  box.innerHTML = `<svg style="position:absolute;overflow:visible;left:0;top:0" width="1" height="1"><g fill="${v.bg}">${dots}</g></svg>`;
+  const t = h('div', { textContent: text }, box);
+  css(t, { position: 'absolute', left: '0', top: '0', translate: '-50% -50%', font: `${v.wght} ${u}px/1 ${v.font}`, color: v.fg, whiteSpace: 'nowrap' });
+  return box;
+}
+// 소리의 결 — 나팔 입에서 퍼지는 둥근 점의 호(벽 · 홈의 결과 같은 말)
+function ripple(scene, mouth, dir, radii, span, dot, color) {
+  return radii.map((rad) => {
+    const n = Math.max(3, Math.round(rad * 2 * span / (dot * 3.2))), g = h('div', { className: 'art' }, scene);
+    css(g, { left: `${mouth.x}px`, top: `${mouth.y}px` });
+    for (let i = 0; i <= n; i++) {
+      const a = dir - span + (2 * span * i) / n, d = h('i', {}, g);
+      css(d, { position: 'absolute', width: `${dot}px`, height: `${dot}px`, borderRadius: '50%', background: color,
+        left: `${Math.cos(a) * rad - dot / 2}px`, top: `${Math.sin(a) * rad - dot / 2}px` });
+    }
+    return g;
+  });
+}
+const text = (scene, cls, str, style) => css(h('div', { className: cls, textContent: str }, scene), style);
+const centerX = (el) => css(el, { left: '0', width: '100%', textAlign: 'center' });   // translate는 움직임 몫이라 쓰지 않는다
+
+// ── 다섯 장 ──
+// 소리 결 — 지금 홈(HomeBubbles)과 같은 박자 · 꼴(lib/sky idleWavesAt · waveArc). 반지름 · 점 굵기는 홈에서 잰 몸 높이의 몫(390폭 홈:
+// 몸 274.6 · 반지름 0.42 × 390 · 선 1.5) — 나팔 쪽 dir ±50°, 진하기 2배는 HomeBubbles의 RING 그대로
+function waves(scene, mouth, dir, mfH, color) {
+  const R = (0.42 * 390 / 274.6) * mfH, LINE = (1.5 / 274.6) * mfH, SPAN = (50 * Math.PI) / 180, ease = easeOf('--ease-standard');
+  const cv = h('canvas', { width: 1920 * 2, height: 1080 * 2 }, scene), g = cv.getContext('2d');
+  css(cv, { left: '0', top: '0', width: '1920px', height: '1080px' });
+  g.scale(2, 2); g.strokeStyle = tok(color);
+  const draw = () => {
+    g.clearRect(0, 0, 1920, 1080);
+    for (const w of idleWavesAt(performance.now() / 1000, HOLD, ease)) {
+      g.globalAlpha = Math.min(1, 2 * waveAlpha(w));
+      waveArc(g, mouth.x, mouth.y, w.k * R, w.k * R, dir, SPAN, LINE * w.s);
+    }
+    requestAnimationFrame(draw);
+  };
+  draw();
+  return Object.assign(cv, { R });
+}
+// 나타났다 사라진다 — inAt이 없으면 처음부터 서 있다
+const fade = (el, inAt, outAt) => key(el, [...(inAt == null ? [] : [[inAt, { opacity: 0, ease: STD }], [inAt + 2 * SLOW, { opacity: 1 }]]), [outAt, { opacity: 1, ease: STD }], [outAt + SLOW, { opacity: 0 }]]);
+
+// 캠퍼스 장면 — 회색 판 · 벽의 캠퍼스 · 메가폰트와 두 사람 · 소리 결. 타이틀 1번에서 열고 크레딧 2번에서 닫는다.
+// t = { open, castIn, castOut, close }(초) — open · castIn이 없으면 처음부터 서 있다
+function campus(s, t) {
+  const GY = 960;   // [임시] 땅 윗선(프레임 y)
+  const panel = h('div', { className: 'panel' }, s);
+  key(panel, [...(t.open == null ? [] : [[t.open, { opacity: 0, scale: 0.94, ease: EMPH }], [t.open + HOLD, { opacity: 1, scale: 1 }]]),
+    [t.close, { opacity: 1, scale: 1, ease: EMPH }], [t.close + HOLD, { opacity: 0, scale: 0.94 }]]);
+    // 캠퍼스 — 벽의 건물 실루엣(WallSkyline.buildingsAt)을 같은 점 결로. 벽 높이 Hb는 그 땅 윗선이 GY에 오도록 잡는다.
+    // 회색 판 위라 벽의 --grey-900 대신 홈의 땅과 같은 --grey-200으로 물러난다. 땅 띠도 같은 색
+    {
+      const Hb = Math.round(GY / (1 - groundPx(1000) / 1000)), dy = GY - (Hb - groundPx(Hb)), inside = buildingsAt(1920, Hb);
+      const u = SKY.u * Hb, g = G * u, row = (g * Math.sqrt(3)) / 2, r = RF * u * FILL, dpr = 2;
+      const cv = h('canvas', { width: 1920 * dpr, height: 1080 * dpr }, panel), ctx = cv.getContext('2d');
+      css(cv, { position: 'absolute', inset: '0', width: '1920px', height: '1080px' });
+      ctx.scale(dpr, dpr); ctx.fillStyle = tok('--grey-200'); ctx.beginPath();
+      for (let j = 0; j * row <= GY; j++) for (let i = -1; i * g <= 1920 + g; i++) {
+        const x = i * g + (j & 1 ? g / 2 : 0), y = j * row;
+        if (inside(x, y - dy)) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, 2 * Math.PI); }
+      }
+      ctx.rect(0, GY, 1920, 1080 - GY); ctx.fill();
+  }
+  // 지금 홈(PhaseHome)처럼 — 곧게 선 메가폰트의 나팔 입에서 소리 결(점선 호, --grey-300)이 숨 쉬듯 퍼진다. 좌우를 뒤집어 입이 오른쪽,
+  // 두 사람이 왼쪽을 보며 마주 선다. 사람 키 120, 메가폰트 = 사람의 2배(홈 장면과 같은 몫)
+  const hh = 120, mfH = 2 * hh, k = mfH / 582, mouth = { x: 910, y: GY - (830.96 - 540) * k };
+  const wv = waves(s, mouth, 0, mfH, '--grey-300');
+  // 메가폰트 그림자 — 두 사람의 그림자와 같은 색 · 같은 납작함(walker SHADOW.ry / SHADOW_SIDE.rx), 폭은 몸 폭
+  const shade = h('div', {}, s), pivot = mouth.x - (979 - 787.57) * k, rx = (1169.17 - 787.57) * k / 2, ry = rx * SHADOW.ry / SHADOW_SIDE.rx;
+  css(shade, { left: `${pivot - rx}px`, top: `${GY - ry}px`, width: `${2 * rx}px`, height: `${2 * ry}px`, borderRadius: '50%', background: 'var(--char-shade)' });
+  const mf = css(megafont(s, mouth, mfH), { scale: '-1 1', transformOrigin: '0 0' });
+  // 두 사람 — 결이 보이게 입에서 결 반지름만큼 떨어져 선다 [임시]
+  const kids = [person(s, 'Red', 'left', { x: mouth.x + wv.R + 0.3 * hh, y: GY }, hh), person(s, 'Skyblue', 'left', { x: mouth.x + wv.R + 1.3 * hh, y: GY }, hh)];
+  for (const e of [wv, shade, mf, ...kids]) fade(e, t.castIn, t.castOut);
+}
+
+// 크레딧 — stage.html의 .credits와 같은 세 줄 · 같은 값. 줄마다 아래에서 오른다(영상 체계 5절). at = 첫 줄이 서는 때, step = 줄 사이
+function credits(s, at, step = SLOW, outAt = 9.2) {
+  const c = h('div', { className: 'credits' }, s);
+  const lines = [h('div', { className: 'mark', textContent: 'MegaFont' }, c), h('span', { className: 'num', textContent: '© 2026 WoongandRyu' }, c),
+    h('p', { textContent: '기획·디자인·개발 류주성 · 강태웅' }, c)];
+  lines.forEach((l, i) => rise(l, at + i * step, outAt));
+  return lines;
+}
+
+const SAMPLES = [
+  ['판이 열린다', '검은 땅 가운데서 회색 판이 커지며 열리고, 벽의 캠퍼스가 깔린 땅에 메가폰트와 작은 사람 둘이 마주 선다. 메가폰트의 입에서 지금 홈처럼 소리 결이 숨 쉬듯 퍼진다. 11-02 디자이너가 고른 장', (s) => {
+    campus(s, { open: 0.3, castIn: 1.6, castOut: 8.6, close: 9 });
+    const mark = centerX(text(s, 'mark', 'MegaFont', { top: '150px' }));
+    rise(mark, 1.6, 8.6);
+    const tag = centerX(text(s, 'line', 'A cart for public speech on campus', { top: '380px', color: 'var(--v-body-on-panel)' }));
+    rise(tag, 2.3, 8.6);
+  }],
+  ['확성 = 굵기', '나팔이 세 번 외칠 때마다 Lineal의 굵기 축이 한 칸씩 커진다(100 → 400 → 800 → 1200). 소리가 커지는 것을 글자의 무게로 보여 준다 — 서체가 주인공인 장', (s) => {
+    const mark = centerX(text(s, 'mark', 'MegaFont', { top: '360px' }));
+    const W = (n) => ({ fontVariationSettings: `'wght' ${n}` });
+    key(mark, [[0, { opacity: 0, ...W(100) }], [0.8, { opacity: 0, ...W(100), ease: STD }], [0.8 + SLOW, { opacity: 1, ...W(100) }],
+      [2.0, { ...W(100), ease: EMPH }], [2.0 + HOLD, W(400)], [3.4, { ...W(400), ease: EMPH }], [3.4 + HOLD, W(800)],
+      [4.8, { ...W(800), ease: EMPH }], [4.8 + HOLD, W(1200)], [8.8, { opacity: 1, ...W(1200), ease: STD }], [8.8 + SLOW, { opacity: 0, ...W(1200) }]]);
+    const line = centerX(text(s, 'line', 'Say it as loud as you choose.', { top: '640px', color: 'var(--v-body-on-ground)' }));
+    rise(line, 6.0, 8.8);
+    const mouth = { x: 1580, y: 900 }, dir = -Math.PI * 0.82;
+    const mf = megafont(s, mouth, 220, 40);
+    key(mf, [2.0, 3.4, 4.8].flatMap((t) => [[t - 0.12, { scale: 1, ease: STD }], [t, { scale: 1.06, ease: EMPH }], [t + HOLD, { scale: 1 }]]));
+    [2.0, 3.4, 4.8].forEach((t) => {
+      ripple(s, mouth, dir, [110, 170, 230], 0.42, 12, tok('--brand-main')).forEach((g, i) =>
+        key(g, [[t + i * 0.08, { opacity: 0, ease: STD }], [t + i * 0.08 + 0.1, { opacity: 1 }], [t + i * 0.08 + HOLD, { opacity: 0 }]]));
+    });
+    key(mf, [[0.2, { opacity: 0, ease: EMPH }], [0.2 + HOLD, { opacity: 1 }], [8.8, { opacity: 1, ease: STD }], [8.8 + SLOW, { opacity: 0 }]]);
+  }],
+  ['나팔에서 태어나는 말', '키비주얼 C1 그대로 — 기울인 나팔 입에서 작게 태어난 말풍선이 멀어지며 커진다. 말풍선마다 다른 서체 · 색(참여자가 고르는 것들)이 문구를 실어 나르고, 마지막에 워드마크가 선다', (s) => {
+    h('div', { className: 'panel' }, s);
+    const mouth = { x: 1560, y: 880 }, tilt = 40, dir = Math.PI + tilt * Math.PI / 180;
+    const mf = megafont(s, mouth, 260, tilt);
+    key(mf, [[0.2, { opacity: 0, translate: '80px 80px', ease: EMPH }], [0.2 + HOLD, { opacity: 1, translate: '0 0' }], [9, { opacity: 1, ease: STD }], [9 + SLOW, { opacity: 0 }]]);
+    [['ttoryeot', 'Write one line.', 46, { x: 1180, y: 600 }, 1.2],
+     ['deulseok', 'Choose how it speaks.', 54, { x: 640, y: 520 }, 2.4],
+     ['chabun', 'Three days on the wall.', 50, { x: 1000, y: 230 }, 3.6]].forEach(([v, str, u, c, t]) => {
+      const b = bubble(s, v, str, u, c, Math.atan2(mouth.y - c.y, mouth.x - c.x));
+      key(b, [[t, { opacity: 0, scale: 0.15, translate: `${mouth.x - c.x}px ${mouth.y - c.y}px`, ease: EMPH }],
+        [t + 0.05, { opacity: 1 }], [t + HOLD * 1.6, { opacity: 1, scale: 1, translate: '0 0' }],
+        [8.8, { opacity: 1, ease: STD }], [8.8 + SLOW, { opacity: 0 }]]);
+    });
+    const mark = text(s, 'mark', 'MegaFont', { left: '120px', top: '760px' });
+    rise(mark, 5.2, 8.8);
+  }],
+  ['벽의 한 장면', '설치물의 벽을 그대로 축소한 장 — 회색 말풍선이 하늘을 메우고, 땅 띠가 올라오며 거기 박힌 워드마크가 드러난다. 작은 사람 둘이 땅 위에서 폴짝, 메가폰트가 아래 가운데에서 외친다', (s) => {
+    css(s, { background: 'var(--paper)' });
+    const sky = [[300, 120, 'Hello'], [760, 90, 'I was here'], [1250, 130, 'Good morning'], [1650, 100, 'Rain again'],
+      [180, 300, 'Hungry'], [560, 270, 'See you at four'], [1020, 300, 'Still awake'], [1450, 280, 'Exam week'], [1790, 320, 'Hi'],
+      [380, 440, 'Thank you'], [860, 420, 'Too loud?'], [1320, 440, 'Lunch?'], [1700, 460, 'Say it']];
+    sky.forEach(([x, y, str], i) => {
+      const b = bubble(s, 'quiet', str, 40, { x, y }, Math.PI * 0.6);
+      key(b, [[0.2 + i * 0.12, { opacity: 0, translate: '0 -40px', ease: EMPH }], [0.2 + i * 0.12 + HOLD, { opacity: 1, translate: '0 0' }],
+        [9, { opacity: 1, ease: STD }], [9 + SLOW, { opacity: 0 }]]);
+    });
+    const ground = h('div', {}, s);
+    css(ground, { left: '0', right: '0', bottom: '0', height: '260px', background: 'var(--grey-800)' });
+    key(ground, [[1.6, { translate: '0 260px', ease: EMPH }], [1.6 + HOLD, { translate: '0 0' }], [9, { translate: '0 0', ease: STD }], [9 + HOLD, { translate: '0 260px' }]]);
+    const mark = centerX(text(s, 'mark', 'MegaFont', { top: '880px', fontSize: '150px', color: 'var(--paper)' }));
+    rise(mark, 2.4, 8.8);
+    const tag = centerX(text(s, 'line', 'Write one line. Put it on the wall.', { top: '580px', color: 'var(--v-body-on-panel)' }));
+    rise(tag, 3.8, 8.8);
+    const mf = megafont(s, { x: 1250, y: 725 }, 170);   // 땅 위에 홈처럼 선다
+    key(mf, [[2.0, { opacity: 0, translate: '0 80px', ease: EMPH }], [2.0 + HOLD, { opacity: 1, translate: '0 0' }], [8.8, { opacity: 1, ease: STD }], [8.8 + SLOW, { opacity: 0 }]]);
+    [['Red', 'right', 420, 3.0], ['Skyblue', 'left', 1500, 3.3]].forEach(([c, f, x, t]) => {
+      const p = person(s, c, f, { x, y: 822 }, 100);
+      pop(p, t, 8.6);
+      key(p, [5.0, 6.2, 7.4].flatMap((j) => [[j, { translate: '0 0', ease: EMPH }], [j + 0.25, { translate: '0 -36px', ease: STD }], [j + 0.5, { translate: '0 0' }]]));
+    });
+  }],
+  ['한 줄씩', '검은 땅 위에 영문 문장이 한 줄씩 아래에서 올라와 바뀐다(시연 영상의 글 규칙 그대로). 마지막에 워드마크가 서면 화면 아래 가장자리에서 캐릭터들이 고개를 내민다', (s) => {
+    const lines = ['Write one line.', 'Choose how it looks.', 'Put it on the wall.', 'In three days, it’s gone.'];
+    lines.forEach((str, i) => rise(centerX(text(s, 'line', str, { top: '500px', color: 'var(--v-title-on-ground)' })), 0.4 + i * 1.2, 0.4 + i * 1.2 + 1.0));
+    const mark = centerX(text(s, 'mark', 'MegaFont', { top: '340px' }));
+    rise(mark, 5.4, 8.8);
+    const tag = centerX(text(s, 'line', 'MegaFont recommends nothing. The form is yours.', { top: '600px', color: 'var(--v-body-on-ground)' }));
+    rise(tag, 6.2, 8.8);
+    const peek = (el, t) => key(el, [[t, { translate: '0 260px', ease: EMPH }], [t + HOLD, { translate: '0 0' }], [8.8, { translate: '0 0', ease: STD }], [8.8 + SLOW, { translate: '0 260px' }]]);
+    peek(person(s, 'Red', 'right', { x: 560, y: 1140 }, 220), 6.6);
+    peek(person(s, 'Skyblue', 'left', { x: 1360, y: 1140 }, 220), 6.8);
+    peek(megafont(s, { x: 960, y: 960 }, 300, 90), 7.0);   // 나팔 입이 위 — 두 눈만 내민다
+  }],
+];
+
+// ── 크레딧 견본(?end) — 시연 영상 끝의 세 줄(stage.html .credits)이 서는 방식. 글 · 크기 · 색은 stage와 같고 서는 방식만 다르다 ──
+const ENDS = [
+  ['차례로 선다', '검은 땅에 로고 · © 줄 · 만든 사람이 한 줄씩 아래에서 오른다. 지금 영상(셋이 한꺼번에 서서히)에서 순서만 더한 것', (s) => {
+    credits(s, 0.8);
+  }],
+  ['판이 닫힌다', '타이틀 1번의 짝 — 캠퍼스 장면에서 시작해 사람들이 흐려지고 회색 판이 작아지며 닫힌다. 남은 검은 땅에 크레딧이 오른다. 처음과 끝이 같은 판으로 묶인다', (s) => {
+    campus(s, { castOut: 1.6, close: 2.2 });
+    credits(s, 2.2 + HOLD + SLOW);
+  }],
+  ['결 위로', '메가폰트가 아래 가장자리에서 입을 위로 하고 두 눈만 내민다. 입에서 소리 결이 위로 퍼지고, 그 위에 크레딧이 오른다. 결 색은 검은 땅이라 --grey-700 [임시]', (s) => {
+    const mouth = { x: 960, y: 960 }, mf = megafont(s, mouth, 300, 90), wv = waves(s, mouth, -Math.PI / 2, 300, '--grey-700');
+    s.prepend(wv);   // 결은 맨 뒤
+    key(mf, [[0.6, { translate: '0 260px', ease: EMPH }], [0.6 + HOLD, { translate: '0 0' }], [9.2, { translate: '0 0', ease: STD }], [9.2 + SLOW, { translate: '0 260px' }]]);
+    fade(wv, 0.6 + HOLD, 9.2);
+    credits(s, 0.6 + HOLD + SLOW);
+  }],
+  ['굵기로 선다', '로고가 가장 가는 굵기(100)로 올라와 Lineal의 굵기 축을 따라 1200까지 차오른 뒤, © 줄과 만든 사람이 오른다. 서체가 마지막 말을 하는 장', (s) => {
+    const [mark] = credits(s, 0.8, 2 * HOLD);
+    key(mark, [[0.8, { fontVariationSettings: "'wght' 100", ease: EMPH }], [0.8 + 2 * HOLD, { fontVariationSettings: "'wght' 1200" }]]);
+  }],
+];
+
+await document.fonts.load("900 40px 'Lineal VF'"); await document.fonts.load("40px 'Whois Text'");
+await Promise.all(['29CM Editorial', 'Handjet', 'Mapo Dacapo'].map((f) => document.fonts.load(`40px '${f}'`, 'Aa')));
+
+const q = new URLSearchParams(location.search), only = Number(q.get('n')) || 0, END = q.has('end');
+if (only) document.body.classList.add('one');
+if (END) {
+  document.title = '크레딧 견본';
+  document.querySelector('h1').textContent = '크레딧 견본 — 시연 영상 끝';
+  document.querySelector('.note').textContent = '네 장 모두 지금 영상의 크레딧 세 줄(로고 · © 2026 WoongandRyu · 만든 사람)을 같은 글 · 크기 · 색 그대로 쓰고, 서는 방식만 다르다. 10초마다 되풀이한다. 타이틀 견본은 ?end를 뺀 주소.';
+}
+const sheet = document.getElementById('sheet');
+(END ? ENDS : SAMPLES).forEach(([name, note, build], i) => {
+  if (only && only !== i + 1) return;
+  const f = h('figure', {}, sheet), cell = h('div', { className: 'cell' }, f), scene = h('div', { className: 'scene' }, cell);
+  const fit = () => { const k = only ? Math.min(innerWidth / 1920, innerHeight / 1080) : 900 / 1920;
+    css(cell, only ? { width: `${1920 * k}px`, height: `${1080 * k}px`, margin: `${(innerHeight - 1080 * k) / 2}px auto 0` } : {}); scene.style.scale = k; };
+  fit(); addEventListener('resize', fit);
+  build(scene);
+  h('figcaption', { innerHTML: `<b>${i + 1}. <a href="?${END ? 'end&' : ''}n=${i + 1}">${name}</a></b> — ${note}` }, f);
+});
+document.body.dataset.ready = '1';
+</script>
+</body>
+</html>

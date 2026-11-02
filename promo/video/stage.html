@@ -136,6 +136,11 @@
   .credits { position: absolute; inset: 0; background: var(--v-ground); display: grid; place-content: center; justify-items: center; gap: var(--v-credits-gap);
     opacity: 0; pointer-events: none; transition: opacity var(--t-hold) var(--ease-standard); }
   .credits.on { opacity: 1; }
+  /* 땅이 검어진 뒤 로고 → © 줄 → 만든 사람이 --t-slow 간격으로 한 줄씩 아래에서 오른다(2026-11-03, 크레딧 견본 1 '차례로 선다') */
+  .credits > * { opacity: 0; translate: 0 var(--v-rise); transition: opacity var(--v-fade), translate var(--v-fade); }
+  .credits.on > * { opacity: 1; translate: 0 0; transition-delay: var(--t-hold); }
+  .credits.on > :nth-child(2) { transition-delay: calc(var(--t-hold) + var(--t-slow)); }
+  .credits.on > :nth-child(3) { transition-delay: calc(var(--t-hold) + 2 * var(--t-slow)); }
   .credits .mark { font-family: 'Lineal VF', sans-serif; font-weight: 900; font-variation-settings: 'wght' 1200; font-size: var(--v-mark-size); color: var(--v-accent); }
   .credits .num { font-size: var(--v-credit-num-size); color: var(--v-body-on-ground); }
   .credits p { margin: 0; font-size: var(--v-credit-size); color: var(--v-credit); }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import VoiceBubble from './VoiceBubble';
 import { ENTRANCE, arranged, arrangeOf, bigScale, evenSpread, boundsOf, fitTail, follow, G, gapsOf, kindOf, modulesAt, mouthOf, planEntrance, tailOf, type Item, type Plan, type Tail } from '../lib/aggregate';
-import { paintBody, paintEntrance, placeGlyphs } from '../lib/dotPaint';
+import { canvasSizer, paintBody, paintEntrance, placeGlyphs, type Glyph } from '../lib/dotPaint';
 import { easeOf, tokenS } from '../lib/motion';
 import { fontMap, opticalFix } from '../lib/palettes';
 import type { Align, ToneState } from '../types';
@@ -98,8 +98,7 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
     const layout = () => {
       const W = el.clientWidth, H = el.clientHeight;
       if (!W || !H) return;
-      const dpr = Math.min(3, window.devicePixelRatio || 1);
-      c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+      sizer.fit();
       if (mode === 'show') {
         // 정중앙에 크게 — 말 좌표의 원점(모인 덩어리 가운데)이 화면 가운데, 꼬리는 그 아래로
         const S = bigScale(items, kd, W, H), dev: [number, number] = [0, (H / 2 + H * DEV_DROP) / S];
@@ -154,19 +153,25 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
     };
     const draw = (sec: number, force = false) => {
       const ctx = c.getContext('2d'), F = fit.current;
-      if (!ctx || !F.u1) return;
-      if (!force && quiet && !growing) return;
-      const age = quiet ? Infinity : sec - t0, P = F.plan;
-      // 모이는 정도 m — pick은 꼬리가 솟고 낱개로 선 뒤(merge), show는 휭 퍼져 머문 뒤(merge) 모인다. 꼬리는 둘 다 처음부터 있다
-      const m = easeOut(clamp((age - F.merge) / GATHER));
-      const u = F.u0 + (F.u1 - F.u0) * m, ox = F.ox0 + (F.ox1 - F.ox0) * m, oy = F.oy0 + (F.oy1 - F.oy0) * m, dpr = c.width / F.W;
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, c.width, c.height);
-      ctx.setTransform(u * dpr, 0, 0, u * dpr, ox * dpr, oy * dpr);
-      ctx.fillStyle = color.current;
-      // 큰 말의 등장(휭까지) · 그 뒤 모임 — 꼬리 없이(결정 56). 5/5만 다 모인 말에서 꼬리가 자란다(tail)
-      const gs = P && age < F.merge ? paintEntrance(ctx, rest, P, F.dev, age, land, WHOOSH)
-        : paintBody(ctx, F.spread, kd, gaps, m, F.tail, reduced ? 1 : easeStd(clamp((sec - t0 - SLOW) / HOLD)), sec, ph, quiet);
+      if (!F.u1 || (!force && quiet && !growing)) return;
+      let gs: Glyph[], u = F.u1, ox = F.ox1, oy = F.oy1;
+      if (ctx) {
+        const age = quiet ? Infinity : sec - t0, P = F.plan;
+        // 모이는 정도 m — pick은 꼬리가 솟고 낱개로 선 뒤(merge), show는 휭 퍼져 머문 뒤(merge) 모인다. 꼬리는 둘 다 처음부터 있다
+        const m = easeOut(clamp((age - F.merge) / GATHER));
+        u = F.u0 + (F.u1 - F.u0) * m; ox = F.ox0 + (F.ox1 - F.ox0) * m; oy = F.oy0 + (F.oy1 - F.oy0) * m;
+        const sx = c.width / F.W, sy = c.height / F.H;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, c.width, c.height);
+        ctx.setTransform(u * sx, 0, 0, u * sy, ox * sx, oy * sy);
+        ctx.fillStyle = color.current;
+        // 큰 말의 등장(휭까지) · 그 뒤 모임 — 꼬리 없이(결정 56). 5/5만 다 모인 말에서 꼬리가 자란다(tail)
+        gs = P && age < F.merge ? paintEntrance(ctx, rest, P, F.dev, age, land, WHOOSH)
+          : paintBody(ctx, F.spread, kd, gaps, m, F.tail, reduced ? 1 : easeStd(clamp((sec - t0 - SLOW) / HOLD)), sec, ph, quiet);
+      } else {
+        // 판을 못 얻어도 글자는 다 모인 자리에 — 안 그러면 처음 자리(왼쪽 위, FONT_PX)에 반쯤 잘려 남는다(2026-11-03 아이폰)
+        gs = modulesAt(F.spread, kd, 1).pos.map(([x, y]) => ({ x, y, op: 1, q: null }));
+      }
       /* 글자는 FONT_PX로 짜 두고 보이는 크기는 낱글자 안쪽(.ch)의 배율로 — 제 가운데에서 줄고 는다(FONT_PX) */
       const gl = glyphs(), ks = (u / FONT_PX).toFixed(4);
       placeGlyphs(gl, gs, u, ox, oy);
@@ -184,11 +189,12 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
       if (text.current && text.current.hasAttribute('data-moving') !== settling) text.current.toggleAttribute('data-moving', settling);
       draw(sec);
     };
+    const sizer = canvasSizer(c, el, () => draw(performance.now() / 1000, true));
     const ro = new ResizeObserver(layout);
     ro.observe(el);
     layout();
     if (!quiet || growing) raf = requestAnimationFrame(tick);
-    return () => { ro.disconnect(); cancelAnimationFrame(raf); };
+    return () => { ro.disconnect(); cancelAnimationFrame(raf); sizer.stop(); };
   }, [items, gaps, kd, still, play, mode, hold]);
   // 색만 바뀔 때 — 다시 놓지 않고 칠만 다시(4/5 첫 장의 색 시연)
   useEffect(() => { redraw.current(); }, [bg]);

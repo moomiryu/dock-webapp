@@ -1,5 +1,6 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { G, RD, ROW } from '../lib/aggregate';
+import { canvasSizer } from '../lib/dotPaint';
 import { FOOT_Y } from '../character/walker';
 import { easeOf, tokenS } from '../lib/motion';
 import { SKY } from '../lib/sky';
@@ -51,15 +52,14 @@ export default function PreviewYard({ rim, color }: { rim: { current: Rim | null
         eyes: { look: q('[data-eye="look"]'), smile: q('[data-eye="smile"]'), up: q('[data-eye="up"]') } as Record<Eye, SVGElement>
       };
     });
-    let W = 0, H = 0, hc = 0, s = 0, cw = 0, dpr = 1, ground = 0, raf = 0;
+    let W = 0, H = 0, hc = 0, s = 0, cw = 0, ground = 0, raf = 0;
     /** 땅(px, 이 상자 기준) — 말풍선이 정한 줄. 제목이 접혀 무대가 커지면 따라 움직인다 */
     const groundOf = () => { const R = rim.current, bb = host.parentElement?.querySelector('.dot-bubble')?.getBoundingClientRect(); return R && bb ? bb.top - host.getBoundingClientRect().top + R.floor : H; };
     /** 부스러기의 1u(px) — 벽에서 작은 사람 키(SIZE)와 하늘 u(SKY.u)의 비례 그대로 */
     const geo = () => { const u = (hc * SKY.u) / SIZE; return { g: G * u, row: ROW * u, rd: RD * u }; };
     const layout = () => {
       W = host.clientWidth; H = host.clientHeight; hc = Math.min(W, H) * TALL; s = hc / STAND_H; cw = BODY_W * s;
-      dpr = Math.min(3, window.devicePixelRatio || 1);
-      c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+      sizer.fit();
       for (const w of ws) {
         const svg = w.el.firstElementChild as SVGSVGElement;
         svg.style.width = `${VB.w * s}px`; svg.style.height = `${VB.h * s}px`;
@@ -104,10 +104,10 @@ export default function PreviewYard({ rim, color }: { rim: { current: Rim | null
     };
     const paint = (t: number) => {
       const ctx = c.getContext('2d');
-      if (!ctx) return;
+      if (!ctx || !W || !H) return;
       const { g, row, rd } = geo();
       ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, c.width, c.height);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.setTransform(c.width / W, 0, 0, c.height / H, 0, 0);
       ctx.fillStyle = colorRef.current;
       ctx.beginPath();
       const dot = (x: number, y: number) => { ctx.moveTo(x + rd, y); ctx.arc(x, y, rd, 0, 2 * Math.PI); };
@@ -159,11 +159,12 @@ export default function PreviewYard({ rim, color }: { rim: { current: Rim | null
       paint(t);
       if (!busy) { cancelAnimationFrame(raf); raf = 0; }
     }
+    const sizer = canvasSizer(c, host, () => { if (!raf) raf = requestAnimationFrame(frame); });
     const ro = new ResizeObserver(layout);
     ro.observe(host);
     layout();
     for (const w of ws) w.el.style.display = '';
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); sizer.stop(); };
   }, []);
 
   return (

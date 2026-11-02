@@ -13,6 +13,26 @@ const easeOut = (k: number) => 1 - (1 - k) ** 3;
 const circle = (ctx: CanvasRenderingContext2D, x: number, y: number, r: number) => { if (r <= 0.004) return; ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, 2 * Math.PI); };
 const polygon = (ctx: CanvasRenderingContext2D, Q: readonly P[]) => { ctx.beginPath(); Q.forEach(([x, y]) => ctx.lineTo(x, y)); ctx.closePath(); ctx.fill(); };
 
+/**
+ * 판(캔버스)의 픽셀 크기를 상자에 맞춘다 — 처음 한 번은 바로, 그 뒤엔 상자가 두 장면 연달아 같은 크기일 때만(2026-11-03).
+ * 5/5에서 제목이 접히는 동안 매 장면 판을 새로 잡았더니(판 하나 ≈8MB, 웹킷 18번 · 크롬 36번) 아이폰 사파리가 판 메모리 상한을 넘겨
+ * getContext가 null을 주는 것으로 본다 — 말풍선 가운데가 비고 글자가 왼쪽 위에 남았다. 기다리는 동안엔 옛 판이 늘어나 보이므로
+ * 그리는 쪽은 가로 · 세로 배율을 따로 쓴다(c.width / W, c.height / H). 판이 바뀌면 resized를 부른다
+ */
+export function canvasSizer(c: HTMLCanvasElement, box: HTMLElement, resized: () => void) {
+  let raf = 0, sized = false;
+  const want = () => { const d = Math.min(3, window.devicePixelRatio || 1); return [Math.round(box.clientWidth * d), Math.round(box.clientHeight * d)] as const; };
+  const apply = () => { const [w, h] = want(); if (!w || !h || (c.width === w && c.height === h)) return false; c.width = w; c.height = h; return (sized = true); };
+  const fit = () => {
+    cancelAnimationFrame(raf);
+    if (!sized) { apply(); return; }
+    let prev = want().join();
+    const wait = () => { const now = want().join(); if (now !== prev) { prev = now; raf = requestAnimationFrame(wait); } else if (apply()) resized(); };
+    raf = requestAnimationFrame(wait);
+  };
+  return { fit, stop: () => cancelAnimationFrame(raf) };
+}
+
 /** 터짐 — 하늘이 차거나 사흘이 지난 말이 꼬리 끝부터 연쇄로(점마다 0.18초에 1.6배로 부풀며 사라진다). at(x, y) = 그 자리가 터지기 시작하는 때 */
 export interface Pop { now: number; at: (x: number, y: number) => number }
 const POP_T = 0.18;

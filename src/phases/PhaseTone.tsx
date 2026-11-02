@@ -299,7 +299,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
      * 것을 잰다. 자폭은 크기에 정비례하므로 한 번 재면 끝이고(1px당 값),
      * 1%보다 적게 달라진 재기는 버려서 다시 그리지 않는다.
      */
-    const glyph = useRef<HTMLDivElement>(null);
+    const glyph = useRef<HTMLDivElement>(null), hint = useRef<HTMLDivElement>(null);
     const optic = opticalFix[shown.font]?.scale ?? 1;
     const [run, setRun] = useState<{ w: number; h: number } | null>(null);
     /* 처음 재기 전에는 크기 전이(app.css .z-glyph 260ms)를 끈다 — 어림값 크기에서 잰 크기로 건너가는 것이 4/5에서 뒤로 올 때
@@ -378,9 +378,14 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
         const F = el ? parseFloat(getComputedStyle(el).fontSize) : 0;
         if (!el || !fit || !stage || !F || !run) return;
         const { dots, polys } = modulesAt([{ ch: '가', li: 0, x: 0, y: 0, a: 0, p: 0, ax: 0, ay: 0 }], kindOf(shown.font), 1);
-        let mn = 0, mx = 0;
-        for (const d of dots) { mn = Math.min(mn, d.x - RF * d.r); mx = Math.max(mx, d.x + RF * d.r); }
-        for (const Q of polys) for (const [qx] of Q) { mn = Math.min(mn, qx); mx = Math.max(mx, qx); }
+        let mn = 0, mx = 0, up = 0;
+        for (const d of dots) { mn = Math.min(mn, d.x - RF * d.r); mx = Math.max(mx, d.x + RF * d.r); up = Math.min(up, d.y - RF * d.r); }
+        for (const Q of polys) for (const [qx, qy] of Q) { mn = Math.min(mn, qx); mx = Math.max(mx, qx); up = Math.min(up, qy); }
+        /* 안내가 떠 있는 동안 견본은 --glyph-room만큼 견본 칸 밑변(B) 가운데로 줄어 있다 — 잰 자리(Range)에서 지금 그려진 배율을 걷어 낸다.
+           변수가 아니라 그려진 행렬에서 읽는다: 글의 transform에는 전이(--t-return)가 걸려 있어 변수보다 늦게 따라온다 — 변수로 걷으면
+           배율이 0.12 ↔ 1로 출렁였다(320 차분한) */
+        const k = new DOMMatrixReadOnly(getComputedStyle(el).transform).a / form.scaleX || 1, B = fit.getBoundingClientRect().bottom;
+        fit.style.setProperty('--glyph-room-dy', `${(fit.clientHeight - el.offsetTop - el.offsetHeight / 2).toFixed(1)}px`);
         const f = fit.getBoundingClientRect(), s = stage.getBoundingClientRect(), cx = f.left + f.width / 2, range = document.createRange();
         let reachL = 0, reachR = 0;   // 가운데에서 구름 끝까지 — 글자 크기 1px당
         const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
@@ -388,9 +393,19 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
             for (let i = 0; i < n.length; i++) {
                 if (!n.data[i].trim()) continue;
                 range.setStart(n, i); range.setEnd(n, i + 1);
-                const b = range.getBoundingClientRect(), c = (b.left + b.width / 2 - cx) / F;
+                const b = range.getBoundingClientRect(), c = (b.left + b.width / 2 - cx) / F / k;
                 reachL = Math.max(reachL, -c - mn / 0.85); reachR = Math.max(reachR, c + mx / 0.85);
             }
+        }
+        /* 안내가 떠 있는 동안은 견본과 겹치지 않게(2026-11-03, 디자이너 — "처음 텍스트가 있는 동안은 겹치지 않게, 몇 초 뒤엔 달라져도",
+           돌아가기는 4/5처럼 '스르르 커지며 올라감'). 구름 위 끝이 안내 아래 + --space-group에 오는 만큼만 줄인다 — 안 겹치면 1 */
+        const h = hint.current?.lastElementChild;   // 안내 칸은 높이 0(app.css .stage-hint) — 글은 그 아래로 넘친다
+        if (!returning && h) {
+            /* 구름 위 끝 — 줄이지 않았을 때의 첫 줄 가운데(배치 값: 글 가운데에서 장평 배율 sy만큼) − 모듈 위 끝. 그려진 자리를 재면 위 전이에 늦는다 */
+            const c = el.offsetTop + el.offsetHeight / 2, y1 = el.offsetTop + (parseFloat(getComputedStyle(el).lineHeight) || F) / 2;
+            const need = h.getBoundingClientRect().bottom + (parseFloat(getComputedStyle(fit).getPropertyValue('--space-group')) || 0);
+            const top = B - fit.clientHeight + c + form.scaleY * (y1 - c) + (up / 0.85) * F;
+            fit.style.setProperty('--glyph-room-from', (B > top ? Math.min(1, Math.max(0, (B - need) / (B - top))) : 1).toFixed(3));
         }
         if (!reachL || !reachR) return;
         const pad = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pad-x'));
@@ -443,7 +458,9 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
     const face = {
         fontFamily: fontMap[shown.font], fontWeight: form.weight,
         fontVariationSettings: form.variation,
-        transform: `scale(${form.scaleX.toFixed(3)}, ${form.scaleY.toFixed(3)})`,
+        /* --glyph-room(app.css) — 안내가 떠 있는 동안만 1보다 작다. 가운데 축 배율에 그만큼 아래로 옮겨(--glyph-room-dy = 글 가운데 → 견본 칸
+           밑변, 아래 재기) 견본 칸 밑변 가운데가 축이 되게 — 4/5 무대와 같은 축 */
+        transform: `translateY(calc((1 - var(--glyph-room, 1)) * var(--glyph-room-dy, 0px))) scale(calc(${form.scaleX.toFixed(3)} * var(--glyph-room, 1)), calc(${form.scaleY.toFixed(3)} * var(--glyph-room, 1)))`,
         '--glyph-skew': `${-form.slant}deg`,   // 줄마다 skewX로 기운다(app.css · .z-glyph-char, VoiceBubble과 같은 까닭)
         letterSpacing: form.letterSpacing,
         fontSize: `calc(min(${byLine}cqw, ${byHeight}cqh) * ${(optic * room).toFixed(3)})`,
@@ -459,7 +476,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
     <StepHeader at={3} back={{ label: pick(T.backIntro, lang), onClick: () => onBack(tone) }} onHome={onHome} />
     {/* 제목 · 안내 — 눌러 넘기던 첫 장을 걷고(2026-11-03, 디자이너), 앞으로 들어올 때만 견본 위에 겹쳐 섰다가 위로 흐려지며 빠진다.
         자리를 차지하지 않아 견본은 처음부터 제자리 · 제 크기다(app.css .stage-hint). 돌아온 길에는 낭독기에만 */}
-    <div className={'z-ask stage-hint' + (returning ? ' sr-only' : '')}>
+    <div ref={hint} className={'z-ask stage-hint' + (returning ? ' sr-only' : '')}>
      <h1>{pick(T.title, lang)}</h1>
      <p>{pick(hasWeightAxis(tone.font) ? T.leadWeight : T.leadManner, lang)}</p>
     </div>
@@ -474,7 +491,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
       aria-label={pick(compare ? T.comparing : T.compare, lang)}
       onPointerDown={faceDown} onPointerUp={faceUp}
       onPointerCancel={() => { tap.current = null; }} onKeyDown={faceKey}>
-     <div className="z-glyph-fit">
+     <div className={'z-glyph-fit' + (returning ? '' : ' is-making-room')}>
       <GlyphModules of={glyph} font={tone.font} />
       <div ref={glyph} className={'z-glyph is-line' + (form.slant ? ' is-gust' : '') + (armed ? '' : ' is-unmeasured')} style={face}>
        <span>{lines.map((l, i) => <b key={i} className="z-glyph-char">{l}</b>)}</span>

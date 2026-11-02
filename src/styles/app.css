@@ -2404,6 +2404,13 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   animation: stageMakeRoom var(--t-hold) var(--ease-standard) calc(var(--t-hold) * 4) both; }
 @keyframes stageMakeRoom{ from{ transform: scale(var(--room-k, 1)); } to{ transform: none; } }
 @media (prefers-reduced-motion: reduce){ .color-stage.is-making-room{ animation-timing-function: step-end; } }
+/* 3/5 — 같은 규칙. 견본 칸(.z-glyph-fit)째 줄이면 글자 뒤 모듈 그림판이 커졌다 작아지며 장면마다 판을 다시 잡으므로(아이폰에서 무겁다),
+   배율 하나(--glyph-room)만 움직인다: 글(.z-glyph)은 그만큼 밑변 가운데로 줄고(PhaseTone face), 모듈은 GlyphModules가 그 값으로 함께 준다.
+   시작 배율은 PhaseTone이 구름 위 끝을 재서 건다(--glyph-room-from, 안 겹치면 1). 시계는 GlyphModules가 쥔다(fde686c) */
+@property --glyph-room{ syntax: '<number>'; inherits: true; initial-value: 1; }
+.tone-work .z-glyph-fit.is-making-room{ animation: glyphMakeRoom var(--t-hold) var(--ease-standard) calc(var(--t-hold) * 4) both; }
+@keyframes glyphMakeRoom{ from{ --glyph-room: var(--glyph-room-from, 1); } to{ --glyph-room: 1; } }
+@media (prefers-reduced-motion: reduce){ .tone-work .z-glyph-fit.is-making-room{ animation-timing-function: step-end; } }
 /* 움직임 줄이기 — 자리는 그대로 두고 흐려지기만 */
 @media (prefers-reduced-motion: reduce){ .stage-hint:not(.sr-only){ animation-name: stageHintFade; } }
 @keyframes stageHintFade{ to{ opacity: 0; } }

@@ -84,7 +84,8 @@ const BOOT_K = 2;
 /**
  * 처음 열 때 한 번 — 빨강 화면이 앱이 준비되는 동안 홈을 덮고, 가운데 점 셋이 차례로 살짝 튀어 오르며 켜진다(로딩의 '…' —
  * 2026-11-03 디자이너가 견본 넷 중 '라'. 점 모양은 쓰기 단계 글자 수 점을 참고했다. 그전엔 07의 두 눈이 깜빡이다 감았다, 결정 26).
- * 준비되면 옛 TV처럼 꺼진다: 위아래로 접혀 가로 한 줄이 됐다가 그 줄이 사라지며 홈이 드러난다. 준비가 아무리 빨라도 점이
+ * 준비되면 점 셋이 있던 자리에서 원이 열려 화면 끝까지 커지며 그 안으로 홈이 드러난다(2026-11-03 디자이너 — 옛 TV처럼 접혀
+ * 꺼지던 것이 "너무 어색해", 견본 넷 중 '동그랗게 열림'. 그리기는 app.css .home-boot.is-off). 준비가 아무리 빨라도 점이
  * 한 바퀴는 돌고, 누르면 바로 꺼진다. 움직임 줄이기면 띄우지 않는다
  */
 function Boot() {
@@ -107,7 +108,7 @@ function Boot() {
     });
     return () => { alive = false; window.clearTimeout(timer); };
   }, [phase]);
-  // --t-return 더 머문 뒤에 꺼진다(접힘은 CSS — 끝나면 걷힌다)
+  // --t-return 더 머문 뒤에 꺼진다(열림은 CSS — 끝나면 걷힌다)
   useEffect(() => {
     if (phase !== 'shut') return;
     const id = window.setTimeout(() => setPhase('off'), tokenMs('--t-return', 220) * BOOT_K);
@@ -117,7 +118,7 @@ function Boot() {
   return (
     /* 누르면 바로 걷힌다(2026-10-29 점검 — 위 주석대로. 그전엔 누른 뒤에도 눈 감기 · 접히기가 1.3초 이어졌다) */
     <div className={'onwall-screen home-boot is-' + phase} style={{ '--boot-k': BOOT_K } as CSSProperties} onClick={() => setPhase('gone')}
-      onAnimationEnd={(e) => { if (e.target === e.currentTarget && phase === 'off') setPhase('gone'); }}>
+      onAnimationEnd={(e) => { if (e.animationName === 'homeBootOpen') setPhase('gone'); }}>
       <span className="sr-only" role="status">{pick(T.boot, lang)}</span>
       <div className="boot-dots" aria-hidden="true">
         {[0, 1, 2].map((i) => <i key={i} style={{ '--i': i } as CSSProperties} />)}

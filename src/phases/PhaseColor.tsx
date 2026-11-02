@@ -227,18 +227,19 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext, returni
     const current = { ...tone, align, backgroundColor: bg, textColor: fg };
     // 줄은 한 줄 12자 — 모든 성격이 같다(fit.ts · foldLines)
     const lines = foldLines(text);
-    /* 메시지가 있는 동안 말풍선은 그 아래 자리에만 선다(2026-11-03, 디자이너 — "처음 텍스트가 있는 동안은 겹치지 않게, 몇 초 뒤엔
-       달라져도"). 무대를 밑변 가운데 기준으로 메시지 아래 자리만큼 줄여 두었다가, 메시지가 빠지는 박자에 스르르 제 크기로 돌아온다
-       (app.css .color-stage.is-making-room — transform이라 말풍선은 다시 놓이지 않고 그림판도 그대로다) */
+    /* 메시지가 있는 동안 말풍선은 안내 아래 ~ 무대 바닥의 한가운데에 서고(다 들지 않으면 그만큼 줄고), 메시지가 빠지는 박자에 위로 올라가며
+       무대 한가운데로 돌아온다(2026-11-03, 디자이너 스케치 — app.css .color-stage.is-making-room, transform이라 말풍선은 다시 놓이지 않는다) */
     const hint = useRef<HTMLDivElement>(null), stage = useRef<HTMLDivElement>(null);
-    /* 말이 놓일 때마다(DotBubble onTop — 무대 크기가 늦게 정해져도 따라간다) 말의 위 끝이 안내 아래 + --space-group에 오는 만큼만 줄인다.
-       안 겹치면 1. 무대는 밑변을 축으로 줄므로 밑변은 그대로고, 줄이지 않은 무대 위는 밑변 − 제 높이다 */
+    /* 말이 놓일 때마다(DotBubble onTop — 무대 크기가 늦게 정해져도 따라간다). 말은 무대 세로 가운데에 놓이므로(DotBubble) 위 끝이 top이면
+       아래 끝은 높이 − top. 무대 자리는 옮기기 전 배치 값(offsetParent 기준)으로 — 그려진 자리는 이미 옮겨져 있다 */
     const makeRoom = (top: number) => {
-        const h = hint.current, s = stage.current;
-        if (returning || !h || !s) return;
-        const B = s.getBoundingClientRect().bottom, from = B - s.offsetHeight + top;
-        const need = h.getBoundingClientRect().bottom + (parseFloat(getComputedStyle(s).getPropertyValue('--space-group')) || 0);
-        s.style.setProperty('--room-k', (B > from ? Math.min(1, Math.max(0, (B - need) / (B - from))) : 1).toFixed(3));
+        const h = hint.current, s = stage.current, o = s?.offsetParent;
+        if (returning || !h || !s || !o) return;
+        const H = s.offsetHeight, T0 = o.getBoundingClientRect().top + s.offsetTop, B = T0 + H, c = T0 + H / 2;
+        const hb = h.getBoundingClientRect().bottom, gap = parseFloat(getComputedStyle(s).getPropertyValue('--space-group')) || 0;
+        const k0 = H > 2 * top ? Math.min(1, Math.max(0, (B - hb - 2 * gap) / (H - 2 * top))) : 1;
+        s.style.setProperty('--room-k0', k0.toFixed(3));
+        s.style.setProperty('--room-t0', `${((hb + B) / 2 - c).toFixed(1)}px`);
     };
     return <div className="z-frame compose-screen color-choice is-pulled"
       data-step="work" data-pair={PAIRS[at].id} data-pale={PALE.has(PAIRS[at].id) ? '' : undefined}
@@ -247,7 +248,7 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext, returni
   <div className="proj-frame compose-editor is-pulled">
    <StepHeader className="compose-chrome" at={4} back={{ label: pick(T.back, lang), onClick: () => onBack(current) }} onHome={onHome} />
    {/* 제목 · 안내 — 눌러 넘기던 첫 장을 걷고(2026-11-03, 디자이너), 3/5처럼 앞으로 들어올 때만 무대 위에 겹쳐 섰다가
-       위로 흐려지며 빠진다(app.css .stage-hint). 그동안 말풍선은 그 아래에(위 --room-k). 돌아온 길(5/5에서)에는 낭독기에만 */}
+       위로 흐려지며 빠진다(app.css .stage-hint). 그동안 말풍선은 그 아래 한가운데에(위 makeRoom). 돌아온 길(5/5에서)에는 낭독기에만 */}
    <div ref={hint} className={'z-ask stage-hint' + (returning ? ' sr-only' : '')}>
     <h1>{pick(T.title, lang)}</h1>
     <p>{pick(T.lead, lang)}</p>

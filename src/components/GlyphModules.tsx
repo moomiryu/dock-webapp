@@ -51,9 +51,9 @@ export default function GlyphModules({ of, font }: { of: RefObject<HTMLElement |
       const box = cv.getBoundingClientRect(), marks: [number, number, number][] = [];
       const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
       for (let n = walk.nextNode() as Text | null; n; n = walk.nextNode() as Text | null) {
-        /* 3/5 안내가 떠 있는 동안 글은 --glyph-room만큼 줄어 있다(PhaseTone · app.css) — 모듈도 그만큼. 그림판은 그대로라 다시 잡지 않는다 */
+        /* 3/5 안내가 떠 있는 동안 글은 --glyph-k만큼 줄어 있다(PhaseTone · app.css) — 모듈도 그만큼. 그림판은 그대로라 다시 잡지 않는다 */
         const cs = getComputedStyle(n.parentElement ?? el);
-        const u = (parseFloat(cs.fontSize) * (parseFloat(cs.getPropertyValue('--glyph-room')) || 1)) / 0.85;
+        const u = (parseFloat(cs.fontSize) * (parseFloat(cs.getPropertyValue('--glyph-k')) || 1)) / 0.85;
         for (let i = 0; i < n.length; i++) {
           if (!n.data[i].trim()) continue;
           range.setStart(n, i); range.setEnd(n, i + 1);

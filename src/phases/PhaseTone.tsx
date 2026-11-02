@@ -378,14 +378,13 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
         const F = el ? parseFloat(getComputedStyle(el).fontSize) : 0;
         if (!el || !fit || !stage || !F || !run) return;
         const { dots, polys } = modulesAt([{ ch: '가', li: 0, x: 0, y: 0, a: 0, p: 0, ax: 0, ay: 0 }], kindOf(shown.font), 1);
-        let mn = 0, mx = 0, up = 0;
-        for (const d of dots) { mn = Math.min(mn, d.x - RF * d.r); mx = Math.max(mx, d.x + RF * d.r); up = Math.min(up, d.y - RF * d.r); }
-        for (const Q of polys) for (const [qx, qy] of Q) { mn = Math.min(mn, qx); mx = Math.max(mx, qx); up = Math.min(up, qy); }
-        /* 안내가 떠 있는 동안 견본은 --glyph-room만큼 견본 칸 밑변(B) 가운데로 줄어 있다 — 잰 자리(Range)에서 지금 그려진 배율을 걷어 낸다.
+        let mn = 0, mx = 0, up = 0, dn = 0;
+        for (const d of dots) { mn = Math.min(mn, d.x - RF * d.r); mx = Math.max(mx, d.x + RF * d.r); up = Math.min(up, d.y - RF * d.r); dn = Math.max(dn, d.y + RF * d.r); }
+        for (const Q of polys) for (const [qx, qy] of Q) { mn = Math.min(mn, qx); mx = Math.max(mx, qx); up = Math.min(up, qy); dn = Math.max(dn, qy); }
+        /* 안내가 떠 있는 동안 견본은 --glyph-k만큼 줄어 있다(아래, app.css .is-making-room) — 잰 자리(Range)에서 지금 그려진 배율을 걷어 낸다.
            변수가 아니라 그려진 행렬에서 읽는다: 글의 transform에는 전이(--t-return)가 걸려 있어 변수보다 늦게 따라온다 — 변수로 걷으면
            배율이 0.12 ↔ 1로 출렁였다(320 차분한) */
         const k = new DOMMatrixReadOnly(getComputedStyle(el).transform).a / form.scaleX || 1, B = fit.getBoundingClientRect().bottom;
-        fit.style.setProperty('--glyph-room-dy', `${(fit.clientHeight - el.offsetTop - el.offsetHeight / 2).toFixed(1)}px`);
         const f = fit.getBoundingClientRect(), s = stage.getBoundingClientRect(), cx = f.left + f.width / 2, range = document.createRange();
         let reachL = 0, reachR = 0;   // 가운데에서 구름 끝까지 — 글자 크기 1px당
         const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
@@ -397,15 +396,17 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
                 reachL = Math.max(reachL, -c - mn / 0.85); reachR = Math.max(reachR, c + mx / 0.85);
             }
         }
-        /* 안내가 떠 있는 동안은 견본과 겹치지 않게(2026-11-03, 디자이너 — "처음 텍스트가 있는 동안은 겹치지 않게, 몇 초 뒤엔 달라져도",
-           돌아가기는 4/5처럼 '스르르 커지며 올라감'). 구름 위 끝이 안내 아래 + --space-group에 오는 만큼만 줄인다 — 안 겹치면 1 */
+        /* 안내가 떠 있는 동안 견본은 안내 아래 ~ 견본 칸 바닥(B)의 한가운데에(2026-11-03, 디자이너 스케치), 다 들지 않으면 위아래 --space-group을
+           두고 들 만큼 줄인다. 구름 위 · 아래 끝은 배치 값으로 잰다(첫 · 끝 줄 가운데를 글 가운데 c에서 장평 배율 sy만큼 + 모듈 위 · 아래 끝) —
+           그려진 자리는 위 전이에 늦는다. 글은 제 가운데를 축으로 k만큼 줄고 T만큼 내려간다(face transform) */
         const h = hint.current?.lastElementChild;   // 안내 칸은 높이 0(app.css .stage-hint) — 글은 그 아래로 넘친다
         if (!returning && h) {
-            /* 구름 위 끝 — 줄이지 않았을 때의 첫 줄 가운데(배치 값: 글 가운데에서 장평 배율 sy만큼) − 모듈 위 끝. 그려진 자리를 재면 위 전이에 늦는다 */
-            const c = el.offsetTop + el.offsetHeight / 2, y1 = el.offsetTop + (parseFloat(getComputedStyle(el).lineHeight) || F) / 2;
-            const need = h.getBoundingClientRect().bottom + (parseFloat(getComputedStyle(fit).getPropertyValue('--space-group')) || 0);
-            const top = B - fit.clientHeight + c + form.scaleY * (y1 - c) + (up / 0.85) * F;
-            fit.style.setProperty('--glyph-room-from', (B > top ? Math.min(1, Math.max(0, (B - need) / (B - top))) : 1).toFixed(3));
+            const lh = parseFloat(getComputedStyle(el).lineHeight) || F, top = B - fit.clientHeight + el.offsetTop, c = top + el.offsetHeight / 2;
+            const t0 = c + form.scaleY * (top + lh / 2 - c) + (up / 0.85) * F, b0 = c + form.scaleY * (top + el.offsetHeight - lh / 2 - c) + (dn / 0.85) * F;
+            const hb = h.getBoundingClientRect().bottom, gap = parseFloat(getComputedStyle(fit).getPropertyValue('--space-group')) || 0;
+            const k0 = b0 > t0 ? Math.min(1, Math.max(0, (B - hb - 2 * gap) / (b0 - t0))) : 1, T = (hb + B) / 2 - c - k0 * ((t0 + b0) / 2 - c);
+            fit.style.setProperty('--room-k0', k0.toFixed(3));
+            fit.style.setProperty('--room-t0', `${T.toFixed(1)}px`);
         }
         if (!reachL || !reachR) return;
         const pad = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pad-x'));
@@ -458,9 +459,8 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
     const face = {
         fontFamily: fontMap[shown.font], fontWeight: form.weight,
         fontVariationSettings: form.variation,
-        /* --glyph-room(app.css) — 안내가 떠 있는 동안만 1보다 작다. 가운데 축 배율에 그만큼 아래로 옮겨(--glyph-room-dy = 글 가운데 → 견본 칸
-           밑변, 아래 재기) 견본 칸 밑변 가운데가 축이 되게 — 4/5 무대와 같은 축 */
-        transform: `translateY(calc((1 - var(--glyph-room, 1)) * var(--glyph-room-dy, 0px))) scale(calc(${form.scaleX.toFixed(3)} * var(--glyph-room, 1)), calc(${form.scaleY.toFixed(3)} * var(--glyph-room, 1)))`,
+        /* 안내가 떠 있는 동안만 — 제 가운데 축으로 --glyph-k만큼 줄고, 진행(--room-p)이 1이 될 때까지 --room-t0만큼 내려가 있다(app.css · 위 재기) */
+        transform: `translateY(calc((1 - var(--room-p, 1)) * var(--room-t0, 0px))) scale(calc(${form.scaleX.toFixed(3)} * var(--glyph-k, 1)), calc(${form.scaleY.toFixed(3)} * var(--glyph-k, 1)))`,
         '--glyph-skew': `${-form.slant}deg`,   // 줄마다 skewX로 기운다(app.css · .z-glyph-char, VoiceBubble과 같은 까닭)
         letterSpacing: form.letterSpacing,
         fontSize: `calc(min(${byLine}cqw, ${byHeight}cqh) * ${(optic * room).toFixed(3)})`,

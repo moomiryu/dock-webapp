@@ -11,7 +11,8 @@ import { pick, useLang } from '../lib/lang';
 /* 이 화면의 말. 축 이름은 사용자가 정했고 나머지 영어는 초안이다(2026-09-26) */
 const T = {
     backIntro: { ko: '성격 다시 고르기', en: 'Choose the character again' },
-    title: { ko: <>전하고 싶은 느낌으로<br />조절해보세요</>, en: <>Tune it to the feeling you want to get across</> },
+    /* 2026-11-03 디자이너 — 2/5 · 4/5와 같은 꼴 한 줄로(그전엔 '전하고 싶은 느낌으로 / 조절해보세요') */
+    title: { ko: '특징을 골라주세요.', en: 'Choose its features.' },
     /* 셋째 축은 서체가 정한다 — 무게가 없는 서체는 말투를 묻는다(palettes.ts · MANNER) */
     leadWeight: { ko: '발화의 크기, 속도, 무게를 정해봐요.', en: 'Set the size, pace and weight of your line.' },
     leadManner: { ko: '발화의 크기, 속도, 말투를 정해봐요.', en: 'Set the size, pace and tone of your line.' },

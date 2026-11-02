@@ -9,7 +9,8 @@ import type { ToneState } from '../types';
 /* 이 화면의 말. 영어는 초안이다(2026-09-26, 영문판) */
 const T = {
   back: { ko: '한 줄 다시 쓰기', en: 'Rewrite your line' },
-  title: { ko: <>어떤 성격으로<br />말해볼까요?</>, en: <>Which character will you speak with?</> },
+  /* 2026-11-03 디자이너 — 세 고르는 화면의 제목을 '○○을 정해/골라주세요.' 한 줄로(그전엔 '어떤 성격으로 / 말해볼까요?') */
+  title: { ko: '성격을 정해주세요.', en: 'Choose a character.' },
   lead: { ko: '마음에 드는 표현을 골라주세요.', en: 'Choose the expression you like.' },
   group: { ko: '성격 고르기', en: 'Choose a character' },
   /* 한 문장으로 줄였다(2026-09-29, 사용자 문구) */

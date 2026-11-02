@@ -65,6 +65,83 @@ function hasFirebaseEnv(): boolean {
 const FS_BASE = `https://firestore.googleapis.com/v1/projects/${import.meta.env.VITE_FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 const FS_KEY = import.meta.env.VITE_FIREBASE_API_KEY;
 
+// ─── App Check (2026-11-03 보안 점검) ────────────────────────────────
+//
+// 규칙은 값이 멀쩡한지만 본다. 공개 키 하나로 누구나 REST를 부를 수 있어서,
+// 금지어만 피한 글을 프로그램으로 초당 수십 개 올리면 벽이 그 글로 덮이고
+// 무료 사용량이 바닥난다. App Check는 요청마다 '진짜 브라우저에서 이 앱이
+// 받은 출입증'을 붙이게 하고, 콘솔에서 잠그면(Enforce) 출입증 없는 요청을
+// 데이터베이스가 거절한다. 출입증은 reCAPTCHA v3(보이지 않는 점수)로 받아
+// App Check REST에서 바꾼다 — SDK 없이, 이 파일의 다른 길과 같이.
+//
+// **횟수 제한은 아니다.** 진짜 브라우저에서 받은 출입증은 ttl 동안 다시 쓸 수
+// 있다. 문턱을 높일 뿐이고, 진짜로 세려면 서버(Cloud Functions)가 있어야 한다.
+//
+// 키(VITE_RECAPTCHA_SITE_KEY)가 없으면 아무것도 하지 않는다. 출입증을 못 받아도
+// 요청은 그대로 보낸다 — 잠그기 전에는 그래도 통과하고, 잠근 뒤에는 어차피 거절된다.
+const RECAPTCHA_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
+const APP_CHECK_URL = `https://content-firebaseappcheck.googleapis.com/v1/projects/${import.meta.env.VITE_FIREBASE_PROJECT_ID}/apps/${import.meta.env.VITE_FIREBASE_APP_ID}:exchangeRecaptchaV3Token?key=${FS_KEY}`;
+
+interface Grecaptcha {
+  ready(cb: () => void): void;
+  execute(key: string, o: { action: string }): Promise<string>;
+}
+let recaptcha: Promise<Grecaptcha> | null = null;
+/** 받은 출입증. 실패했을 때도 1분은 다시 묻지 않으려고 빈 표를 넣어 둔다 —
+    스크립트가 막힌 망에서 요청마다 reCAPTCHA를 다시 부르면 화면이 매번 멈칫한다 */
+let appCheck: { token: string; until: number } | null = null;
+let appCheckPending: Promise<string | null> | null = null;
+
+function loadRecaptcha(key: string): Promise<Grecaptcha> {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(key)}`;
+    s.onload = () => {
+      const g = (window as unknown as { grecaptcha: Grecaptcha }).grecaptcha;
+      g.ready(() => resolve(g));
+    };
+    s.onerror = () => reject(new Error('recaptcha'));
+    document.head.appendChild(s);
+  });
+}
+
+function appCheckToken(): Promise<string | null> {
+  if (!RECAPTCHA_KEY) return Promise.resolve(null);
+  if (appCheck && Date.now() < appCheck.until) return Promise.resolve(appCheck.token || null);
+  appCheckPending ??= (async () => {
+    try {
+      recaptcha ??= loadRecaptcha(RECAPTCHA_KEY);
+      const rc = await (await recaptcha).execute(RECAPTCHA_KEY, { action: 'fire_app_check' });
+      const res = await withTimeout(fetch(APP_CHECK_URL, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recaptcha_v3_token: rc })
+      }), 8000);
+      if (!res.ok) throw new Error(`app check ${res.status}`);
+      const j = (await res.json()) as { token: string; ttl: string };
+      // ttl은 "3600s" 꼴. 5분 남기고 새로 받는다
+      appCheck = { token: j.token, until: Date.now() + (parseFloat(j.ttl) - 300) * 1000 };
+      return j.token;
+    } catch {
+      recaptcha = null;
+      appCheck = { token: '', until: Date.now() + 60_000 };
+      return null;
+    } finally {
+      appCheckPending = null;
+    }
+  })();
+  return appCheckPending;
+}
+
+/** Firestore로 가는 요청은 전부 이걸 거친다 — 출입증이 있으면 머리에 붙인다 */
+async function fsFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const t = await appCheckToken();
+  if (!t) return fetch(url, init);
+  return fetch(url, { ...init, headers: { ...(init.headers as Record<string, string> | undefined), 'X-Firebase-AppCheck': t } });
+}
+
+// 첫 요청이 스크립트를 기다리지 않게 미리 받아 둔다
+if (RECAPTCHA_KEY && hasFirebaseEnv()) void appCheckToken();
+
 type FsValue = Record<string, unknown>;
 
 function toFsValue(v: unknown): FsValue {
@@ -143,7 +220,7 @@ function buildRestClient(): FirestoreLike {
       }
     };
     const res = await withTimeout(
-      fetch(`${FS_BASE}:runQuery?key=${FS_KEY}`, {
+      fsFetch(`${FS_BASE}:runQuery?key=${FS_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
@@ -185,7 +262,7 @@ function buildRestClient(): FirestoreLike {
         }
       };
       const res = await withTimeout(
-        fetch(`${FS_BASE}/messages?key=${FS_KEY}`, {
+        fsFetch(`${FS_BASE}/messages?key=${FS_KEY}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
@@ -473,7 +550,7 @@ function toDockState(fields: Record<string, FsValue> | undefined): DockState {
  *  끊긴 것을 '아무도 안 꽂았다'로 읽으면 화면이 조용히 거짓말을 한다. */
 export async function readDock(): Promise<DockState | null> {
   if (!hasFirebaseEnv()) return null;
-  const res = await withTimeout(fetch(`${FS_BASE}/${DOCK_DOC}?key=${FS_KEY}`), 8000);
+  const res = await withTimeout(fsFetch(`${FS_BASE}/${DOCK_DOC}?key=${FS_KEY}`), 8000);
   if (res.status === 404) return { ...EMPTY_DOCK }; // 아직 아무도 안 쓴 문서
   if (!res.ok) throw new Error(`dock read ${res.status}`);
   const json = (await res.json()) as { fields?: Record<string, FsValue> };
@@ -489,7 +566,7 @@ async function patchDock(fields: Record<string, FsValue>): Promise<boolean> {
     .join('&');
   try {
     const res = await withTimeout(
-      fetch(`${FS_BASE}/${DOCK_DOC}?key=${FS_KEY}&${mask}`, {
+      fsFetch(`${FS_BASE}/${DOCK_DOC}?key=${FS_KEY}&${mask}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fields })
@@ -648,7 +725,7 @@ export async function fakeSwitch(on: boolean): Promise<boolean> {
 export async function getMessage(id: string): Promise<StoredMessage | null> {
   if (!hasFirebaseEnv() || !id) return null;
   try {
-    const res = await withTimeout(fetch(`${FS_BASE}/messages/${id}?key=${FS_KEY}`), 8000);
+    const res = await withTimeout(fsFetch(`${FS_BASE}/messages/${id}?key=${FS_KEY}`), 8000);
     if (!res.ok) return null;
     return restDocToStored((await res.json()) as RestDoc);
   } catch {
@@ -698,7 +775,7 @@ export async function submitFeedback(text: string): Promise<void> {
       currentDocument: { exists: false }
     }]
   };
-  const res = await withTimeout(fetch(`${FS_BASE}:commit?key=${FS_KEY}`, {
+  const res = await withTimeout(fsFetch(`${FS_BASE}:commit?key=${FS_KEY}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
   }), 15000).catch(() => { throw say(E.feedback); });
   if (!res.ok) throw say(E.feedback);
@@ -712,7 +789,7 @@ export async function submitFeedback(text: string): Promise<void> {
  */
 export async function deleteMessage(id: string, idToken: string): Promise<void> {
   if (!hasFirebaseEnv()) { writeMockStore(readMockStore().filter((m) => m.id !== id)); return; }
-  const res = await withTimeout(fetch(`${FS_BASE}/messages/${encodeURIComponent(id)}?key=${FS_KEY}`, {
+  const res = await withTimeout(fsFetch(`${FS_BASE}/messages/${encodeURIComponent(id)}?key=${FS_KEY}`, {
     method: 'DELETE', headers: { Authorization: `Bearer ${idToken}` }
   }), 15000);
   if (res.status === 401 || res.status === 403) throw new Error('내릴 권한이 없어요. 관리자 계정으로 다시 로그인해주세요.');
@@ -735,7 +812,7 @@ export async function adminSignIn(email: string, password: string): Promise<stri
 export async function listFeedback(idToken: string): Promise<Feedback[]> {
   if (!hasFirebaseEnv()) return JSON.parse(localStorage.getItem(FEEDBACK_MOCK) ?? '[]') as Feedback[];
   const url = `${FS_BASE}/feedback?key=${FS_KEY}&pageSize=200&orderBy=${encodeURIComponent('createdAt desc')}`;
-  const res = await withTimeout(fetch(url, { headers: { Authorization: `Bearer ${idToken}` } }), 15000);
+  const res = await withTimeout(fsFetch(url, { headers: { Authorization: `Bearer ${idToken}` } }), 15000);
   if (res.status === 401 || res.status === 403) throw new Error('읽을 권한이 없어요. 관리자 계정으로 다시 로그인해주세요.');
   if (!res.ok) throw new Error(`제안을 불러오지 못했어요 (${res.status})`);
   const json = (await res.json()) as { documents?: Array<{ name: string; fields?: { text?: { stringValue?: string }; createdAt?: { timestampValue?: string } } }> };

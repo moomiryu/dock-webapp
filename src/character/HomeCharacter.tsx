@@ -165,6 +165,7 @@ const TYPE_CPS = 22;
 const isLatin = (t: string) => !/[぀-ヿ㐀-鿿가-힯＀-￯]/.test(t);
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+const random = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
 export default function HomeCharacter({ onTap, greet = true }: {
@@ -256,9 +257,12 @@ export default function HomeCharacter({ onTap, greet = true }: {
     let reduced = media.matches;
 
     /**
-     * 처음부터 정면이다. 돌아서지 않는다 — 감은 눈을 뜨는 것으로 충분하다.
+     * 처음부터 옆모습이다(2026-11-03 디자이너 "옆으로 서 있는 삼각형 + 원 퍼져 나가기를 처음부터").
+     * 정면(꼭지가 위)에는 나팔 입이 없어 소리 결(HomeBubbles)이 안 나온다. 그전엔 첫 장면에 정면에서
+     * 옆으로 한 바퀴 돌았고(fa1df42 직전), 잠깐은 정면에 세워 두었다(fa1df42 — 디자이너가 반대였다고 정정).
+     * 인사(첫 방문)는 눈을 맞추는 자리라 정면에서 하고, 움직임 줄이기면 결이 없으니 정면 그대로다.
      */
-    let pose: Pose = 'front_center';
+    let pose: Pose = greetedOnce && !reduced ? 'left' : 'front_center';
     let from: PoseGeo = poseGeometry(pose);
     let to: PoseGeo = from;
     let now0 = 0;              // 이번 회전이 시작된 시각
@@ -285,7 +289,7 @@ export default function HomeCharacter({ onTap, greet = true }: {
      * 오가는 구경꾼들이 그 자리를 맡는다. 메가폰트는 제자리에 서서
      * **모습만 바꾼다** — 포즈·표정·한 마디.
      */
-    let faceUntil = 0;
+    let faceUntil = 0, nextPose = 0;
     let squash = 0, tilt = 0, raf = 0, lastTime = 0;
     /**
      * 크기는 늘 1이다.
@@ -525,8 +529,13 @@ export default function HomeCharacter({ onTap, greet = true }: {
       }
 
       if (visible && !reduced && !intro) {
-        // 고개를 돌리지 않는다(2026-11-03 디자이너 "스플래시 끝나고 바로 수직으로 — 움직임을 바꿀 이유가 없다").
-        // 정면으로 선 채다. 그전엔 열자마자 옆모습으로 돌아서고 5~9초마다 좌우를 번갈았다
+        // 5~9초마다 반대쪽 옆모습으로 돌아선다(2026-11-03 디자이너 — 견본 둘 중 '좌우로 번갈아'). 정면은 거치지 않는다.
+        // 반드시 반대쪽 — 무작위면 절반은 같은 쪽이라 한 방향으로 굳는다. 말하거나 들려 있는 동안은 안 돈다
+        if (!nextPose) nextPose = t + random(5000, 9000);
+        if (t > nextPose && !sayUntil && !held) {
+          setPose(pose === 'left' ? 'right' : 'left', t);
+          nextPose = t + random(5000, 9000);
+        }
         contain();
       }
 

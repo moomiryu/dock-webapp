@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
 import GlyphModules from '../components/GlyphModules';
+import { G, RF, kindOf, modulesAt } from '../lib/aggregate';
 import SnapSwitch, { tick } from '../components/SnapSwitch';
-import { MANNER, SIZE_WORDS, fontMap, formFor, hasManner, hasSizeBar, hasWeightAxis, legacyFields, mannerDefault, mannerOrder, opticalFix, sizeAt, sizePos, speedBarFor, weightWordsFor } from '../lib/palettes';
+import { MANNER, SIZE_WORDS, fontMap, formFor, hasManner, hasSizeBar, hasWeightAxis, legacyFields, mannerDefault, mannerOrder, opticalFix, SIZE_RANGE, sizeAt, sizePos, speedBarFor, weightWordsFor } from '../lib/palettes';
 import { DEFAULT_TONE, type PartialTone } from '../lib/tone';
 import { foldLines } from '../lib/fit';
 import { pick, useLang } from '../lib/lang';
@@ -409,6 +410,51 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
     const byLine = Math.min((USE.w / shape.w) * fill, USE.w / (shape.w * form.scaleX + tanS)).toFixed(2);
     const byHeight = ((USE.h / shape.h) * fill).toFixed(2);
     /**
+     * '매우 크게'에서는 뒤의 모듈 구름이 화면 끝을 **확실히 뚫고 나가게** 글을 더 키운다(2026-11-03, 디자이너 — 견본 B).
+     *
+     * 위 계산은 글자만 본다. 구름은 글 바깥으로 글자 크기의 0.6~0.9배를 더 뻗어서, 화면 끝에 닿느냐 마느냐가 글 길이에 따라
+     * 우연히 갈렸다 — 390 실측 다정한 본문 구름이 왼 13 · 오른 4px에 아슬아슬하게 걸렸다. "차라리 여백을 지키든가, 아예 씬을
+     * 뚫고 나가던가." 여백 지키기(A)는 짧은 글이 178→114px로 줄었고, 어중간할 때만 붙이기(C)는 같은 '매우 크게'가 글마다 커졌다
+     * 작아졌다. B를 골랐다 — 긴 글은 글자 자체가 여백선 안쪽(화면 끝 5~17px)까지 나간다는 것을 보고 고른 것이다.
+     *
+     * 양쪽 다 모듈 하나(G) 몫 이상 넘치는 크기를 잰다. 모듈 그림판(GlyphModules)과 똑같이 글자마다 Range로 재야 그려지는 구름과
+     * 셈이 맞는다. 자리는 글자 크기 1px당 값으로 바꿔 두므로 크기 전이 중에 재도 같다. 이미 넘치는 글(짧은 글)은 그대로다.
+     */
+    const top = shown.size >= SIZE_RANGE[2];
+    const [burst, setBurst] = useState(1);
+    const burstTries = useRef({ key: '', n: 0 });
+    useLayoutEffect(() => {
+        if (!top) { if (burst !== 1) setBurst(1); return; }
+        const el = glyph.current, fit = el?.parentElement, stage = el?.closest('.z-glyph-stage');
+        const F = el ? parseFloat(getComputedStyle(el).fontSize) : 0;
+        if (!el || !fit || !stage || !F || !run) return;
+        const { dots, polys } = modulesAt([{ ch: '가', li: 0, x: 0, y: 0, a: 0, p: 0, ax: 0, ay: 0 }], kindOf(shown.font), 1);
+        let mn = 0, mx = 0;
+        for (const d of dots) { mn = Math.min(mn, d.x - RF * d.r); mx = Math.max(mx, d.x + RF * d.r); }
+        for (const Q of polys) for (const [qx] of Q) { mn = Math.min(mn, qx); mx = Math.max(mx, qx); }
+        const f = fit.getBoundingClientRect(), s = stage.getBoundingClientRect(), cx = f.left + f.width / 2, range = document.createRange();
+        let reachL = 0, reachR = 0;   // 가운데에서 구름 끝까지 — 글자 크기 1px당
+        const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        for (let n = walk.nextNode() as Text | null; n; n = walk.nextNode() as Text | null) {
+            for (let i = 0; i < n.length; i++) {
+                if (!n.data[i].trim()) continue;
+                range.setStart(n, i); range.setEnd(n, i + 1);
+                const b = range.getBoundingClientRect(), c = (b.left + b.width / 2 - cx) / F;
+                reachL = Math.max(reachL, -c - mn / 0.85); reachR = Math.max(reachR, c + mx / 0.85);
+            }
+        }
+        const past = G / 0.85;
+        if (reachL <= past || reachR <= past) return;
+        const need = Math.max((cx - s.left) / (reachL - past), (s.right - cx) / (reachR - past));
+        const base = (Math.min(+byLine * fit.clientWidth, +byHeight * fit.clientHeight) / 100) * optic;
+        /* 높이는 넘기지 않는다 — 320×568에서 키운 긴 글이 견본 칸 위로 잘리고 아래 '눌러서 기본과 비교'에 겹쳤다 */
+        const tall = (+byHeight * fit.clientHeight / 100) * optic;
+        const next = Math.max(1, Math.min(need, tall) / base);
+        const key = `${text}|${shown.font}|${shown.speed}|${shown.weight}|${shown.manner}|${refit}`;
+        if (burstTries.current.key !== key) burstTries.current = { key, n: 0 };
+        if (burstTries.current.n < 3 && Math.abs(next - burst) / next > 0.01) { burstTries.current.n += 1; setBurst(next); }
+    });
+    /**
      * 막대를 옮긴다. 비교 중이었으면 편집값으로 돌아온다 — 기본을 보는 채로
      * 막대를 만지는 사고를 막는다. 옛 칸(tone · slnt · wght)도 함께 적어 둔다
      * (palettes.ts · legacyFields).
@@ -450,7 +496,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
         transform: `scale(${form.scaleX.toFixed(3)}, ${form.scaleY.toFixed(3)})`,
         '--glyph-skew': `${-form.slant}deg`,   // 줄마다 skewX로 기운다(app.css · .z-glyph-char, VoiceBubble과 같은 까닭)
         letterSpacing: form.letterSpacing,
-        fontSize: `calc(min(${byLine}cqw, ${byHeight}cqh) * ${optic})`,
+        fontSize: `calc(min(${byLine}cqw, ${byHeight}cqh) * ${(optic * (top ? burst : 1)).toFixed(3)})`,
         '--optical-stroke': form.stroke
     } as CSSProperties;
 

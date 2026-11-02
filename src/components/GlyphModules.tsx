@@ -17,11 +17,27 @@ export default function GlyphModules({ of, font }: { of: RefObject<HTMLElement |
     if (!cv || !ctx) return;
     const one: Item = { ch: '가', li: 0, x: 0, y: 0, a: 0, p: 0, ax: 0, ay: 0 }, { dots, polys } = modulesAt([one], kindOf(font), 1);
     const paper = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim(), range = document.createRange();
-    let raf = 0, sig = '';
-    const frame = () => {
+    let raf = 0, sig = '', prev = 0;
+    /* 글을 움직이는 CSS 애니메이션(첫 장 toneDemo · 조절판의 떠다님 · 바람)의 시계를 이 판이 쥔다(2026-11-03) — 아이폰은 기울기 · 배율을
+       따로 돌려 여기서 읽는 글자 자리가 늦었고, 구름이 줄마다 반대쪽으로 글자에서 벗어났다(디자이너 캡처). 매 장면 시각을 직접 놓고
+       같은 장면에 재므로 글자와 모듈이 어긋날 수 없다. CSS가 멈춰 둔 것(animation-play-state: paused — 화면 밖 첫 장)은 시계도 선다 */
+    const clocks = new WeakMap<Animation, number>();
+    const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
+      const dt = prev ? now - prev : 0;
+      prev = now;
       const el = of.current;
       if (!el) return;
+      /* 다 읽고 나서 한꺼번에 놓는다 — 읽기 · 놓기를 번갈아 하면 장면마다 스타일을 여러 번 다시 셈해 웹킷이 초당 45 → 14장으로 떨어졌다 */
+      const anims = (cv.parentElement?.getAnimations({ subtree: true }) ?? []).filter((a) => a instanceof CSSAnimation);
+      const runs = anims.map((a) => { const t = (a.effect as KeyframeEffect | null)?.target; return !t || getComputedStyle(t).animationPlayState !== 'paused'; });
+      anims.forEach((a, i) => {
+        let t = clocks.get(a);
+        if (t === undefined) { t = Number(a.currentTime) || 0; a.pause(); }
+        if (runs[i]) t += dt;
+        clocks.set(a, t);
+        a.currentTime = t;
+      });
       /* 그림판은 바탕이라 좌우 여백을 무시하고 견본 칸(.z-glyph-stage — 화면 끝에서 끝까지인 빨간 면) 양끝까지 넓힌다(2026-10-20, 결정 33 —
          글 칸에 붙어 있어 큰 모듈이 여백선에서 곧게 잘렸다. 디자이너 "이런 창은 여백 무시하면 안 됨?"). 넘친 것은 그 칸이 화면 끝에서 자른다.
          자리는 아래에서 그림판 자신을 기준으로 재므로 넓혀도 그대로 맞는다 */

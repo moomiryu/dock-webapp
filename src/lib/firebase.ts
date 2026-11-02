@@ -80,6 +80,8 @@ const FS_KEY = import.meta.env.VITE_FIREBASE_API_KEY;
 // 키(VITE_RECAPTCHA_SITE_KEY)가 없으면 아무것도 하지 않는다. 출입증을 못 받아도
 // 요청은 그대로 보낸다 — 잠그기 전에는 그래도 통과하고, 잠근 뒤에는 어차피 거절된다.
 const RECAPTCHA_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
+/** 배지를 숨긴 대신 08 푸터가 구글이 요구하는 안내 한 줄을 든다(PhaseDone) — 켜졌을 때만 */
+export const APP_CHECK_ON = Boolean(RECAPTCHA_KEY);
 const APP_CHECK_URL = `https://content-firebaseappcheck.googleapis.com/v1/projects/${import.meta.env.VITE_FIREBASE_PROJECT_ID}/apps/${import.meta.env.VITE_FIREBASE_APP_ID}:exchangeRecaptchaV3Token?key=${FS_KEY}`;
 
 interface Grecaptcha {

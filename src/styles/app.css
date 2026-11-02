@@ -3399,6 +3399,13 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .done-credits{ margin-top: var(--space-block); padding-bottom: var(--space-section);
   font-family: var(--mark-font);   /* © 2026 WoongandRyu — 영문·숫자는 Whois */
   font-size: var(--fs-cap-s); line-height: 1.6; color: var(--muted); }
+/* reCAPTCHA 안내(2026-11-03) — 만든 사람 줄과 같은 크기 · 색, 한글이라 본문 글꼴. 구글 배지는 숨기고
+   이 한 줄이 대신한다(구글이 허용하는 조건). 안내가 있으면 만든 사람 줄은 같은 묶음 간격으로 붙는다 */
+.done-recaptcha{ margin-top: var(--space-block); font-family: var(--text-font); font-size: var(--fs-cap-s); line-height: 1.6; color: var(--muted); }
+/* 링크 하나가 줄 끝에서 갈라지지 않게 — 390에서 '서비스 / 약관'으로 쪼개졌다 */
+.done-recaptcha a{ color: inherit; text-decoration: underline; white-space: nowrap; }
+.done-recaptcha + .done-credits{ margin-top: var(--space-group); }
+.grecaptcha-badge{ visibility: hidden; }
 
 /* 2/5 목록 아래 안내 한 줄(2026-09-25). 마지막 줄 → 선은 틀의 gap(섹션 24).
    선은 머리줄 밑 선·줄 사이 선과 같은 선이고 화면 끝에서 끝까지 간다.
@@ -3437,7 +3444,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .done-footer .feedback-title, .done-footer .feedback-send, .done-footer .feedback-done{ color: var(--paper); }
 /* 위 흰색이 .feedback-send:disabled(회색)를 덮어 빈 칸에서도 보낼 수 있는 것처럼 보였다(2026-10-29 점검) — 못 누를 때는 같은 회색으로 */
 .done-footer .feedback-send:disabled{ color: var(--grey-500); }
-.done-footer .feedback-desc, .done-footer .done-credits{ color: var(--grey-400); }
+.done-footer .feedback-desc, .done-footer .done-credits, .done-footer .done-recaptcha{ color: var(--grey-400); }
 .done-footer .feedback-error{ color: var(--grey-300); }
 .done-footer .feedback-input:focus-visible{ outline-color: var(--paper); }
 /* 사파리 주소창 뒤 — 화면 맨 아래는 회색 땅이다. 색을 읽는 쪽(viewport.ts colorAt)은 SVG의 칠을 못 봐서 그림에 적어 둔다 */

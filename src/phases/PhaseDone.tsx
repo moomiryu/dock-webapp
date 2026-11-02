@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import DoneSky from '../components/DoneSky';
 import type { ToneState } from '../types';
-import { FEEDBACK_MAX, submitFeedback } from '../lib/firebase';
+import { APP_CHECK_ON, FEEDBACK_MAX, submitFeedback } from '../lib/firebase';
 import { pick, useLang } from '../lib/lang';
 
 /* 이 화면의 말. 영어는 초안이다(2026-09-26, 영문판). 장치가 하는 말(합니다체)은
@@ -17,6 +17,12 @@ const T = {
     again: { ko: '한 줄 더 쓰기', en: 'Write another line' },
     /* 이름은 옮기지 않았다 — 로마자 표기는 본인이 정한다 */
     credits: { ko: '기획·디자인·개발 류주성', en: 'Concept · Design · Development 류주성' },
+    /* reCAPTCHA 배지를 숨기는 조건으로 구글이 요구하는 문장(2026-11-03, 디자이너: 배지 대신 여기 한 줄) */
+    rcA: { ko: '이 사이트는 reCAPTCHA로 보호되며 Google ', en: 'This site is protected by reCAPTCHA and the Google ' },
+    rcPrivacy: { ko: '개인정보처리방침', en: 'Privacy Policy' },
+    rcAnd: { ko: '과 ', en: ' and ' },
+    rcTerms: { ko: '서비스 약관', en: 'Terms of Service' },
+    rcEnd: { ko: '이 적용됩니다.', en: ' apply.' },
     cooling: { ko: '조금 전에 보내셨어요. 1분 뒤에 다시 보내주세요.', en: 'You sent one a moment ago. Please send again in 1 minute.' },
     fbTitle: { ko: '더 있었으면 하는 것, 불편했던 것', en: 'What you would like to see, what got in your way' },
     fbDesc: { ko: '새로운 말투나 고쳤으면 하는 점을 알려주세요.', en: "Tell us about a new tone you'd like, or anything we should fix." },
@@ -84,6 +90,13 @@ export default function PhaseDone({ onRestart, text, tone }: Props) {
      </div>
       <footer className="done-footer">
         <FeedbackForm />
+        {APP_CHECK_ON && <p className="done-recaptcha">
+          {pick(T.rcA, lang)}
+          <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">{pick(T.rcPrivacy, lang)}</a>
+          {pick(T.rcAnd, lang)}
+          <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer">{pick(T.rcTerms, lang)}</a>
+          {pick(T.rcEnd, lang)}
+        </p>}
         <p className="done-credits">© 2026 WoongandRyu<br />{pick(T.credits, lang)}</p>
       </footer>
     </div>;

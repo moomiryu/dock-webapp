@@ -8,14 +8,8 @@ import { pick, useLang } from '../lib/lang';
    영어에서도 차분한 평서문으로 둔다 */
 const T = {
     title: { ko: '발화 종료.', en: 'Speech ended.' },
-    /* 이 문단은 세로로 쌓는 칸(app.css .done-after, flex)이라 글과 굵은 조각이
-       늘 따로 선다. 한 문장으로 옮기면 'and'에서 끊겨 보여서, 영어는 두 문장으로
-       나눠 그 자리가 문장 사이가 되게 한다 */
-    /* 사라지는 날짜는 뺐다(2026-10-04, 디자이너) — 벽의 돌 · 나무는 최대 수(STONE_MAX · TREE_MAX)를 넘치면 사흘 전에도 빠진다 */
-    after: {
-        ko: <>메아리처럼 화면을 맴돕니다.</>,
-        en: <>Like an echo, it will drift around the screen.</>
-    },
+    /* 제목 밑 한 줄('메아리처럼 화면을 맴돕니다.')은 뺐다(2026-11-03, 디자이너) — 화면에서 회색 메아리가 빠져 그림과 말이 어긋났다.
+       바꾸지 않고 지운다. 그전 2026-10-04에 사라지는 날짜를 그 줄에서 뺐다 */
     anonT: { ko: '익명성', en: 'Anonymity' },
     anonD: { ko: '누가 썼는지는 남지 않습니다.', en: 'No record is kept of who wrote it.' },
     rulesT: { ko: '운영 원칙', en: 'House rules' },
@@ -34,7 +28,7 @@ const T = {
 interface Props {
     stillDocked: boolean;
     onRestart: () => void;
-    /** 방금 벽에 띄운 내 글 · 그 얼굴 — 하늘(DoneSky)에서 크게 서고 그 위에 작은 사람 둘이 앉는다. 없으면 회색 지난 말만 */
+    /** 방금 벽에 띄운 내 글 · 그 얼굴 — 하늘(DoneSky)에서 크게 서고 그 위에 작은 사람 둘이 앉는다. 없으면 하늘이 빈다 */
     text?: string;
     tone?: ToneState | null;
 }
@@ -52,8 +46,8 @@ interface Props {
  *
  * 2026-10-06(사용자): 홈의 생김새를 입었다 — 앱에서 이 화면만 따로 놀았다
  * (머리줄 'MEGAFONT · 완료'는 여기에만 있었고, 빨강이 한 곳도 없었다). 첫 화면
- * 높이 한 장(.home-frame)이 홈과 같은 틀이다: 워드마크 자리에 '발화 종료.'와
- * 메아리 한 줄, 가운데 하늘(DoneSky), 아래 빨간 주 행동. 홈의 흐르는 말(HomeVoices)은
+ * 높이 한 장(.home-frame)이 홈과 같은 틀이다: 워드마크 자리에 '발화 종료.'(그 밑의
+ * 메아리 한 줄은 2026-11-03에 뺐다), 가운데 하늘(DoneSky), 아래 빨간 주 행동. 홈의 흐르는 말(HomeVoices)은
  * 가져오지 않는다. 의견 칸과 만든 사람 줄은 그 한 장 **밖** 아래에 붙어 읽는 사람만 본다 —
  * 틀 안에 두면 하늘이 늘어난 틀 높이로 자리를 잡아 첫 화면 밖으로 내려간다.
  *
@@ -65,12 +59,11 @@ export default function PhaseDone({ onRestart, text, tone }: Props) {
     const lang = useLang();
     return <div className="done-home">
      <div className="home-frame">
-      {/* 하늘(2026-10-20, 결정 13 · 32) — 바탕 위, 글 뒤. '메아리처럼 화면을 맴돕니다'를 그림으로 — 회색 메아리, 내 말풍선과 그 위에 앉은 두 사람 */}
+      {/* 하늘(2026-10-20, 결정 13 · 32) — 바탕 위, 글 뒤. 내 말풍선과 그 위에 앉은 두 사람(회색 메아리는 2026-11-03에 뺐다) */}
       <DoneSky text={text} tone={tone} />
       <div className="home-layer">
         <div className="home-intro">
           <h1>{pick(T.title, lang)}</h1>
-          <p className="home-subtitle">{pick(T.after, lang)}</p>
         </div>
         <div className="home-gate">
           <dl className="info-rules">

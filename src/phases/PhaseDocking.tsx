@@ -7,7 +7,6 @@ import {
   clearWait,
   fakeSwitch,
   isFirebaseConfigured,
-  readDock,
   startBroadcast,
   subscribeDock,
   waitIsFree,
@@ -24,9 +23,8 @@ const T = {
   how: { ko: '세로로, 윗부분을 먼저 넣어주세요.', en: 'Hold it upright and put the top end in first.' },
   /* 개발용 버튼(?dev=1)이라 참여자는 못 본다 */
   test: { ko: '꽂았어요', en: "I've docked it" },
-  /* 꽂았는데 안 넘어갈 때(5초 뒤) — 눌러서 지금 꽂혀 있는지 다시 본다 */
-  stuck: { ko: '꽂았는데 안 넘어가요', en: "I've docked it but nothing happens" },
-  notYet: { ko: '아직 안 꽂혔어요. 다시 꽂아 보세요.', en: "It isn't docked yet. Try putting it in again." }
+  /* 꽂았는데 안 넘어갈 때(5초 뒤) — 홈의 센서를 믿지 않고 손으로 확정한다 */
+  stuck: { ko: '꽂았는데 안 넘어가요', en: "I've docked it but nothing happens" }
 };
 
 /** 이만큼 지나도 안 넘어가면 '꽂았는데 안 넘어가요'가 나온다(2026-10-07, 사용자 — 5초) */
@@ -117,6 +115,8 @@ export default function PhaseDocking({ messageId, onDocked, onHome }: Props) {
   const [note, setNote] = useState<Note>(null);
   const lang = useLang();
   const firedRef = useRef(false);
+  /** '꽂았는데 안 넘어가요'를 누른 꽂음 번호 — 센서 대신 사람이 꽂았다고 말한 것. 재시도해도 같은 번호라 벽에 두 번 뜨지 않는다 */
+  const manualRef = useRef('');
   const sessionRef = useRef('');
   if (!sessionRef.current) sessionRef.current = newSessionId();
 
@@ -173,12 +173,16 @@ export default function PhaseDocking({ messageId, onDocked, onHome }: Props) {
 
       // ── 여기부터는 내가 대기 자리의 주인이다 ──────────────
       const newPress = s.plugged && !!s.switchId && s.switchId !== baseline && !takenByOther;
-      if (newPress) {
+      // 손으로 확정한 꽂음(2026-11-03 디자이너 — 도킹 신호가 안 올 때 사람이 대신 오케이). 센서를 안 믿으므로 꽂힘 칸은 안 보지만,
+      // 남의 말이 벽에 서 있는 동안엔 끼어들지 않는다 — 그게 끝나면 이 바퀴가 이어서 넘긴다
+      const manual = manualRef.current;
+      const otherLive = !!s.startSession && s.startSession !== session && !s.endedAt && now - s.startedAt < EMPHASIS_MS;
+      if (newPress || (manual && !otherLive)) {
         const started = await startBroadcast({
           session,
           messageId,
-          startedAt: sensibleStart(s.switchAt, now),
-          switchId: s.switchId
+          startedAt: newPress ? sensibleStart(s.switchAt, now) : now,
+          switchId: newPress ? s.switchId : manual
         });
         if (started) {
           firedRef.current = true;
@@ -191,6 +195,7 @@ export default function PhaseDocking({ messageId, onDocked, onHome }: Props) {
         return;
       }
 
+      if (manual) return setNote('queued');
       if (!piAlive && !dev) return setNote('offline');
       if (s.plugged) return setNote('occupied');
       setNote(null);
@@ -244,30 +249,16 @@ export default function PhaseDocking({ messageId, onDocked, onHome }: Props) {
 
   const dev = isDevMode();
 
-  /** 5초가 지나도 안 넘어가면 '꽂았는데 안 넘어가요'를 낸다. 눌러도 지금 정말 꽂혀 있을 때만 넘어간다 */
+  /** 5초가 지나도 안 넘어가면 '꽂았는데 안 넘어가요'를 낸다. 누르면 도킹 신호 없이 송출을 확정한다 — 실제 일은 위의 확인 바퀴가(0.5초 안) */
   const [stuck, setStuck] = useState(false);
-  const [unplugged, setUnplugged] = useState(false);
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
     const id = window.setTimeout(() => setStuck(true), STUCK_MS);
     return () => clearTimeout(id);
   }, []);
 
-  async function handleStuck() {
-    if (firedRef.current) return;
-    const s = await readDock().catch(() => null);
-    const session = sessionRef.current;
-    const taken = !!s && !!s.switchId && s.startId.startsWith(`${s.switchId}:`) && s.startSession !== session;
-    if (!s || !s.plugged || !s.switchId || taken) return setUnplugged(true);
-    const started = await startBroadcast({
-      session,
-      messageId,
-      startedAt: sensibleStart(s.switchAt, Date.now()),
-      switchId: s.switchId
-    });
-    if (!started) return setUnplugged(true);
-    firedRef.current = true;
-    onDocked(started.startedAt, session);
+  function handleStuck() {
+    if (!manualRef.current) manualRef.current = `manual-${Date.now().toString(36)}`;
   }
 
   /** 파이가 없는 자리에서 꽂음을 흉내 낸다. 가는 길은 실제와 같다 */
@@ -288,8 +279,8 @@ export default function PhaseDocking({ messageId, onDocked, onHome }: Props) {
         {/* 5초가 지나면 안내 문장 자리가 '꽂았는데 안 넘어가요' 버튼이 된다(2026-10-07, 사용자). 맨 아래에 있었는데
             폰을 꽂으면 화면 아래 30%쯤이 홈에 들어가 그 버튼이 가려졌다 — 제목 바로 아래는 꽂은 채로도 보인다 */}
         {stuck && !dev ? (
-          <button type="button" className="hint-open dock-stuck" onClick={() => void handleStuck()}>
-            {pick(unplugged ? T.notYet : T.stuck, lang)}
+          <button type="button" className="hint-open dock-stuck" onClick={handleStuck}>
+            {pick(T.stuck, lang)}
           </button>
         ) : (
           <p>{pick(T.how, lang)}</p>

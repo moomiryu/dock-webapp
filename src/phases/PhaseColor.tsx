@@ -19,8 +19,9 @@ const T = {
     /* 2026-11-03 디자이너 — 2/5 · 3/5와 같은 꼴(그전엔 '발화를 어떻게 담아볼까요?') */
     title: { ko: '형태를 골라주세요.', en: 'Choose a form.' },
     /* '정렬 방식'은 '모양'이 됐다(2026-10-01, 디자이너 — 이 화면의 이름은 전부 '모양'으로) */
-    lead: { ko: <>발화가 지닌 태도를 떠올리며,<br />모양과 색을 골라 말을 담을 그릇을 그려봐요.</>,
-      en: <>Think of the attitude your line carries,<br />then pick a shape and a colour to draw the vessel that holds it.</> },
+    /* 2026-11-03 디자이너 — '말을 담을 그릇을 그려봐요'를 뺐다. 제목이 '형태를 골라주세요.'가 되면서 그릇 비유가 겹쳤다 */
+    lead: { ko: <>발화가 지닌 태도를 떠올리며,<br />모양과 색을 골라요.</>,
+      en: <>Think of the attitude your line carries,<br />then pick a shape and a colour.</> },
     /* 룰렛 오른쪽 ▲▼의 낭독 이름 */
     prevColour: { ko: '이전 색', en: 'Previous colour' },
     nextColour: { ko: '다음 색', en: 'Next colour' },

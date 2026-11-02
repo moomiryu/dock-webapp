@@ -288,7 +288,7 @@ export default function PhaseDocking({ messageId, onDocked, onHome }: Props) {
         {/* 5초가 지나면 안내 문장 자리가 '꽂았는데 안 넘어가요' 버튼이 된다(2026-10-07, 사용자). 맨 아래에 있었는데
             폰을 꽂으면 화면 아래 30%쯤이 홈에 들어가 그 버튼이 가려졌다 — 제목 바로 아래는 꽂은 채로도 보인다 */}
         {stuck && !dev ? (
-          <button className="dock-stuck" onClick={() => void handleStuck()}>
+          <button type="button" className="hint-open dock-stuck" onClick={() => void handleStuck()}>
             {pick(unplugged ? T.notYet : T.stuck, lang)}
           </button>
         ) : (

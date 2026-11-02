@@ -102,7 +102,7 @@ function fitToBox(el: HTMLElement): number {
 /** 말풍선 속 글자(아래 휜 배치 — 4/5 · 5/5 · 벽 하늘 · 도킹 큰 말 · 08)의 성격별 배율(2026-10-21, 결정 38 — 견본 격자에서 디자이너
     "나머지는 다 괜찮은데 유머있는만 1.4 정도"). 핸드젯은 같은 크기에서 훨씬 작아 별 모듈 한가운데가 비어 보였다. 모듈 · 말풍선 크기 · 자리는
     그대로고 낱자만 제자리에서 커진다. opticalFix는 02 · 03 글자에도 걸려 여기 따로 둔다 */
-const IN_BUBBLE: Record<string, number> = { deulseok: 1.4 };
+export const IN_BUBBLE: Record<string, number> = { deulseok: 1.4 };
 export default function VoiceBubble({ text, bg, color, fontFamily, font, weight, width = 1, slant = 0, fontSize, align: alignIn = 'center', size = 44, manner = 0, fill, speed, weightPos, perChar, lineTrack, glyphs, glyphBox, children }: Props) {
     /* 글 맞춤은 셋뿐이다 — 나머지 정렬은 형상(cloud.ts)이 줄 · 자리로 이미 풀어 넘긴다 */
     const align = alignIn === 'left' || alignIn === 'right' ? alignIn : 'center';

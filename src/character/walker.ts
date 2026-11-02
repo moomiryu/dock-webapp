@@ -177,5 +177,8 @@ export const SIT = {
   pivot: [100, FOOT_Y] as const,
   farDeg: 30, nearDeg: 12, farSwing: 6, nearSwing: 4,
   body: `M${HEAD.cx - HEAD.r},${HEAD.cy} H${HEAD.cx + HEAD.r} V${CLIP_H - 56} Q${HEAD.cx + HEAD.r},${CLIP_H} ${HEAD.cx + HEAD.r - 56},${CLIP_H} H${HEAD.cx - HEAD.r + 56} Q${HEAD.cx - HEAD.r},${CLIP_H} ${HEAD.cx - HEAD.r},${CLIP_H - 56} Z`,
-  drop: FOOT_Y - (CLIP_H + 4)
+  drop: FOOT_Y - (CLIP_H + 4),
+  /** 말 위에 앉을 때 말 윗선 아래로 묻히는 깊이 — 앉은 키의 몫(2026-11-03 디자이너 — "좀 더 안쪽에 여유 있게", 견본 10 · 25 · 40 · 55%에서
+      25%를 골랐다. 40%부터는 두 줄 글의 윗줄을 몸이 가렸다). 08 완료(DoneSky) · 벽 하늘(WallWalkers)이 함께 읽는다. 10%였다 */
+  sink: 0.25
 };

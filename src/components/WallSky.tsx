@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import VoiceBubble from './VoiceBubble';
+import VoiceBubble, { IN_BUBBLE } from './VoiceBubble';
 import { ENTRANCE, G, RD, RF, arranged, arrangeOf, dockPlanOf, evenSpread, gapsOf, hurry, kindOf, modulesAt, tailOf, type Dot, type Item, type Kind, type Plan, type Tail } from '../lib/aggregate';
 import { paintBody, paintEntrance, placeGlyphs, type Glyph, type Pop } from '../lib/dotPaint';
 import { FAN, SKY, WAVE, WIDE, bodyOf, fanOf, idleWavesAt, profileOf, ringOf, turn, waveAlpha, waveArc, wavesAt, type Box, type Seat, type Seated } from '../lib/sky';
@@ -189,9 +189,10 @@ type Top = { cols: Map<number, number>; span: [number, number]; body: Box };
 
 /**
  * 작은 사람이 딛는 하늘 말(하늘 놀이, 2026-10-20 진행4) — 그 순간의 자리(px, 말 원점) · 기울기 · 1u(px) · 윗선(말 좌표 x0 ~ x1에서 가장
- * 높은 윗끝, 없으면 null) · 윗선이 있는 가로 범위 · 몸통 상자(말 좌표) · 다음에 터질 말(가장 오래 떠 있던 말)인가
+ * 높은 윗끝, 없으면 null) · 글자 윗끝(같은 범위의 글자 가운데 − 반 높이 — 앉은 이가 그보다 깊이 묻히지 않게, 2026-11-03) · 윗선이 있는 가로 범위 ·
+ * 몸통 상자(말 좌표) · 다음에 터질 말(가장 오래 떠 있던 말)인가
  */
-export type Perch = { id: string; X: number; Y: number; rot: number; u: number; top: (x0: number, x1: number) => number | null; span: [number, number]; body: Box; old: boolean };
+export type Perch = { id: string; X: number; Y: number; rot: number; u: number; top: (x0: number, x1: number) => number | null; ink: (x0: number, x1: number) => number | null; span: [number, number]; body: Box; old: boolean };
 /** 하늘 놀이의 통로 — WallSky가 적고 작은 사람이 읽는다. at = 그 순간 딛을 수 있는 말(도킹 중엔 없다 — 광각으로 퍼지니 땅으로) */
 export type SkyPerch = { at: (t: number) => Perch[] };
 /**
@@ -291,7 +292,13 @@ export default function WallSky({ list, dock, beat, waves, perch, hush = false, 
             for (let c = Math.round(x0 / G); c <= Math.round(x1 / G); c++) y = Math.min(y, tp.cols.get(c) ?? Infinity);
             return y === Infinity ? null : y;
           };
-          return { id: s.id, X, Y, rot, u: M.u * s.k, top, span: tp.span, body: tp.body, old: s === oldest };
+          /* 글자 윗끝 — 낱글자 가운데(it)에서 글자 크기(1u × 말풍선 속 배율 IN_BUBBLE)의 0.45 위. 가로는 글자 반 칸씩 걸치면 든다 */
+          const half = 0.45 * (IN_BUBBLE[s.msg.tone?.font ?? ''] ?? 1), ink = (x0: number, x1: number) => {
+            let y = Infinity;
+            for (const it of s.items) if (it.x + 0.5 > x0 && it.x - 0.5 < x1) y = Math.min(y, it.y - half);
+            return y === Infinity ? null : y;
+          };
+          return { id: s.id, X, Y, rot, u: M.u * s.k, top, ink, span: tp.span, body: tp.body, old: s === oldest };
         });
       }
     };

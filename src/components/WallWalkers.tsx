@@ -416,6 +416,13 @@ export default function WallWalkers({ beat, sky, sad = false, yard }: { beat?: {
           if (Math.abs(d) * p.u < 2) { w.mode = 'idle'; w.until = now + rnd(TRIP.stay); } else { w.on.lx += Math.sign(d) * Math.min(Math.abs(d), (speed * dt) / p.u); w.walking = true; }
         }
         [w.fx, w.fy] = spotXY(p, w.on.lx); w.rot = p.rot;
+        // 앉으면 서 있던 발 자리(TRIP.sink)보다 깊이 — 앉은 키의 SIT.sink만큼 윗선 아래로 묻힌다(08과 같은 비율, 2026-11-03 디자이너 — "좀 더
+        // 안쪽에 여유 있게"). 다만 몸 폭 안 글자 윗끝까지만 — 하늘 말은 첫 줄이 윗선에 바짝 붙어 25%면 글자를 가렸다(디자이너 "글자 안 가릴
+        // 만큼만"). 앉는 몸짓(sitT)을 따라 스르르 내려앉고, 말이 기운 만큼 기운 쪽으로
+        const bw = (0.6 * cw) / p.u, lip = p.top(w.on.lx - bw, w.on.lx + bw), ink = p.ink(w.on.lx - bw, w.on.lx + bw);
+        const room = lip !== null && ink !== null ? (ink - lip) * p.u : Infinity;
+        const deep = easeStd(w.sitT) * Math.max(0, Math.min(SIT.sink * CLIP_H * s, room) - TRIP.sink * p.u);
+        w.fx -= deep * Math.sin(p.rot); w.fy += deep * Math.cos(p.rot);
         // 머무는 사이 이웃 말이 떠다니다 다가와 사람과 겹치면 일찍 일어나 다음 일로(글자를 가리지 않게)
         if (w.trip && w.mode !== 'walk' && now < w.until && [...ps.values()].some((o) => o.id !== p.id && hit(meBox(w.fx, w.fy, w.rot), boxOf(o, 0)))) w.until = now;
         if (w.mode === 'sit' && now > w.nextBlink && now >= w.smileUntil) { w.blinkUntil = now + RET; w.nextBlink = now + HOLD * rnd(T.blink); }

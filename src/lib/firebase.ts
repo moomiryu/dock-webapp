@@ -71,8 +71,9 @@ const FS_KEY = import.meta.env.VITE_FIREBASE_API_KEY;
 // 금지어만 피한 글을 프로그램으로 초당 수십 개 올리면 벽이 그 글로 덮이고
 // 무료 사용량이 바닥난다. App Check는 요청마다 '진짜 브라우저에서 이 앱이
 // 받은 출입증'을 붙이게 하고, 콘솔에서 잠그면(Enforce) 출입증 없는 요청을
-// 데이터베이스가 거절한다. 출입증은 reCAPTCHA v3(보이지 않는 점수)로 받아
-// App Check REST에서 바꾼다 — SDK 없이, 이 파일의 다른 길과 같이.
+// 데이터베이스가 거절한다. 출입증은 reCAPTCHA Enterprise(보이지 않는 점수,
+// 콘솔 이름 Fraud Defense)로 받아 App Check REST에서 바꾼다 — SDK 없이, 이 파일의
+// 다른 길과 같이. 클래식 v3는 콘솔에서 새로 등록할 수 없게 됐다(2026-11-03 확인).
 //
 // **횟수 제한은 아니다.** 진짜 브라우저에서 받은 출입증은 ttl 동안 다시 쓸 수
 // 있다. 문턱을 높일 뿐이고, 진짜로 세려면 서버(Cloud Functions)가 있어야 한다.
@@ -82,7 +83,7 @@ const FS_KEY = import.meta.env.VITE_FIREBASE_API_KEY;
 const RECAPTCHA_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
 /** 배지를 숨긴 대신 08 푸터가 구글이 요구하는 안내 한 줄을 든다(PhaseDone) — 켜졌을 때만 */
 export const APP_CHECK_ON = Boolean(RECAPTCHA_KEY);
-const APP_CHECK_URL = `https://content-firebaseappcheck.googleapis.com/v1/projects/${import.meta.env.VITE_FIREBASE_PROJECT_ID}/apps/${import.meta.env.VITE_FIREBASE_APP_ID}:exchangeRecaptchaV3Token?key=${FS_KEY}`;
+const APP_CHECK_URL = `https://content-firebaseappcheck.googleapis.com/v1/projects/${import.meta.env.VITE_FIREBASE_PROJECT_ID}/apps/${import.meta.env.VITE_FIREBASE_APP_ID}:exchangeRecaptchaEnterpriseToken?key=${FS_KEY}`;
 
 interface Grecaptcha {
   ready(cb: () => void): void;
@@ -97,9 +98,9 @@ let appCheckPending: Promise<string | null> | null = null;
 function loadRecaptcha(key: string): Promise<Grecaptcha> {
   return new Promise((resolve, reject) => {
     const s = document.createElement('script');
-    s.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(key)}`;
+    s.src = `https://www.google.com/recaptcha/enterprise.js?render=${encodeURIComponent(key)}`;
     s.onload = () => {
-      const g = (window as unknown as { grecaptcha: Grecaptcha }).grecaptcha;
+      const g = (window as unknown as { grecaptcha: { enterprise: Grecaptcha } }).grecaptcha.enterprise;
       g.ready(() => resolve(g));
     };
     s.onerror = () => reject(new Error('recaptcha'));
@@ -116,7 +117,7 @@ function appCheckToken(): Promise<string | null> {
       const rc = await (await recaptcha).execute(RECAPTCHA_KEY, { action: 'fire_app_check' });
       const res = await withTimeout(fetch(APP_CHECK_URL, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recaptcha_v3_token: rc })
+        body: JSON.stringify({ recaptcha_enterprise_token: rc })
       }), 8000);
       if (!res.ok) throw new Error(`app check ${res.status}`);
       const j = (await res.json()) as { token: string; ttl: string };

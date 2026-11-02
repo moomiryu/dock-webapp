@@ -5,7 +5,7 @@ import { paintBody, paintEntrance, placeGlyphs, type Glyph, type Pop } from '../
 import { FAN, SKY, WAVE, WIDE, bodyOf, fanOf, idleWavesAt, profileOf, ringOf, turn, waveAlpha, waveArc, wavesAt, type Box, type Seat, type Seated } from '../lib/sky';
 import { foldLines } from '../lib/fit';
 import { cssRgb, hash, rng } from '../lib/hatch';
-import { fontMap } from '../lib/palettes';
+import { fontMap, sizeScale } from '../lib/palettes';
 import { grainKnots, groundPx, swellAt } from '../lib/ground';
 import { FILL, HALLS, buildingsAt } from './WallSkyline';
 import { easeOf, tokenS } from '../lib/motion';
@@ -120,8 +120,9 @@ const clamp = (k: number) => Math.min(1, Math.max(0, k));
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 
 type P = [number, number];
-/** 한 말 — 글 · 줄 · 성격 · 글자 자리 · 틈 메움 · 색 · 나부낌 박자 · 둥실의 위상 · 나이(쓰인 시각 — 가장 오래된 말부터 터지고, 나중 말이 앞에 선다) */
-interface Base { id: string; msg: StoredMessage; lines: string[]; kd: Kind; items: Item[]; gaps: Dot[]; bg: string; fg: string; ph: number; dr: [number, number, number]; born: number }
+/** 한 말 — 글 · 줄 · 성격 · 글자 자리 · 틈 메움 · 색 · 나부낌 박자 · 둥실의 위상 · 나이(쓰인 시각 — 가장 오래된 말부터 터지고, 나중 말이 앞에 선다) ·
+    크기 배율(고른 크기, palettes.ts sizeScale — 그 말의 1u = 하늘의 u × k) */
+interface Base { id: string; msg: StoredMessage; lines: string[]; kd: Kind; items: Item[]; gaps: Dot[]; bg: string; fg: string; ph: number; dr: [number, number, number]; born: number; k: number }
 /** 하늘의 자리 — 부채꼴 위 자리(px, 말 원점) · 기울기(라디안) · 자리 번호 · 몸통 상자(px, 기울기 전) */
 type Place = Seat & Seated;
 /** 하늘에 붙은 말 — 자리 · 미끄러지는 중(from → pos, fromRot → rot, mv초부터) · 아래에서 올라오는 중 · 꼬리 · 캔버스 범위(u) · 터지는 때 */
@@ -147,12 +148,12 @@ const times = (D: Dock) => {
 function baseOf(msg: StoredMessage): Base {
   const tone = msg.tone, lines = foldLines(msg.text), kd = kindOf(tone?.font), items = arranged(lines, arrangeOf(tone?.font, tone?.align), kd);
   const { bg, text } = colorsOf(msg), h = hash(msg.id);
-  return { id: msg.id, msg, lines, kd, items, gaps: gapsOf(items, kd), bg, fg: text, ph: (h % 628) / 100, dr: [((h >>> 8) % 628) / 100, ((h >>> 16) % 628) / 100, ((h >>> 24) * 6.28) / 256], born: msg.createdAt };
+  return { id: msg.id, msg, lines, kd, items, gaps: gapsOf(items, kd), bg, fg: text, ph: (h % 628) / 100, dr: [((h >>> 8) % 628) / 100, ((h >>> 16) % 628) / 100, ((h >>> 24) * 6.28) / 256], born: msg.createdAt, k: sizeScale(tone?.size) };
 }
 /** 기기(벽 아래 가운데 바깥)를 그 자리의 말 좌표(u)로 */
 const devFrom = (pos: readonly number[], W: number, H: number, u: number): P => [(W / 2 - pos[0]) / u, (H * (1 + SKY.devDrop) - pos[1]) / u];
-/** 기기를 가리키는 꼬리 — 그 자리(px)에서, 기운 말의 좌표로 잰다(기울어도 기기를 가리킨다) */
-const tailAt = (b: Base, pos: readonly number[], rot: number, W: number, H: number, u: number) => tailOf(b.items, b.kd, turn(devFrom(pos, W, H, u), -rot));
+/** 기기를 가리키는 꼬리 — 그 자리(px)에서, 기운 말의 좌표로 잰다(기울어도 기기를 가리킨다). u는 하늘의 u — 말의 배율은 여기서 곱한다 */
+const tailAt = (b: Base, pos: readonly number[], rot: number, W: number, H: number, u: number) => tailOf(b.items, b.kd, turn(devFrom(pos, W, H, u * b.k), -rot));
 /** 하늘의 말 — 그 자리의 꼬리 · 캔버스 범위 */
 function skyAt(b: Base, at: Place, W: number, H: number, u: number): Sky {
   const tail = tailAt(b, at.pos, at.rot, W, H, u), all = [...modulesAt(b.items, b.kd, 1).dots, ...b.gaps, ...tail.dots];
@@ -161,7 +162,7 @@ function skyAt(b: Base, at: Place, W: number, H: number, u: number): Sky {
 }
 /** 몸통 상자 — 하늘 가운데 위쪽(SKY.probe)에서의 꼬리로 잰다 */
 const bodyAt = (b: Base, W: number, H: number, u: number) =>
-  bodyOf(profileOf([...modulesAt(b.items, b.kd, 1).dots, ...b.gaps, ...tailAt(b, [W / 2, SKY.probe * H], 0, W, H, u).dots], u), u);
+  bodyOf(profileOf([...modulesAt(b.items, b.kd, 1).dots, ...b.gaps, ...tailAt(b, [W / 2, SKY.probe * H], 0, W, H, u).dots], u * b.k), u * b.k);
 const slid = (s: Sky, now: number) => (s.mv !== undefined && now < s.mv + SKY.move ? easeIO((now - s.mv) / SKY.move) : 1);
 const posAt = (s: Sky, now: number): P => { const k = slid(s, now); return s.from && k < 1 ? [lerp(s.from[0], s.pos[0], k), lerp(s.from[1], s.pos[1], k)] : s.pos; };
 const rotAt = (s: Sky, now: number) => { const k = slid(s, now); return s.fromRot !== undefined && k < 1 ? lerp(s.fromRot, s.rot, k) : s.rot; };
@@ -177,10 +178,10 @@ const leave = (s: Sky, t: number): Sky => ({ ...s, popAt: t + POP_DELAY });
  * 가로 u(0.85 sin(0.11t + φ1) + 0.30 sin(0.37t + φ3)) · 세로 u(0.95 sin(0.09t + φ2) + 0.30 sin(0.41t + 1.7φ3)) · 갸웃 0.045rad(±2.6°)
  * × sin(0.10t + 2.3φ1) — 결 따라 기울기(1/3) 위에 더한다. 이웃과 가끔 겹친다(나중 말이 앞). 광각으로 퍼지는 동안은 (1 − P)만큼 줄어든다
  */
-const drift = (b: Base, now: number, u: number): [number, number, number] => [
+const drift = (b: Base, now: number, U: number): [number, number, number] => { const u = U * b.k; return [
   u * (0.85 * Math.sin(0.11 * now + b.dr[0]) + 0.3 * Math.sin(0.37 * now + b.dr[2])),
   u * (0.95 * Math.sin(0.09 * now + b.dr[1]) + 0.3 * Math.sin(0.41 * now + 1.7 * b.dr[2])),
-  0.045 * Math.sin(0.1 * now + 2.3 * b.dr[0])];
+  0.045 * Math.sin(0.1 * now + 2.3 * b.dr[0])]; };
 
 type Els = { wrap: HTMLDivElement; canvas: HTMLCanvasElement; text: HTMLDivElement };
 /** 말의 윗선 — 점 간격 칸마다 가장 높은 윗끝(말 좌표 u, 메움 반지름까지) · 윗선이 있는 가로 범위 · 몸통 상자(꼬리 뺌) */
@@ -290,7 +291,7 @@ export default function WallSky({ list, dock, beat, waves, perch, hush = false, 
             for (let c = Math.round(x0 / G); c <= Math.round(x1 / G); c++) y = Math.min(y, tp.cols.get(c) ?? Infinity);
             return y === Infinity ? null : y;
           };
-          return { id: s.id, X, Y, rot, u: M.u, top, span: tp.span, body: tp.body, old: s === oldest };
+          return { id: s.id, X, Y, rot, u: M.u * s.k, top, span: tp.span, body: tp.body, old: s === oldest };
         });
       }
     };
@@ -806,14 +807,14 @@ export default function WallSky({ list, dock, beat, waves, perch, hush = false, 
         e.wrap.style.transform = `translate(${X.toFixed(1)}px, ${Y.toFixed(1)}px) rotate(${rot.toFixed(4)}rad) scale(${k.toFixed(4)})`;
         const ctx = e.canvas.getContext('2d');
         if (!ctx) continue;
-        const res = u * dpr * WIDE.grow;
+        const us = u * s.k, res = us * dpr * WIDE.grow;
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, e.canvas.width, e.canvas.height);
         ctx.setTransform(res, 0, 0, res, -s.box[0] * res, -s.box[1] * res);
         ctx.fillStyle = mix(s.bg, P);
-        const pop: Pop | undefined = s.popAt === undefined ? undefined : { now: t, at: (px, py) => s.popAt! + (Math.hypot(px - s.tail.tip[0], py - s.tail.tip[1]) * u) / (POP_V * W) };
+        const pop: Pop | undefined = s.popAt === undefined ? undefined : { now: t, at: (px, py) => s.popAt! + (Math.hypot(px - s.tail.tip[0], py - s.tail.tip[1]) * us) / (POP_V * W) };
         const gs = paintBody(ctx, s.items, s.kd, s.gaps, 1, s.tail, tailG(s, t), t, s.ph, quiet, pop);
-        placeGlyphs(glyphEls(e.text), gs, u);
+        placeGlyphs(glyphEls(e.text), gs, us);
         const vb = e.text.firstElementChild as HTMLElement | null;
         if (vb) vb.style.color = mix(s.fg, P);
       }
@@ -843,7 +844,7 @@ export default function WallSky({ list, dock, beat, waves, perch, hush = false, 
       if (!Dk && Sh) {
         if (t < Sh.T) return;
         if (Sh.settleAt !== undefined && settled(Sh.b.id, Sh.settleAt, t)) { M.shot = null; hideText(); setLanded((v) => v + 1); rerender(); return; }
-        const e = easeOut(clamp((t - Sh.T) / ROT.shot)), [dx, dy, dq] = quiet ? [0, 0, 0] : drift(Sh.b, t, u), Su = lerp(ROT.from * u, u, e), rot = (Sh.at.rot + dq) * e;
+        const e = easeOut(clamp((t - Sh.T) / ROT.shot)), [dx, dy, dq] = quiet ? [0, 0, 0] : drift(Sh.b, t, u), Su = lerp(ROT.from * u * Sh.b.k, u * Sh.b.k, e), rot = (Sh.at.rot + dq) * e;
         const X = lerp(W / 2, Sh.at.pos[0] + dx, e), Y = lerp(H * (1 + SKY.devDrop), Sh.at.pos[1] + dy, e);
         put(ctx, Su, X, Y, rot, dpr);
         ctx.fillStyle = Sh.b.bg;
@@ -863,7 +864,7 @@ export default function WallSky({ list, dock, beat, waves, perch, hush = false, 
         // 모인다 — 꼬리 없이(결정 56)
         const m = quiet ? 1 : easeOut(clamp((t - T.merge) / GATHER)), r = easeIO(clamp((t - T.rise) / RISE));
         const [dx, dy, dq] = quiet ? [0, 0, 0] : drift(Dk, t, u);
-        X = lerp(W / 2, Dk.at.pos[0] + dx, r); Y = lerp(H / 2, Dk.at.pos[1] + dy, r); Su = lerp(Dk.S, u, r); rot = (Dk.at.rot + dq) * r;
+        X = lerp(W / 2, Dk.at.pos[0] + dx, r); Y = lerp(H / 2, Dk.at.pos[1] + dy, r); Su = lerp(Dk.S, u * Dk.k, r); rot = (Dk.at.rot + dq) * r;
         // 오르는 동안 기울기는 0에서 제 기울기로
         put(ctx, Su, X, Y, rot, dpr);
         gs = paintBody(ctx, r > 0 ? Dk.items : Dk.spread, Dk.kd, Dk.gaps, r > 0 ? 1 : m, null, 0, t, Dk.ph, quiet);
@@ -886,7 +887,7 @@ export default function WallSky({ list, dock, beat, waves, perch, hush = false, 
       <canvas ref={crumbCv} className="sky-crumbs" />
       {/* 오래된 말부터 — 나중에 온 말이 앞에서 가린다(터지는 말이 가장 오래됐으니 맨 먼저) */}
       {[...M.leaving, ...[...M.sky].sort((a, b) => a.born - b.born)].map((s) => (
-        <SkyMsg key={s.id + (s.popAt ? ':pop' : '')} s={s} u={M.u} onEl={setEls(s.id + (s.popAt ? ':pop' : ''))} />
+        <SkyMsg key={s.id + (s.popAt ? ':pop' : '')} s={s} u={M.u * s.k} onEl={setEls(s.id + (s.popAt ? ':pop' : ''))} />
       ))}
       <div className="sky-dock">
         <canvas ref={dockCv} />

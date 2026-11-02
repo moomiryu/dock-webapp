@@ -3,7 +3,7 @@ import VoiceBubble from './VoiceBubble';
 import { ENTRANCE, arranged, arrangeOf, bigScale, evenSpread, boundsOf, fitTail, follow, G, gapsOf, kindOf, modulesAt, mouthOf, planEntrance, tailOf, type Item, type Plan, type Tail } from '../lib/aggregate';
 import { canvasSizer, paintBody, paintEntrance, placeGlyphs, type Glyph } from '../lib/dotPaint';
 import { easeOf, tokenS } from '../lib/motion';
-import { fontMap, opticalFix } from '../lib/palettes';
+import { fontMap, opticalFix, sizeScale } from '../lib/palettes';
 import type { Align, ToneState } from '../types';
 
 /**
@@ -80,6 +80,8 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
   const items = useMemo(() => arranged(lines, arr, kd), [lines.join('\n'), arr, kd]);
   const gaps = useMemo(() => gapsOf(items, kd), [items, kd]);
   const optic = opticalFix[tone.font]?.scale ?? 1;
+  /* 고른 크기 — 벽과 같은 배율(palettes.ts sizeScale)을 크기 상한(cap)에 곱한다. 칸을 꽉 채우는 긴 글은 FILL에 먼저 막혀 그대로다 */
+  const sk = sizeScale(tone.size);
   const color = useRef(bg);
   color.current = bg;
   const fit = useRef<Fit>({ W: 0, H: 0, u0: 0, ox0: 0, oy0: 0, u1: 0, ox1: 0, oy1: 0, plan: null, spread: [], dev: [0, 0], merge: 0, tail: null });
@@ -121,7 +123,7 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
         fit.current = { W, H, u0: S, ox0: W / 2, oy0: H / 2, u1: S1, ox1: W / 2, oy1: H / 2, plan,
           spread: items.map((it) => ({ ...it, ax: it.ax * plan.F, ay: it.ay * plan.Fy })), dev: [mouth[0], mouth[1]], merge: plan.whoosh + WHOOSH + hold, tail: null };
       } else {
-        const cap = Math.max(28, Math.min(72, H * 0.06));
+        const cap = Math.max(28, Math.min(72, H * 0.06)) * sk;
         const sizeFor = (b: readonly number[]) => Math.min((W * FILL) / (b[2] - b[0]), (H * FILL) / (b[3] - b[1]));
         const b0 = boundsOf(items, kd, 0), u0 = Math.min(cap, sizeFor(b0));
         // 글자 크기는 옛 꼬리 자리(room)째로 잡는다 — 꼬리가 있던 때와 같은 크기(결정 56). 기기(상자 아래 가운데 바깥) — 꼬리 방향은 u에
@@ -200,7 +202,7 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
     layout();
     if (!quiet || growing) raf = requestAnimationFrame(tick);
     return () => { ro.disconnect(); cancelAnimationFrame(raf); sizer.stop(); };
-  }, [items, gaps, kd, still, play, mode, hold]);
+  }, [items, gaps, kd, still, play, mode, hold, sk]);
   // 색만 바뀔 때 — 다시 놓지 않고 칠만 다시(4/5 첫 장의 색 시연)
   useEffect(() => { redraw.current(); }, [bg]);
 

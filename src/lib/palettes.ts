@@ -379,6 +379,12 @@ export const along = (t: number, [l, m, r]: Three) => {
 export const SIZE_RANGE: Three = [28, 44, 60];
 export const sizeAt = (t: number) => along(t, SIZE_RANGE);
 export const sizePos = (size: number) => Math.min(1, Math.max(0, (size - 28) / 32));
+/** 크기 막대가 벽의 말을 통째로(모듈 · 글자 · 꼬리) 키우는 배율 — 매우 작게 · 보통 · 매우 크게(2026-11-03, 디자이너 — "말풍선 통째로,
+    화면의 반을 차지하지만 않으면"). 10-20 점 말로 바뀐 뒤로 크기는 벽에 안 닿고 있었다. 글 30개(크기 · 길이 섞어, 가장 긴 글 = 매우 크게)를
+    벽 1280×800에 띄워 범위 셋을 견줬다 — 0.8 ~ 1.25(동시 12 · 가장 큰 말 폭 33%) · 0.75 ~ 1.35(10 · 34%) · 0.7 ~ 1.5(8 · 38% · 넓이 15%).
+    가장 넓은 범위를 골랐다. 그만큼 동시에 뜨는 수가 줄고 나머지는 돌림을 기다린다 */
+export const SIZE_SCALE: Three = [0.7, 1, 1.5];
+export const sizeScale = (size?: number) => along(sizePos(size ?? 44), SIZE_SCALE);
 
 /**
  * 막대마다 다섯 칸의 말(2026-09-25, 작업 지침 13번). 막대는 다섯 칸이고

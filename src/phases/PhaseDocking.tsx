@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import MegafontFrame from '../components/MegafontFrame';
 import { DockScreenArt } from '../components/InfoOverlay';
+import DiagPanel from '../components/DiagPanel';
 import {
   PI_STALE_MS,
   claimWait,
@@ -291,6 +292,7 @@ export default function PhaseDocking({ messageId, onDocked, onHome }: Props) {
             {pick(NOTES[note], lang)}
           </p>
         )}
+        <DiagPanel />
         {dev && (
           <button className="dock-test-link" onClick={handleTestDock}>
             {pick(T.test, lang)}

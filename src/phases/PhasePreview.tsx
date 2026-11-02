@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import StepHeader from '../components/StepHeader';
 import DotBubble from '../components/DotBubble';
 import PreviewYard, { roomOf, type Rim } from '../components/PreviewYard';
+import DiagPanel from '../components/DiagPanel';
 import { colorsOf } from '../lib/messageStyle';
 import { foldLines } from '../lib/fit';
 import { pick, useLang } from '../lib/lang';
@@ -73,6 +74,7 @@ export default function PhasePreview({ text, tone, onConfirm, onBack, onHome, bu
    <PreviewYard rim={rim} color={bg} />
   </div>
  </div></div>
+ <DiagPanel />
  {error && <p role="alert" className="error-banner">{error}<br />{pick(T.kept, lang)}</p>}
  <button className="primary-action" disabled={busy} aria-busy={busy} aria-label={pick(busy ? T.sending : error ? T.retry : T.send, lang)} onClick={onConfirm}>{busy ? <span className="cta-loading" aria-hidden>…</span> : pick(error ? T.retry : T.send, lang)}</button></div>;
 }

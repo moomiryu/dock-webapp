@@ -23,6 +23,11 @@ export function isDevMode(): boolean {
   return params.get('dev') === '1' || params.get('mock') === '1';
 }
 
+/** `?diag=1` — 아이폰에서만 나는 문제(5/5 말풍선 · 06 삽화)를 실기에서 읽으려고 화면 구석에 숫자를 찍는다(DiagPanel, 2026-11-03) */
+export function isDiagMode(): boolean {
+  return new URLSearchParams(window.location.search).get('diag') === '1';
+}
+
 export function clearStageFromUrl(): void {
   const url = new URL(window.location.href);
   url.searchParams.delete('stage');

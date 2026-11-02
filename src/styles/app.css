@@ -2751,6 +2751,10 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .onwall-screen .onwall { position:absolute; inset-inline:0; bottom:var(--s6); align-items:center; }
 .onwall-release { border:0; background:none; color:var(--paper); font:inherit; font-size:var(--fs-cap); min-height:var(--btn-l); margin-top:var(--s7); }
 
+/* 실기 진단판(?diag=1 — DiagPanel). 왼쪽 아래 구석, 손을 통과시킨다. 다 밝혀지면 걷는다 */
+.diag-panel { position:fixed; left:0; bottom:0; z-index:3000; margin:0; padding:var(--s2); max-width:100%; white-space:pre-wrap; overflow-wrap:anywhere;
+  font-family:ui-monospace, monospace; font-size:var(--fs-cap-s); line-height:1.4; background:var(--ink); color:var(--paper); opacity:.85; pointer-events:none; }
+
 /* ─── 한 번 더 묻는 창 ─────────────────────────────────────────
    나가는 한 걸음 앞에서 선다 — 도킹의 '처음으로'와 작성 1~5단계의 X
    (2026-09-26). 창은 body에 뜬다(HomeButton · AskLeave).

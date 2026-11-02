@@ -2735,10 +2735,10 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .docking-simple > .info-art.dock-guide { position:relative; }
 .docking-simple > .info-art.dock-guide > span { position:absolute; inset:0; width:auto; height:auto; container-type:normal; }
 .docking-simple > .info-art.dock-guide > span > svg { top:0; bottom:0; translate:none; width:85%; height:100%; }
-/* 07 아래 한 줄 — 왜 아직 안 넘어가는지. 지시(p)보다 물러난 얼굴이라
+/* 06 아래 한 줄 — 왜 아직 안 넘어가는지. 지시(p)보다 물러난 얼굴이라
    설명이 지시를 밀어내지 않는다. 뜨고 지는 자리라 그림의 높이는 안 건드린다 */
 .dock-note { align-self:center; max-width:30ch; margin:var(--s5) 0 0; text-align:center; color:var(--muted); font-size:var(--fs-cap); }
-/* 07에서 5초가 지나도 안 넘어갈 때 나오는 차선책 — 생김새와 누름은 1단계 힌트(.hint-open) 그대로(2026-11-03 디자이너:
+/* 06에서 5초가 지나도 안 넘어갈 때 나오는 차선책 — 생김새와 누름은 1단계 힌트(.hint-open) 그대로(2026-11-03 디자이너:
    선 칸 버튼이라 이것만 예외처럼 보였다. 주 행동이 아니라 막혔을 때 부르는 글자다). 안내 문장 자리에 서므로 p와 같은 틈 —
    힌트의 손 닿는 여백(--s4)만큼 더 되물린다 */
 .dock-stuck { align-self:flex-start; }

@@ -57,10 +57,11 @@ export const BUILDINGS: readonly (readonly ['rect' | 'roof' | 'dome', number, nu
 /** 점 반지름의 덧 — 이웃 점이 겹쳐 속이 한 면이 되게(견본 값) */
 export const FILL = 1.08;
 
-/** 건물들의 합집합 — 벽 W × H에서 (x, y)가 건물 안인가. 말의 부스러기도 이 안에만 쌓인다(WallSky — 건물이 그릇) */
-export function buildingsAt(W: number, H: number): Shape {
+/** 건물들의 합집합 — 벽 W × H에서 (x, y)가 건물 안인가. 말의 부스러기도 이 안에만 쌓인다(WallSky — 건물이 그릇).
+    list는 폰 Step 3이 첨탑 처마만 걷은 판을 넘길 때 쓴다(InfoOverlay) */
+export function buildingsAt(W: number, H: number, list: typeof BUILDINGS = BUILDINGS): Shape {
   const gTop = H - groundPx(H), X = (f: number) => f * W, Y = (f: number) => gTop - f * H;
-  const shapes: Shape[] = BUILDINGS.map(([kind, x0, x1, h, k = 0]) => {
+  const shapes: Shape[] = list.map(([kind, x0, x1, h, k = 0]) => {
     if (kind === 'rect') return (x, y) => x >= X(x0) && x <= X(x1) && y >= Y(h) && y <= gTop;
     if (kind === 'dome') return (x, y) => (x - X(x0)) ** 2 + (y - Y(h)) ** 2 <= (k * H) ** 2;
     return (x, y) => {   // 박공 · 첨탑 — 밑변 높이 h에서 k만큼 솟은 세모

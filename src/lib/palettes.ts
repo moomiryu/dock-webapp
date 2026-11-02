@@ -415,18 +415,9 @@ export const SPEED_WORDS: Record<string, Pair<Five>> = {
   chabun: LEISURE,
   doran: LEISURE
 };
-/**
- * 유머있는(비)의 빠르기 막대 — 보통 ~ 빠르게 세 칸(2026-10-04, 디자이너 — "장평은 조절하지 말고 기울기만, 보통-빠르게만").
- * 막대 자리 0 · ½ · 1이 speed 0.5 · 0.75 · 1이라 저장되는 값의 뜻(가운데 = 보통)은 다른 성격과 같고, 기울기는 0 · 9 · 18°다.
- * 이 값이 기울기와 함께 비눗방울이 떠다니는 박자를 정한다(lib/rain.ts bubbleMove)
- */
-const RAIN_SPEED_WORDS: Pair<[string, string, string]> = {
-  ko: ['보통', '재잘재잘', '한껏 재잘재잘'],
-  en: ['Regular', 'Chatty', 'Extra chatty']
-};
-/** 빠르기 막대 — 칸의 말과, 막대 자리(0~1) ↔ 저장되는 speed(0~1, 가운데 = 보통) */
+/** 빠르기 막대 — 칸의 말과, 막대 자리(0~1) ↔ 저장되는 speed(0~1, 가운데 = 보통). 유머있는의 보통 ~ 빠르게 세 칸 · 기울기만(2026-10-04)은
+    2026-11-03에 걷었다(디자이너 — "다른 성격이랑 동일하게"). 다섯 칸에 장평 · 세로까지 SPEED 표 그대로 */
 export function speedBarFor(font: string): { words: Pair<readonly string[]>; toSpeed: (v: number) => number; fromSpeed: (s: number) => number } {
-  if (font === 'deulseok') return { words: RAIN_SPEED_WORDS, toSpeed: (v) => 0.5 + 0.5 * v, fromSpeed: (s) => Math.min(1, Math.max(0, (s - 0.5) / 0.5)) };
   return { words: SPEED_WORDS[font] ?? SIZE_WORDS, toSpeed: (v) => v, fromSpeed: (s) => s };
 }
 /* 벽 글자의 돌풍 흔들림(swayFor · gustAt, 2026-10-06)은 2026-10-20에 걷었다 — 나무 · 돌 · 구름 · 비눗방울 풍경과 함께(도트 집합체 벽) */
@@ -475,8 +466,6 @@ export function formFor(t: FormInput): Form {
   let stroke = '0';
   let weight = 400;
   let letterSpacing = track;
-  /** 장평 · 세로를 그대로 두는가 — 유머있는(비)의 새 글은 기울기만 바뀐다(speedBarFor) */
-  let flat = false;
   if (bold) {
     /* 29CM Editorial(2026-10-10) — 무게는 굵기 축, 자간은 속도 자간뿐(진중한 쪽에서만) */
     weight = Math.round(along(w, TTORYEOT_WGHT));
@@ -488,7 +477,6 @@ export function formFor(t: FormInput): Form {
     const f = RAIN_FACE[rainFaceOf(t)];
     weight = Math.round(alongFive(w, f.wght));
     variation = `"wght" ${weight}, "ELSH" ${f.elsh}, "ELGR" ${f.elgr}`;
-    flat = true;
   } else if (font === 'chabun') {
     weight = Math.round(along(w, CHABUN_WGHT));
     variation = `"wght" ${weight}`;
@@ -497,7 +485,7 @@ export function formFor(t: FormInput): Form {
     stroke = along(w, DORAN_STROKE).toFixed(4) + 'em';
   }
   return {
-    scaleX: flat ? 1 : along(s, row.sx), scaleY: flat ? 1 : along(s, row.sy), slant,
+    scaleX: along(s, row.sx), scaleY: along(s, row.sy), slant,
     variation, stroke, letterSpacing, weight
   };
 }

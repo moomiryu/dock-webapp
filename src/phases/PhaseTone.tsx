@@ -250,9 +250,6 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
     const [tone, setTone] = useState<PartialTone>(() => {
         /* 말투가 비어 오면(옛 초안) 앞 칸으로 채운다 — 칸은 예리한을 가리키는데 글은 온화한(빈 값)으로 서는 일이 없게 */
         const t = { ...initialTone, speed: initialTone.speed ?? 0.5, weight: initialTone.weight ?? 0.5, manner: hasManner(initialTone.font) ? initialTone.manner ?? mannerDefault(initialTone.font) : undefined };
-        /* 빠르기 막대가 '보통'에서 시작하는 성격(유머있는)은 그보다 느린 값을 보통으로 올린다 — 막대에 없는 칸에 서지 않게 */
-        const bar = speedBarFor(t.font);
-        t.speed = bar.toSpeed(bar.fromSpeed(t.speed));
         return { ...t, ...legacyFields(t) };
     });
     const lang = useLang();

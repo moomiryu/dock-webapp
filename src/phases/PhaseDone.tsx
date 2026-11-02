@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import DoneSky from '../components/DoneSky';
 import type { ToneState } from '../types';
 import { APP_CHECK_ON, FEEDBACK_MAX, submitFeedback } from '../lib/firebase';
 import { pick, useLang } from '../lib/lang';
+import { campusAt } from '../lib/ground';
+import { hash, rng } from '../lib/hatch';
+import { ATTITUDE_COLORS } from '../lib/palettes-v2';
+import { colorsOf } from '../lib/messageStyle';
 
 /* 이 화면의 말. 영어는 초안이다(2026-09-26, 영문판). 장치가 하는 말(합니다체)은
    영어에서도 차분한 평서문으로 둔다 */
@@ -66,6 +70,8 @@ export default function PhaseDone({ onRestart, text, tone }: Props) {
     return <div className="done-home">
      <div className="home-frame">
       {/* 하늘(2026-10-20, 결정 13 · 32) — 바탕 위, 글 뒤. 내 말풍선과 그 위에 앉은 두 사람(회색 메아리는 2026-11-03에 뺐다) */}
+      {/* 꽉 찬 학교가 맨 뒤 — 그 앞에 하늘(내 말 · 두 사람) */}
+      <DoneCampus mine={tone && text ? colorsOf({ id: 'done', text, tone, createdAt: 0 }).bg : undefined} />
       <DoneSky text={text} tone={tone} />
       <div className="home-layer">
         <div className="home-intro">
@@ -150,4 +156,74 @@ function FeedbackForm() {
           </div>
         </>}
     </form>;
+}
+
+/**
+ * 08 뒤의 꽉 찬 학교(2026-11-03 디자이너 — "발화 종료 페이지에도 학교 삽화를, wall 기믹처럼 구슬들이 다 쌓여 있는 모습으로, 처음(홈)이랑
+ * 대비를 느끼게. 캐릭터보다 세지 않게"). 꼴은 홈 · Step 3의 학교(lib/ground campusAt — 벽 건물 양 끝 2.5배, 첨탑 처마 없음), 땅 윗선은 규칙
+ * 목록의 윗선 — 그 1px 선이 땅이 된다. 홈의 학교는 빈 그릇(옅은 회색 한 면), 여기선 벽처럼 말의 색 구슬이 지붕까지 찼다: 칸마다 아래부터
+ * 쌓이고, 한 말의 구슬은 몇 칸 너비 · 몇 줄 두께의 덩이(벽에서 한 말이 제 몸통 폭만큼 흘리듯), 아래로 갈수록 건물 색으로 바랜다(벽의
+ * 바램 — 위가 최근). 맨 위 덩이 몇은 내 말 색 — 방금 내 말도 쌓였다. 색 세기 · 구슬 크기는 FULL
+ */
+/** 구슬 간격(폭 390 좌표 — 벽의 구슬 크기) · 색 세기(1이면 말 색 그대로, 건물 회색과 섞는다) · 바램(지붕에서 땅까지 건물 색으로 가는 몫).
+ *  구슬 4 · 6.5 × 세기 0.4 · 0.65 · 0.9 견본에서 6.5 · 0.65(디자이너 — 0.9부터는 진한 색 구슬이 말풍선과 눈을 다퉜다) */
+const FULL = { bead: 6.5, strength: 0.65, fade: 0.7 };
+function DoneCampus({ mine }: { mine?: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const cv = ref.current, frame = cv?.closest('.home-frame') as HTMLElement | null, ctx = cv?.getContext('2d');
+    if (!cv || !frame || !ctx) return;
+    const css = getComputedStyle(document.documentElement);
+    const rgb = (c: string) => { const m = c.trim().match(/[0-9a-f]{2}/gi) ?? ['0', '0', '0']; return m.slice(0, 3).map((h) => parseInt(h, 16)); };
+    const bldg = rgb(css.getPropertyValue('--grey-200'));
+    const mixTo = (c: number[], k: number) => `rgb(${c.map((v, i) => Math.round(v + (bldg[i] - v) * k)).join(' ')})`;
+    const pool = Object.values(ATTITUDE_COLORS).flat().map((c) => rgb(c.bg)), own = mine ? rgb(mine) : null;
+    let key = '';
+    const draw = () => {
+      const fr = frame.getBoundingClientRect(), rules = frame.querySelector('.info-rules')?.getBoundingClientRect();
+      const W = fr.width, H = fr.height, floorPx = rules ? rules.top - fr.top : H, dpr = Math.min(3, window.devicePixelRatio || 1);
+      const next = `${W}|${H}|${floorPx}`;
+      if (next === key) return;
+      key = next;
+      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+      const k = W / 390, floor = floorPx / k, inside = campusAt(floor);
+      const g = FULL.bead, row = (g * Math.sqrt(3)) / 2, r = (g / Math.sqrt(3)) * 1.08;
+      // 칸마다 땅에서 지붕까지의 구슬 자리(아래부터)
+      const cols: [number, number][][] = [];
+      for (let i = 0; i * g <= 390 + g; i++) {
+        const col: [number, number][] = [];
+        for (let j = 0; j * row <= 260; j++) { const x = i * g + (j & 1 ? g / 2 : 0), y = floor - j * row; if (inside(x, y)) col.push([x, y]); }
+        cols.push(col);
+      }
+      // 덩이 — 몇 칸 너비 무리마다 같은 줄 두께 · 색의 차례(늘 같은 씨)
+      const rand = rng(hash('done-campus')), paths = new Map<string, Path2D>();
+      for (let c0 = 0; c0 < cols.length; ) {
+        const w = 3 + Math.floor(rand() * 6), tall = Math.max(...cols.slice(c0, c0 + w).map((c) => c.length), 0);
+        const layers: { to: number; col: number[] }[] = [];
+        for (let h = 0; h < tall; ) { const t = 2 + Math.floor(rand() * 4); h += t; layers.push({ to: h, col: pool[Math.floor(rand() * pool.length)] }); }
+        if (own && rand() < 0.5 && layers.length) layers[layers.length - 1].col = own;
+        for (let c = c0; c < Math.min(cols.length, c0 + w); c++) {
+          const col = cols[c];
+          col.forEach(([x, y], j) => {
+            const li = layers.findIndex((l) => j < l.to), L = layers[li < 0 ? layers.length - 1 : li];
+            // 바램 — 이 칸의 지붕에서 멀수록(아래일수록) 건물 색으로, 그다음 전체 세기
+            const age = col.length > 1 ? 1 - j / (col.length - 1) : 0, fresh = L.col === own && li === layers.length - 1;
+            const c2 = mixTo(L.col, 1 - (1 - (fresh ? 0 : FULL.fade * age)) * FULL.strength);
+            let p = paths.get(c2);
+            if (!p) paths.set(c2, (p = new Path2D()));
+            p.moveTo((x + r) * k, y * k); p.arc(x * k, y * k, r * k, 0, 2 * Math.PI);
+          });
+        }
+        c0 += w;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      for (const [c2, p] of paths) { ctx.fillStyle = c2; ctx.fill(p); }
+    };
+    draw();
+    const ro = new ResizeObserver(draw);
+    ro.observe(frame);
+    return () => ro.disconnect();
+  }, [mine]);
+  return <canvas ref={ref} className="done-campus" aria-hidden="true" />;
 }

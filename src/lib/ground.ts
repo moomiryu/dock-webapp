@@ -91,6 +91,11 @@ const PHONE_BUILDINGS: typeof BUILDINGS = (() => {
     return kind === 'roof' && k === spire && body ? (['roof', body[1], body[2], h, k] as const) : b;
   });
 })();
+/** 폰의 학교 안인가 — 폭 390 좌표, 땅 윗선이 y = floor(campusPath와 같은 꼴). 08의 꽉 찬 학교가 구슬을 이 안에만 놓는다(PhaseDone) */
+export function campusAt(floor: number): (x: number, y: number) => boolean {
+  const W = 390 * CAMPUS.s, H = (W * 10) / 16, all = buildingsAt(W, H, PHONE_BUILDINGS), dy = floor - (H - groundPx(H));
+  return (x, y) => (x < W / 2 && all(x, y - dy)) || (x + W - 390 > W / 2 && all(x + W - 390, y - dy));
+}
 /** 폰의 학교 — 폭 390 좌표의 path(d)와 가장 높이 솟은 점의 위 끝(top). floor = 땅 윗선의 y */
 export function campusPath(floor: number): { d: string; top: number } {
   const W = 390 * CAMPUS.s, H = (W * 10) / 16, u = SKY.u * H * CAMPUS.dot, g = G * u, row = (g * Math.sqrt(3)) / 2, r = RF * u * FILL;

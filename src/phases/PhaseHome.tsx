@@ -6,7 +6,6 @@ import HomeCrowd from '../character/HomeCrowd';
 import HomeBubbles from '../components/HomeBubbles';
 import { LANG_OPEN, pick, useLang } from '../lib/lang';
 import { tokenMs } from '../lib/motion';
-import { Eyes } from './PhaseOnWall';
 
 /* 홈의 말. 영어는 초안이다 — 3단계(문구)에서 다시 본다 */
 const T = {
@@ -62,14 +61,14 @@ export default function PhaseHome({ onStart }: Props) {
 
 const BOOT_KEY = 'megafont.splash.v1';
 let booted = false;   // 세션 저장을 못 쓰는 창(사파리 비공개 등)에서도 이번 방문엔 한 번만
-/** 여는 장면의 느림 — 첫 깜빡임까지 · 깜빡임 · 눈 감고 있기 · 접혀 꺼지기를 모두 이 배율로(app.css .home-boot가 --boot-k로 받는다).
-    2026-10-21 디자이너 "지금 너무 빠르다" → 1 · 1.5 · 2 · 2.5배 영상 중 2배(꺼지기까지 약 1.6초 → 3.3초) */
+/** 여는 장면의 느림 — 최소 대기 · 머물기 · 접혀 꺼지기를 모두 이 배율로(app.css .home-boot가 --boot-k로 받는다).
+    2026-10-21 디자이너 "지금 너무 빠르다" → 1 · 1.5 · 2 · 2.5배 영상 중 2배 */
 const BOOT_K = 2;
 /**
- * 처음 열 때 한 번 — 07의 '30초 기다리는 창'(빨강 화면에 두 눈, 숫자 없이)이 앱이 준비되는 동안 홈을 덮고 깜빡이다가,
- * 눈을 감고 옛 TV처럼 꺼진다: 위아래로 접혀 가로 한 줄이 됐다가 그 줄이 사라지며 홈이 드러난다(2026-10-20 결정 26, 디자이너 —
- * "눈 깜빡이다가, 그 창이 꺼지는 걸로"). 준비가 아무리 빨라도 한 번은 깜빡이고(첫 깜빡임은 --t-hold에 — app.css .home-boot),
- * 누르면 바로 꺼진다. 움직임 줄이기면 띄우지 않는다
+ * 처음 열 때 한 번 — 빨강 화면이 앱이 준비되는 동안 홈을 덮고, 가운데 점 셋이 차례로 살짝 튀어 오르며 켜진다(로딩의 '…' —
+ * 2026-11-03 디자이너가 견본 넷 중 '라'. 점 모양은 쓰기 단계 글자 수 점을 참고했다. 그전엔 07의 두 눈이 깜빡이다 감았다, 결정 26).
+ * 준비되면 옛 TV처럼 꺼진다: 위아래로 접혀 가로 한 줄이 됐다가 그 줄이 사라지며 홈이 드러난다. 준비가 아무리 빨라도 점이
+ * 한 바퀴는 돌고, 누르면 바로 꺼진다. 움직임 줄이기면 띄우지 않는다
  */
 function Boot() {
   const lang = useLang();
@@ -82,8 +81,8 @@ function Boot() {
     if (phase !== 'on') return;
     booted = true;
     try { sessionStorage.setItem(BOOT_KEY, '1'); } catch { /* 이번 방문엔 booted가 든다 */ }
-    // 준비 = 글꼴과 첫 화면(load). 그리고 한 번은 깜빡인다 — 첫 깜빡임(--t-hold에 와서 0.09초)이 지나고 --t-return 한 박 뒤
-    const t0 = performance.now(), least = (tokenMs('--t-hold', 700) + 90 + tokenMs('--t-return', 220)) * BOOT_K;
+    // 준비 = 글꼴과 첫 화면(load). 그리고 점 셋이 한 바퀴(--t-hold × 1.6 — app.css .boot-dots)는 돌도록 (--t-hold + --t-return) × BOOT_K
+    const t0 = performance.now(), least = (tokenMs('--t-hold', 700) + tokenMs('--t-return', 220)) * BOOT_K;
     const loaded = document.readyState === 'complete' ? Promise.resolve() : new Promise((r) => window.addEventListener('load', r, { once: true }));
     let alive = true, timer = 0;
     void Promise.all([document.fonts?.ready, loaded]).then(() => {
@@ -91,7 +90,7 @@ function Boot() {
     });
     return () => { alive = false; window.clearTimeout(timer); };
   }, [phase]);
-  // 눈을 감고 --t-return 뒤에 꺼진다(접힘은 CSS — 끝나면 걷힌다)
+  // --t-return 더 머문 뒤에 꺼진다(접힘은 CSS — 끝나면 걷힌다)
   useEffect(() => {
     if (phase !== 'shut') return;
     const id = window.setTimeout(() => setPhase('off'), tokenMs('--t-return', 220) * BOOT_K);
@@ -103,7 +102,9 @@ function Boot() {
     <div className={'onwall-screen home-boot is-' + phase} style={{ '--boot-k': BOOT_K } as CSSProperties} onClick={() => setPhase('gone')}
       onAnimationEnd={(e) => { if (e.target === e.currentTarget && phase === 'off') setPhase('gone'); }}>
       <span className="sr-only" role="status">{pick(T.boot, lang)}</span>
-      <div className="onwall-floor"><Eyes /></div>
+      <div className="boot-dots" aria-hidden="true">
+        {[0, 1, 2].map((i) => <i key={i} style={{ '--i': i } as CSSProperties} />)}
+      </div>
     </div>
   );
 }

@@ -78,7 +78,7 @@ function Campus() {
 
 const BOOT_KEY = 'megafont.splash.v1';
 let booted = false;   // 세션 저장을 못 쓰는 창(사파리 비공개 등)에서도 이번 방문엔 한 번만
-/** 여는 장면의 느림 — 최소 대기 · 머물기 · 접혀 꺼지기를 모두 이 배율로(app.css .home-boot가 --boot-k로 받는다).
+/** 여는 장면의 느림 — 최소 대기 · 머물기 · 원이 열리며 걷히기를 모두 이 배율로(app.css .home-boot가 --boot-k로 받는다).
     2026-10-21 디자이너 "지금 너무 빠르다" → 1 · 1.5 · 2 · 2.5배 영상 중 2배 */
 const BOOT_K = 2;
 /**

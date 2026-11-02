@@ -4,6 +4,9 @@ import BackButton from './BackButton';
 import { HomeX } from './StepHeader';
 import { dockScreenSvg, scopeSvg, step1Svg, step2Svg, step3Svg } from '../lib/svgAsset';
 import { pick, useLang, type Pair } from '../lib/lang';
+import { G, RF } from '../lib/aggregate';
+import { SKY } from '../lib/sky';
+import { FILL, buildingsAt, groundPx } from '../lib/ground';
 
 // 작가가 삽화를 컷으로 나눠 준다. 컷 사이를 이어 도는 일은 svgAsset이 한다.
 //
@@ -39,6 +42,40 @@ import artSlot from '../../by_moomiryu/Renewal_v1/Tutorial/dock2_v3.svg?raw';
    1px 선의 키비주얼과 결이 반대다. 작가 원본은 그대로). 그 그림에서 cls-1을 쓰는 것은 이 타원 하나뿐이다 — 이름이 다른 그림과 겹칠 수
    있어 CSS로 숨기지 않고 이 그림의 글에서만 지운다 */
 const artStep3 = artStep3Raw.replace(/<ellipse class="cls-1"[^>]*\/>/, '');
+/* Step 3 뒤의 학교 — 벽의 스카이라인(lib/ground buildingsAt — WallSkyline이 쓰는 그것)을 벽 비율(16:10) · 점까지 그대로 CAMPUS_S배
+   키워(그림 폭 390이 1배) 왼쪽 반의 건물은 그림 왼쪽 끝에, 오른쪽 반은 오른쪽 끝에 붙인다 — 둘은 가운데(말풍선 뒤)에서 겹친다. 벽 가운데에
+   맞추면 벽의 빈 가운데(로고 · 기기 자리)가 그림 한가운데로 와서 건물이 양 끝에만 걸렸다. 땅 윗선은 CAMPUS_FLOOR(그림 y — 발화자 · 메가폰
+   그림자 타원 389.73보다 19 위). 2026-11-03 디자이너: "지평선에 맞게 wall의 학교 실루엣" → "너무 작다" → "wall의 건물들을 크게" →
+   가운데 맞춤 1.5 ~ 3배 · 양 끝 1.5 ~ 2.5배 견본에서 '양 끝 2.5배', 밑선은 디자이너가 그은 하얀 선(320×568에서 재서 옮겼다).
+   짓는 법은 벽 그대로 — 벌집 격자의 점(간격 G · u, 반지름 RF · u · FILL). 색은 --grey-800(디자이너, 벽의 --grey-900은 밤 바탕에 묻혔다).
+   층은 밤 바탕 바로 위라 사람 · 메가폰 · 말풍선이 모두 그 앞에 선다. 그림을 칸에 맞추는 셈(svgAsset focusOn)이 끝난 **뒤에** 끼운다 —
+   솟은 건물까지 재면 그림 전체의 자리가 바뀐다 */
+const CAMPUS_FLOOR = 370.7, CAMPUS_S = 2.5;
+const campus = (() => {
+  const W = 390 * CAMPUS_S, H = (W * 10) / 16, u = SKY.u * H, g = G * u, row = (g * Math.sqrt(3)) / 2, r = RF * u * FILL;
+  const all = buildingsAt(W, H), dy = CAMPUS_FLOOR - (H - groundPx(H)), f = (n: number) => +n.toFixed(2);
+  /** 그림 (x, y)가 건물 안인가 — 왼쪽 반은 그대로, 오른쪽 반은 벽 오른쪽 끝을 그림 오른쪽 끝(390)에 */
+  const inside = (x: number, y: number) => (x < W / 2 && all(x, y)) || (x + W - 390 > W / 2 && all(x + W - 390, y));
+  /* 한 줄에서 이어진 점들은 양끝이 둥근 띠 하나로 — 점이 겹쳐 속이 한 면이 되는 것은 벽과 같고, 점을 하나씩 적으면 글이 1.2MB였다 */
+  let d = '';
+  const run = (x0: number, x1: number, y: number) => { d += `M${f(x0)} ${f(y + dy - r)}h${f(x1 - x0)}a${f(r)} ${f(r)} 0 0 1 0 ${f(2 * r)}h${f(x0 - x1)}a${f(r)} ${f(r)} 0 0 1 0 ${f(-2 * r)}z`; };
+  for (let j = 0; j * row <= H; j++) {
+    const off = j & 1 ? g / 2 : 0, y = j * row;
+    let start = NaN, last = NaN;
+    for (let i = -1; i * g + off <= 390 + g; i++) {
+      const x = i * g + off;
+      if (inside(x, y)) { if (Number.isNaN(start)) start = x; last = x; }
+      else if (!Number.isNaN(start)) { run(start, last, y); start = NaN; }
+    }
+    if (!Number.isNaN(start)) run(start, last, y);
+  }
+  return `<path fill="var(--grey-800)" d="${d}"/>`;
+})();
+/** 다 지은 Step 3 그림의 바탕(화판 전체 사각형) 바로 뒤에 학교를 끼운다 */
+const withCampus = (svg: string) => {
+  const at = svg.indexOf('>', svg.lastIndexOf('height="603"')) + 1;
+  return at > 0 ? svg.slice(0, at) + campus + svg.slice(at) : svg;
+};
 
 /* 두 가지로 연다(2026-09-27). 홈의 물음표는 About 한 장만(about), '처음이에요'는
    Step 1·2·3 세 장을 넘기는 사용 안내다. About이 안내의 첫 장이던 때는 '처음이에요'를
@@ -329,8 +366,8 @@ const GUIDE: Slide[] = [
        5몫이라 그동안 화면이 멈춘 듯 보인다. 1번도 같은 값으로 줄였다.
        그림은 About에서 빌려 온 두 컷이었다가 작가의 한 컷(example_step3)으로
        바뀌었다(2026-09-29) — 두 컷 사이에 발화자의 팔이 휘저어지던 것을 뺐다. */
-    art: <Built name="step3" still={(k) => step3Svg(artStep3, k, 8.4, true)}
-      make={(k) => step3Svg(artStep3, k, 8.4)} />,
+    art: <Built name="step3" still={(k) => withCampus(step3Svg(artStep3, k, 8.4, true))}
+      make={(k) => withCampus(step3Svg(artStep3, k, 8.4))} />,
     artClass: 'is-bleed',
     dark: true
   }

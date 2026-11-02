@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { G, RF } from '../lib/aggregate';
 import { DOTS, SKY } from '../lib/sky';
 import { tokenMs } from '../lib/motion';
-import { groundPx } from '../lib/ground';
+import { BUILDINGS, FILL, buildingsAt, type Shape } from '../lib/ground';
 import { Eyes } from '../phases/PhaseOnWall';
 import type { DockBeat } from './WallWalkers';
 import sadSrc from '../../by_moomiryu/Renewal_v1/Character/eye/eye_sad.svg?raw';
@@ -31,17 +31,6 @@ const TIRED_LIDS = [...tiredSrc.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map((m) =>
  * 층은 벽 바탕 바로 위 — 해 → 구름 → 건물 다음에야 소리의 결 · 땅 · 하늘 말 · 부스러기 · 작은 사람(WallSimulation에서 맨 앞에 놓는다).
  * 도킹 때도 그대로다 — 창 크기가 바뀔 때만 다시 그린다.
  */
-type Shape = (x: number, y: number) => boolean;
-/** 건물 — [모양, 가로 시작, 끝, 높이(또는 돔 가운데 높이), 박공 · 첨탑의 높이 또는 돔 반지름(벽 높이의 몫)] */
-const BUILDINGS: readonly (readonly ['rect' | 'roof' | 'dome', number, number, number, number?])[] = [
-  ['rect', 0, 0.13, 0.11], ['roof', -0.005, 0.135, 0.11, 0.035],      // 강의동 — 박공
-  ['rect', 0.15, 0.185, 0.27], ['roof', 0.145, 0.19, 0.27, 0.07],     // 시계탑 — 첨탑
-  ['rect', 0.2, 0.34, 0.15], ['roof', 0.195, 0.345, 0.15, 0.045],     // 도서관 — 박공
-  ['rect', 0.34, 0.385, 0.07],                                         // 낮은 동
-  ['rect', 0.63, 0.7, 0.23],                                           // 기숙사
-  ['rect', 0.72, 0.86, 0.1], ['dome', 0.79, 0.79, 0.1, 0.055],        // 학생회관 — 돔
-  ['rect', 0.88, 1, 0.13], ['rect', 0.925, 0.95, 0.18]                // 강의동 — 작은 탑
-];
 /**
  * 건물 하나하나의 땅 위 가로 범위(벽 폭의 몫, 왼쪽부터) — 사각 몸통끼리 겹치면 한 건물(강의동의 작은 탑), 맞닿기만 한 도서관 · 낮은 동은 둘.
  * 작은 사람이 티끌을 가운데에서 가까운 건물부터 나른다(결정 55, WallSky)
@@ -75,22 +64,9 @@ const CLOUDS = [[0.07, 0.03, 0.39, 0], [0.93, 0.04, 0.36, 0.4]] as const;
 const BUMPS = [[0.18, 0.62, 0.17], [0.38, 0.42, 0.24], [0.6, 0.48, 0.21], [0.8, 0.64, 0.15], [0.48, 0.7, 0.2]] as const;
 /** 구름이 오가는 폭(벽 폭의 몫) · 한 번 오가는 시간(초) */
 const SWAY = 0.015, SWAY_S = 40;
-/** 점 반지름의 덧 — 이웃 점이 겹쳐 속이 한 면이 되게(견본 값) */
-export const FILL = 1.08;
-
-/** 건물들의 합집합 — 벽 W × H에서 (x, y)가 건물 안인가. 말의 부스러기도 이 안에만 쌓인다(WallSky — 건물이 그릇) */
-export function buildingsAt(W: number, H: number): Shape {
-  const gTop = H - groundPx(H), X = (f: number) => f * W, Y = (f: number) => gTop - f * H;
-  const shapes: Shape[] = BUILDINGS.map(([kind, x0, x1, h, k = 0]) => {
-    if (kind === 'rect') return (x, y) => x >= X(x0) && x <= X(x1) && y >= Y(h) && y <= gTop;
-    if (kind === 'dome') return (x, y) => (x - X(x0)) ** 2 + (y - Y(h)) ** 2 <= (k * H) ** 2;
-    return (x, y) => {   // 박공 · 첨탑 — 밑변 높이 h에서 k만큼 솟은 세모
-      const top = Y(h + k), bot = Y(h), half = (X(x1) - X(x0)) / 2;
-      return y >= top && y <= bot && Math.abs(x - (X(x0) + X(x1)) / 2) <= (half * (y - top)) / (bot - top);
-    };
-  });
-  return (x, y) => shapes.some((f) => f(x, y));
-}
+/* 건물의 꼴(BUILDINGS) · 점의 덧(FILL) · 건물 안인가(buildingsAt)는 lib/ground.ts에 산다 — 폰의 Step 3도 같은 학교를 세워서(2026-11-03),
+   이 부품째 폰 번들에 딸려 가지 않게 데이터만 뺐다. WallSky는 여전히 여기서 받는다 */
+export { FILL, buildingsAt };
 
 export default function WallSkyline({ beat, sad = false }: { beat?: { current: DockBeat | null }; sad?: boolean }) {
   const ref = useRef<HTMLDivElement>(null), sunRef = useRef<HTMLDivElement>(null);

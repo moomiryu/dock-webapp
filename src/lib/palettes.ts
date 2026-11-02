@@ -244,10 +244,8 @@ export const graphics: string[] = [
    labels · axes는 **저장되는 값**(manner 0 · 1)의 차례다. 화면에 서는 차례는 order —
    값의 뜻을 바꾸면 벽에 떠 있는 글의 말투와 형상이 뒤집힌다. */
 export const MANNER: Record<string, { labels: Pair<[string, string]>; axes?: [string, string]; order?: [number, number]; weight?: true }> = {
-  /* 2026-10-11 유머있는의 말투가 돌아왔다(디자이너) — 귀여운 · 얄미운. 무게 막대를 그대로 두고 그 아래 셋째 줄에 선다(weight).
-     얄미운 = 옛 시니컬한의 톱니 세모 낱알을 '꿀밤 주고 싶지만 귀여운'(치이카와의 모몽가) 쪽으로 다시 부른 것. 별 · 네잎 · 마름모 ·
-     하트 낱알도 견본에 놓았지만 폰 34px · 벽 28px에서 귀여운과 갈리는 것은 톱니 세모뿐이었다. 저장 값 1은 시니컬한 때와 같다 */
-  deulseok: { labels: { ko: ['귀여운', '얄미운'], en: ['Cute', 'Cheeky'] }, weight: true }
+  /* 2026-10-11 유머있는의 말투(귀여운 · 얄미운)가 무게 아래 셋째 줄로 돌아왔다가, 2026-11-03에 다시 뺐다(디자이너 — "말투는 귀여운만").
+     새 글은 귀여운(둥글) 하나다. 얄미운(manner 1)으로 쓴 글은 벽에서 그대로 톱니 세모로 선다(rainFaceOf) */
 };
 /**
  * 유머있는(핸드젯)의 옛 말투 자형 — 귀여운 · 시니컬한(저장된 manner 0 · 1의 차례). 2026-10-04 유머있는도 말투를 뺐다(디자이너 —
@@ -432,8 +430,6 @@ export function speedBarFor(font: string): { words: Pair<readonly string[]>; toS
   return { words: SPEED_WORDS[font] ?? SIZE_WORDS, toSpeed: (v) => v, fromSpeed: (s) => s };
 }
 /* 벽 글자의 돌풍 흔들림(swayFor · gustAt, 2026-10-06)은 2026-10-20에 걷었다 — 나무 · 돌 · 구름 · 비눗방울 풍경과 함께(도트 집합체 벽) */
-/** 크기 막대를 세우는가 — 유머있는(비)은 벽 글자가 28px 하나라 크기를 묻지 않는다(2026-10-04, 디자이너 — 막대는 빠르기 · 무게 둘) */
-export const hasSizeBar = (font: string) => font !== 'deulseok';
 /** 막대 자리에서 가장 가까운 칸(0~4) */
 export const stopAt =(t: number) => Math.round(Math.min(1, Math.max(0, t)) * (STOPS - 1));
 /** 가장 가까운 칸의 자리(0 · .25 · .5 · .75 · 1) */

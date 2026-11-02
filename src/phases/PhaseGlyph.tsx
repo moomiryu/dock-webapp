@@ -174,7 +174,7 @@ export default function PhaseGlyph({ initialTone, onBack, onHome, onNext }: Prop
           onClick={() => {
             if (!font) return;
             /* 성격이 바뀌면 말투는 그 성격의 앞 칸에서 시작한다(palettes.ts · mannerDefault). 말투를 묻지 않는
-               성격은 말투를 비워 둔다(유머있는은 2026-10-11부터 무게와 말투를 함께 묻는다). 당당한은 10-06 ~ 10-10에만 말투를 물었고 29CM으로 갈리며 다시 무게를 묻는다.
+               성격은 말투를 비워 둔다(유머있는은 10-11 ~ 11-03에 무게와 말투를 함께 물었고 지금은 귀여운 하나). 당당한은 10-06 ~ 10-10에만 말투를 물었고 29CM으로 갈리며 다시 무게를 묻는다.
                같은 성격으로 돌아온 길이면 고른 말투를 그대로 둔다 */
             const base = initialTone ?? DEFAULT_TONE;
             const keep = initialTone?.font === font && base.manner !== undefined;

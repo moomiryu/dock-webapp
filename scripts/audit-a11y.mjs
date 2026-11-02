@@ -135,17 +135,16 @@ await audit('02 성격 (고른 뒤)');
 
 await page.locator('.tone-choice .primary-action').click();
 await page.waitForTimeout(400);
-await audit('03 조율 (설명)');
-await page.locator('.tone-intro').click();
-await page.waitForTimeout(700);
+// 첫 장은 없다(2026-11-03) — 제목 · 안내가 견본 위에 겹쳐 섰다가 빠진다. 선 동안 한 번, 빠진 뒤 한 번
+await audit('03 조율 (안내)');
+await page.waitForTimeout(3800);
 await audit('03 조율 (조작)');
 
 await page.locator('.tone-work .primary-action').click();
 await page.waitForTimeout(600);
-// 04도 두 장이다(2026-09-28) — 설명과 시연 장, 누르면 고르는 장
-await audit('04 색 (설명)');
-await page.locator('.color-intro').click();
-await page.waitForTimeout(700);
+// 04도 첫 장 없이 고르는 장에 안내가 겹친다(2026-11-03)
+await audit('04 색 (안내)');
+await page.waitForTimeout(3800);
 await audit('04 색 (고르기)');
 await page.locator('.color-choice .primary-action').click();
 await audit('05 벽에서 보기');

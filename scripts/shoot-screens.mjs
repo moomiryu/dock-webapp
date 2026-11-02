@@ -118,16 +118,12 @@ async function main() {
   // 03 조율
   await page.locator('.tone-choice .primary-action').click();
   await page.waitForTimeout(400);
-  await shoot(page, '03-tone-intro');
-  await page.locator('.tone-intro').click();
   await page.waitForTimeout(700);
   await shoot(page, '03-tone-work');
   await page.locator('.tone-work .primary-action').click();
 
   // 04 최종 미리보기 — 여기서만은 모션이 곧 내용이라 세 시점을 찍는다.
   // (컨텍스트 전체는 모션을 꺼 두었으므로 이 화면에서만 잠깐 켠다)
-  await shoot(page, '04-color-intro');                 // 04도 두 장이다(2026-09-28)
-  await page.locator('.color-intro').click();
   await page.waitForTimeout(700);
   await shoot(page, '04-color');
   await page.locator('.color-choice .primary-action').click();

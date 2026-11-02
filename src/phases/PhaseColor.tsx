@@ -1,7 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
 import SnapSwitch from '../components/SnapSwitch';
-import DotBubble, { REGATHER } from '../components/DotBubble';
+import DotBubble from '../components/DotBubble';
 import { foldLines } from '../lib/fit';
 import { arrangementsFor, defaultAlign } from '../lib/aggregate';
 import { colorsFor, type ColorPair } from '../lib/palettes-v2';
@@ -25,7 +25,6 @@ const T = {
     nextColour: { ko: '다음 색', en: 'Next colour' },
     next: { ko: '이렇게 담을게요', en: 'Hold it like this' },
     /* 첫 장 — 3/5와 같은 말(2026-09-28) */
-    start: { ko: '위로 밀어서 시작해요', en: 'Swipe up to start' },
     /* 조정판의 두 잣대 — 3/5의 [이름 | 잣대] 줄과 같은 꼴(2026-09-28) */
     colour: { ko: '색', en: 'Colour' },
     /* 2026-10-01까지 '정렬'(디자이너 — 고르면 실루엣이 바뀌니 '모양'). 값(tone.align)과 코드의 이름은 그대로 */
@@ -99,27 +98,6 @@ const firstOf = (pairs: readonly ColorPair[]) => Math.max(0, pairs.findIndex((m)
  * 안개(16.4) · 다정 하늘(19.9). 그 위(박하 22.5 · 소다 22.9 · 완두콩 23.2)는 제 빛깔로 판과 갈린다
  */
 const PALE = new Set(['white', 'pebble', 'mist', 'sky']);
-
-/**
- * 첫 장의 시연 — 고르는 장에서 모양을 누를 때와 같은 움직임(2026-10-29, 디자이너가 견본 셋 중 C를 골랐다 — "색 바뀌는 게
- * 늦어 앵~ 싶다, 형태가 바뀌는 것도 함께"). 들어오자마자 낱개가 모여 서고, 다 모여 --t-hold 머문 뒤 다른 모양 · 다른 색으로
- * 흩어졌다 다시 모인다(DotBubble play · REGATHER). 그전(2026-09-28~)엔 말풍선이 모인 채 서서 1.7초 뒤부터 색만 돌았다.
- *
- * 색은 성격의 여덟 짝(pairs), 모양은 그 성격의 칸을 같은 시간씩 차례로 돈다 — 어느 것도 권하지 않는다(절대원칙). 시작은
- * 지금 색 · 첫 칸이다. 참여자가 고른 값에는 닿지 않는다. 움직임 줄이기면 모인 채 그대로다.
- */
-function ColorDemo({ lines, tone, from, pairs }: { lines: string[]; tone: ToneState; from: number; pairs: readonly ColorPair[] }) {
-    const shapes = arrangementsFor(tone.font);
-    const [i, setI] = useState(from);
-    const [s, setS] = useState(0);
-    useEffect(() => {
-        if (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-        const iv = window.setInterval(() => { setI((k) => (k + 1) % pairs.length); setS((k) => k + 1); }, REGATHER * 1000 + tokenMs('--t-hold', 700));
-        return () => window.clearInterval(iv);
-    }, []);
-    const m = pairs[i % pairs.length];
-    return <DotBubble lines={lines} tone={tone} align={shapes[s % shapes.length]} bg={m.bg} fg={m.text} play={s} />;
-}
 
 /**
  * 색 룰렛(2026-09-29, 사용자 — 참고는 mastercard.com/businessoutcomes의 세로로 굴러가는
@@ -249,43 +227,18 @@ export default function PhaseColor({ text, tone, onBack, onHome, onNext, returni
     const current = { ...tone, align, backgroundColor: bg, textColor: fg };
     // 줄은 한 줄 12자 — 모든 성격이 같다(fit.ts · foldLines)
     const lines = foldLines(text);
-    /* 두 장(2026-09-28, 3/5와 같은 흐름): 'intro' = 설명과 시연 · 'work' = 고르는 장.
-       moved는 한 번이라도 넘긴 뒤인지 — 처음 들어올 때는 둘째 장이 움직이지 않고 숨어 있다.
-       첫 장은 앞으로 들어올 때만 선다(2026-09-29, 사용자) — 뒤로가기에서는 과정 미리보기가
-       한 번도 나오지 않는다. 5/5에서 돌아오면 곧장 고르는 장이고, 고르는 장의 뒤로가기는
-       첫 장이 아니라 3/5로 간다 */
-    const [step, setStep] = useState<'intro' | 'work'>(returning ? 'work' : 'intro');
-    const [moved, setMoved] = useState(false);
-    const start = () => { setMoved(true); setStep('work'); };
     return <div className="z-frame compose-screen color-choice is-pulled"
-      data-step={step} data-moved={moved ? '' : undefined} data-pair={PAIRS[at].id} data-pale={PALE.has(PAIRS[at].id) ? '' : undefined}
+      data-step="work" data-pair={PAIRS[at].id} data-pale={PALE.has(PAIRS[at].id) ? '' : undefined}
       style={{ '--pane-bg': bg, '--chrome-ink': fg } as CSSProperties}>
- {/* ── 첫 장: 무엇을 하는 자리인지 + 시연 (2026-09-28) ──────────────────
-     3/5의 첫 장과 같은 흐름이다. 장 전체가 넘기는 손짓이되 버튼 위는 아니다
-     (머리줄의 뒤로가기를 누른 탭이 넘김까지 돌리면 안 된다). 아래의 고르는
-     장은 그대로 두고 이 장이 위를 덮는다 — 누르면 위로 빠지고 고르는 장이
-     아래에서 올라온다(app.css · .color-intro). 뒤로 돌아온 길에는 이 장을 아예 달지
-     않는다 — 숨긴 채 시연만 돌 까닭이 없다. */}
- {/* 위로 쓸어도 넘긴다(2026-10-21) — 3/5 첫 장과 같다 */}
- {!returning && <section className="color-intro" onClick={e => { if (!(e.target as HTMLElement).closest('button')) start(); }}
-  onPointerDown={e => { e.currentTarget.dataset.swipeY = String(e.clientY); }}
-  onPointerUp={e => { if (Number(e.currentTarget.dataset.swipeY) - e.clientY > 32) start(); }}>
-  <StepHeader at={4} back={{ label: pick(T.back, lang), onClick: () => onBack(current) }} onHome={onHome} />
-  <div className="z-ask">
-   <h1>{pick(T.title, lang)}</h1>
-   <p>{pick(T.lead, lang)}</p>
-  </div>
-  <div className="color-stage color-demo">
-   {/* 늘 달아 둔다 — 넘길 때 위로 빠지는 장에 시연이 그대로 실려 간다 */}
-   <ColorDemo lines={lines} tone={current} from={at} pairs={PAIRS} />
-  </div>
-  <button type="button" className="tone-more" onClick={start}>{pick(T.start, lang)}</button>
- </section>}
  <div className="proj-stage is-bleed"><div className="proj-fit">
   <div className="proj-frame compose-editor is-pulled">
    <StepHeader className="compose-chrome" at={4} back={{ label: pick(T.back, lang), onClick: () => onBack(current) }} onHome={onHome} />
-   {/* 제목과 안내는 첫 장으로 옮겼다(2026-09-28) — 3/5처럼 고르는 장은 위가
-       미리보기, 아래가 조정판이다. 무엇을 하는 자리인지는 첫 장이 말한다 */}
+   {/* 제목 · 안내 — 눌러 넘기던 첫 장을 걷고(2026-11-03, 디자이너), 3/5처럼 앞으로 들어올 때만 무대 위에 겹쳐 섰다가
+       위로 흐려지며 빠진다(app.css .stage-hint). 말풍선은 처음부터 제자리다. 돌아온 길(5/5에서)에는 낭독기에만 */}
+   <div className={'z-ask stage-hint' + (returning ? ' sr-only' : '')}>
+    <h1>{pick(T.title, lang)}</h1>
+    <p>{pick(T.lead, lang)}</p>
+   </div>
    <div className="color-stage">
     {/* 벽과 같은 말 — 모양을 고를 때마다 낱개부터 다시 모인다 */}
     <DotBubble lines={lines} tone={current} align={align} bg={bg} fg={fg} play={align} />

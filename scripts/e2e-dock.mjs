@@ -69,9 +69,7 @@ await phone.locator('.write-input').fill(STAMP);
 await phone.locator('.write-screen .primary-action').click();   // 다 썼어요 → 성격
 await phone.locator('.style-cards [role=radio]').first().click();   // 당당한 · Bold
 await phone.locator('.tone-choice .primary-action').click();      // 이 성격으로 → 조율
-await phone.locator('.tone-intro').click();                       // 설명 → 조작
 await phone.locator('.tone-work .primary-action').click();        // 다음 → 색
-await phone.locator('.color-intro').click();                      // 설명 → 고르기(2026-09-28)
 await phone.waitForTimeout(700);
 await phone.locator('.color-choice .primary-action').click();
 await phone.waitForTimeout(700);

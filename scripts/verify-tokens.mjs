@@ -145,11 +145,6 @@ await page.getByRole('radio', { name: '당당한' }).click();
 await page.waitForTimeout(800);        // 칸이 자라는 680ms
 await page.locator('.tone-choice .primary-action').click();
 await page.waitForTimeout(400);
-snap['03 조율 (설명)'] = await grab();
-
-// 03은 두 장이다 — 설명하는 장을 눌러야 축과 버튼이 올라온다
-await page.locator('.tone-intro').click();
-await page.waitForTimeout(700);
 snap['03 조율 (조작)'] = await grab();
 
 await page.locator('.tone-work .primary-action').click();

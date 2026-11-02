@@ -191,19 +191,19 @@
    움직임 줄이기에서는 크기를
    두고 색만 바뀐다. 제 transition을 가진 버튼은 거기에 scale을 함께 적는다
    (4/5 '이렇게 담을게요' — .color-panel > .primary-action). */
-.primary-action, .home-cta, .home-info-btn, .z-back, .tone-more, .hint-open, .hint-close, .home-poster-about,
+.primary-action, .home-cta, .home-info-btn, .z-back, .hint-open, .hint-close, .home-poster-about,
 .color-roll-arrows > button, .ask-answers > button, .done-home-link,
 .feedback-send{
   transition: scale var(--t-return) var(--ease-standard);
 }
-:is(.primary-action, .home-cta, .home-info-btn, .z-back, .tone-more, .hint-open, .hint-close, .home-poster-about,
+:is(.primary-action, .home-cta, .home-info-btn, .z-back, .hint-open, .hint-close, .home-poster-about,
   .color-roll-arrows > button, .ask-answers > button, .done-home-link,
   .feedback-send)[data-pressed]:not(:disabled){
   scale: var(--press-scale);
   transition-duration: calc(var(--t-return) / 4);
 }
 @media (prefers-reduced-motion: reduce){
-  :is(.primary-action, .home-cta, .home-info-btn, .z-back, .tone-more, .hint-open, .hint-close, .home-poster-about,
+  :is(.primary-action, .home-cta, .home-info-btn, .z-back, .hint-open, .hint-close, .home-poster-about,
     .color-roll-arrows > button, .ask-answers > button, .done-home-link,
     .feedback-send)[data-pressed]{ scale: none; }
 }
@@ -1708,7 +1708,8 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 
 /* 03 조율 — 두 장을 겹쳐 두고 통째로 민다.
    한 장에 제목·설명·견본·축 셋을 다 올리면 처음 보는 사람에게 요소가
-   너무 많다. 설명하는 장과 조작하는 장을 가르고, 누르면 위로 밀린다. */
+   너무 많다. 설명하는 장과 조작하는 장을 가르고, 누르면 위로 밀린다.
+   2026-11-03 설명하는 장을 걷었다(디자이너) — 지금은 조작하는 장 하나에 제목 · 안내가 잠깐 겹친다(.stage-hint). */
 .tone-adjust{ padding: 0; gap: 0; }
 .tone-deck{ flex: 1; min-height: 100dvh; position: relative; overflow: hidden; }
 /* ── 안 보이는 장은 **없는 것이어야 한다** ─────────────────────────
@@ -1726,12 +1727,9 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   padding: var(--s5) var(--pad-x) max(var(--s6), env(safe-area-inset-bottom, 0px));
   visibility: hidden;
   transition: transform var(--t-slow) var(--ease-emphasized), visibility 0s linear var(--t-slow); }
-.tone-deck[data-step="intro"] .tone-intro,
 .tone-deck[data-step="work"] .tone-work{
   visibility: visible;
   transition: transform var(--t-slow) var(--ease-emphasized), visibility 0s; }
-.tone-deck[data-step="intro"] .tone-work{ transform: translateY(100%); }
-.tone-deck[data-step="work"] .tone-intro{ transform: translateY(-100%); }
 /* ── 미리보기와 조작 영역 사이에 흰 띠를 두지 않는다 (2026-09-22) ────
    .tone-pane의 gap(16px)과 아래 여백이 흰 종이 그대로 드러나, 붉은 면과
    회색 판 사이에 아무 일도 안 하는 띠가 한 겹 있었다. 아래로도 같은 띠가
@@ -1757,157 +1755,11 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    빼면 그쪽이 이겨 머리줄이 32에서 16으로 뛴다(재서 확인). 오늘만 같은
    함정을 두 번째 밟는다(아래 max-height:700px 블록도 그랬다). */
 .tone-adjust .tone-work .z-glyph-stage{ padding-top: var(--top-safe); }
-/* 머리줄의 위를 다른 화면과 같은 16에 세운다(2026-09-25). 32였다 — 3/5만
-   머리줄과 그 밑 선이 16px 아래에 서서, 2/5→3/5로 넘어갈 때 선이 뛰었다.
-   설명 장은 판(16)과 면(16)이 겹쳐 32였으므로 판 쪽을 걷는다. */
-.tone-adjust .tone-intro{ padding-top: 0; }
-/* 첫 장은 붉은 면이 화면 전체다 — 아래에 조작할 것이 없으니 나눌 이유도 없다 */
-.tone-intro{ background: var(--brand-strong); cursor: pointer; }
-.tone-intro .z-glyph-stage{ flex: 1; }
-/* 삽화 자리. 아직 그려지지 않아 '가' 한 글자가 대신 선다 */
-/* ── 첫 장의 '발화'가 축을 훑는다 ───────────────────────────────────
-   이 장은 "무엇을 하는 자리인가"만 말한다. 글로 '크기, 빠르기'라고 적어
-   두었지만 그 둘이 글자에 무슨 짓을 하는지는 안 보여줬다 — 실제로 만져
-   보기 전까지는 '빠르기'가 시간인지 폭인지 알 길이 없다.
-
-   그래서 한 축씩 차례로, 양 끝까지 갔다가 제자리로 온다. 크기 → 빠르기
-   순서는 아래 도구가 서 있는 순서와 같다.
-
-   **CSS만으로 돈다.** React 상태를 안 거치므로 이 시연이 편집값을 건드릴
-   길이 구조적으로 없다 — 참여자가 고른 값은 둘째 장에만 있고, 여기 있는
-   것은 그 값의 그림이 아니라 축의 그림이다.
-
-   크기는 기본 44를 1로 놓은 28~60의 비율(0.64~1.18). 한 축이 1.75초씩, 한
-   바퀴 3.5초(--t-hold × 5) — 7초였다가 두 배 빠르게 했다(2026-09-29, 사용자).
-
-   속도는 **둘째 장의 표 그대로**다(2026-09-29, 사용자 — "속도를 진짜 모양대로").
-   가로 폭만 1.3 → 0.7로 훑던 것을 걷고, PhaseTone이 formFor로 뽑은 천천히 ·
-   보통 · 빠르게 세 자리(--sx · --sy · --fv, 0 · m · 1)를 오간다 — 서체마다 가로 ·
-   세로 배율이 다르고, 당당한은 진중한 쪽에서 자간(--ls, 2026-10-10 — 둥켈 땐 폭 축)까지 움직이고, 빠르게 끝에서 글이
-   18° 기운다. 기울기는 font-style이 아니라 skewX다: 이 서체들은 기운 글꼴이
-   없어 브라우저가 흉내 내는데, 크롬에서 재 보니 9°는 안 기울고 18°는 14°로
-   고정이라(2026-09-29) 매끄럽게 이어지지 않는다. 표의 각도를 그대로 쓴다.
-
-   ── 셋째 축은 없다 ─────────────────────────────────────────────────
-   셋째 도구는 얼굴에 따라 **무게이거나 말투**다(위 설명 문구가 그렇게
-   갈린다). 둘 다 여기서는 못 보여준다:
-
-   · 무게 — 획을 덧대는 방식(--optical-stroke)은 '당당한'에서 못 쓴다.
-     이미 굵은 얼굴이라 161px에서 0.018em만 덧대도 '화'의 ㅇ이 메워진다
-     (다섯 칸을 두 얼굴에 나란히 놓고 확인). 진짜 축인 font-weight는
-     아무것도 안 바꾼다 — 이 가변 글꼴들은 font-variation-settings로만
-     축이 열린다(재서 확인: 400과 700의 잉크 폭이 312px로 같다).
-   · 말투 — 값이 둘뿐인 고르기라 훑을 범위가 없다.
-
-   두 축만 보여주고 셋째는 둘째 장에서 만나게 둔다. 못 보여주는 것을
-   보여주는 척하는 것보다 낫다. */
-.tone-figure{ flex: 1; display: grid; place-items: center; line-height: 1;
-  --fig: min(46cqw, 28vh);
-  /* 흰 글자는 토큰 그대로(--paper, 2026-10-10 — 92%였다). 당당한이 29CM이 되며 시연이 가장 작을 때 21.7px로
-     '큰 글자'(24px) 밑에 내려가, 92%로는 --brand-strong 위 대비가 4.15라 AA(4.5)에 모자랐다. 100%면 4.64 */
-  font-size: var(--fig); color: var(--paper);
-}
-/* 움직이는 것은 글만 감싼 안쪽 칸이다 — 바깥 칸(.tone-figure)에 걸면 그 맨 뒤의 글자 모듈 그림판(.glyph-modules)까지 기울고 늘어났다
-   (2026-10-20 점검). 움직임이 꺼져 있어도 보통 자리의 모양으로 선다 */
-/* 크기 훑기는 글자 크기가 아니라 배율(--demo-k)로 한다(2026-10-29 점검) — 글자 크기를 매 장면 바꾸면 서체를 매번 다시 짜는데,
-   핸드젯(유머있는)은 그 한 번이 60ms라 첫 장이 초당 40장 밑으로 끊겼다. 배율은 다시 짜지 않는다. 고른 자리의 배율(scale)과 섞이지
-   않게 안쪽 글 칸(.tone-figure-text)에 따로 건다 — 고르게 키우는 배율이라 기울기 · 장평과 차례가 바뀌어도 모양이 같다.
-   글자 뒤 모듈(GlyphModules)도 이 값을 읽어 함께 줄고 는다 */
-@property --demo-k{ syntax: '<number>'; inherits: true; initial-value: 1; }
-/* 배율 · 기울기는 모두 transform 하나로 건다(2026-11-03) — 따로 떼어 낸 scale 속성으로 걸었더니 아이폰에서 글자 뒤 모듈이 줄마다
-   글자에서 밀려났다(디자이너 캡처, 조절판은 transform이라 멀쩡했다). 차례는 그대로 — scale(장평) 다음 skewX(기울기)가 먼저 걸린다 */
-.tone-figure-move{ font-size: var(--fig);
-  transform: scale(var(--sxm, 1), var(--sym, 1)) skewX(0deg); font-variation-settings: var(--fvm, normal);
-  animation: toneDemo calc(var(--t-hold) * 6.67) var(--ease-standard) infinite;
-}
-.tone-figure-text{ transform: scale(var(--demo-k)); will-change: transform; }   /* 제 그림층으로 — 배율이 바뀔 때마다 핸드젯 글자를 다시 칠하지 않는다 */
-/* 조절판으로 넘어가면 첫 장은 화면 밖에 남아 있다 — 거기서도 돌면 안 보이는 시연이 조절판을 끊는다(같은 점검) */
-.tone-deck[data-step="work"] .tone-figure-move{ animation-play-state: paused; }
-/* 속도는 잣대와 같은 방향으로 훑는다 — 천천히에서 빠르게.
-   잣대를 뒤집을 때 함께 뒤집었다(2026-09-24).
-   마디마다 다섯(자간까지)을 모두 적는다. 한 마디에서 빠뜨린 속성은 그 마디를 건너뛰고
-   보간되어, 크기를 되돌리는 도중에 폭이 먼저 움직인다.
-   기울기(transform)는 배율(scale)보다 먼저 걸린다 — 둘째 장에서 기운 글꼴을
-   배율로 늘이는 것과 같은 차례다. */
-@keyframes toneDemo{
-  0%,   9%  { --demo-k: 1;    font-variation-settings: var(--fvm); letter-spacing: var(--lsm, 0); transform: scale(var(--sxm), var(--sym)) skewX(0deg); }
-  21%       { --demo-k: 0.64; font-variation-settings: var(--fvm); letter-spacing: var(--lsm, 0); transform: scale(var(--sxm), var(--sym)) skewX(0deg); }
-  39%       { --demo-k: 1.18; font-variation-settings: var(--fvm); letter-spacing: var(--lsm, 0); transform: scale(var(--sxm), var(--sym)) skewX(0deg); }
-  50%,  59% { --demo-k: 1;    font-variation-settings: var(--fvm); letter-spacing: var(--lsm, 0); transform: scale(var(--sxm), var(--sym)) skewX(0deg); }
-  71%       { --demo-k: 1;    font-variation-settings: var(--fv0); letter-spacing: var(--ls0, 0); transform: scale(var(--sx0), var(--sy0)) skewX(0deg); }
-  89%       { --demo-k: 1;    font-variation-settings: var(--fv1); letter-spacing: var(--ls1, 0); transform: scale(var(--sx1), var(--sy1)) skewX(var(--sk1)); }
-  100%      { --demo-k: 1;    font-variation-settings: var(--fvm); letter-spacing: var(--lsm, 0); transform: scale(var(--sxm), var(--sym)) skewX(0deg); }
-}
-@media (prefers-reduced-motion: reduce){ .tone-figure-move{ animation: none; } }
-/* 첫 장면의 견본은 이제 내 글이다(2026-09-25, PhaseTone). 줄은 벽의 줄 접기
-   그대로(pre)이고 행간은 조작 장의 견본과 같은 1.4(STAGE_LH)다 — 두 글자
-   '발화'를 위한 행간 1이면 여러 줄이 서로 닿는다. 칸은 제 글로 자라지 않는다
-   (min-height: 0) — 크기는 칸을 재서 정하는데, 칸이 글을 따라 자라면 제 결과를
-   다시 재게 된다. */
-.tone-figure{ min-height: 0; align-self: stretch; }   /* 폭도 제 글이 아니라 판이 정한다 */
-.tone-figure-text{ display: inline-block; white-space: pre; line-height: 1.4; text-align: center; }
-/* 글자 뒤 모듈(2026-10-20, 결정 18 — GlyphModules) — 글을 든 칸(첫 장 .tone-figure · 조절판 .z-glyph-fit)을 한 겹으로 묶고 그 맨 뒤에
+/* 글자 뒤 모듈(2026-10-20, 결정 18 — GlyphModules) — 글을 든 칸(.z-glyph-fit)을 한 겹으로 묶고 그 맨 뒤에
    캔버스 한 장. 다 그린 뒤 한 장째 옅게 — 이웃 모듈이 겹친 곳도 한 번 칠한 것처럼 */
-.tone-figure, .z-glyph-fit{ position: relative; isolation: isolate; }
+.z-glyph-fit{ position: relative; isolation: isolate; }
 .glyph-modules{ position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; z-index: -1; opacity: var(--module-faint); }
-/* 다음 걸음으로 가는 유일한 손짓이라 위계를 본문 자리에 둔다 —
-   라벨(14px·76%)로 두었더니 잔글씨로 읽혀 눌러야 하는 줄 몰랐다. */
-/* span이었다가 버튼이 됐다(2026-09-21) — 이 장에서 앞으로 가는 길이
-   손가락뿐이면 자판을 쓰는 사람이 갇힌다. 보이는 모습은 그대로여야
-   하므로 버튼의 기본 생김새를 전부 지운다. */
-/* 위로 밀게 이끈다(2026-10-21, 디자이너 — '화면을 누르면 시작해요'를 사람들이 잘 몰랐다, 특히 4/5). 꺾쇠를 글 위로 올려
-   위로 떠올랐다 사라지기를 되풀이한다 — 장이 빠지는 방향 그대로. 첫 장은 위로 쓸어도 넘어간다(PhaseTone · PhaseColor) */
-.tone-more{ font-family: var(--ui-font); font-size: var(--fs-body); font-weight: 600;
-  color: var(--paper); padding: 0 0 var(--s6);
-  border: 0; background: none; cursor: pointer; text-align: center;
-  display: flex; flex-direction: column; align-items: center; gap: var(--s3); }
-.tone-more::before{ content: ''; width: var(--s4); height: var(--s4); border-left: 2px solid currentColor;
-  border-top: 2px solid currentColor; rotate: 45deg;
-  animation: moreRise calc(var(--t-hold) * 2) var(--ease-standard) infinite; }
-@keyframes moreRise{
-  0%   { translate: 0 var(--s3); opacity: 0; }
-  30%  { opacity: 1; }
-  100% { translate: 0 calc(var(--s3) * -1); opacity: 0; }
-}
-/* 위로 쓰는 손이 브라우저의 끌기로 넘어가지 않게(두 손가락 확대는 둔다) */
-.tone-intro, .color-intro{ touch-action: pinch-zoom; }
-/* 첫 장 넘기기 이끌기(2026-10-21, 디자이너 — 견본 셋 중 "초반에 C로 3초 하다가, 안 넘기면 A").
-   C 통통: 들어오고 --t-slow 뒤 안내(글 + 꺾쇠)가 위로 두 번 튄다 — 두 차례, 3초쯤.
-   A 들썩: 그래도 첫 장 그대로면 --t-hold × 5마다 첫 장이 살짝 들렸다 내려앉고, 그 틈으로 다음 장의 아래(조절판 · 버튼)가
-   제자리에서 비친다 — 밀면 무엇이 올라오는지 미리 보인다. 간격은 재촉으로 느껴지지 않을 만큼, 고민하는 사이 놓치지 않을 만큼.
-   다음 장은 들썩이는 동안만 보이고(평소엔 지금처럼 숨어 손 · 낭독기에서 빠진다), 첫 장일 땐 눌리지 않는다 — 비친 버튼을 눌러
-   고르지도 않고 넘어가는 일이 없게. 넘기면 멎는다(첫 장일 때만 건다) */
-.tone-deck[data-step="intro"] .tone-more,
-.color-choice[data-step="intro"] .tone-more{ animation: moreHop calc(var(--t-hold) * 2) var(--ease-standard) var(--t-slow) 2; }
-@keyframes moreHop{
-  0%, 24%, 48%, 100%{ translate: 0 0; }
-  12%{ translate: 0 calc(var(--s4) * -1); }
-  36%{ translate: 0 calc(var(--s2) * -1); }
-}
-.tone-deck[data-step="intro"] .tone-intro,
-.color-choice[data-step="intro"]:not([data-moved]) > .color-intro{
-  animation: introPeek calc(var(--t-hold) * 5) var(--ease-standard) calc(var(--t-slow) + var(--t-hold) * 4) infinite; }
-@keyframes introPeek{
-  0%, 22%, 34%, 100%{ translate: 0 0; }
-  14%{ translate: 0 -14vh; }
-  28%{ translate: 0 -2vh; }
-}
-/* 03의 둘째 장은 평소 화면 아래에 있다 — 들썩이는 동안만 첫 장 밑 제자리로 와서 보인다(첫 장이 위에 깔린다) */
-.tone-deck[data-step="intro"] .tone-intro{ z-index: 1; }
-.tone-deck[data-step="intro"] .tone-work{ pointer-events: none;
-  animation: peekUnder calc(var(--t-hold) * 5) step-end calc(var(--t-slow) + var(--t-hold) * 4) infinite; }
-@keyframes peekUnder{ 0%{ visibility: visible; transform: none; } 36%{ visibility: hidden; transform: translateY(100%); } }
-/* 4/5의 고르는 장은 처음부터 첫 장 밑 제자리에 숨어 있다 — 들썩이는 동안만 보인다 */
-.color-choice[data-step="intro"] > :not(.color-intro){ pointer-events: none; }
-.color-choice[data-step="intro"]:not([data-moved]) > :not(.color-intro){
-  animation: peekShow calc(var(--t-hold) * 5) step-end calc(var(--t-slow) + var(--t-hold) * 4) infinite; }
-@keyframes peekShow{ 0%{ visibility: visible; } 36%{ visibility: hidden; } }
-@media (prefers-reduced-motion: reduce){
-  .tone-pane{ transition: none; } .tone-more::before{ animation: none; }
-  .tone-deck[data-step="intro"] :is(.tone-more, .tone-intro, .tone-work),
-  .color-choice[data-step="intro"] .tone-more,
-  .color-choice[data-step="intro"]:not([data-moved]) > :is(.color-intro, :not(.color-intro)){ animation: none; }
-}
+@media (prefers-reduced-motion: reduce){ .tone-pane{ transition: none; } }
 /* 견본이 문장이 되면서 낱자가 줄이 됐다. 줄은 세로로 쌓이고, 두둥실 뜨는
    것은 바깥 덩어리 하나가 맡는다 — 줄마다 따로 뜨면 문단이 흔들린다. */
 .z-glyph.is-line{ line-height: 1.4; }
@@ -2532,6 +2384,21 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .z-ask.is-brief{ overflow: hidden; animation: askBriefCollapse 760ms var(--ease-emphasized) 3s forwards; }
 /* 움직임 줄이기에서는 접지 않고 그대로 둔다 — 3초 뒤 예고 없이 사라지며 아래 말풍선이 툭 튀었다(2026-10-29 점검) */
 @media (prefers-reduced-motion: reduce){ .z-ask.is-brief{ animation: none; } }
+/* 3/5 · 4/5의 제목 · 안내(2026-11-03, 디자이너 — 눌러 넘기던 첫 장을 걷고 "본 화면으로 바로, 메시지가 2~3초 있다가 위로 페이드
+   아웃"). 본 화면 위에 겹쳐 서고 자리를 차지하지 않는다 — 사라질 때 아무것도 움직이지 않는다(디자이너가 고름. 5/5처럼 칸을 접으면
+   무대가 커지며 그림판을 매 장면 다시 잡았다 — 27aa3a8). --t-hold × 4 머문 뒤 --t-hold 동안 한 칸 위로 흐려진다. 끝나도 낭독기엔 남는다 */
+.stage-hint:not(.sr-only){ pointer-events: none; z-index: 2;
+  animation: stageHintOut var(--t-hold) var(--ease-standard) calc(var(--t-hold) * 4) both; }
+@keyframes stageHintOut{ to{ opacity: 0; translate: 0 calc(var(--s5) * -1); } }
+/* 3/5 — 머리줄 다음 흐름에 서되 높이 0: 글은 아래 견본 위로 넘쳐 겹친다. 흐름의 사이(섹션 24)는 한 번만 든다 */
+.tone-work .stage-hint:not(.sr-only){ position: relative; height: 0; overflow: visible; margin-bottom: calc(var(--space-section) * -1); }
+/* 4/5 — 머리줄(위 안전 영역 + --btn-m) 아래 섹션 사이에, 여백 안에. 검은 무대라 옛 첫 장과 같은 색 */
+.color-choice .stage-hint:not(.sr-only){ position: absolute; top: calc(var(--top-safe) + var(--btn-m) + var(--space-section)); left: var(--pad-x); right: var(--pad-x); }
+.color-choice .stage-hint h1{ color: var(--paper); }
+.color-choice .stage-hint p{ color: var(--grey-400); }
+/* 움직임 줄이기 — 자리는 그대로 두고 흐려지기만 */
+@media (prefers-reduced-motion: reduce){ .stage-hint:not(.sr-only){ animation-name: stageHintFade; } }
+@keyframes stageHintFade{ to{ opacity: 0; } }
 /* 검은 자리 위라 --muted(4.49:1)로는 AA에 한 끗 모자란다. 한 칸 밝게. */
 .compose-count{ position: absolute; right: var(--pad-x); bottom: var(--s6); font-family: 'Whois Digits', var(--label-font);   /* 숫자만 Whois */ font-size: var(--fs-cap); letter-spacing: 0.02em; color: var(--grey-500); font-variant-numeric: tabular-nums; }
 /* 다 찼을 때. 흰색이었다 — 60자에서 배경이 검정으로 물러서던 옛 편집기의
@@ -2789,52 +2656,7 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    얼음 · 연청 — 이 같은 칸을 입는다(PhaseColor PALE · data-pale). */
 .color-choice[data-pale] .color-panel > .primary-action{ background: var(--grey-800); color: var(--paper); }
 
-/* ── 04 첫 장: 설명 + 시연 (2026-09-28, 사용자 — 3/5와 같은 흐름) ─────────────
-   3/5처럼 설명하는 장이 먼저 서고, 화면을 누르면 위로 빠지며 고르는 장(지금까지의
-   04 화면)이 아래에서 올라온다. 넘기는 시간·곡선은 3/5의 .tone-pane과 같은 값이다
-   (--t-slow · --ease-emphasized — 3/5와 같은 값, 2026-10-29까지 520ms).
-   고르는 장의 뼈대는 그대로 두고 이 장이 위를 덮는다 — 정렬 방식 작업 중인 04의
-   구조를 옮기지 않으려고. 안 보이는 장은 3/5처럼 visibility로 손 · 탭 · 낭독기에서
-   빠진다. */
 .color-choice{ position: relative; }
-.color-choice[data-step="intro"]{ overflow: hidden; }
-.color-intro{ position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; gap: var(--space-section);   /* 머리줄 → 제목 24 — 2/5 · 3/5와 같다(2026-10-29 점검, 16이었다) */
-  background: var(--ink); color: var(--paper);
-  padding: var(--top-safe) var(--pad-x) max(var(--s6), env(safe-area-inset-bottom, 0px));
-  visibility: hidden; transform: translateY(-100%);
-  transition: transform var(--t-slow) var(--ease-emphasized), visibility 0s linear var(--t-slow); }
-.color-choice[data-step="intro"] > .color-intro{ visibility: visible; transform: none;
-  transition: transform var(--t-slow) var(--ease-emphasized), visibility 0s; }
-/* 머리줄 — 검은 무대의 값(4/5 · 5/5와 같다). 밑줄은 틀의 여백 밖까지 */
-.color-intro > .z-header{ margin-inline: calc(var(--pad-x) * -1); padding-inline: var(--pad-x);
-  --rule-color: color-mix(in srgb, var(--paper) var(--rule-mix), transparent); }
-.color-intro .z-back{ color: var(--grey-500); }
-.color-intro .z-ask h1{ color: var(--paper); }
-.color-intro .z-ask p{ color: var(--grey-400); }
-/* 시연 자리 — 남는 높이를 다 받는다. 기준 0으로 못 박는다(5/5와 같은 까닭:
-   flex: 1(= 1 1 0%)이면 첫 계산에서 cqh가 0으로 풀려 말풍선이 0으로 섰다) */
-.color-intro > .color-demo{ flex: 1 1 0; min-height: 0; width: auto; height: auto; }
-/* 시연: 글은 그 안 제자리에서 옅게 나타난다(2026-10-21, 디자이너 —
-   위에서 굴러 떨어져 앉던 것보다 자연스럽게. 떨어지는 동안 검은 무대에 묻히지 않게 흰색으로 지나가던 처리도 함께 걷었다 —
-   이제 처음부터 짝의 글자색이다). 모양 · 색이 도는 것은 PhaseColor의 ColorDemo가 한다(2026-10-29 — 들어오자마자 낱개가 모이고, 흩어졌다 모이며 돈다. 그전엔 말풍선이 처음부터 서 있었다) */
-.color-demo .dot-text{ animation: colorDemoIn var(--t-hold) var(--ease-standard) var(--t-slow) both; }
-@keyframes colorDemoIn{ from{ opacity: 0; } }
-/* 고르는 장 — 첫 장이 떠 있는 동안은 숨어 있다. 한 번이라도 넘긴 뒤에는 첫 장과
-   함께 움직인다: 첫 장이 위로 빠질 때 화면 높이만큼 아래에서 올라오고, 되돌아갈
-   때 그만큼 내려간다. transform이 아니라 animation으로 건다 — 04의 버튼·색판에
-   걸린 제 전환(색 바뀜 · colorTray)을 덮어쓰지 않으려고 */
-.color-choice[data-step="intro"] > :not(.color-intro){ visibility: hidden; }
-.color-choice[data-step="intro"][data-moved] > :not(.color-intro){ animation: colorWorkOut var(--t-slow) var(--ease-emphasized) both; }
-.color-choice[data-step="work"][data-moved] > :not(.color-intro){ animation: colorWorkIn var(--t-slow) var(--ease-emphasized) both; }
-@keyframes colorWorkIn{ from{ translate: 0 var(--vvh, 100dvh); } to{ translate: 0 0; } }
-@keyframes colorWorkOut{ from{ translate: 0 0; visibility: visible; } to{ translate: 0 var(--vvh, 100dvh); visibility: hidden; } }
-@media (prefers-reduced-motion: reduce){
-  .color-intro{ transition: none; }
-  .color-choice[data-moved] > :not(.color-intro){ animation: none; }
-  .color-demo .dot-text{ animation: none; }
-}
-/* '위로 밀어서 시작해요'는 가운데 — 3/5 첫 장과 같은 자리(재서 확인: 3/5는 x115~275) */
-.color-intro > .tone-more{ align-self: center; }
 
 /* ── 04 조정판 (2026-09-28, 사용자 — 3/5처럼 미리보기와 조정 창을 나눈다) ─────
    3/5의 .tone-panel을 그대로 입고, 줄도 3/5의 [이름 | 잣대](.tslider)다. 잣대는 둘 —

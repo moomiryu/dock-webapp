@@ -16,7 +16,6 @@ const T = {
     leadWeight: { ko: '발화의 크기, 속도, 무게를 정해봐요.', en: 'Set the size, pace and weight of your line.' },
     leadManner: { ko: '발화의 크기, 속도, 말투를 정해봐요.', en: 'Set the size, pace and tone of your line.' },
     /* 누르기만 묻던 말이 잘 안 읽혔다(2026-10-21, 디자이너 — 특히 4/5) — 장이 위로 빠지는 그 방향으로 밀게 이끈다. 누르기도 그대로 된다 */
-    start: { ko: '위로 밀어서 시작해요', en: 'Swipe up to start' },
     comparing: { ko: '기본 상태를 보는 중. 눌러서 편집한 상태로 돌아가기', en: 'Showing the default. Tap to go back to your edit' },
     compare: { ko: '눌러서 기본과 비교', en: 'Tap to compare with the default' },
     orig: { ko: '기본', en: 'Default' },
@@ -257,34 +256,10 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
         return { ...t, ...legacyFields(t) };
     });
     const lang = useLang();
-    /** 'intro' = 설명하는 장 · 'work' = 조작하는 장 */
-    const [step, setStep] = useState<'intro' | 'work'>(returning ? 'work' : 'intro');
     /** 견본을 눌러 기본 상태를 보고 있는가. 값을 만지면 편집값으로 돌아온다 */
     const [compare, setCompare] = useState(false);
     const lines = foldLines(text);
 
-    /**
-     * 첫 장면의 견본 — '발화' 두 글자였던 자리에 **내 글**이 선다(2026-09-25).
-     *
-     * 시연(toneDemo)이 크기를 1.18배까지, 폭을 1.3배까지 늘린다. 가장 커지는
-     * 순간에도 칸 밖으로 나가지 않는 크기를 **재서** 정한다: 줄마다 그린 폭 ×
-     * 1.3이 칸 폭에, 줄 수 × 행간 × 1.18이 칸 높이에 들어와야 한다. 짧은 글이
-     * 한없이 커지지 않게 '발화' 때의 크기(칸 폭 46% · 화면 높이 28%)를 위
-     * 한도로 둔다. 줄은 벽의 줄 접기(foldLines)가 정한 그대로다.
-     */
-    const figure = useRef<HTMLDivElement>(null);
-    const figText = useRef<HTMLSpanElement>(null);
-    const [fig, setFig] = useState<number | null>(null);
-    /**
-     * 속도 잣대의 세 자리 — 둘째 장이 그리는 **그 표**(formFor)에서 온다(2026-09-29, 사용자:
-     * "속도를 진짜 모양대로"). 전에는 가로 폭만 1.3 → 0.7로 훑어서, 빠르게 쪽에서 글이
-     * 기울고 서체마다 높이 · 폭 축이 바뀌는 것이 안 보였다. 무게 · 말투는 지금 값 그대로
-     * 두고 속도만 움직인다. 값은 CSS 변수로만 건네고 움직임은 CSS가 한다(app.css · toneDemo).
-     */
-    const slow = formFor({ ...tone, speed: 0 });
-    const mid = formFor({ ...tone, speed: 0.5 });
-    const fast = formFor({ ...tone, speed: 1 });
-    const fvs = (f: typeof mid) => f.variation || 'normal';
     const [refit, setRefit] = useState(0);
     useEffect(() => {
         const again = () => setRefit((n) => n + 1);
@@ -292,36 +267,6 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
         void document.fonts?.ready.then(again);
         return () => window.removeEventListener('resize', again);
     }, []);
-    /* 안전장치: 같은 조건에서 고쳐 잡는 것은 세 번까지. 정상이면 첫 번에 끝난다 */
-    const figTries = useRef({ key: '', n: 0 });
-    useLayoutEffect(() => {
-        const box = figure.current;
-        const span = figText.current;
-        if (!box || !span) return;
-        const key = `${text}|${tone.font}|${fvs(slow)}|${fvs(fast)}|${refit}`;
-        if (figTries.current.key !== key) figTries.current = { key, n: 0 };
-        if (figTries.current.n >= 3) return;
-        const fs = parseFloat(getComputedStyle(span).fontSize);
-        const W = box.clientWidth;
-        const H = box.clientHeight;
-        if (!fs || !W || !H) return;
-        // 글자 크기 1px당 폭·높이 — 시연이 걸어 둔 배율(scale)은 offset 값에 안 들어간다.
-        // 속도 양 끝은 서체의 축과 자간(당당한의 진중한 +0.06em, 2026-10-10)까지 바꿀 수 있어 세 자리를 각각 잰다
-        const at = (f: typeof mid) => {
-            span.style.fontVariationSettings = fvs(f); span.style.letterSpacing = f.letterSpacing;
-            return { w: span.offsetWidth / fs, h: span.offsetHeight / fs };
-        };
-        const m0 = at(slow), mm = at(mid), m1 = at(fast);
-        span.style.fontVariationSettings = ''; span.style.letterSpacing = '';
-        if (!mm.w || !mm.h) return;
-        // 기울기는 배율보다 먼저 걸린다(app.css) — 기운 만큼 넓어진 폭에 가로 배율이 곱해진다
-        const tan = Math.tan((fast.slant * Math.PI) / 180);
-        const needW = Math.max(mm.w * mid.scaleX * 1.18, m0.w * slow.scaleX, (m1.w + m1.h * tan) * fast.scaleX);
-        const needH = Math.max(mm.h * mid.scaleY * 1.18, m0.h * slow.scaleY, m1.h * fast.scaleY);
-        const cap = Math.min(W * 0.46, window.innerHeight * 0.28);
-        const next = Math.min(cap, (W * 0.97) / needW, (H * 0.97) / needH);
-        if (fig === null || Math.abs(next - fig) / next > 0.01) { figTries.current.n += 1; setFig(next); }
-    }, [text, tone.font, fvs(slow), fvs(fast), refit, fig]);
     const longest = Math.max(1, ...lines.map((l) => Array.from(l).length));
     /**
      * 견본 크기 — **제 자리를 재서 정한다.**
@@ -509,56 +454,18 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
     } as CSSProperties;
 
     return <div className="z-frame z1 tone-adjust">
- <div className="tone-deck" data-step={step}>
-
-  {/* ── 첫 장: 무엇을 하는 자리인지만 ───────────────────────────── */}
-  {/* 장 전체가 넘기는 손짓이다. 다만 **버튼 위는 아니다** — 머리줄의
-      뒤로가기가 이 안에 들어 있어서, 뒤로 가려고 누른 탭이 onBack과
-      setStep을 같이 돌렸다. 되돌리려는 손짓이 진행 손짓을 겸하면 안 된다.
-      뒤로 돌아온 길에는 이 장을 아예 달지 않는다 — 숨긴 채 시연만 돌 까닭이 없다. */}
-  {/* 위로 쓸어도 넘긴다(2026-10-21) — 누른 높이를 장에 적어 두고(다시 그려도 안 잃게) 손을 뗄 때 그만큼(px) 위면. 4/5 첫 장과 같다 */}
-  {!returning && <section className="tone-pane tone-intro"
-    onClick={e => { if (!(e.target as HTMLElement).closest('button')) setStep('work'); }}
-    onPointerDown={e => { e.currentTarget.dataset.swipeY = String(e.clientY); }}
-    onPointerUp={e => { if (Number(e.currentTarget.dataset.swipeY) - e.clientY > 32) setStep('work'); }}>
-   <div className="z-glyph-stage has-face">
-    <StepHeader at={3} back={{ label: pick(T.backIntro, lang), onClick: () => onBack(tone) }} onHome={onHome} />
-    {/* is-brief를 뺐다 — 그 규칙은 3초 뒤 제목을 저절로 접는다. 여기서는
-        설명이 사라지는 계기가 **누르는 손**이어야 한다. '가'와 같이 간다. */}
-    <div className="z-ask">
-     <h1>{pick(T.title, lang)}</h1>
-     <p>{pick(hasWeightAxis(tone.font) ? T.leadWeight : T.leadManner, lang)}</p>
-    </div>
-    {/* 삽화 자리. 아직 그려지지 않았다 — 지금은 내 글이 대신 서서 크기와
-        속도 축을 차례로 훑는다(app.css · toneDemo). 속도의 세 자리(위 slow · mid ·
-        fast)는 변수로만 건넨다. 연출은 전부 CSS에 있다: 여기서 상태를 만들지
-        않으므로 이 움직임이 참여자가 고른 값에 닿을 길이 없다. */}
-    <div ref={figure} className="tone-figure" aria-hidden="true"
-      style={{ fontFamily: fontMap[tone.font], letterSpacing: mid.letterSpacing,
-        '--sx0': slow.scaleX, '--sy0': slow.scaleY, '--fv0': fvs(slow), '--ls0': slow.letterSpacing,
-        '--sxm': mid.scaleX, '--sym': mid.scaleY, '--fvm': fvs(mid), '--lsm': mid.letterSpacing,
-        '--sx1': fast.scaleX, '--sy1': fast.scaleY, '--fv1': fvs(fast), '--ls1': fast.letterSpacing, '--sk1': `${-fast.slant}deg`,
-        ...(fig ? { '--fig': `${fig.toFixed(1)}px` } : null) } as CSSProperties}>
-     {/* 글자마다 뒤에 그 성격의 모듈을 옅게(2026-10-20, 결정 18) */}
-     <GlyphModules of={figText} font={tone.font} />
-     {/* 움직임(크기 · 장평 · 기울기)은 글만 감싼 이 칸에 — 바깥 칸에 걸면 맨 뒤의 모듈 그림판까지 기울고 늘어나 모듈이 글자에서 벗어났다
-         (2026-10-20 점검 — '빠르게'에서 평행사변형, 최대 47px). 모듈은 이 바깥에서 글자 자리만 따라간다(결정 18 — 기울이지 않는다) */}
-     <span className="tone-figure-move"><span ref={figText} className="tone-figure-text">{lines.join('\n')}</span></span>
-    </div>
-    {/* 글자였다. 그러면 이 장에서 **앞으로 가는 길이 손가락뿐**이라
-        자판·스위치·낭독기를 쓰는 사람은 03에 들어와 빠져나갈 수가 없었다
-        (탭을 눌러 보면 뒤로가기 하나를 지나 안 보이는 둘째 장으로 굴러
-        떨어졌다). 보이는 모습은 그대로 두고 버튼으로 바꾼다 — 이름은
-        화면에 적힌 그 문장이어야 한다(눈에 보이는 글자와 낭독되는 이름이
-        어긋나면 음성으로 조작하는 사람이 부를 이름을 잃는다). */}
-    <button type="button" className="tone-more" onClick={() => setStep('work')}>{pick(T.start, lang)}</button>
-   </div>
-  </section>}
+ <div className="tone-deck" data-step="work">
 
   {/* ── 둘째 장: 견본과 편집 패널 ──────────────────────────────── */}
   <section className="tone-pane tone-work">
    <div className="z-glyph-stage has-face">
     <StepHeader at={3} back={{ label: pick(T.backIntro, lang), onClick: () => onBack(tone) }} onHome={onHome} />
+    {/* 제목 · 안내 — 눌러 넘기던 첫 장을 걷고(2026-11-03, 디자이너), 앞으로 들어올 때만 견본 위에 겹쳐 섰다가 위로 흐려지며 빠진다.
+        자리를 차지하지 않아 견본은 처음부터 제자리 · 제 크기다(app.css .stage-hint). 돌아온 길에는 낭독기에만 */}
+    <div className={'z-ask stage-hint' + (returning ? ' sr-only' : '')}>
+     <h1>{pick(T.title, lang)}</h1>
+     <p>{pick(hasWeightAxis(tone.font) ? T.leadWeight : T.leadManner, lang)}</p>
+    </div>
     {/* 견본은 글자뿐이다. 도형은 색을 고르는 화면에서 처음 나온다.
         한 겹을 더 두른 것은 **자리를 재기 위해서다** — 머리줄을 뺀 나머지가
         견본의 몫인데, 칸 전체를 기준으로 삼으면 머리줄 높이만큼 넘친다.
@@ -607,7 +514,6 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
        만지던 탭은 걷었다. 작은 화면(320)에서는 이 판이 줄지 않고 위의 견본
        칸이 줄어든다(견본 칸은 남는 자리를 받는다). */}
    <div className="tone-panel">
-    {/* 유머있는(비)의 빠르기는 보통 ~ 빠르게 세 칸이다(2026-10-04, 디자이너 — palettes.ts · speedBarFor) */}
     <Slider name={pick(T.size, lang)} words={pick(SIZE_WORDS, lang)} value={sizePos(tone.size)}
       onChange={v => set({ size: +sizeAt(v).toFixed(2) })} />
     <Slider name={pick(T.speed, lang)} words={pick(speedBar.words, lang)} value={speedBar.fromSpeed(speed)}

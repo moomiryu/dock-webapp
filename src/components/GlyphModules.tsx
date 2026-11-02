@@ -7,7 +7,7 @@ import { RF, kindOf, modulesAt, type Item } from '../lib/aggregate';
  * 하나씩 깐다. 말풍선 안에 넣는 안(A)은 글자가 모듈마다 벌어져 고르는 모양이 덜 보였다.
  * - 크기: u = 그 글자의 글자 크기 / 0.85(벽 · 폰 말풍선과 같은 감싸는 비율). 가운데 = 글자 상자 가운데(Range로 잰다). 기울이지 않는다.
  * - 색: --paper로 다 그린 뒤 한 장째 --module-faint만큼 옅게(.glyph-modules opacity) — 이웃 모듈이 겹친 곳도 한 번 칠한 것처럼.
- * - 글자 자리는 매 장면 다시 재고, 바뀌었을 때만 다시 그린다 — 크기 · 속도 · 무게를 바꿀 때도, 첫 장의 훑기 시연 중에도 따라간다.
+ * - 글자 자리는 매 장면 다시 재고, 바뀌었을 때만 다시 그린다 — 크기 · 속도 · 무게를 바꿀 때도, 견본이 떠다니는 동안에도 따라간다.
  * 캔버스는 글을 든 칸의 맨 뒤(app.css .glyph-modules · 칸이 한 겹으로 묶인다).
  */
 export default function GlyphModules({ of, font }: { of: RefObject<HTMLElement | null>; font: string }) {
@@ -18,9 +18,9 @@ export default function GlyphModules({ of, font }: { of: RefObject<HTMLElement |
     const one: Item = { ch: '가', li: 0, x: 0, y: 0, a: 0, p: 0, ax: 0, ay: 0 }, { dots, polys } = modulesAt([one], kindOf(font), 1);
     const paper = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim(), range = document.createRange();
     let raf = 0, sig = '', prev = 0;
-    /* 글을 움직이는 CSS 애니메이션(첫 장 toneDemo · 조절판의 떠다님 · 바람)의 시계를 이 판이 쥔다(2026-11-03) — 아이폰은 기울기 · 배율을
+    /* 글을 움직이는 CSS 애니메이션(조절판의 떠다님 · 바람, 2026-11-03까지는 첫 장 시연도)의 시계를 이 판이 쥔다(2026-11-03) — 아이폰은 기울기 · 배율을
        따로 돌려 여기서 읽는 글자 자리가 늦었고, 구름이 줄마다 반대쪽으로 글자에서 벗어났다(디자이너 캡처). 매 장면 시각을 직접 놓고
-       같은 장면에 재므로 글자와 모듈이 어긋날 수 없다. CSS가 멈춰 둔 것(animation-play-state: paused — 화면 밖 첫 장)은 시계도 선다 */
+       같은 장면에 재므로 글자와 모듈이 어긋날 수 없다. CSS가 멈춰 둔 것(animation-play-state: paused)은 시계도 선다 */
     const clocks = new WeakMap<Animation, number>();
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
@@ -51,9 +51,7 @@ export default function GlyphModules({ of, font }: { of: RefObject<HTMLElement |
       const box = cv.getBoundingClientRect(), marks: [number, number, number][] = [];
       const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
       for (let n = walk.nextNode() as Text | null; n; n = walk.nextNode() as Text | null) {
-        /* 첫 장의 크기 훑기는 글자 크기가 아니라 배율 --demo-k다(app.css .tone-figure-text, 2026-10-29) — 모듈도 그만큼 */
-        const cs = getComputedStyle(n.parentElement ?? el);
-        const u = (parseFloat(cs.fontSize) * (parseFloat(cs.getPropertyValue('--demo-k')) || 1)) / 0.85;
+        const u = parseFloat(getComputedStyle(n.parentElement ?? el).fontSize) / 0.85;
         for (let i = 0; i < n.length; i++) {
           if (!n.data[i].trim()) continue;
           range.setStart(n, i); range.setEnd(n, i + 1);
@@ -65,7 +63,7 @@ export default function GlyphModules({ of, font }: { of: RefObject<HTMLElement |
       if (next === sig) return;
       sig = next;
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      /* 판 크기가 같으면 새로 만들지 않고 지우기만 한다 — 첫 장의 훑기는 매 장면 다시 그린다(2026-10-29 점검) */
+      /* 판 크기가 같으면 새로 만들지 않고 지우기만 한다 — 떠다니는 견본은 매 장면 다시 그린다(2026-10-29 점검) */
       const W = Math.round(box.width * dpr), H = Math.round(box.height * dpr);
       if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
       else { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H); }

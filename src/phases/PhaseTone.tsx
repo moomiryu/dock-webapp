@@ -476,7 +476,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
    <div className="z-glyph-stage has-face">
     <StepHeader at={3} back={{ label: pick(T.backIntro, lang), onClick: () => onBack(tone) }} onHome={onHome} />
     {/* 제목 · 안내 — 눌러 넘기던 첫 장을 걷고(2026-11-03, 디자이너), 앞으로 들어올 때만 견본 위에 겹쳐 섰다가 위로 흐려지며 빠진다.
-        자리를 차지하지 않아 견본은 처음부터 제자리 · 제 크기다(app.css .stage-hint). 돌아온 길에는 낭독기에만 */}
+        자리는 차지하지 않고(app.css .stage-hint), 그동안 견본은 안내 아래 남는 자리의 한가운데에 섰다가(다 안 들면 줄어) 안내가 빠질 때 올라온다(위 재기 · .is-making-room). 돌아온 길에는 낭독기에만 */}
     <div ref={hint} className={'z-ask stage-hint' + (returning ? ' sr-only' : '')}>
      <h1>{pick(T.title, lang)}</h1>
      <p>{pick(hasWeightAxis(tone.font) ? T.leadWeight : T.leadManner, lang)}</p>

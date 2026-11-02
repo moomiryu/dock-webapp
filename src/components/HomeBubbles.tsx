@@ -10,7 +10,8 @@ import { easeOf, tokenS } from '../lib/motion';
  *
  * 큰 메가폰트의 나팔 입에서 소리 결(동심원)이 숨 쉬듯 퍼진다 — 벽의 평소 결(결정 49)과 같은 박자 · 같은 꼴(lib/sky idleWavesAt),
  * 나팔이 향한 쪽으로만 부채꼴. 사람이 메가폰트 앞에서 빨개지면(HomeCrowd → says) 굵은 결이 한 번 나간다.
- * 결은 맨 뒤(사람 · 메가폰트 뒤), 색은 --grey-300 — 배경으로 물러난다.
+ * 결은 맨 뒤(사람 · 메가폰트 뒤), 색은 --grey-400 — 배경으로 물러나되 보이게(2026-11-03 디자이너 "원 크기 좀 더 커도, 색도 조금 더
+ * 진해도 — 잘 보여야 해" → 점 크기 1 · 1.5 · 2배 × --grey-300 · 400 · 500 견본에서 1.5배 · 400. 그전엔 1.5px 선 · --grey-300).
  *
  * 나팔 입은 화면에 그려진 큰 메가폰트(HomeCharacter의 몸 · 꼭지 두 조각)에서 그때그때 읽는다 — 꼭지 반대편 넓은 변의 가운데.
  * 메가폰트가 돌아서면 옛 쪽 결은 잦아들고, 새 쪽에서 다시 퍼진다. 움직임 줄이기면 띄우지 않는다(메가폰트가 정면으로 서 있다).
@@ -18,7 +19,7 @@ import { easeOf, tokenS } from '../lib/motion';
 
 type Pt = [number, number];
 /** 결 — 입을 중심으로 나팔 쪽 ±span°의 호. 반지름 = k × reach × 화면 폭, 선 = line px × 세기, 진하기 = 벽 결의 alpha배 */
-const RING = { reach: 0.42, span: 50, line: 1.5, alpha: 2 } as const;
+const RING = { reach: 0.42, span: 50, line: 2.25, alpha: 2 } as const;
 /** 빨개진 사람마다 한 번 — 굵게 · 단숨에(벽의 '글자가 설 때' 한 방처럼 처음에 빠르고 끝으로 느리게) */
 const HIT = { s: 2, dur: 1.5, a: 0.5 } as const;
 
@@ -31,7 +32,7 @@ export default function HomeBubbles() {
     const frame = back?.closest('.home-frame') as HTMLElement | null;
     if (!back || !bg || !frame) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;   // 메가폰트가 정면으로 멈춰 서서 입이 없다
-    const GREY = getComputedStyle(document.documentElement).getPropertyValue('--grey-300').trim();
+    const GREY = getComputedStyle(document.documentElement).getPropertyValue('--grey-400').trim();
     const EASE = easeOf('--ease-standard');
     const HOLD = tokenS('--t-hold', 0.7), SLOW = tokenS('--t-slow', 0.4);
     let W = 0, DPR = 1, raf = 0;

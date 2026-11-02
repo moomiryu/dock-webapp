@@ -2398,6 +2398,12 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
 .color-choice .stage-hint:not(.sr-only){ position: absolute; top: calc(var(--top-safe) + var(--btn-m) + var(--space-section)); left: var(--pad-x); right: var(--pad-x); }
 .color-choice .stage-hint h1{ color: var(--paper); }
 .color-choice .stage-hint p{ color: var(--grey-400); }
+/* 4/5 — 메시지가 있는 동안 무대(말풍선)는 그 아래 자리만큼 밑변 가운데로 줄어 있다가(PhaseColor가 잰 --room-k), 메시지가 빠지는
+   같은 박자에 제 크기로 커지며 올라온다(2026-11-03, 디자이너 — 처음엔 겹치지 않게). 움직임 줄이기면 그 끝에 한 번에 */
+.color-stage.is-making-room{ transform-origin: 50% 100%;
+  animation: stageMakeRoom var(--t-hold) var(--ease-standard) calc(var(--t-hold) * 4) both; }
+@keyframes stageMakeRoom{ from{ transform: scale(var(--room-k, 1)); } to{ transform: none; } }
+@media (prefers-reduced-motion: reduce){ .color-stage.is-making-room{ animation-timing-function: step-end; } }
 /* 움직임 줄이기 — 자리는 그대로 두고 흐려지기만 */
 @media (prefers-reduced-motion: reduce){ .stage-hint:not(.sr-only){ animation-name: stageHintFade; } }
 @keyframes stageHintFade{ to{ opacity: 0; } }

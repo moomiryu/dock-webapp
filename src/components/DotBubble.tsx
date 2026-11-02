@@ -59,6 +59,8 @@ interface Props {
    * onRim = 말의 점 수 · 몸통 아랫가장자리 점들(px, 점 간격마다 가장 아래 점 — 부스러기가 여기서 튕겨 나간다) · 땅(px — 작은 사람이 서는 줄). 놓을 때마다. 움직임 줄이기면 다 자란 꼬리로 선다
    */
   tail?: { room: (W: number, H: number) => number; onRim?: (dots: number, rim: [number, number][], floor: number) => void };
+  /** pick — 놓을 때마다 말이 차지하는 가장 위(px, 상자 기준 — 낱개 · 모인 말 중 높은 쪽). 4/5가 안내 아래로 비켜 설 만큼을 잰다 */
+  onTop?: (y: number) => void;
   className?: string;
 }
 
@@ -72,7 +74,7 @@ type Fit = {
   tail: Tail | null;
 };
 
-export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', hold = 3, still, play, tail, className }: Props) {
+export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', hold = 3, still, play, tail, onTop, className }: Props) {
   const wrap = useRef<HTMLDivElement>(null), cv = useRef<HTMLCanvasElement>(null), text = useRef<HTMLDivElement>(null);
   const kd = kindOf(tone.font), arr = arrangeOf(tone.font, align ?? tone.align);
   const items = useMemo(() => arranged(lines, arr, kd), [lines.join('\n'), arr, kd]);
@@ -83,6 +85,8 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
   const fit = useRef<Fit>({ W: 0, H: 0, u0: 0, ox0: 0, oy0: 0, u1: 0, ox1: 0, oy1: 0, plan: null, spread: [], dev: [0, 0], merge: 0, tail: null });
   const tailOpt = useRef(tail);
   tailOpt.current = tail;
+  const topOpt = useRef(onTop);
+  topOpt.current = onTop;
   const redraw = useRef<() => void>(() => {});
 
   useEffect(() => {
@@ -148,6 +152,7 @@ export default function DotBubble({ lines, tone, align, bg, fg, mode = 'pick', h
           to.onRim?.(body.length + gaps.length + tl.dots.length, [...low.values()].map((d): [number, number] => [ox1 + d.x * u1, oy1 + d.y * u1]), floor);
         }
         fit.current = { W, H, u0, ox0, oy0, u1, ox1, oy1, plan: null, spread: items, dev: [0, 0], merge: SCATTER, tail: tl };
+        topOpt.current?.(Math.min(oy0 + b0[1] * u0, oy1 + bb[1] * u1));
       }
       draw(performance.now() / 1000, true);
     };

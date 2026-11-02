@@ -61,8 +61,6 @@ const WIGGLE_SWAY = 0.012;
 
 /** 한 포즈에서 다음 포즈로 형태가 넘어가는 데 걸리는 시간 (ms) */
 const TURN_MS = 380;
-/** 포즈가 방향을 따라 바뀌더라도 이 간격보다 자주 바뀌지 않는다 (ms) */
-const POSE_DWELL = 900;
 
 /**
  * 멀고 가까움. 상자(272px)를 1로 놓은 배수다.
@@ -167,7 +165,6 @@ const TYPE_CPS = 22;
 const isLatin = (t: string) => !/[぀-ヿ㐀-鿿가-힯＀-￯]/.test(t);
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
-const random = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
 export default function HomeCharacter({ onTap, greet = true }: {
@@ -288,7 +285,7 @@ export default function HomeCharacter({ onTap, greet = true }: {
      * 오가는 구경꾼들이 그 자리를 맡는다. 메가폰트는 제자리에 서서
      * **모습만 바꾼다** — 포즈·표정·한 마디.
      */
-    let lastPose = 0, nextPose = 0, faceUntil = 0;
+    let faceUntil = 0;
     let squash = 0, tilt = 0, raf = 0, lastTime = 0;
     /**
      * 크기는 늘 1이다.
@@ -347,7 +344,6 @@ export default function HomeCharacter({ onTap, greet = true }: {
       to = poseGeometry(next);
       now0 = now;
       pose = next;
-      lastPose = now;
     };
 
     const bounds = () => ({
@@ -464,25 +460,6 @@ export default function HomeCharacter({ onTap, greet = true }: {
       paint(1);
     };
 
-    /**
-     * 첫인사가 끝나면 **옆모습으로 돌아서고, 그 뒤로는 옆모습만 쓴다.**
-     *
-     * 정면(삼각형)은 인사하는 얼굴이다 — 눈을 맞추고 말을 건네는 자리.
-     * 인사가 끝나면 이 물건은 다시 **메가폰**이 된다. 옆에서 본 꼴이
-     * 그것이고, 홈에 서 있는 동안의 기본은 그쪽이다.
-     *
-     * 고를 수 있는 옆모습은 왼쪽·오른쪽 둘뿐이라 변화는 방향을 바꾸는 것
-     * 하나다. 그래서 **반드시 반대쪽으로** 돈다 — 무작위로 고르면 절반은
-     * 같은 쪽이 나와 setPose가 조용히 되돌아가고, 실제로는 한 방향으로
-     * 굳어 버린다(26초를 지켜봤더니 내내 오른쪽이었다).
-     * 대신 오래 머문다. 몇 초마다 돌아서면 두리번거리는 것이 되어 가만히
-     * 서 있는 것으로 안 읽힌다.
-     *
-     * 소리가 뻗는 옆모습(_light — 입에서 노란 빛) 둘도 가끔 섞었는데 걷었다(2026-10-21 결정 51, 디자이너 "빛은 삭제").
-     * 소리는 이제 입에서 퍼지는 결이 맡는다(HomeBubbles).
-     */
-    const idlePose = (): Pose => (pose === 'left' ? 'right' : 'left');
-
     const step = (t: number) => {
       const dt = Math.min((t - (lastTime || t)) / 1000, 0.035);
       lastTime = t;
@@ -528,9 +505,6 @@ export default function HomeCharacter({ onTap, greet = true }: {
             charPos.greeted = true;      // 이제 나팔에서 남의 말이 나온다
             try { sessionStorage.setItem('mf-greeted', '1'); } catch { /* 사파리 비공개 */ }
             setEyes('general');
-            // 인사가 끝나면 곧바로 돌아선다. 정면은 인사하는 얼굴이었다.
-            setPose(idlePose(), t);
-            nextPose = t + random(5000, 9000);
           } else {
             // 양옆으로 번갈아. 두 마디가 같은 쪽에 서면 차례로 온 것이
             // 아니라 한 자리에서 글자만 바뀐 것으로 보인다.
@@ -551,13 +525,8 @@ export default function HomeCharacter({ onTap, greet = true }: {
       }
 
       if (visible && !reduced && !intro) {
-        // 이따금 고개를 돌린다. 부풀거나 말하는 중에는 가만히 둔다 —
-        // 한 번에 두 가지가 일어나면 둘 다 흐려진다.
-        // 들려 있는 동안은 고개도 안 돌린다 — 손이 하는 일에 끼어들지 않는다.
-        if (t > nextPose && !sayUntil && !held && t - lastPose > POSE_DWELL) {
-          setPose(idlePose(), t);
-          nextPose = t + random(5000, 9000);
-        }
+        // 고개를 돌리지 않는다(2026-11-03 디자이너 "스플래시 끝나고 바로 수직으로 — 움직임을 바꿀 이유가 없다").
+        // 정면으로 선 채다. 그전엔 열자마자 옆모습으로 돌아서고 5~9초마다 좌우를 번갈았다
         contain();
       }
 

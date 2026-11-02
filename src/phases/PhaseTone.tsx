@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import StepHeader from '../components/StepHeader';
 import GlyphModules from '../components/GlyphModules';
-import { G, RF, kindOf, modulesAt } from '../lib/aggregate';
+import { RF, kindOf, modulesAt } from '../lib/aggregate';
 import SnapSwitch, { tick } from '../components/SnapSwitch';
-import { MANNER, SIZE_WORDS, fontMap, formFor, hasManner, hasSizeBar, hasWeightAxis, legacyFields, mannerDefault, mannerOrder, opticalFix, SIZE_RANGE, sizeAt, sizePos, speedBarFor, weightWordsFor } from '../lib/palettes';
+import { MANNER, SIZE_WORDS, fontMap, formFor, hasManner, hasSizeBar, hasWeightAxis, legacyFields, mannerDefault, mannerOrder, opticalFix, sizeAt, sizePos, speedBarFor, weightWordsFor } from '../lib/palettes';
 import { DEFAULT_TONE, type PartialTone } from '../lib/tone';
 import { foldLines } from '../lib/fit';
 import { pick, useLang } from '../lib/lang';
@@ -410,21 +410,30 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
     const byLine = Math.min((USE.w / shape.w) * fill, USE.w / (shape.w * form.scaleX + tanS)).toFixed(2);
     const byHeight = ((USE.h / shape.h) * fill).toFixed(2);
     /**
-     * '매우 크게'에서는 뒤의 모듈 구름이 화면 끝을 **확실히 뚫고 나가게** 글을 더 키운다(2026-11-03, 디자이너 — 견본 B).
+     * 뒤의 모듈 구름까지 **여백 안에** 들게 한다(2026-11-03, 디자이너 — 견본 A, 다섯 칸 비례).
      *
      * 위 계산은 글자만 본다. 구름은 글 바깥으로 글자 크기의 0.6~0.9배를 더 뻗어서, 화면 끝에 닿느냐 마느냐가 글 길이에 따라
-     * 우연히 갈렸다 — 390 실측 다정한 본문 구름이 왼 13 · 오른 4px에 아슬아슬하게 걸렸다. "차라리 여백을 지키든가, 아예 씬을
-     * 뚫고 나가던가." 여백 지키기(A)는 짧은 글이 178→114px로 줄었고, 어중간할 때만 붙이기(C)는 같은 '매우 크게'가 글마다 커졌다
-     * 작아졌다. B를 골랐다 — 긴 글은 글자 자체가 여백선 안쪽(화면 끝 5~17px)까지 나간다는 것을 보고 고른 것이다.
+     * 우연히 갈렸다 — 390 실측 다정한 본문 '매우 크게'의 구름이 왼 13 · 오른 4px에 아슬아슬하게 걸렸다. "차라리 여백을 지키든가,
+     * 아예 씬을 뚫고 나가던가." 뚫고 나가기(B, 8d188ba)를 먼저 넣었다가 되돌렸다 — 키운 글이 화면 끝 5px까지 나가고, 320에서는
+     * 높이에 막혀 짧은 글이 여전히 끝에 붙었다.
      *
-     * 양쪽 다 모듈 하나(G) 몫 이상 넘치는 크기를 잰다. 모듈 그림판(GlyphModules)과 똑같이 글자마다 Range로 재야 그려지는 구름과
-     * 셈이 맞는다. 자리는 글자 크기 1px당 값으로 바꿔 두므로 크기 전이 중에 재도 같다. 이미 넘치는 글(짧은 글)은 그대로다.
+     * '매우 크게'일 때 구름 양끝이 여백선(--pad-x)에 드는 비율을 재서 **다섯 칸 모두에** 곱한다. '매우 크게'만 줄이면 짧은 글은
+     * '매우 크게'(114px)가 '크게'(154px)보다 작아졌다. 넘치는 칸만 멈추면 짧은 글은 세 칸이 같은 크기가 됐다.
+     * 모듈 그림판(GlyphModules)과 똑같이 글자마다 Range로 잰다 — 그래야 그려지는 구름과 셈이 맞는다. 자리는 글자 크기 1px당
+     * 값으로 바꿔 두므로 크기 전이 중에 재도, 어느 칸에서 재도 같다.
      */
-    const top = shown.size >= SIZE_RANGE[2];
-    const [burst, setBurst] = useState(1);
-    const burstTries = useRef({ key: '', n: 0 });
+    const [room, setRoom] = useState(1);
+    const roomTries = useRef({ key: '', n: 0 });
+    /* 크기 전이(app.css .z-glyph 260ms) 중에 잰 자리는 2px쯤 어긋난다(390 차분한 43자 — 구름이 여백선 안 14px). 전이가 끝나면 한 번 더 잰다 */
+    const [rest, setRest] = useState(0);
+    useEffect(() => {
+        const el = glyph.current;
+        if (!el) return;
+        const done = (e: TransitionEvent) => { if (e.target === el && e.propertyName === 'font-size') setRest((n) => n + 1); };
+        el.addEventListener('transitionend', done);
+        return () => el.removeEventListener('transitionend', done);
+    }, []);
     useLayoutEffect(() => {
-        if (!top) { if (burst !== 1) setBurst(1); return; }
         const el = glyph.current, fit = el?.parentElement, stage = el?.closest('.z-glyph-stage');
         const F = el ? parseFloat(getComputedStyle(el).fontSize) : 0;
         if (!el || !fit || !stage || !F || !run) return;
@@ -443,16 +452,17 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
                 reachL = Math.max(reachL, -c - mn / 0.85); reachR = Math.max(reachR, c + mx / 0.85);
             }
         }
-        const past = G / 0.85;
-        if (reachL <= past || reachR <= past) return;
-        const need = Math.max((cx - s.left) / (reachL - past), (s.right - cx) / (reachR - past));
-        const base = (Math.min(+byLine * fit.clientWidth, +byHeight * fit.clientHeight) / 100) * optic;
-        /* 높이는 넘기지 않는다 — 320×568에서 키운 긴 글이 견본 칸 위로 잘리고 아래 '눌러서 기본과 비교'에 겹쳤다 */
-        const tall = (+byHeight * fit.clientHeight / 100) * optic;
-        const next = Math.max(1, Math.min(need, tall) / base);
-        const key = `${text}|${shown.font}|${shown.speed}|${shown.weight}|${shown.manner}|${refit}`;
-        if (burstTries.current.key !== key) burstTries.current = { key, n: 0 };
-        if (burstTries.current.n < 3 && Math.abs(next - burst) / next > 0.01) { burstTries.current.n += 1; setBurst(next); }
+        if (!reachL || !reachR) return;
+        const pad = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pad-x'));
+        const fits = Math.min((cx - s.left - pad) / reachL, (s.right - pad - cx) / reachR);
+        /* '매우 크게'(fill 1)에서 줄이기 전의 크기 — 위 byLine · byHeight와 같은 셈 */
+        const full = (Math.min(Math.min(USE.w / shape.w, USE.w / (shape.w * form.scaleX + tanS)) * fit.clientWidth,
+            (USE.h / shape.h) * fit.clientHeight) / 100) * optic;
+        const next = Math.min(1, fits / full);
+        const key = `${text}|${shown.font}|${shown.speed}|${shown.weight}|${shown.manner}|${refit}|${rest}`;
+        if (roomTries.current.key !== key) roomTries.current = { key, n: 0 };
+        /* 줄이는 쪽은 문턱을 낮춘다(0.2%) — 1%면 그 안에 남은 몫(≈2px)만큼 구름이 여백선을 넘는다 */
+        if (roomTries.current.n < 3 && ((room - next) / next > 0.002 || (next - room) / next > 0.01)) { roomTries.current.n += 1; setRoom(next); }
     });
     /**
      * 막대를 옮긴다. 비교 중이었으면 편집값으로 돌아온다 — 기본을 보는 채로
@@ -496,7 +506,7 @@ export default function PhaseTone({ text, initialTone, onBack, onHome, onNext, r
         transform: `scale(${form.scaleX.toFixed(3)}, ${form.scaleY.toFixed(3)})`,
         '--glyph-skew': `${-form.slant}deg`,   // 줄마다 skewX로 기운다(app.css · .z-glyph-char, VoiceBubble과 같은 까닭)
         letterSpacing: form.letterSpacing,
-        fontSize: `calc(min(${byLine}cqw, ${byHeight}cqh) * ${(optic * (top ? burst : 1)).toFixed(3)})`,
+        fontSize: `calc(min(${byLine}cqw, ${byHeight}cqh) * ${(optic * room).toFixed(3)})`,
         '--optical-stroke': form.stroke
     } as CSSProperties;
 

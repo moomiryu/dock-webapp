@@ -114,6 +114,8 @@ const CHAR_Z = 500;
  */
 const GATE_GAP = 24;   /* --s6. 걸음의 오르내림까지 치면 16(--s5)으로는
                           버튼 모서리와 붙어 보였다(재서 확인) */
+/** 발끝이 학교의 땅 윗선보다 이만큼은 아래 — 그림자가 건물 밑변에 걸치면 건물 앞이 아니라 그 위에 선 것으로 읽힌다 */
+const HORIZON_GAP = 8;
 function groundLimit(frame: HTMLElement, h: number) {
   const gate = frame.querySelector('.home-gate')?.getBoundingClientRect();
   const top = gate ? gate.top - frame.getBoundingClientRect().top : h * 0.86;
@@ -167,8 +169,12 @@ export default function HomeCrowd() {
          −10 ~ +40px 안에만 선다. floor 아래로는 안 내려가고, 메가폰트가 아직 자리 잡기 전이면 위의 띠 */
       /* 띠를 −10 ~ +60px로 넓혔다(2026-10-20, 결정 27-2 — +40까지면 서 있는 둘이 한 자리에 겹쳐 한 명처럼 보이는 일이 320에서 66 ~ 78%,
          390에서 절반). 아래 끝이 버튼 위 한계(floor)를 넘으면 띠를 그만큼 위로 — 320에선 한계에 눌려 모두 한 줄(floor)에 섰다 */
+      /* 학교의 땅 윗선(charPos.horizon) 아래 — 땅에서만 걷는다(2026-11-03 디자이너 "캐릭터들도 그 수평선 아래에서 걷게, 땅에서").
+         발끝(p.y — 그림자 아래 끝)이 그 줄보다 HORIZON_GAP 아래. 버튼 위 한계(floor)가 그보다 위인 작은 화면에선 floor가 이긴다 */
       const lift = charPos.ready ? Math.max(0, charPos.ground + 60 - floor) : 0;
-      p.y = charPos.ready ? Math.min(floor, random(charPos.ground - 10 - lift, charPos.ground + 60 - lift)) : random(h * 0.53, floor);
+      p.y = charPos.ready
+        ? Math.min(floor, Math.max(charPos.horizon + HORIZON_GAP, random(charPos.ground - 10 - lift, charPos.ground + 60 - lift)))
+        : random(h * 0.53, floor);
       p.speed = random(SPEED.min, SPEED.max);
       p.phase = 'walk';
       p.beat = 0;

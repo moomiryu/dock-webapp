@@ -2292,6 +2292,8 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
    (HomeCrowd), 걷는 다리와 몸의 들썩임·몸 색만 CSS가 맡는다.
    버튼 위에 얹히지 않게 손을 안 받는다. */
 .home-crowd{ position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+/* 홈 뒤의 학교(PhaseHome Campus) — 밑변이 메가폰트가 적는 --horizon에 선다. 그 값이 오기 전엔 화면 밖(아래). 위계를 낮춰 옅게 */
+.home-campus{ position: absolute; left: 0; width: 100%; height: auto; bottom: calc(100% - var(--horizon, 200%)); fill: var(--grey-200); pointer-events: none; }
 
 /* 여기에 앞선 구경꾼이 메가폰트 몸에 드리우는 그림자(drop-shadow)가
    있었다. 2026-09-20에 넣었다가 같은 날 걷어냈다 — 앞뒤는 발끝이 정하는

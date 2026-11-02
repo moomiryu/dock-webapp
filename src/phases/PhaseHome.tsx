@@ -6,6 +6,7 @@ import HomeCrowd from '../character/HomeCrowd';
 import HomeBubbles from '../components/HomeBubbles';
 import { LANG_OPEN, pick, useLang } from '../lib/lang';
 import { tokenMs } from '../lib/motion';
+import { campusPath } from '../lib/ground';
 
 /* 홈의 말. 영어는 초안이다 — 3단계(문구)에서 다시 본다 */
 const T = {
@@ -32,7 +33,8 @@ export default function PhaseHome({ onStart }: Props) {
   if (info) return <InfoOverlay about={info === 'about'} onClose={() => setInfo(null)} onStart={onStart} />;
   return (
     <div className="home-frame">
-      {/* 소리 결은 맨 뒤(층 번호 없음) */}
+      {/* 학교가 맨 뒤 — 그 앞으로 소리 결이 퍼진다(둘 다 층 번호 없음, 문서 차례) */}
+      <Campus />
       <HomeBubbles />
       {/* 구경꾼이 먼저 그려져야 메가폰트 뒤에 선다 */}
       <HomeCrowd />
@@ -56,6 +58,21 @@ export default function PhaseHome({ onStart }: Props) {
       {dialog && <LangDialog onClose={() => setDialog(false)} />}
       <Boot />
     </div>
+  );
+}
+
+/** 학교의 꼴 — 폭 390 좌표, 땅 윗선이 y 0(그 위로 솟은 만큼이 음수). 한 번만 짓는다 */
+const CAMPUS = campusPath(0);
+/**
+ * 홈 뒤의 학교(2026-11-03 디자이너 — Step 3의 학교를 홈 같은 자리에 얹은 미리보기를 보고 "좋다, 근데 위계 좀 낮추고, 캐릭터들도 그
+ * 수평선 아래에서 걷게"). 꼴은 Step 3과 같다(lib/ground campusPath — 벽 건물 양 끝 2.5배). 밑변은 메가폰트가 액자에 적는 --horizon
+ * (charPos.horizon — 그림자 줄에서 키의 HORIZON_K 위)에 서고, 폭은 화면 폭. 색은 app.css .home-campus
+ */
+function Campus() {
+  return (
+    <svg className="home-campus" viewBox={`0 ${CAMPUS.top} 390 ${-CAMPUS.top}`} style={{ aspectRatio: `390 / ${-CAMPUS.top}` }} aria-hidden="true" focusable="false">
+      <path d={CAMPUS.d} />
+    </svg>
   );
 }
 

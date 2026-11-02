@@ -4,9 +4,7 @@ import BackButton from './BackButton';
 import { HomeX } from './StepHeader';
 import { dockScreenSvg, scopeSvg, step1Svg, step2Svg, step3Svg } from '../lib/svgAsset';
 import { pick, useLang, type Pair } from '../lib/lang';
-import { G, RF } from '../lib/aggregate';
-import { SKY } from '../lib/sky';
-import { BUILDINGS, FILL, buildingsAt, groundPx } from '../lib/ground';
+import { campusPath } from '../lib/ground';
 
 // 작가가 삽화를 컷으로 나눠 준다. 컷 사이를 이어 도는 일은 svgAsset이 한다.
 //
@@ -44,47 +42,12 @@ import artSlot from '../../by_moomiryu/Renewal_v1/Tutorial/dock2_v3.svg?raw';
 /* 메가폰 입가의 빨간 동그라미 두 쌍(cls-6 타원 넷)도 걷는다(2026-11-03 디자이너 "반원 튀어나온 거 없애주라") — 하나는 메가폰 몸에
    묻혀 안 보였고, 하나는 반쯤 몸 밖으로 나와 반원 혹으로 보였다. 이 그림에서 cls-6 타원은 이 넷뿐이다 */
 const artStep3 = artStep3Raw.replace(/<ellipse class="cls-1"[^>]*\/>/, '').replace(/<ellipse class="cls-6"[^>]*\/>/g, '');
-/* Step 3 뒤의 학교 — 벽의 스카이라인(lib/ground buildingsAt — WallSkyline이 쓰는 그것)을 벽 비율(16:10) 그대로 CAMPUS_S배
-   키워(그림 폭 390이 1배) 왼쪽 반의 건물은 그림 왼쪽 끝에, 오른쪽 반은 오른쪽 끝에 붙인다 — 둘은 가운데(말풍선 뒤)에서 겹친다. 벽 가운데에
-   맞추면 벽의 빈 가운데(로고 · 기기 자리)가 그림 한가운데로 와서 건물이 양 끝에만 걸렸다. 땅 윗선은 CAMPUS_FLOOR(그림 y — 발화자 · 메가폰
-   그림자 타원 389.73보다 19 위). 2026-11-03 디자이너: "지평선에 맞게 wall의 학교 실루엣" → "너무 작다" → "wall의 건물들을 크게" →
-   가운데 맞춤 1.5 ~ 3배 · 양 끝 1.5 ~ 2.5배 견본에서 '양 끝 2.5배', 밑선은 디자이너가 그은 하얀 선(320×568에서 재서 옮겼다).
-   짓는 법은 벽 그대로 — 벌집 격자의 점(간격 G · u, 반지름 RF · u · FILL). 색은 --grey-800(디자이너, 벽의 --grey-900은 밤 바탕에 묻혔다).
-   점은 건물만큼 키우지 않고 CAMPUS_DOT배 — 점까지 2.5배면 첨탑 비탈 · 꼭대기가 공을 꿴 듯 울퉁불퉁했다. 시계탑 첨탑은 처마 없이 몸통
-   폭 그대로 솟는다 — 몸통보다 넓은 밑단이 화살촉처럼 읽혔다(디자이너 "탑 삼각 모양이 이상함" → 지금 · 점 절반 · 점 0.4 · 점 절반 + 처마
-   없앰 견본에서 마지막. 벽의 시계탑은 그대로).
-   층은 밤 바탕 바로 위라 사람 · 메가폰 · 말풍선이 모두 그 앞에 선다. 그림을 칸에 맞추는 셈(svgAsset focusOn)이 끝난 **뒤에** 끼운다 —
-   솟은 건물까지 재면 그림 전체의 자리가 바뀐다 */
-const CAMPUS_FLOOR = 370.7, CAMPUS_S = 2.5, CAMPUS_DOT = 0.5;
-/** 벽의 건물 — 첨탑(박공 중 가장 높이 솟은 것)만 밑변을 그 아래 몸통 폭으로 */
-const STEP3_BUILDINGS: typeof BUILDINGS = (() => {
-  const spire = Math.max(...BUILDINGS.map(([kind, , , , k = 0]) => (kind === 'roof' ? k : 0)));
-  return BUILDINGS.map((b) => {
-    const [kind, , , h, k] = b;
-    const body = BUILDINGS.find(([bk, , , bh]) => bk === 'rect' && bh === h);
-    return kind === 'roof' && k === spire && body ? (['roof', body[1], body[2], h, k] as const) : b;
-  });
-})();
-const campus = (() => {
-  const W = 390 * CAMPUS_S, H = (W * 10) / 16, u = SKY.u * H * CAMPUS_DOT, g = G * u, row = (g * Math.sqrt(3)) / 2, r = RF * u * FILL;
-  const all = buildingsAt(W, H, STEP3_BUILDINGS), dy = CAMPUS_FLOOR - (H - groundPx(H)), f = (n: number) => +n.toFixed(2);
-  /** 그림 (x, y)가 건물 안인가 — 왼쪽 반은 그대로, 오른쪽 반은 벽 오른쪽 끝을 그림 오른쪽 끝(390)에 */
-  const inside = (x: number, y: number) => (x < W / 2 && all(x, y)) || (x + W - 390 > W / 2 && all(x + W - 390, y));
-  /* 한 줄에서 이어진 점들은 양끝이 둥근 띠 하나로 — 점이 겹쳐 속이 한 면이 되는 것은 벽과 같고, 점을 하나씩 적으면 글이 1.2MB였다 */
-  let d = '';
-  const run = (x0: number, x1: number, y: number) => { d += `M${f(x0)} ${f(y + dy - r)}h${f(x1 - x0)}a${f(r)} ${f(r)} 0 0 1 0 ${f(2 * r)}h${f(x0 - x1)}a${f(r)} ${f(r)} 0 0 1 0 ${f(-2 * r)}z`; };
-  for (let j = 0; j * row <= H; j++) {
-    const off = j & 1 ? g / 2 : 0, y = j * row;
-    let start = NaN, last = NaN;
-    for (let i = -1; i * g + off <= 390 + g; i++) {
-      const x = i * g + off;
-      if (inside(x, y)) { if (Number.isNaN(start)) start = x; last = x; }
-      else if (!Number.isNaN(start)) { run(start, last, y); start = NaN; }
-    }
-    if (!Number.isNaN(start)) run(start, last, y);
-  }
-  return `<path fill="var(--grey-800)" d="${d}"/>`;
-})();
+/* Step 3 뒤의 학교 — 짓는 법 · 크기 · 고른 이유는 lib/ground campusPath(홈과 같이 쓴다). 여기서 정하는 것은 둘:
+   땅 윗선 CAMPUS_FLOOR(그림 y — 발화자 · 메가폰 그림자 타원 389.73보다 19 위, 디자이너가 그은 하얀 선을 320×568에서 재서 옮겼다)와
+   색 --grey-800(벽의 --grey-900은 밤 바탕에 묻혔다). 층은 밤 바탕 바로 위라 사람 · 메가폰 · 말풍선이 모두 그 앞에 선다.
+   그림을 칸에 맞추는 셈(svgAsset focusOn)이 끝난 **뒤에** 끼운다 — 솟은 건물까지 재면 그림 전체의 자리가 바뀐다 */
+const CAMPUS_FLOOR = 370.7;
+const campus = `<path fill="var(--grey-800)" d="${campusPath(CAMPUS_FLOOR).d}"/>`;
 /** 다 지은 Step 3 그림의 바탕(화판 전체 사각형) 바로 뒤에 학교를 끼운다 */
 const withCampus = (svg: string) => {
   const at = svg.indexOf('>', svg.lastIndexOf('height="603"')) + 1;

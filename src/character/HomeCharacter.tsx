@@ -4,7 +4,7 @@ import {
   CANVAS, EYES, blendGeo, eyeMarkup, eyeOpacity, poseGeometry, toPathD, turnKind,
   type Eyes, type Pose, type PoseGeo
 } from './morph';
-import { charPos } from './pos';
+import { HORIZON_K, charPos } from './pos';
 import { LANG_OPEN, getLang, type Pair } from '../lib/lang';
 import { tokenMs } from '../lib/motion';
 
@@ -280,7 +280,7 @@ export default function HomeCharacter({ onTap, greet = true }: {
     let floorY = Infinity;
     const GATE_GAP = 24;
     /** 액자에 마지막으로 적어 준 실루엣 자리. 안 바뀌었으면 다시 안 적는다 */
-    let saidX = Infinity, saidY = Infinity;
+    let saidX = Infinity, saidY = Infinity, saidH = Infinity;
     /**
      * 이 캐릭터는 이제 **움직이지 않는다.**
      *
@@ -446,6 +446,9 @@ export default function HomeCharacter({ onTap, greet = true }: {
       charPos.y = y;
       charPos.size = size * depth;
       charPos.ground = y + size * depth * floor;   // 그림자가 놓인 줄이 바닥이다
+      // 학교의 땅 윗선(pos.ts horizon) — 액자에도 적어 학교 그림(PhaseHome .home-campus)이 그 줄에 선다. 반 픽셀 넘게 움직였을 때만
+      charPos.horizon = charPos.ground - HORIZON_K * charPos.size;
+      if (Math.abs(charPos.horizon - saidH) > 0.5) { saidH = charPos.horizon; frame.style.setProperty('--horizon', `${saidH.toFixed(1)}px`); }
       charPos.lift = lift;
       // 나팔이 향한 쪽. 'left'는 입이 왼쪽이라 소리가 오른쪽으로 나간다.
       charPos.voice = pose.startsWith('left') ? 1 : -1;

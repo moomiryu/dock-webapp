@@ -144,10 +144,17 @@ await page.evaluate((u) => { document.getElementById('site').src = u; }, `${APP}
 while (!app()) await sleep(20);
 await app().waitForLoadState('domcontentloaded');
 await app().evaluate(() => { const s = document.createElement('style'); s.textContent = '.dock-test-link, .onwall-release { visibility: hidden !important; }'; document.head.append(s); });
+// 폰에는 '올려 둠'이 없다 — (hover: hover) 규칙을 걷는다. 안 걷으면 창 안이 마지막 누른 자리를 기억해, 다음 화면에서 그 자리의 칸이
+// (2/5 유머있는) 0.15초마다 밝아졌다 꺼져 연타처럼 보였다(11-03). 마우스를 창 밖으로 옮겨도 창 안 기억은 안 지워졌다
+await app().evaluate(() => { for (const sh of document.styleSheets) { let rules; try { rules = sh.cssRules; } catch { continue; }   // 바깥 서체 묶음은 못 읽는다
+  for (let i = rules.length - 1; i >= 0; i--) if (rules[i].conditionText?.includes('hover: hover')) sh.deleteRule(i); } });
+// 창 안 문서도 서체를 미리 — 위 미리 받기는 다른 탭이라, 2/5가 들어오는 0.3초 동안 유머있는이 기본 굵은 서체로 찍혔다(11-03).
+// Pretendard는 조각이 많고 이미 쓰는 중이라 뺀다
+await app().evaluate(async () => { const all = []; document.fonts.forEach((f) => { if (!/Pretendard/.test(f.family)) all.push(f.load().catch(() => {})); }); await Promise.all(all); });
 await measure();
 log('홈');
 await layout('group', true);
-cap('G', 'Home', '학생이 폰으로 한 줄을 써서 캠퍼스의 벽에 올리는 카트입니다. 처음이라면 [처음이에요]로 시작합니다.');
+cap('G', 'Home', '메가폰트의 홈 화면입니다.\n처음이라면 [처음이에요]를 눌러 시작합니다.');
 await app().waitForFunction(() => !document.querySelector('.home-boot'), null, { timeout: 15000 }).catch(() => {});
 await sleep(2600);
 await shot('home');
@@ -155,13 +162,13 @@ await shot('home');
 // 튜토리얼 세 장
 await tap('.home-cta');
 log('튜토리얼');
-cap('G', 'Tutorial', '쓰기, 꽂기, 발화. 세 단계를 먼저 봅니다.');
+cap('G', 'Tutorial', '쓰기, 꽂기, 발화하기. 세 단계를 먼저 살펴봅니다.');
 await sleep(4200); await shot('guide-1');
 await tap('.primary-action'); await sleep(3400); await shot('guide-2');
 await tap('.primary-action'); await sleep(4200); await shot('guide-3');
 await tap('.primary-action');
 // 가이드가 끝나면 판이 오른쪽 반으로 — 왼쪽은 영상 자리
-cap('L', 'Step 1. Write', '하고 싶은 말을 60자까지 씁니다. 혼잣말도 좋습니다.');
+cap('L', 'Step 1. Write', '하고 싶은 말을 최대 60자까지 씁니다.');
 await sleep(300);
 await layout('right');
 await show('slot-write', true);
@@ -179,7 +186,7 @@ await page.evaluate(() => stage.kb(false));
 
 // 2/5 성격 — 차분한을 눌러 보고 다정한으로
 log('2/5 성격');
-cap('L', 'Step 2. Voice', '당당한 · 차분한 · 다정한 · 유머있는. 네 성격 가운데 하나를 고릅니다. 성격마다 서체가 다릅니다.');
+cap('L', 'Step 2. Voice', '발화의 성격을 고릅니다.\n당당한 · 차분한 · 다정한 · 유머있는 중 하나.');
 await sleep(2200);
 await tap('.style-cards [role=radio]', { n: 1 }); await sleep(1300);
 await tap('.style-cards [role=radio]', { n: 2 }); await sleep(1600); await shot('voice');
@@ -187,7 +194,7 @@ await tap('.tone-choice .primary-action');
 
 // 3/5 조율 — 밀어 올리고, 크기 · 속도 · 무게를 옮기고, 눌러서 기본과 비교
 log('3/5 조율');
-cap('L', 'Step 3. Tune', '크기 · 속도 · 무게를 정합니다. 견본을 누르고 있으면 기본과 비교됩니다.');
+cap('L', 'Step 3. Tune', '크기와 속도, 무게를 조절해 발화를\n세밀하게 다듬습니다.');
 await sleep(3000); await shot('tone-intro');
 await drag(await point('.tone-intro', .5, .78), 0, -260, 520);
 await sleep(1800);
@@ -201,7 +208,7 @@ log('4/5 담기');
 cap('');
 await show('slot-write', false);
 await layout('left');
-cap('R', 'Step 4. Shape', '색과 모양을 골라 말을 담을 그릇을 만듭니다. 메가폰트는 아무것도 추천하지 않습니다.');
+cap('R', 'Step 4. Shape', '색과 모양을 골라 발화의 분위기를 정합니다.');
 await sleep(2600); await shot('color-intro');
 await drag(await point('.color-intro', .5, .78), 0, -260, 520);
 await sleep(1800);
@@ -215,7 +222,7 @@ await tap('.color-choice .primary-action');
 
 // 5/5 미리보기
 log('5/5 미리보기');
-cap('R', 'Step 5. Preview', '벽에 뜰 모습 그대로 확인합니다. 보낸 뒤에는 고칠 수 없습니다.');
+cap('R', 'Step 5. Preview', '미리보기로 벽에 나타날 모습을 확인합니다.');
 await sleep(5000); await shot('preview');
 await tap('.primary-action');
 
@@ -228,22 +235,23 @@ cap('L', 'Docking', '폰을 메가폰트 앞쪽 홈에 세로로 꽂습니다.')
 await sleep(3000); await shot('dock');
 await hiddenClick('.dock-test-link');
 log('발화 중');
-cap('L', 'On Air', '꽂는 순간 벽에 말이 떠오릅니다. 발화는 최대 30초입니다.');
+cap('L', 'On Air', '꽂는 순간, 벽에 말이 떠오릅니다.\n발화는 최대 30초 동안 이어집니다.');
 await sleep(5000); await shot('onwall');
-// 5초 뒤 판이 오른쪽으로 밀려 퇴장 — 전면 영상 + 사진 자리 15초
+// 5초 뒤 판이 오른쪽으로 밀려 퇴장 — 판이 다 빠진 뒤 34초가 전면 영상 자리(C0252 1:22–1:56, 사람이 떠날 때까지 — 11-03)
 cap('');
 await show('slot-dock', false);
 await layout('out');
 await show('slot-full', true);
-await sleep(15000 - MOVE - 1500);
-await hiddenClick('.onwall-release');   // 판이 돌아오기 1.5초 전에 끝내 완료 화면이 들어오는 모습이 보이게
+await sleep(34000 - 1500);
+// 판이 돌아오기 1.5초 전에 끝내 완료 화면이 들어오는 모습이 보이게 — 자리가 34초로 늘어 앱이 30초(EMPHASIS_MS)에 먼저 스스로 끝내면 단추가 없다
+await app().evaluate(() => document.querySelector('.onwall-release')?.click());
 await sleep(1500);
 // 완료 — 가운데에서 등장
 log('완료');
 await show('slot-full', false);
 await layout('hidden group', true);
 await layout('group');
-cap('G', 'Done', '말은 사흘 동안 벽에 머물다 사라집니다. 누가 썼는지는 남지 않습니다.');
+cap('G', 'Done', '말은 사흘 동안 벽에 머물다 사라집니다.');
 await sleep(2800); await shot('done');
 for (let i = 0; i < 3; i++) {   // 천천히 내려 보기
   const p = { x: box.x + 230, y: box.y + 620 };

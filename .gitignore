@@ -28,3 +28,4 @@ __pycache__/
 promo/video/frames/
 promo/video/stills/
 promo/video/*.mp4
+promo/video/footage/

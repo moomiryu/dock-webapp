@@ -3115,7 +3115,11 @@ body:has(.write-screen.is-typing){ min-height: 0; height: var(--vvh, 100dvh); ov
   margin-inline: calc(var(--pad-x) * -1); width: auto; }
 /* 말풍선 칸은 4/5 무대와 같은 폭(2026-10-21, 결정 47 — 4/5에서 담은 말 그대로) — 4/5의 액자(.proj-frame)가 안쪽으로 폭의 4%씩
    비우므로 여기도 화면 폭의 92%. 칸 크기가 같아야 DotBubble(pick)이 같은 글자 크기 · 같은 꼬리로 선다(4/5 · 05 나란히 재서 확인) */
-.preview-screen .sim-frame.is-wall > .dot-bubble{ width: 92%; margin-inline: auto; }
+.preview-screen .sim-frame.is-wall > .dot-bubble{ width: 92%; margin-inline: auto;
+  /* 마당(PreviewYard)처럼 절대 위치로 칸을 채운다 — height:100%는 아이폰 12(iOS 26.6) 사파리 · 크롬에서 0으로 풀렸다(2026-11-03, 디자이너
+     사진의 ?diag=1 판: 상자 359×0, 판은 기본 300×150, 글자 다섯이 전부 0,0 — 마당은 절대 위치라 390×470 멀쩡). flex 몫으로 높이를 받는
+     칸(.sim-frame.is-wall, container-type:size)의 자식 퍼센트 높이를 사파리가 못 푼다. 06 삽화 칸과 같은 병(2d7ee18). PC는 자리 그대로 */
+  position: absolute; inset: 0; height: auto; }
 .preview-screen .error-banner{ border-color: var(--grey-500); color: var(--paper); }
 
 /* ─── 머리줄 밑 구분선 — 한 규칙 (2026-09-25) ─────────────────────

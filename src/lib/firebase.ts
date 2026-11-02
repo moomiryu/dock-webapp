@@ -1,6 +1,7 @@
 import type { Draft, ToneState } from '../types';
 import { hasBannedWord } from './banned';
 import { getLang, pick, type Pair } from './lang';
+import { STAY_MS } from './wall';
 
 /**
  * 참여자에게 **그대로 보여 줄** 오류 (2026-09-26, 영문판).
@@ -116,19 +117,17 @@ function restDocToStored(d: RestDoc): StoredMessage {
 }
 
 function buildRestClient(): FirestoreLike {
-  async function list(lim: number): Promise<StoredMessage[]> {
-    const url = `${FS_BASE}/messages?key=${FS_KEY}&pageSize=${lim}&orderBy=${encodeURIComponent('createdAt desc')}`;
-    const res = await withTimeout(fetch(url), 15000);
-    if (!res.ok) throw new Error(`벽을 불러오지 못했어요 (${res.status})`);
-    const json = (await res.json()) as { documents?: RestDoc[] };
-    return (json.documents ?? []).map(restDocToStored);
+  /** 최신 lim개 — 이것도 사흘 안에서만 묻는다(2026-11-03). 규칙이 사흘 지난 글 읽기를
+      막으므로 시각 조건 없는 목록은 통째로 거절당한다(firestore.rules · messages) */
+  function list(lim: number): Promise<StoredMessage[]> {
+    return listSince(Date.now() - STAY_MS, lim);
   }
   /**
    * 이 시각 이후의 글 전부. 개수로 자르지 않는다 — 벽이 사흘 치를 다 돌리려면
    * 몇 개인지 모르는 채로 받아야 한다. 목록(list)은 시각으로 거를 수 없어서
    * 질의(runQuery)로 묻는다. 한 칸짜리 조건이라 따로 색인이 필요 없다.
    */
-  async function listSince(since: number): Promise<StoredMessage[]> {
+  async function listSince(since: number, lim?: number): Promise<StoredMessage[]> {
     const body = {
       structuredQuery: {
         from: [{ collectionId: 'messages' }],
@@ -139,7 +138,8 @@ function buildRestClient(): FirestoreLike {
             value: { timestampValue: new Date(since).toISOString() }
           }
         },
-        orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }]
+        orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+        ...(lim ? { limit: lim } : null)
       }
     };
     const res = await withTimeout(

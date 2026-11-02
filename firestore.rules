@@ -143,7 +143,14 @@ service cloud.firestore {
     match /messages/{id} {
       // 벽과 /admin이 로그인 없이 읽는다. 글 자체가 공개물이고 누가 썼는지는
       // 애초에 저장하지 않는다(익명성).
-      allow read: if true;
+      //
+      // 2026-11-03 보안 점검: 사흘이 지난 글은 아무도 못 읽는다. 전에는 벽이 안 보여
+      // 줄 뿐 첫 글부터 전부 누구나 받아 갈 수 있었다 — "사흘 뒤 사라진다"는 약속이
+      // 화면에서만 지켜졌다. 하루를 더 두는 건 벽 · 폰 시계가 늦어도 질의가 통째로
+      // 거절되지 않게 하기 위해서다(만들기의 ±24시간과 같은 여유). 목록 질의는
+      // 반드시 createdAt ≥ (지금 − 사흘)을 달고 와야 한다(firebase.ts listSince).
+      // 문서는 남아 있다 — 실제로 지우는 건 TTL의 몫이다.
+      allow read: if resource.data.createdAt >= request.time - duration.value(4, 'd');
       allow create: if validMessage(request.resource.data);
       // **보낸 뒤에는 수정할 수 없습니다** — 소개 화면이 학생에게 한 약속이
       // 이제 문서에도 적혀 있다.

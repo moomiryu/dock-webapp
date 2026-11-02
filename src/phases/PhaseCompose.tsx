@@ -179,10 +179,11 @@ export default function PhaseCompose({ initialText, onBack, onSubmit }: Props) {
        버튼 대신 **빈 자리**가 그 일을 한다. 누르는 자리가 입력칸 안이면
        손대지 않는다: 글자를 고르거나 긴 글을 훑는 중일 수 있고, 그때
        자판이 내려가면 하던 일이 끊긴다. pointerdown에서 막지 않으므로
-       아래의 버튼들은 제 몫대로 눌린다. */
+       아래의 버튼들은 제 몫대로 눌린다.
+       입력칸은 쓰는 동안 글줄만큼만 선다(app.css) — 쓰는 칸의 글 아래 빈자리도 바깥이다(2026-11-03 디자이너) */
     const outside = (e: React.PointerEvent) => {
         if (!typing) return;
-        if ((e.target as HTMLElement).closest('.write-fit')) return;
+        if (e.target === input.current) return;
         input.current?.blur();
     };
     /* 글이 한 자라도 있는가. 쓰는 동안 접는 것들이 이걸 본다 — 아래 CSS의

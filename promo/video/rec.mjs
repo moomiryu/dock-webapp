@@ -192,25 +192,25 @@ await tap('.style-cards [role=radio]', { n: 1 }); await sleep(1300);
 await tap('.style-cards [role=radio]', { n: 2 }); await sleep(1600); await shot('voice');
 await tap('.tone-choice .primary-action');
 
-// 3/5 조율 — 밀어 올리고, 크기 · 속도 · 무게를 옮기고, 눌러서 기본과 비교
+// 3/5 조율 — 크기 · 속도 · 무게를 옮기고, 눌러서 기본과 비교
 log('3/5 조율');
 cap('L', 'Step 3. Tune', '크기와 속도, 무게를 조절해 발화를\n세밀하게 다듬습니다.');
 await sleep(3000); await shot('tone-intro');
-await drag(await point('.tone-intro', .5, .78), 0, -260, 520);
+await sleep(700);   // 첫 장(밀어 올리기)이 없어졌다(efef774) — 제목이 일하는 화면 위에 잠깐 덮였다 빠진다. 같은 길이만큼 기다린다
 await sleep(1800);
 await tap('.tone-work [role=slider]', { n: 0, fx: 4.5 / 5 }); await sleep(1500);   // 크기 → 크게
 await tap('.tone-work [role=slider]', { n: 2, fx: 3.5 / 5 }); await sleep(1600); await shot('tone-work');   // 무게 → 조금 무겁게
 await tap('.tone-face', { hold: 1500 }); await sleep(1300);   // 누르는 동안 기본과 비교
 await tap('.tone-work .primary-action');
 
-// 4/5 담기 — 판이 왼쪽 반으로 건너가고 오른쪽에 설명 글. 밀어 올리고, 색을 넘겨 보고, 모양을 고른다
+// 4/5 담기 — 판이 왼쪽 반으로 건너가고 오른쪽에 설명 글. 색을 넘겨 보고, 모양을 고른다
 log('4/5 담기');
 cap('');
 await show('slot-write', false);
 await layout('left');
 cap('R', 'Step 4. Shape', '색과 모양을 골라 발화의 분위기를 정합니다.');
 await sleep(2600); await shot('color-intro');
-await drag(await point('.color-intro', .5, .78), 0, -260, 520);
+await sleep(700);   // 4/5도 첫 장이 없어졌다(efef774)
 await sleep(1800);
 const roll = await point('.color-roll-window');
 await drag(roll, 0, -34, 380); await sleep(1300);
